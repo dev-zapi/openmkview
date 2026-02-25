@@ -52,6 +52,7 @@ A narrow vertical bar on the far left, displaying:
 - **Header area** (top of Column 2):
   - **Line 1:** Directory name (basename of the project path)
   - **Line 2:** Full directory path, with the user's home directory prefix replaced by `~`
+  - **Close Button:** Positioned at the right side of the header. Clicking it closes the current project (same behavior as F1.5 -- removes from Column 1, retains in history).
 - Tree supports expand/collapse of subdirectories.
 - Clicking a Markdown file opens it in Column 3.
 
@@ -90,6 +91,7 @@ A narrow vertical bar on the far left, displaying:
 | F2.2  | Support nested subdirectories with expand/collapse. |
 | F2.3  | Clicking a file opens it in the Markdown Viewer (Column 3). |
 | F2.4  | Show project header at the top: directory name + full path (home path abbreviated with `~`). |
+| F2.5  | A **close button** on the right side of the project header. Clicking it closes the current project (removes from sidebar, retains in history). |
 
 ### F3 - Markdown Viewer
 
