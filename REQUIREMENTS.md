@@ -5,9 +5,21 @@
 OpenMKView is a web-based Markdown file previewer with a VS Code-like three-column layout. It allows users to open local filesystem directories (called "projects"), browse Markdown files within them via a tree view, and preview or view the source of Markdown files with syntax highlighting.
 
 **Tech Stack:**
-- **Framework:** Next.js (full-stack, frontend + backend)
-- **Styling:** Tailwind CSS + animations
-- **Runtime:** Node.js (filesystem access via server-side APIs)
+
+| Category | Choice | Notes |
+|----------|--------|-------|
+| Framework | **Next.js** (App Router) | Full-stack; Route Handlers for filesystem API |
+| Styling | **Tailwind CSS v4** | Utility-first, `dark:` variant for theming |
+| Component Library | **shadcn/ui** | Radix UI + Tailwind; Dialog, DropdownMenu, ScrollArea, Tooltip, etc. |
+| State Management | **Zustand** | Lightweight, no Provider needed; `persist` middleware for localStorage sync |
+| Theme | **next-themes** | dark/light/system; handles SSR hydration; pairs with Tailwind `dark:` |
+| Markdown Parsing | **unified** ecosystem | `remark-parse` + `remark-gfm` + `remark-rehype` + `rehype-react` |
+| Syntax Highlighting | **Shiki** | VS Code-grade TextMate grammars/themes; integrates via `rehype-shiki` |
+| File Tree | **react-arborist** | Virtual scrolling, keyboard nav, expand/collapse; built for file trees |
+| Resizable Panels | **react-resizable-panels** | Lightweight, persistable panel sizes, collapsible panels |
+| Data Persistence | **better-sqlite3** (or JSON file) | Server-side storage for project list/history; atomic writes |
+| Animation | **Tailwind animations** + **framer-motion** | Tailwind for simple transitions; framer-motion for complex orchestration |
+| Runtime | **Node.js** | Filesystem access via server-side APIs |
 
 ---
 
