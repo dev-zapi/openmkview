@@ -102,6 +102,7 @@ export function OpenProjectDialog({ open, onOpenChange }: OpenProjectDialogProps
       onOpenChange={onOpenChange}
       title="Open Project"
       description="Search for a directory to open as a project"
+      shouldFilter={false}
     >
       <CommandInput
         placeholder="Search directories or type a path..."
