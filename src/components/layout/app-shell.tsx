@@ -14,10 +14,26 @@ import { useEffect } from "react";
 export function AppShell() {
   const { activeProjectId, fetchProjects, openProjects } = useAppStore();
 
-  // Load projects on mount
+  // Load projects on mount and restore persisted state
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    const init = async () => {
+      await fetchProjects();
+
+      const state = useAppStore.getState();
+      // If we have a persisted active project, restore file tree and content
+      if (state.activeProjectId) {
+        await state.fetchFileTree(state.activeProjectId);
+
+        if (state.selectedFilePath) {
+          await state.fetchFileContent(
+            state.selectedFilePath,
+            state.activeProjectId
+          );
+        }
+      }
+    };
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-switch to first open project if none is active
   useEffect(() => {
