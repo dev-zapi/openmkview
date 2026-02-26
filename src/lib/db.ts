@@ -3,16 +3,22 @@ import path from "path";
 
 const DB_PATH = path.join(process.cwd(), "data", "openmkview.db");
 
-let db: Database.Database | null = null;
+// Use globalThis to persist the DB connection across HMR reloads in development.
+// Without this, each HMR cycle re-evaluates the module and creates a new connection,
+// which can cause "database is locked" errors or connection leaks.
+const globalForDb = globalThis as unknown as {
+  __openmkview_db?: Database.Database;
+};
 
 export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH);
+  if (!globalForDb.__openmkview_db) {
+    const db = new Database(DB_PATH);
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     initializeDb(db);
+    globalForDb.__openmkview_db = db;
   }
-  return db;
+  return globalForDb.__openmkview_db;
 }
 
 function initializeDb(db: Database.Database) {
