@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
+import { useShallow } from "zustand/shallow";
 import { codeToHtml } from "shiki";
 import { FileText, Eye, Code, List } from "lucide-react";
 import { useAppStore } from "@/lib/store";
@@ -14,7 +15,7 @@ import { OutlinePanel } from "@/components/outline-panel/outline-panel";
 
 export function MarkdownViewer() {
   const { theme, systemTheme } = useTheme();
-  const [
+  const {
     fileContent,
     fileName,
     viewMode,
@@ -25,18 +26,20 @@ export function MarkdownViewer() {
     activeProjectId,
     openProjects,
     selectedFilePath,
-  ] = useAppStore((state) => [
-    state.fileContent,
-    state.fileName,
-    state.viewMode,
-    state.setViewMode,
-    state.outlineVisible,
-    state.toggleOutline,
-    state.setHeadings,
-    state.activeProjectId,
-    state.openProjects,
-    state.selectedFilePath,
-  ]);
+  } = useAppStore(
+    useShallow((state) => ({
+      fileContent: state.fileContent,
+      fileName: state.fileName,
+      viewMode: state.viewMode,
+      setViewMode: state.setViewMode,
+      outlineVisible: state.outlineVisible,
+      toggleOutline: state.toggleOutline,
+      setHeadings: state.setHeadings,
+      activeProjectId: state.activeProjectId,
+      openProjects: state.openProjects,
+      selectedFilePath: state.selectedFilePath,
+    }))
+  );
 
   const [processedContent, setProcessedContent] = useState<React.ReactElement | null>(null);
   const [highlightedSource, setHighlightedSource] = useState<string>("");

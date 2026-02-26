@@ -1,16 +1,19 @@
 "use client";
 
 import { FolderOpen } from "lucide-react";
+import { useShallow } from "zustand/shallow";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function WelcomePage() {
-  const [projectHistory, openProjects, openProject] = useAppStore((state) => [
-    state.projectHistory,
-    state.openProjects,
-    state.openProject,
-  ]);
+  const { projectHistory, openProjects, openProject } = useAppStore(
+    useShallow((state) => ({
+      projectHistory: state.projectHistory,
+      openProjects: state.openProjects,
+      openProject: state.openProject,
+    }))
+  );
 
   // Filter out projects that are already open from history
   const availableHistory = projectHistory.filter(
