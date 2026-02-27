@@ -2,6 +2,7 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
+import rehypeShiki from "@shikijs/rehype";
 import rehypeReact from "rehype-react";
 import { createElement, Fragment } from "react";
 import type { HeadingInfo } from "@/types";
@@ -52,6 +53,13 @@ export async function processMarkdown(
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeShiki, {
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+      defaultColor: false,
+    })
     .use(rehypeReact, {
       createElement,
       Fragment,
