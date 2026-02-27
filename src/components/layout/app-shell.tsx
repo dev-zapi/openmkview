@@ -18,10 +18,13 @@ export function AppShell() {
   const { activeProjectId, fetchProjects, openProjects } = useAppStore();
   const groupRef = useGroupRef();
 
-  // Load projects on mount and restore persisted state
+  // Load projects and settings on mount and restore persisted state
   useEffect(() => {
     const init = async () => {
-      await fetchProjects();
+      await Promise.all([
+        fetchProjects(),
+        useAppStore.getState().fetchSettings(),
+      ]);
 
       const state = useAppStore.getState();
       // If we have a persisted active project, restore file tree and content

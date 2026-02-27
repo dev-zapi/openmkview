@@ -32,4 +32,12 @@ function initializeDb(db: Database.Database) {
       is_open INTEGER NOT NULL DEFAULT 1
     )
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
 }

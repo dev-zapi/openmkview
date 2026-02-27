@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { OpenProjectDialog } from "./open-project-dialog";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 
 export function ActivityBar() {
-  const { openProjects, activeProjectId, switchProject } = useAppStore();
+  const { openProjects, activeProjectId, switchProject, setSettingsDialogOpen } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = React.useState(false);
 
@@ -137,6 +138,7 @@ export function ActivityBar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              onClick={() => setSettingsDialogOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               aria-label="Settings"
             >
@@ -144,7 +146,7 @@ export function ActivityBar() {
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p>Settings coming soon</p>
+            <p>Settings</p>
           </TooltipContent>
         </Tooltip>
       </aside>
@@ -153,6 +155,8 @@ export function ActivityBar() {
         open={isOpenProjectDialogOpen}
         onOpenChange={setIsOpenProjectDialogOpen}
       />
+
+      <SettingsDialog />
     </TooltipProvider>
   );
 }

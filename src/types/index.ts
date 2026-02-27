@@ -26,3 +26,15 @@ export interface HeadingInfo {
 export type ViewMode = "preview" | "source";
 
 export type ThemeMode = "light" | "dark" | "system";
+
+// Settings
+export type MarkdownWidthMode = "full" | "fixed";
+
+export interface MarkdownWidthSetting {
+  mode: MarkdownWidthMode;
+  fixedWidth: string; // e.g., "70%", "1000px", "800rem"
+}
+
+export interface SystemSettings {
+  markdownWidth: MarkdownWidthSetting;
+}

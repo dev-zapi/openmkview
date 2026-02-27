@@ -26,6 +26,7 @@ export function MarkdownViewer() {
     activeProjectId,
     openProjects,
     selectedFilePath,
+    settings,
   } = useAppStore(
     useShallow((state) => ({
       fileContent: state.fileContent,
@@ -38,6 +39,7 @@ export function MarkdownViewer() {
       activeProjectId: state.activeProjectId,
       openProjects: state.openProjects,
       selectedFilePath: state.selectedFilePath,
+      settings: state.settings,
     }))
   );
 
@@ -47,6 +49,13 @@ export function MarkdownViewer() {
 
   const currentTheme = theme === "system" ? systemTheme : theme;
   const shikiTheme = currentTheme === "dark" ? "github-dark" : "github-light";
+
+  // Compute markdown content width style
+  const markdownWidth = settings.markdownWidth;
+  const contentWidthStyle: React.CSSProperties =
+    markdownWidth.mode === "fixed"
+      ? { maxWidth: markdownWidth.fixedWidth, marginLeft: "auto", marginRight: "auto" }
+      : {};
 
   // Process markdown content when it changes
   const processContent = useCallback(async () => {
@@ -176,7 +185,7 @@ export function MarkdownViewer() {
       {/* Content area */}
       <div className="flex flex-1 overflow-hidden">
         <ScrollArea className="flex-1">
-          <div className="p-6">
+          <div className="p-6" style={contentWidthStyle}>
             {isProcessing ? (
               <div className="flex items-center justify-center py-20">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Project, ViewMode, FileTreeNode, HeadingInfo } from "@/types";
+import type { Project, ViewMode, FileTreeNode, HeadingInfo, SystemSettings } from "@/types";
 
 interface AppState {
   // Projects
@@ -22,6 +22,10 @@ interface AppState {
   // UI State
   isLoading: boolean;
 
+  // Settings
+  settings: SystemSettings;
+  settingsDialogOpen: boolean;
+
   // Actions
   setOpenProjects: (projects: Project[]) => void;
   setActiveProjectId: (id: number | null) => void;
@@ -41,6 +45,9 @@ interface AppState {
   switchProject: (id: number) => Promise<void>;
   fetchFileTree: (projectId: number) => Promise<void>;
   fetchFileContent: (filePath: string, projectId: number) => Promise<void>;
+  fetchSettings: () => Promise<void>;
+  updateSettings: (settings: Partial<SystemSettings>) => Promise<void>;
+  setSettingsDialogOpen: (open: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -58,6 +65,10 @@ export const useAppStore = create<AppState>()(
       outlineVisible: false,
       headings: [],
       isLoading: false,
+      settings: {
+        markdownWidth: { mode: "full", fixedWidth: "70%" },
+      },
+      settingsDialogOpen: false,
 
       // Simple setters
       setOpenProjects: (projects) => set({ openProjects: projects }),
@@ -190,6 +201,39 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           console.error("Failed to fetch file content:", error);
           set({ fileContent: null, fileName: null, isLoading: false });
+        }
+      },
+
+      // Settings
+      setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
+
+      fetchSettings: async () => {
+        try {
+          const res = await fetch("/api/settings");
+          if (res.ok) {
+            const settings = await res.json();
+            set({ settings });
+          }
+        } catch (error) {
+          console.error("Failed to fetch settings:", error);
+        }
+      },
+
+      updateSettings: async (partial) => {
+        try {
+          const current = get().settings;
+          const updated = { ...current, ...partial };
+          const res = await fetch("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          });
+          if (res.ok) {
+            const settings = await res.json();
+            set({ settings });
+          }
+        } catch (error) {
+          console.error("Failed to update settings:", error);
         }
       },
     }),
