@@ -35,6 +35,13 @@ export interface MarkdownWidthSetting {
   fixedWidth: string; // e.g., "70%", "1000px", "800rem"
 }
 
+export interface FontSetting {
+  fontFamily: string; // CSS font-family value, e.g., "Inter", "system-ui"
+  fontSize: string;   // CSS font-size value, e.g., "14px", "1rem"
+}
+
 export interface SystemSettings {
   markdownWidth: MarkdownWidthSetting;
+  uiFont: FontSetting;
+  markdownFont: FontSetting;
 }

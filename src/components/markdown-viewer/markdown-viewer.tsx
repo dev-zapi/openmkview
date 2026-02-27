@@ -57,6 +57,15 @@ export function MarkdownViewer() {
       ? { maxWidth: markdownWidth.fixedWidth, marginLeft: "auto", marginRight: "auto" }
       : {};
 
+  // Compute markdown font style
+  const markdownFontStyle: React.CSSProperties = {};
+  if (settings.markdownFont?.fontFamily) {
+    markdownFontStyle.fontFamily = `${settings.markdownFont.fontFamily}, var(--font-geist-sans), sans-serif`;
+  }
+  if (settings.markdownFont?.fontSize) {
+    markdownFontStyle.fontSize = settings.markdownFont.fontSize;
+  }
+
   // Process markdown content when it changes
   const processContent = useCallback(async () => {
     if (!fileContent) {
@@ -193,7 +202,7 @@ export function MarkdownViewer() {
                 </div>
               ) : viewMode === "preview" ? (
                 /* Preview mode */
-                <article className="prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden">
+                <article className="prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden" style={markdownFontStyle}>
                   {processedContent}
                 </article>
               ) : (

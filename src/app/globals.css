@@ -180,3 +180,9 @@
   overflow-x: auto;
   white-space: nowrap;
 }
+
+/* Custom UI font support via CSS variables */
+.app-shell {
+  font-family: var(--font-ui-custom, var(--font-geist-sans, sans-serif));
+  font-size: var(--font-ui-size, 14px);
+}

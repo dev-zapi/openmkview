@@ -11,11 +11,19 @@ import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { useAppStore } from "@/lib/store";
 import { useEffect } from "react";
+import { useShallow } from "zustand/shallow";
 
 const DEFAULT_LAYOUT = { "file-explorer": 20, viewer: 80 };
 
 export function AppShell() {
-  const { activeProjectId, fetchProjects, openProjects } = useAppStore();
+  const { activeProjectId, fetchProjects, openProjects, settings } = useAppStore(
+    useShallow((state) => ({
+      activeProjectId: state.activeProjectId,
+      fetchProjects: state.fetchProjects,
+      openProjects: state.openProjects,
+      settings: state.settings,
+    }))
+  );
   const groupRef = useGroupRef();
 
   // Load projects and settings on mount and restore persisted state
@@ -42,6 +50,34 @@ export function AppShell() {
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Apply UI font to CSS custom properties on document root
+  useEffect(() => {
+    const root = document.documentElement;
+    const uiFont = settings.uiFont;
+    if (uiFont?.fontFamily) {
+      root.style.setProperty("--font-ui-custom", uiFont.fontFamily);
+    } else {
+      root.style.removeProperty("--font-ui-custom");
+    }
+    if (uiFont?.fontSize) {
+      root.style.setProperty("--font-ui-size", uiFont.fontSize);
+    } else {
+      root.style.removeProperty("--font-ui-size");
+    }
+
+    const mdFont = settings.markdownFont;
+    if (mdFont?.fontFamily) {
+      root.style.setProperty("--font-md-custom", mdFont.fontFamily);
+    } else {
+      root.style.removeProperty("--font-md-custom");
+    }
+    if (mdFont?.fontSize) {
+      root.style.setProperty("--font-md-size", mdFont.fontSize);
+    } else {
+      root.style.removeProperty("--font-md-size");
+    }
+  }, [settings.uiFont, settings.markdownFont]);
+
   // Auto-switch to first open project if none is active
   useEffect(() => {
     if (!activeProjectId && openProjects.length > 0) {
@@ -64,7 +100,7 @@ export function AppShell() {
   }, [activeProjectId, groupRef]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="flex h-screen w-screen overflow-hidden bg-background app-shell">
       {/* Column 1: Activity Bar */}
       <ActivityBar />
 

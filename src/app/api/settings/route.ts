@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import type { SystemSettings, MarkdownWidthSetting } from "@/types";
+import type { SystemSettings, MarkdownWidthSetting, FontSetting } from "@/types";
 
 const DEFAULT_SETTINGS: SystemSettings = {
   markdownWidth: {
     mode: "full",
     fixedWidth: "70%",
+  },
+  uiFont: {
+    fontFamily: "",
+    fontSize: "14px",
+  },
+  markdownFont: {
+    fontFamily: "",
+    fontSize: "16px",
   },
 };
 
@@ -21,12 +29,20 @@ export async function GET() {
     const settings: SystemSettings = { ...DEFAULT_SETTINGS };
 
     for (const row of rows) {
-      if (row.key === "markdownWidth") {
-        try {
-          settings.markdownWidth = JSON.parse(row.value) as MarkdownWidthSetting;
-        } catch {
-          // Use default if parsing fails
+      try {
+        switch (row.key) {
+          case "markdownWidth":
+            settings.markdownWidth = JSON.parse(row.value) as MarkdownWidthSetting;
+            break;
+          case "uiFont":
+            settings.uiFont = JSON.parse(row.value) as FontSetting;
+            break;
+          case "markdownFont":
+            settings.markdownFont = JSON.parse(row.value) as FontSetting;
+            break;
         }
+      } catch {
+        // Use default if parsing fails
       }
     }
 
@@ -80,6 +96,48 @@ export async function PUT(request: Request) {
       upsert.run("markdownWidth", JSON.stringify(mw));
     }
 
+    // Validate and save uiFont
+    if (body.uiFont) {
+      const font = body.uiFont as FontSetting;
+
+      // Validate fontSize format
+      if (font.fontSize) {
+        const validPattern = /^\d+(\.\d+)?(px|rem|em|pt)$/;
+        if (!validPattern.test(font.fontSize)) {
+          return NextResponse.json(
+            {
+              error:
+                "Invalid uiFont.fontSize value. Must be a number with a unit (e.g., '14px', '1rem').",
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      upsert.run("uiFont", JSON.stringify(font));
+    }
+
+    // Validate and save markdownFont
+    if (body.markdownFont) {
+      const font = body.markdownFont as FontSetting;
+
+      // Validate fontSize format
+      if (font.fontSize) {
+        const validPattern = /^\d+(\.\d+)?(px|rem|em|pt)$/;
+        if (!validPattern.test(font.fontSize)) {
+          return NextResponse.json(
+            {
+              error:
+                "Invalid markdownFont.fontSize value. Must be a number with a unit (e.g., '16px', '1rem').",
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      upsert.run("markdownFont", JSON.stringify(font));
+    }
+
     // Return updated settings
     const rows = db.prepare("SELECT key, value FROM settings").all() as {
       key: string;
@@ -88,12 +146,20 @@ export async function PUT(request: Request) {
 
     const settings: SystemSettings = { ...DEFAULT_SETTINGS };
     for (const row of rows) {
-      if (row.key === "markdownWidth") {
-        try {
-          settings.markdownWidth = JSON.parse(row.value) as MarkdownWidthSetting;
-        } catch {
-          // Use default
+      try {
+        switch (row.key) {
+          case "markdownWidth":
+            settings.markdownWidth = JSON.parse(row.value) as MarkdownWidthSetting;
+            break;
+          case "uiFont":
+            settings.uiFont = JSON.parse(row.value) as FontSetting;
+            break;
+          case "markdownFont":
+            settings.markdownFont = JSON.parse(row.value) as FontSetting;
+            break;
         }
+      } catch {
+        // Use default
       }
     }
 

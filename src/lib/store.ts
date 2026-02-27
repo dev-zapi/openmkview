@@ -67,6 +67,8 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       settings: {
         markdownWidth: { mode: "full", fixedWidth: "70%" },
+        uiFont: { fontFamily: "", fontSize: "14px" },
+        markdownFont: { fontFamily: "", fontSize: "16px" },
       },
       settingsDialogOpen: false,
 
