@@ -12,8 +12,7 @@ import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { useAppStore } from "@/lib/store";
 import { useEffect } from "react";
 
-const LAYOUT_WITH_EXPLORER = { "file-explorer": 20, viewer: 80 };
-const LAYOUT_WITHOUT_EXPLORER = { "file-explorer": 0, viewer: 100 };
+const DEFAULT_LAYOUT = { "file-explorer": 20, viewer: 80 };
 
 export function AppShell() {
   const { activeProjectId, fetchProjects, openProjects } = useAppStore();
@@ -47,22 +46,17 @@ export function AppShell() {
     }
   }, [activeProjectId, openProjects]);
 
-  // Force correct layout when activeProjectId changes
+  // Ensure file explorer has proper width after Zustand hydration
   useEffect(() => {
     const group = groupRef.current;
-    if (!group) return;
+    if (!group || !activeProjectId) return;
 
-    if (activeProjectId) {
-      const currentLayout = group.getLayout();
-      // Only force layout if file explorer is too small (collapsed or near-zero)
-      if (
-        currentLayout["file-explorer"] === undefined ||
-        currentLayout["file-explorer"] < 10
-      ) {
-        group.setLayout(LAYOUT_WITH_EXPLORER);
-      }
-    } else {
-      group.setLayout(LAYOUT_WITHOUT_EXPLORER);
+    const currentLayout = group.getLayout();
+    if (
+      currentLayout["file-explorer"] === undefined ||
+      currentLayout["file-explorer"] < 10
+    ) {
+      group.setLayout(DEFAULT_LAYOUT);
     }
   }, [activeProjectId, groupRef]);
 
@@ -76,14 +70,12 @@ export function AppShell() {
         orientation="horizontal"
         className="flex-1"
         groupRef={groupRef}
-        defaultLayout={LAYOUT_WITH_EXPLORER}
+        defaultLayout={DEFAULT_LAYOUT}
       >
-        {/* Column 2: File Explorer - always rendered, collapsed when no project */}
+        {/* Column 2: File Explorer */}
         <Panel
           minSize="15%"
           maxSize="40%"
-          collapsible
-          collapsedSize="0%"
           id="file-explorer"
         >
           <FileExplorer />

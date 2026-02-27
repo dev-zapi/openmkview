@@ -167,7 +167,9 @@
   background: oklch(0.5 0 0 / 50%);
 }
 
-/* react-arborist tree container fill */
-[role="tree"] {
+/* react-arborist: ensure virtual list fills its container */
+[role="tree"],
+[role="tree"] > div {
+  width: 100% !important;
   height: 100% !important;
 }

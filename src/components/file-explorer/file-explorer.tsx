@@ -3,7 +3,6 @@
 import { Tree, NodeRendererProps } from "react-arborist";
 import { useAppStore } from "@/lib/store";
 import { FileTreeNode } from "@/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   X,
   ChevronRight,
@@ -12,6 +11,7 @@ import {
   Folder,
   FolderOpen,
 } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
 
 function NodeRenderer({
   node,
@@ -88,6 +88,35 @@ export function FileExplorer() {
     fileTree,
   } = useAppStore();
 
+  const treeContainerRef = useRef<HTMLDivElement>(null);
+  const [treeSize, setTreeSize] = useState({ width: 0, height: 0 });
+
+  const updateSize = useCallback(() => {
+    if (treeContainerRef.current) {
+      const { width, height } = treeContainerRef.current.getBoundingClientRect();
+      setTreeSize((prev) => {
+        if (prev.width !== width || prev.height !== height) {
+          return { width, height };
+        }
+        return prev;
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = treeContainerRef.current;
+    if (!el) return;
+
+    updateSize();
+
+    const observer = new ResizeObserver(() => {
+      updateSize();
+    });
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [updateSize]);
+
   const activeProject = openProjects.find((p) => p.id === activeProjectId);
 
   if (!activeProject) {
@@ -103,9 +132,9 @@ export function FileExplorer() {
   const displayPath = getDisplayPath(activeProject.path);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="p-3 border-b border-border">
+      <div className="p-3 border-b border-border flex-shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-base truncate">
@@ -129,16 +158,20 @@ export function FileExplorer() {
       </div>
 
       {/* File Tree */}
-      <ScrollArea className="flex-1">
-        <Tree
-          data={fileTree}
-          idAccessor="id"
-          rowHeight={28}
-          indent={16}
-        >
-          {NodeRenderer}
-        </Tree>
-      </ScrollArea>
+      <div ref={treeContainerRef} className="flex-1 overflow-hidden">
+        {treeSize.width > 0 && treeSize.height > 0 && (
+          <Tree
+            data={fileTree}
+            idAccessor="id"
+            rowHeight={28}
+            indent={16}
+            width={treeSize.width}
+            height={treeSize.height}
+          >
+            {NodeRenderer}
+          </Tree>
+        )}
+      </div>
     </div>
   );
 }
