@@ -80,10 +80,10 @@ export function AppShell() {
       >
         {/* Column 2: File Explorer - always rendered, collapsed when no project */}
         <Panel
-          minSize={0}
-          maxSize={40}
+          minSize="15%"
+          maxSize="40%"
           collapsible
-          collapsedSize={0}
+          collapsedSize="0%"
           id="file-explorer"
         >
           <FileExplorer />
@@ -91,7 +91,7 @@ export function AppShell() {
         <Separator className="w-[3px] bg-border hover:bg-primary/50 transition-colors" />
 
         {/* Column 3: Markdown Viewer */}
-        <Panel minSize={30} id="viewer">
+        <Panel minSize="30%" id="viewer">
           <MarkdownViewer />
         </Panel>
       </Group>
