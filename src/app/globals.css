@@ -173,3 +173,10 @@
   width: 100% !important;
   height: 100% !important;
 }
+
+/* Prose table: horizontal scroll instead of overflowing the container */
+.prose table {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
