@@ -185,23 +185,25 @@ export function MarkdownViewer() {
       {/* Content area */}
       <div className="flex flex-1 overflow-hidden">
         <ScrollArea className="flex-1">
-          <div className="p-6" style={contentWidthStyle}>
-            {isProcessing ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-            ) : viewMode === "preview" ? (
-              /* Preview mode */
-              <article className="prose prose-neutral dark:prose-invert max-w-none">
-                {processedContent}
-              </article>
-            ) : (
-              /* Source mode */
-              <div
-                className="shiki-source"
-                dangerouslySetInnerHTML={{ __html: highlightedSource }}
-              />
-            )}
+          <div className="p-6">
+            <div style={contentWidthStyle}>
+              {isProcessing ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              ) : viewMode === "preview" ? (
+                /* Preview mode */
+                <article className="prose prose-neutral dark:prose-invert max-w-none">
+                  {processedContent}
+                </article>
+              ) : (
+                /* Source mode */
+                <div
+                  className="shiki-source"
+                  dangerouslySetInnerHTML={{ __html: highlightedSource }}
+                />
+              )}
+            </div>
           </div>
         </ScrollArea>
 
