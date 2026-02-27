@@ -11,7 +11,7 @@ import {
   Folder,
   FolderOpen,
 } from "lucide-react";
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 function NodeRenderer({
   node,
@@ -88,34 +88,34 @@ export function FileExplorer() {
     fileTree,
   } = useAppStore();
 
-  const treeContainerRef = useRef<HTMLDivElement>(null);
   const [treeSize, setTreeSize] = useState({ width: 0, height: 0 });
+  const observerRef = useRef<ResizeObserver | null>(null);
 
-  const updateSize = useCallback(() => {
-    if (treeContainerRef.current) {
-      const { width, height } = treeContainerRef.current.getBoundingClientRect();
+  const treeContainerRef = useCallback((el: HTMLDivElement | null) => {
+    // Clean up previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+
+    if (!el) return;
+
+    // Measure immediately
+    const { width, height } = el.getBoundingClientRect();
+    setTreeSize({ width, height });
+
+    // Observe for future size changes
+    observerRef.current = new ResizeObserver(() => {
+      const rect = el.getBoundingClientRect();
       setTreeSize((prev) => {
-        if (prev.width !== width || prev.height !== height) {
-          return { width, height };
+        if (prev.width !== rect.width || prev.height !== rect.height) {
+          return { width: rect.width, height: rect.height };
         }
         return prev;
       });
-    }
-  }, []);
-
-  useEffect(() => {
-    const el = treeContainerRef.current;
-    if (!el) return;
-
-    updateSize();
-
-    const observer = new ResizeObserver(() => {
-      updateSize();
     });
-    observer.observe(el);
-
-    return () => observer.disconnect();
-  }, [updateSize]);
+    observerRef.current.observe(el);
+  }, []);
 
   const activeProject = openProjects.find((p) => p.id === activeProjectId);
 
