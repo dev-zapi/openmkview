@@ -6,6 +6,7 @@ import rehypeShiki from "@shikijs/rehype";
 import rehypeReact from "rehype-react";
 import { createElement, Fragment } from "react";
 import type { HeadingInfo } from "@/types";
+import { CodeBlock } from "@/components/markdown-viewer/code-block";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const jsxRuntime = require("react/jsx-runtime");
 const { jsx, jsxs } = jsxRuntime;
@@ -72,6 +73,7 @@ export async function processMarkdown(
         h4: createHeadingComponent(4),
         h5: createHeadingComponent(5),
         h6: createHeadingComponent(6),
+        pre: CodeBlock,
       },
     })
     .process(markdown);

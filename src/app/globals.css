@@ -161,7 +161,7 @@ html.dark .shiki span {
 
 /* Code block styling in prose */
 .prose pre:has(.shiki) {
-  padding: 1rem 1.25rem;
+  padding: 0;
   border-radius: 0.5rem;
   overflow-x: auto;
 }
@@ -170,6 +170,78 @@ html.dark .shiki span {
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.875rem;
   line-height: 1.7;
+}
+
+/* Code block wrapper with copy button */
+.code-block-wrapper {
+  position: relative;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.code-block-wrapper pre {
+  margin: 0 !important;
+  border-radius: 0 0 0.5rem 0.5rem !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-bottom: 1px solid oklch(0 0 0 / 8%);
+  background: oklch(0.96 0 0);
+}
+
+.dark .code-block-header {
+  border-bottom-color: oklch(1 0 0 / 8%);
+  background: oklch(0.2 0 0);
+}
+
+.code-block-lang {
+  color: oklch(0.5 0 0);
+  font-family: var(--font-geist-mono), monospace;
+  user-select: none;
+}
+
+.dark .code-block-lang {
+  color: oklch(0.6 0 0);
+}
+
+.code-block-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: oklch(0.5 0 0);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+  background: transparent;
+  border: none;
+  opacity: 0;
+}
+
+.group:hover .code-block-copy,
+.code-block-copy:focus-visible {
+  opacity: 1;
+}
+
+.code-block-copy:hover {
+  color: oklch(0.3 0 0);
+  background: oklch(0 0 0 / 6%);
+}
+
+.dark .code-block-copy {
+  color: oklch(0.6 0 0);
+}
+
+.dark .code-block-copy:hover {
+  color: oklch(0.85 0 0);
+  background: oklch(1 0 0 / 10%);
 }
 
 /* Scrollbar styles */
