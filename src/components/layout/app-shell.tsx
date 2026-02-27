@@ -4,7 +4,7 @@ import {
   Panel,
   Group,
   Separator,
-  usePanelRef,
+  useGroupRef,
 } from "react-resizable-panels";
 import { ActivityBar } from "@/components/activity-bar/activity-bar";
 import { FileExplorer } from "@/components/file-explorer/file-explorer";
@@ -12,9 +12,12 @@ import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { useAppStore } from "@/lib/store";
 import { useEffect } from "react";
 
+const LAYOUT_WITH_EXPLORER = { "file-explorer": 20, viewer: 80 };
+const LAYOUT_WITHOUT_EXPLORER = { "file-explorer": 0, viewer: 100 };
+
 export function AppShell() {
   const { activeProjectId, fetchProjects, openProjects } = useAppStore();
-  const fileExplorerPanelRef = usePanelRef();
+  const groupRef = useGroupRef();
 
   // Load projects on mount and restore persisted state
   useEffect(() => {
@@ -44,21 +47,24 @@ export function AppShell() {
     }
   }, [activeProjectId, openProjects]);
 
-  // Collapse/expand file explorer panel based on active project
+  // Force correct layout when activeProjectId changes
   useEffect(() => {
-    const panel = fileExplorerPanelRef.current;
-    if (!panel) return;
+    const group = groupRef.current;
+    if (!group) return;
 
     if (activeProjectId) {
-      if (panel.isCollapsed()) {
-        panel.expand();
+      const currentLayout = group.getLayout();
+      // Only force layout if file explorer is too small (collapsed or near-zero)
+      if (
+        currentLayout["file-explorer"] === undefined ||
+        currentLayout["file-explorer"] < 10
+      ) {
+        group.setLayout(LAYOUT_WITH_EXPLORER);
       }
     } else {
-      if (!panel.isCollapsed()) {
-        panel.collapse();
-      }
+      group.setLayout(LAYOUT_WITHOUT_EXPLORER);
     }
-  }, [activeProjectId, fileExplorerPanelRef]);
+  }, [activeProjectId, groupRef]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
@@ -66,23 +72,26 @@ export function AppShell() {
       <ActivityBar />
 
       {/* Columns 2 + 3: Resizable panels */}
-      <Group orientation="horizontal" className="flex-1">
+      <Group
+        orientation="horizontal"
+        className="flex-1"
+        groupRef={groupRef}
+        defaultLayout={LAYOUT_WITH_EXPLORER}
+      >
         {/* Column 2: File Explorer - always rendered, collapsed when no project */}
         <Panel
-          defaultSize={activeProjectId ? 20 : 0}
-          minSize={15}
+          minSize={0}
           maxSize={40}
           collapsible
           collapsedSize={0}
           id="file-explorer"
-          panelRef={fileExplorerPanelRef}
         >
           <FileExplorer />
         </Panel>
         <Separator className="w-[3px] bg-border hover:bg-primary/50 transition-colors" />
 
         {/* Column 3: Markdown Viewer */}
-        <Panel defaultSize={activeProjectId ? 80 : 100} minSize={30} id="viewer">
+        <Panel minSize={30} id="viewer">
           <MarkdownViewer />
         </Panel>
       </Group>
