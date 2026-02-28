@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useAppStore } from "@/lib/store";
@@ -19,6 +19,7 @@ interface DirectoryResult {
   name: string;
   path: string;
   display: string;
+  isRecent?: boolean;
 }
 
 interface OpenProjectDialogProps {
@@ -131,22 +132,48 @@ export function OpenProjectDialog({ open, onOpenChange }: OpenProjectDialogProps
             </div>
           </CommandEmpty>
         ) : (
-          <CommandGroup heading="Directories">
-            {results.map((result) => (
-              <CommandItem
-                key={result.path}
-                onSelect={() => handleOpenProject(result.path)}
-              >
-                <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="flex flex-col overflow-hidden">
-                  <span className="truncate">{result.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {result.display}
-                  </span>
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          <>
+            {results.some((r) => r.isRecent) && (
+              <CommandGroup heading="Recent Projects">
+                {results
+                  .filter((r) => r.isRecent)
+                  .map((result) => (
+                    <CommandItem
+                      key={result.path}
+                      onSelect={() => handleOpenProject(result.path)}
+                    >
+                      <History className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="truncate">{result.name}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {result.display}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
+            )}
+            {results.some((r) => !r.isRecent) && (
+              <CommandGroup heading="Directories">
+                {results
+                  .filter((r) => !r.isRecent)
+                  .map((result) => (
+                    <CommandItem
+                      key={result.path}
+                      onSelect={() => handleOpenProject(result.path)}
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="truncate">{result.name}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {result.display}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
+            )}
+          </>
         )}
       </CommandList>
     </CommandDialog>
