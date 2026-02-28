@@ -2,7 +2,9 @@
 
 import { FolderOpen } from "lucide-react";
 import { useShallow } from "zustand/shallow";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import { buildProjectUrl } from "@/hooks/use-url-sync";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -21,6 +23,7 @@ export function WelcomePage() {
   );
 
   const hasHistory = availableHistory.length > 0;
+  const router = useRouter();
 
   const handleOpenProject = () => {
     // Trigger the open project dialog via custom event
@@ -28,7 +31,10 @@ export function WelcomePage() {
   };
 
   const handleOpenHistoryProject = async (path: string) => {
-    await openProject(path);
+    const project = await openProject(path);
+    if (project) {
+      router.push(buildProjectUrl(project.id));
+    }
   };
 
   // Abbreviate path for display (show last 2-3 segments)

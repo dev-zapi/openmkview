@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { MarkdownWidthMode } from "@/types";
+import type { MarkdownWidthMode, TableWidthMode } from "@/types";
 
 const UI_FONT_PRESETS = [
   { label: "Default", value: "" },
@@ -58,6 +58,7 @@ export function SettingsDialog() {
   const [mdFontFamily, setMdFontFamily] = React.useState("");
   const [mdFontSize, setMdFontSize] = React.useState("16px");
   const [mdFontSizeError, setMdFontSizeError] = React.useState("");
+  const [tableWidthMode, setTableWidthMode] = React.useState<TableWidthMode>("full");
 
   // Sync local state when dialog opens or settings change
   React.useEffect(() => {
@@ -78,6 +79,9 @@ export function SettingsDialog() {
     if (settings.markdownFont) {
       setMdFontFamily(settings.markdownFont.fontFamily);
       setMdFontSize(settings.markdownFont.fontSize);
+    }
+    if (settings.tableWidth) {
+      setTableWidthMode(settings.tableWidth);
     }
   }, [settings]);
 
@@ -235,6 +239,12 @@ export function SettingsDialog() {
     }
   };
 
+  // Table width handler
+  const handleTableWidthModeChange = (mode: TableWidthMode) => {
+    setTableWidthMode(mode);
+    updateSettings({ tableWidth: mode });
+  };
+
   return (
     <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
@@ -385,6 +395,39 @@ export function SettingsDialog() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Table Width Setting */}
+          <div className="space-y-3">
+            <div>
+              <h4 className="text-sm font-medium">Table Width</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Control the width of tables in markdown preview
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleTableWidthModeChange("full")}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+                  tableWidthMode === "full"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                Full Width
+              </button>
+              <button
+                onClick={() => handleTableWidthModeChange("auto")}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+                  tableWidthMode === "auto"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                Auto Fit
+              </button>
             </div>
           </div>
 

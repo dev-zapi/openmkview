@@ -69,6 +69,7 @@ export const useAppStore = create<AppState>()(
         markdownWidth: { mode: "full", fixedWidth: "70%" },
         uiFont: { fontFamily: "", fontSize: "14px" },
         markdownFont: { fontFamily: "", fontSize: "16px" },
+        tableWidth: "full",
       },
       settingsDialogOpen: false,
 
@@ -105,7 +106,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // Open a new project
+      // Open a new project (returns project; caller handles navigation)
       openProject: async (dirPath: string) => {
         try {
           const res = await fetch("/api/projects", {
@@ -121,14 +122,7 @@ export const useAppStore = create<AppState>()(
           }
 
           const project: Project = await res.json();
-
-          // Refresh project lists
           await get().fetchProjects();
-
-          // Switch to the new project
-          set({ activeProjectId: project.id });
-          await get().fetchFileTree(project.id);
-
           return project;
         } catch (error) {
           console.error("Failed to open project:", error);
@@ -136,27 +130,11 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // Close a project
+      // Close a project (caller handles navigation)
       closeProject: async (id: number) => {
         try {
           await fetch(`/api/projects/${id}`, { method: "DELETE" });
           await get().fetchProjects();
-
-          // If we closed the active project, switch to another or clear
-          if (get().activeProjectId === id) {
-            const remaining = get().openProjects;
-            if (remaining.length > 0) {
-              await get().switchProject(remaining[0].id);
-            } else {
-              set({
-                activeProjectId: null,
-                fileTree: [],
-                selectedFilePath: null,
-                fileContent: null,
-                fileName: null,
-              });
-            }
-          }
         } catch (error) {
           console.error("Failed to close project:", error);
         }
@@ -242,10 +220,8 @@ export const useAppStore = create<AppState>()(
     {
       name: "openmkview-storage",
       partialize: (state) => ({
-        activeProjectId: state.activeProjectId,
         viewMode: state.viewMode,
         outlineVisible: state.outlineVisible,
-        selectedFilePath: state.selectedFilePath,
       }),
     }
   )

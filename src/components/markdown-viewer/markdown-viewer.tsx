@@ -202,7 +202,7 @@ export function MarkdownViewer() {
                 </div>
               ) : viewMode === "preview" ? (
                 /* Preview mode */
-                <article className="prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden" style={markdownFontStyle}>
+                <article className={`prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden table-${settings.tableWidth ?? "full"}`} style={markdownFontStyle}>
                   {processedContent}
                 </article>
               ) : (

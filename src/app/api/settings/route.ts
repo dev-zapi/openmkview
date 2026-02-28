@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import type { SystemSettings, MarkdownWidthSetting, FontSetting } from "@/types";
+import type { SystemSettings, MarkdownWidthSetting, FontSetting, TableWidthMode } from "@/types";
 
 const DEFAULT_SETTINGS: SystemSettings = {
   markdownWidth: {
@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
     fontFamily: "",
     fontSize: "16px",
   },
+  tableWidth: "full",
 };
 
 // GET /api/settings - Get all settings
@@ -39,6 +40,9 @@ export async function GET() {
             break;
           case "markdownFont":
             settings.markdownFont = JSON.parse(row.value) as FontSetting;
+            break;
+          case "tableWidth":
+            settings.tableWidth = JSON.parse(row.value) as TableWidthMode;
             break;
         }
       } catch {
@@ -138,6 +142,18 @@ export async function PUT(request: Request) {
       upsert.run("markdownFont", JSON.stringify(font));
     }
 
+    // Validate and save tableWidth
+    if (body.tableWidth !== undefined) {
+      const tw = body.tableWidth as TableWidthMode;
+      if (tw !== "auto" && tw !== "full") {
+        return NextResponse.json(
+          { error: "Invalid tableWidth. Must be 'auto' or 'full'." },
+          { status: 400 }
+        );
+      }
+      upsert.run("tableWidth", JSON.stringify(tw));
+    }
+
     // Return updated settings
     const rows = db.prepare("SELECT key, value FROM settings").all() as {
       key: string;
@@ -156,6 +172,9 @@ export async function PUT(request: Request) {
             break;
           case "markdownFont":
             settings.markdownFont = JSON.parse(row.value) as FontSetting;
+            break;
+          case "tableWidth":
+            settings.tableWidth = JSON.parse(row.value) as TableWidthMode;
             break;
         }
       } catch {

@@ -29,6 +29,7 @@ export type ThemeMode = "light" | "dark" | "system";
 
 // Settings
 export type MarkdownWidthMode = "full" | "fixed";
+export type TableWidthMode = "auto" | "full";
 
 export interface MarkdownWidthSetting {
   mode: MarkdownWidthMode;
@@ -44,4 +45,5 @@ export interface SystemSettings {
   markdownWidth: MarkdownWidthSetting;
   uiFont: FontSetting;
   markdownFont: FontSetting;
+  tableWidth: TableWidthMode;
 }

@@ -285,6 +285,20 @@ html.dark .shiki span {
   white-space: nowrap;
 }
 
+/* Table width: full (100%) */
+.prose.table-full table {
+  display: table;
+  width: 100%;
+  white-space: normal;
+}
+
+/* Table width: auto (content-fit) */
+.prose.table-auto table {
+  display: table;
+  width: auto;
+  white-space: normal;
+}
+
 /* Custom UI font support via CSS variables */
 .app-shell {
   font-family: var(--font-ui-custom, var(--font-geist-sans, sans-serif));

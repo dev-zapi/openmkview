@@ -3,6 +3,8 @@
 import { Tree, NodeRendererProps } from "react-arborist";
 import { useAppStore } from "@/lib/store";
 import { FileTreeNode } from "@/types";
+import { buildFileUrl, buildProjectUrl } from "@/hooks/use-url-sync";
+import { useRouter } from "next/navigation";
 import {
   X,
   ChevronRight,
@@ -18,7 +20,7 @@ function NodeRenderer({
   style,
   dragHandle,
 }: NodeRendererProps<FileTreeNode>) {
-  const { fetchFileContent, activeProjectId, selectedFilePath } = useAppStore();
+  const { activeProjectId, selectedFilePath } = useAppStore();
   const Icon = node.data.isFolder
     ? node.isOpen
       ? FolderOpen
@@ -33,7 +35,14 @@ function NodeRenderer({
     } else {
       node.select();
       if (activeProjectId !== null) {
-        fetchFileContent(node.data.path, activeProjectId);
+        // Update URL without triggering Next.js navigation to preserve tree scroll position
+        const url = buildFileUrl(activeProjectId, node.data.id);
+        window.history.pushState(null, '', url);
+        const state = useAppStore.getState();
+        const project = state.openProjects.find(p => p.id === activeProjectId);
+        if (project) {
+          state.fetchFileContent(`${project.path}/${node.data.id}`, activeProjectId);
+        }
       }
     }
   };
@@ -87,6 +96,7 @@ export function FileExplorer() {
     closeProject,
     fileTree,
   } = useAppStore();
+  const router = useRouter();
 
   const [treeSize, setTreeSize] = useState({ width: 0, height: 0 });
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -129,6 +139,18 @@ export function FileExplorer() {
     );
   }
 
+  const handleCloseProject = async () => {
+    if (!activeProject) return;
+    const closingId = activeProject.id;
+    await closeProject(closingId);
+    const remaining = useAppStore.getState().openProjects;
+    if (remaining.length > 0) {
+      router.push(buildProjectUrl(remaining[0].id));
+    } else {
+      router.push("/");
+    }
+  };
+
   const displayPath = getDisplayPath(activeProject.path);
 
   return (
@@ -148,7 +170,7 @@ export function FileExplorer() {
             </p>
           </div>
           <button
-            onClick={() => closeProject(activeProject.id)}
+            onClick={handleCloseProject}
             className="flex-shrink-0 p-1 hover:bg-muted rounded-sm transition-colors"
             title="Close project"
           >

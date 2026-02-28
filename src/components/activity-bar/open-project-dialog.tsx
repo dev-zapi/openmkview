@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { FolderOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { useAppStore } from "@/lib/store";
+import { buildProjectUrl } from "@/hooks/use-url-sync";
 import {
   CommandDialog,
   CommandEmpty,
@@ -29,12 +31,16 @@ export function OpenProjectDialog({ open, onOpenChange }: OpenProjectDialogProps
   const [results, setResults] = React.useState<DirectoryResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const router = useRouter();
 
-  const handleOpenProject = (path: string) => {
-    useAppStore.getState().openProject(path);
+  const handleOpenProject = async (path: string) => {
+    const project = await useAppStore.getState().openProject(path);
     onOpenChange(false);
     setSearchQuery("");
     setResults([]);
+    if (project) {
+      router.push(buildProjectUrl(project.id));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

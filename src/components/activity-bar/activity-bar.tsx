@@ -3,8 +3,10 @@
 import * as React from "react";
 import { Plus, Sun, Moon, Monitor, Settings } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 
 import { useAppStore } from "@/lib/store";
+import { buildProjectUrl } from "@/hooks/use-url-sync";
 import {
   Tooltip,
   TooltipContent,
@@ -22,8 +24,9 @@ import { OpenProjectDialog } from "./open-project-dialog";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 
 export function ActivityBar() {
-  const { openProjects, activeProjectId, switchProject, setSettingsDialogOpen } = useAppStore();
+  const { openProjects, activeProjectId, setSettingsDialogOpen } = useAppStore();
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = React.useState(false);
 
   // Listen for custom event from WelcomePage
@@ -35,7 +38,7 @@ export function ActivityBar() {
 
   const handleProjectClick = (projectId: number) => {
     if (projectId !== activeProjectId) {
-      switchProject(projectId);
+      router.push(buildProjectUrl(projectId));
     }
   };
 

@@ -12,43 +12,21 @@ import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { useAppStore } from "@/lib/store";
 import { useEffect } from "react";
 import { useShallow } from "zustand/shallow";
+import { useUrlSync } from "@/hooks/use-url-sync";
 
 const DEFAULT_LAYOUT = { "file-explorer": 20, viewer: 80 };
 
 export function AppShell() {
-  const { activeProjectId, fetchProjects, openProjects, settings } = useAppStore(
+  const { activeProjectId, settings } = useAppStore(
     useShallow((state) => ({
       activeProjectId: state.activeProjectId,
-      fetchProjects: state.fetchProjects,
-      openProjects: state.openProjects,
       settings: state.settings,
     }))
   );
   const groupRef = useGroupRef();
 
-  // Load projects and settings on mount and restore persisted state
-  useEffect(() => {
-    const init = async () => {
-      await Promise.all([
-        fetchProjects(),
-        useAppStore.getState().fetchSettings(),
-      ]);
-
-      const state = useAppStore.getState();
-      // If we have a persisted active project, restore file tree and content
-      if (state.activeProjectId) {
-        await state.fetchFileTree(state.activeProjectId);
-
-        if (state.selectedFilePath) {
-          await state.fetchFileContent(
-            state.selectedFilePath,
-            state.activeProjectId
-          );
-        }
-      }
-    };
-    init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // URL ↔ store synchronization (handles init, project/file loading)
+  useUrlSync();
 
   // Apply UI font to CSS custom properties on document root
   useEffect(() => {
@@ -77,13 +55,6 @@ export function AppShell() {
       root.style.removeProperty("--font-md-size");
     }
   }, [settings.uiFont, settings.markdownFont]);
-
-  // Auto-switch to first open project if none is active
-  useEffect(() => {
-    if (!activeProjectId && openProjects.length > 0) {
-      useAppStore.getState().switchProject(openProjects[0].id);
-    }
-  }, [activeProjectId, openProjects]);
 
   // Ensure file explorer has proper width after Zustand hydration
   useEffect(() => {
