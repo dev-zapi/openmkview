@@ -128,8 +128,19 @@ export function MarkdownViewer() {
     const hasOpenProjects = openProjects.length > 0;
     const hasActiveProject = activeProjectId !== null;
 
+    // If a file is selected but content is still loading, show loading state
+    if (selectedFilePath) {
+      return (
+        <div className="flex h-full flex-col bg-background">
+          <div className="flex h-full items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        </div>
+      );
+    }
+
     // If there are open projects but no file selected, show a message
-    if (hasOpenProjects && hasActiveProject && !selectedFilePath) {
+    if (hasOpenProjects && hasActiveProject) {
       return (
         <div className="flex h-full flex-col bg-background">
           <div className="flex h-full items-center justify-center">
