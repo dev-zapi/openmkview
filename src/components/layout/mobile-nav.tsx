@@ -122,7 +122,7 @@ export function MobileNav() {
           </SheetHeader>
 
           {/* Project tabs */}
-          <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto flex-shrink-0 border-b">
+          <div className="flex items-center gap-2 px-3 py-3 overflow-x-auto flex-shrink-0 border-b">
             {openProjects.map((project) => {
               const isActive = project.id === activeProjectId;
               return (

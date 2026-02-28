@@ -156,7 +156,7 @@ export function FileExplorer() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="py-2 pl-3 pr-2 border-b border-border flex-shrink-0">
+      <div className="py-3 pl-3 pr-2 border-b border-border flex-shrink-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-base truncate">
