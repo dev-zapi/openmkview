@@ -45,6 +45,32 @@ export function OpenProjectDialog({ open, onOpenChange }: OpenProjectDialogProps
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Tab" && results.length > 0) {
+      e.preventDefault();
+      // 获取当前选中项的 data-value（即 path）
+      const selectedEl = document.querySelector(
+        "[cmdk-item][data-selected='true']"
+      );
+      const selectedPath = selectedEl?.getAttribute("data-value");
+      if (!selectedPath) return;
+
+      const match = results.find(
+        (r) => r.path.toLowerCase() === selectedPath.toLowerCase()
+      );
+      if (!match) return;
+
+      // 将 display 路径转为输入框格式，并追加 / 以便继续浏览
+      let fillValue = match.display;
+      if (fillValue.startsWith("~/")) {
+        fillValue = fillValue.slice(2);
+      }
+      if (!fillValue.endsWith("/")) {
+        fillValue += "/";
+      }
+      setSearchQuery(fillValue);
+      return;
+    }
+
     if (e.key === "Enter" && searchQuery.trim()) {
       // If there are no results, treat the typed value as a direct path
       if (results.length === 0) {
@@ -140,6 +166,7 @@ export function OpenProjectDialog({ open, onOpenChange }: OpenProjectDialogProps
                   .map((result) => (
                     <CommandItem
                       key={result.path}
+                      value={result.path}
                       onSelect={() => handleOpenProject(result.path)}
                     >
                       <History className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -160,6 +187,7 @@ export function OpenProjectDialog({ open, onOpenChange }: OpenProjectDialogProps
                   .map((result) => (
                     <CommandItem
                       key={result.path}
+                      value={result.path}
                       onSelect={() => handleOpenProject(result.path)}
                     >
                       <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
