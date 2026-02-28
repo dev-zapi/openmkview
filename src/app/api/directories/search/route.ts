@@ -17,9 +17,9 @@ async function getDirectories(): Promise<string[]> {
 
   const homeDir = os.homedir();
 
-  // Scan home directory for potential project directories (2 levels deep)
+  // Scan home directory for potential project directories (3 levels deep)
   // This finds directories that contain files (likely projects)
-  const entries = await fg(["*", "*/*"], {
+  const entries = await fg(["*", "*/*", "*/*/*"], {
     cwd: homeDir,
     onlyDirectories: true,
     dot: false,
@@ -40,7 +40,7 @@ async function getDirectories(): Promise<string[]> {
       ".wine",
       ".steam",
     ],
-    deep: 2,
+    deep: 3,
     followSymbolicLinks: false,
     suppressErrors: true,
   });
