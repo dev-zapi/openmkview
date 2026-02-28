@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fg from "fast-glob";
 import fuzzysort from "fuzzysort";
+import fs from "fs";
 import os from "os";
 import path from "path";
 import { getDb } from "@/lib/db";
@@ -9,6 +10,24 @@ import { getDb } from "@/lib/db";
 let directoryCache: string[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 60 * 1000; // 1 minute
+
+const IGNORE_DIRS = [
+  "node_modules",
+  ".git",
+  ".cache",
+  ".local",
+  ".config",
+  "Library",
+  "AppData",
+  ".npm",
+  ".nvm",
+  ".sdkman",
+  ".vscode",
+  ".cursor",
+  "snap",
+  ".wine",
+  ".steam",
+];
 
 // 获取最近打开过的项目路径
 function getRecentProjectPaths(): string[] {
@@ -23,6 +42,7 @@ function getRecentProjectPaths(): string[] {
   }
 }
 
+// 扫描 home 目录下 2 层深度的目录（用于模糊搜索）
 async function getDirectories(): Promise<string[]> {
   const now = Date.now();
   if (directoryCache && now - cacheTimestamp < CACHE_TTL) {
@@ -31,29 +51,12 @@ async function getDirectories(): Promise<string[]> {
 
   const homeDir = os.homedir();
 
-  // Scan home directory for potential project directories (3 levels deep)
-  const entries = await fg(["*", "*/*", "*/*/*"], {
+  const entries = await fg(["*", "*/*"], {
     cwd: homeDir,
     onlyDirectories: true,
     dot: false,
-    ignore: [
-      "node_modules",
-      ".git",
-      ".cache",
-      ".local",
-      ".config",
-      "Library",
-      "AppData",
-      ".npm",
-      ".nvm",
-      ".sdkman",
-      ".vscode",
-      ".cursor",
-      "snap",
-      ".wine",
-      ".steam",
-    ],
-    deep: 3,
+    ignore: IGNORE_DIRS,
+    deep: 2,
     followSymbolicLinks: false,
     suppressErrors: true,
   });
@@ -73,46 +76,94 @@ async function getDirectories(): Promise<string[]> {
   return directoryCache;
 }
 
+// 根据路径前缀实时扫描子目录
+async function searchByPath(inputPath: string): Promise<string[]> {
+  const homeDir = os.homedir();
+
+  // 以 / 开头视为绝对路径，否则视为相对于 home 的路径
+  const basePath = inputPath.startsWith("/")
+    ? inputPath
+    : path.join(homeDir, inputPath);
+
+  // 找到最后一个 / 的位置，分离父目录和搜索前缀
+  const lastSlash = basePath.lastIndexOf("/");
+  const parentDir = basePath.substring(0, lastSlash) || "/";
+  const prefix = basePath.substring(lastSlash + 1).toLowerCase();
+
+  if (!fs.existsSync(parentDir)) {
+    return [];
+  }
+
+  try {
+    const entries = await fg(["*"], {
+      cwd: parentDir,
+      onlyDirectories: true,
+      dot: false,
+      ignore: IGNORE_DIRS,
+      deep: 1,
+      followSymbolicLinks: false,
+      suppressErrors: true,
+    });
+
+    const fullPaths = entries.map((entry) => path.join(parentDir, entry));
+
+    if (!prefix) {
+      return fullPaths.slice(0, 50);
+    }
+
+    // 按前缀过滤
+    return fullPaths
+      .filter((p) => path.basename(p).toLowerCase().startsWith(prefix))
+      .slice(0, 50);
+  } catch {
+    return [];
+  }
+}
+
+function formatResult(dir: string, homeDir: string, isRecent = false) {
+  return {
+    path: dir,
+    name: path.basename(dir),
+    display: dir.startsWith(homeDir) ? dir.replace(homeDir, "~") : dir,
+    isRecent,
+  };
+}
+
 // GET /api/directories/search?q=... - Search directories for opening projects
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
-
-    const directories = await getDirectories();
     const homeDir = os.homedir();
 
     if (!query) {
       // 无搜索词时，优先展示最近打开的项目，再展示物理目录
+      const directories = await getDirectories();
       const recentPaths = new Set(getRecentProjectPaths());
       const recent = directories
         .filter((dir) => recentPaths.has(dir))
         .slice(0, 20)
-        .map((dir) => ({
-          path: dir,
-          name: path.basename(dir),
-          display: dir.replace(homeDir, "~"),
-          isRecent: true,
-        }));
+        .map((dir) => formatResult(dir, homeDir, true));
       const others = directories
         .filter((dir) => !recentPaths.has(dir))
         .slice(0, 50 - recent.length)
-        .map((dir) => ({
-          path: dir,
-          name: path.basename(dir),
-          display: dir.replace(homeDir, "~"),
-          isRecent: false,
-        }));
+        .map((dir) => formatResult(dir, homeDir, false));
       return NextResponse.json([...recent, ...others]);
     }
 
-    // Fuzzy search
+    // 以 / 开头 → 绝对路径搜索；包含 / → 相对路径搜索
+    if (query.startsWith("/") || query.includes("/")) {
+      const dirs = await searchByPath(query);
+      const mapped = dirs.map((dir) => formatResult(dir, homeDir));
+      return NextResponse.json(mapped);
+    }
+
+    // 普通关键词 → 模糊搜索缓存的目录列表
+    const directories = await getDirectories();
     const results = fuzzysort.go(query, directories, { limit: 50 });
 
     const mapped = results.map((result) => ({
-      path: result.target,
-      name: path.basename(result.target),
-      display: result.target.replace(homeDir, "~"),
+      ...formatResult(result.target, homeDir),
       score: result.score,
     }));
 
