@@ -160,11 +160,11 @@ export function MarkdownViewer() {
   return (
     <div className="flex h-full flex-col bg-background">
       {/* Toolbar */}
-      <div className="flex h-10 items-center justify-between border-b px-4">
+      <div className="flex h-10 items-center justify-between border-b px-2 sm:px-4">
         {/* Left: File name */}
-        <div className="flex items-center gap-2 text-sm">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{fileName}</span>
+        <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
+          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="font-medium truncate">{fileName}</span>
         </div>
 
         {/* Center/Right: View mode toggle */}
@@ -205,7 +205,7 @@ export function MarkdownViewer() {
       {/* Content area */}
       <div className="flex flex-1 overflow-hidden">
         <ScrollArea className="flex-1">
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             <div style={contentWidthStyle}>
               {isProcessing ? (
                 <div className="flex items-center justify-center py-20">

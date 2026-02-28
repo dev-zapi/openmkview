@@ -9,10 +9,12 @@ import {
 import { ActivityBar } from "@/components/activity-bar/activity-bar";
 import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { useAppStore } from "@/lib/store";
 import { useEffect } from "react";
 import { useShallow } from "zustand/shallow";
 import { useUrlSync } from "@/hooks/use-url-sync";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const DEFAULT_LAYOUT = { "file-explorer": 20, viewer: 80 };
 
@@ -24,6 +26,7 @@ export function AppShell() {
     }))
   );
   const groupRef = useGroupRef();
+  const isMobile = useIsMobile();
 
   // URL ↔ store synchronization (handles init, project/file loading)
   useUrlSync();
@@ -58,6 +61,7 @@ export function AppShell() {
 
   // Ensure file explorer has proper width after Zustand hydration
   useEffect(() => {
+    if (isMobile) return;
     const group = groupRef.current;
     if (!group || !activeProjectId) return;
 
@@ -68,8 +72,21 @@ export function AppShell() {
     ) {
       group.setLayout(DEFAULT_LAYOUT);
     }
-  }, [activeProjectId, groupRef]);
+  }, [activeProjectId, groupRef, isMobile]);
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background app-shell">
+        <MobileNav />
+        <div className="flex-1 overflow-hidden">
+          <MarkdownViewer />
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background app-shell">
       {/* Column 1: Activity Bar */}

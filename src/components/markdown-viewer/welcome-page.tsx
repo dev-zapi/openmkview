@@ -51,7 +51,7 @@ export function WelcomePage() {
       <ScrollArea className="flex-1">
         <div className="flex min-h-full flex-col items-center justify-center p-8">
           {/* Title */}
-          <h1 className="mb-8 text-4xl font-bold tracking-tight">OpenMKView</h1>
+          <h1 className="mb-8 text-2xl sm:text-4xl font-bold tracking-tight">OpenMKView</h1>
 
           {/* Main action */}
           <Button size="lg" onClick={handleOpenProject} className="gap-2">
