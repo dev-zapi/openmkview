@@ -149,7 +149,7 @@ export function MobileNav() {
           </div>
 
           {/* File Explorer */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden px-3">
             <MobileFileExplorer onFileSelect={() => setSidebarOpen(false)} />
           </div>
         </SheetContent>
