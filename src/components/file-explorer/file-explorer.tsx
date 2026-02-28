@@ -180,7 +180,7 @@ export function FileExplorer() {
       </div>
 
       {/* File Tree */}
-      <div ref={treeContainerRef} className="flex-1 overflow-hidden">
+      <div ref={treeContainerRef} className="flex-1 overflow-hidden p-3">
         {treeSize.width > 0 && treeSize.height > 0 && (
           <Tree
             data={fileTree}
