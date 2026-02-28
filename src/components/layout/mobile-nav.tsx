@@ -141,10 +141,10 @@ export function MobileNav() {
             })}
             <button
               onClick={() => setIsOpenProjectDialogOpen(true)}
-              className="flex-shrink-0 flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-accent transition-colors"
+              className="flex-shrink-0 flex items-center justify-center h-9 w-9 rounded-full text-muted-foreground hover:bg-accent transition-colors"
               aria-label="Open Project"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
             </button>
           </div>
 

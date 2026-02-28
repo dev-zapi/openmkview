@@ -171,10 +171,10 @@ export function FileExplorer() {
           </div>
           <button
             onClick={handleCloseProject}
-            className="flex-shrink-0 p-1 hover:bg-muted rounded-sm transition-colors"
+            className="flex-shrink-0 p-2 hover:bg-muted rounded-sm transition-colors"
             title="Close project"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>
