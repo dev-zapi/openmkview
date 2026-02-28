@@ -47,3 +47,18 @@ export interface SystemSettings {
   markdownFont: FontSetting;
   tableWidth: TableWidthMode;
 }
+
+// Git
+export type GitFileStatusCode = " " | "M" | "A" | "D" | "R" | "C" | "U" | "?" | "!";
+
+export interface GitFileStatus {
+  path: string;
+  index: GitFileStatusCode;   // staging area status
+  workTree: GitFileStatusCode; // working tree status
+}
+
+export interface GitStatus {
+  branch: string;
+  files: GitFileStatus[];
+  isRepo: boolean;
+}

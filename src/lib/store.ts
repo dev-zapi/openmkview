@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { toast } from "sonner";
-import type { Project, ViewMode, FileTreeNode, HeadingInfo, SystemSettings } from "@/types";
+import type { Project, ViewMode, FileTreeNode, HeadingInfo, SystemSettings, GitStatus } from "@/types";
 
 interface AppState {
   // Projects
@@ -27,6 +27,10 @@ interface AppState {
   settings: SystemSettings;
   settingsDialogOpen: boolean;
 
+  // Git
+  gitStatus: GitStatus | null;
+  gitPanelOpen: boolean;
+
   // Actions
   setOpenProjects: (projects: Project[]) => void;
   setActiveProjectId: (id: number | null) => void;
@@ -38,6 +42,13 @@ interface AppState {
   toggleOutline: () => void;
   setHeadings: (headings: HeadingInfo[]) => void;
   setIsLoading: (loading: boolean) => void;
+
+  // Git actions
+  setGitPanelOpen: (open: boolean) => void;
+  fetchGitStatus: (projectId: number) => Promise<void>;
+  gitAdd: (projectId: number, files?: string[]) => Promise<void>;
+  gitCommit: (projectId: number, message: string) => Promise<void>;
+  gitPush: (projectId: number) => Promise<void>;
 
   // Complex actions
   fetchProjects: () => Promise<void>;
@@ -73,6 +84,8 @@ export const useAppStore = create<AppState>()(
         tableWidth: "full",
       },
       settingsDialogOpen: false,
+      gitStatus: null,
+      gitPanelOpen: false,
 
       // Simple setters
       setOpenProjects: (projects) => set({ openProjects: projects }),
@@ -85,6 +98,81 @@ export const useAppStore = create<AppState>()(
       toggleOutline: () => set((s) => ({ outlineVisible: !s.outlineVisible })),
       setHeadings: (headings) => set({ headings }),
       setIsLoading: (loading) => set({ isLoading: loading }),
+
+      // Git
+      setGitPanelOpen: (open) => set({ gitPanelOpen: open }),
+
+      fetchGitStatus: async (projectId) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "status", projectId }),
+          });
+          if (res.ok) {
+            const status = await res.json();
+            set({ gitStatus: status });
+          }
+        } catch (error) {
+          console.error("Failed to fetch git status:", error);
+        }
+      },
+
+      gitAdd: async (projectId, files) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "add", projectId, files }),
+          });
+          if (res.ok) {
+            const status = await res.json();
+            set({ gitStatus: status });
+          }
+        } catch (error) {
+          console.error("Failed to git add:", error);
+        }
+      },
+
+      gitCommit: async (projectId, message) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "commit", projectId, message }),
+          });
+          if (res.ok) {
+            const status = await res.json();
+            set({ gitStatus: status });
+          } else {
+            const err = await res.json();
+            throw new Error(err.error);
+          }
+        } catch (error) {
+          console.error("Failed to git commit:", error);
+          throw error;
+        }
+      },
+
+      gitPush: async (projectId) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "push", projectId }),
+          });
+          if (res.ok) {
+            const status = await res.json();
+            set({ gitStatus: status });
+          } else {
+            const err = await res.json();
+            throw new Error(err.error);
+          }
+        } catch (error) {
+          console.error("Failed to git push:", error);
+          throw error;
+        }
+      },
 
       // Fetch all projects
       fetchProjects: async () => {

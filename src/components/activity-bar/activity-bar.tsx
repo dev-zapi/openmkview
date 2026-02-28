@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Sun, Moon, Monitor, Settings } from "lucide-react";
+import { Plus, Sun, Moon, Monitor, Settings, GitBranch } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 
@@ -22,9 +22,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { OpenProjectDialog } from "./open-project-dialog";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
+import { GitPanel } from "@/components/git/git-panel";
 
 export function ActivityBar() {
-  const { openProjects, activeProjectId, setSettingsDialogOpen } = useAppStore();
+  const { openProjects, activeProjectId, setSettingsDialogOpen, setGitPanelOpen } = useAppStore();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = React.useState(false);
@@ -98,6 +99,22 @@ export function ActivityBar() {
 
         <Separator className="w-8" />
 
+        {/* Git Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setGitPanelOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              aria-label="Git"
+            >
+              <GitBranch className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p>Git</p>
+          </TooltipContent>
+        </Tooltip>
+
         {/* Theme Toggle */}
         <DropdownMenu>
           <Tooltip>
@@ -160,6 +177,8 @@ export function ActivityBar() {
       />
 
       <SettingsDialog />
+
+      <GitPanel />
     </TooltipProvider>
   );
 }
