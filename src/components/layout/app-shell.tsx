@@ -11,7 +11,7 @@ import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useAppStore } from "@/lib/store";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useShallow } from "zustand/shallow";
 import { useUrlSync } from "@/hooks/use-url-sync";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -46,10 +46,12 @@ export function AppShell() {
   );
   const groupRef = useGroupRef();
   const isMobile = useIsMobile();
+  const isRestoredRef = useRef(false);
 
-  // Save layout to localStorage when it changes
+  // Save layout to localStorage when it changes (only after initial restore)
   const handleLayoutChanged = useCallback(
     (layout: { [panelId: string]: number }) => {
+      if (!isRestoredRef.current) return;
       try {
         localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
       } catch {
@@ -59,18 +61,30 @@ export function AppShell() {
     []
   );
 
-  // Restore saved layout from localStorage on mount (use timeout to ensure groupRef is ready)
+  // Restore saved layout from localStorage on mount
   useEffect(() => {
     if (isMobile) return;
 
+    let attempts = 0;
+    const maxAttempts = 10;
+
     const restoreLayout = () => {
       const group = groupRef.current;
-      if (!group) return;
+      if (!group) {
+        // Retry if groupRef is not ready yet
+        attempts++;
+        if (attempts < maxAttempts) {
+          requestAnimationFrame(restoreLayout);
+        }
+        return;
+      }
 
       const saved = getSavedLayout();
       if (saved) {
         group.setLayout(saved);
       }
+      // Mark as restored so subsequent changes will be saved
+      isRestoredRef.current = true;
     };
 
     // Use requestAnimationFrame to ensure DOM is ready
