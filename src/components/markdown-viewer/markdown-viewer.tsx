@@ -299,7 +299,7 @@ export function MarkdownViewer() {
                     newContent={fileContent || ""}
                     oldTitle="HEAD"
                     newTitle="Working Tree"
-                    splitView={true}
+                    fileName={fileName || "file"}
                   />
                 </div>
               )}
