@@ -288,41 +288,19 @@ html.dark .shiki span {
   background: oklch(0.5 0 0 / 50%);
 }
 
-/* View transition animations */
+/* View transition animations - pure opacity for smooth cross-fade */
 @keyframes view-fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes view-fade-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-8px);
   }
 }
 
 .view-content {
-  animation: view-fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  will-change: opacity, transform;
-}
-
-/* File content transition - smooth cross-fade */
-.file-content-wrapper {
-  position: relative;
-}
-
-.file-content {
-  animation: view-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: view-fade-in 0.2s ease-out forwards;
+  will-change: opacity;
 }
 
 /* Prevent layout shift during animations */
