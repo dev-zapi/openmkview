@@ -25,7 +25,6 @@ import {
   Loader2,
   Download,
   History,
-  FileDiff,
   Terminal,
 } from "lucide-react";
 import type { GitFileStatus } from "@/types";
@@ -76,9 +75,7 @@ export function GitPanel() {
     gitPullRebase,
     gitFetch,
     gitLog,
-    gitDiff,
     setGitLogDialogOpen,
-    setGitDiffDialogOpen,
     setGitCommandDialogOpen,
   } = useAppStore(
     useShallow((state) => ({
@@ -94,9 +91,7 @@ export function GitPanel() {
       gitPullRebase: state.gitPullRebase,
       gitFetch: state.gitFetch,
       gitLog: state.gitLog,
-      gitDiff: state.gitDiff,
       setGitLogDialogOpen: state.setGitLogDialogOpen,
-      setGitDiffDialogOpen: state.setGitDiffDialogOpen,
       setGitCommandDialogOpen: state.setGitCommandDialogOpen,
     }))
   );
@@ -212,18 +207,6 @@ export function GitPanel() {
     setGitLogDialogOpen(true);
   };
 
-  const handleShowDiff = async () => {
-    if (!activeProjectId) return;
-    await gitDiff(activeProjectId);
-    setGitDiffDialogOpen(true);
-  };
-
-  const handleShowFileDiff = async (filePath: string, staged: boolean) => {
-    if (!activeProjectId) return;
-    await gitDiff(activeProjectId, filePath, staged);
-    setGitDiffDialogOpen(true);
-  };
-
   const handleShowCommand = () => {
     setGitCommandDialogOpen(true);
   };
@@ -330,15 +313,6 @@ export function GitPanel() {
                 Log
               </button>
               <button
-                onClick={handleShowDiff}
-                disabled={loading}
-                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
-                title="View working tree diff"
-              >
-                <FileDiff className="w-4 h-4" />
-                Diff
-              </button>
-              <button
                 onClick={handleShowCommand}
                 disabled={loading}
                 className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
@@ -386,8 +360,7 @@ export function GitPanel() {
                     {stagedFiles.map((file) => (
                       <div
                         key={`staged-${file.path}`}
-                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted group cursor-pointer"
-                        onClick={() => handleShowFileDiff(file.path, true)}
+                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted"
                       >
                         <StatusIcon status={file} />
                         <span className="truncate flex-1" title={file.path}>
@@ -412,8 +385,7 @@ export function GitPanel() {
                     {unstagedFiles.map((file) => (
                       <div
                         key={`unstaged-${file.path}`}
-                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted group cursor-pointer"
-                        onClick={() => handleShowFileDiff(file.path, false)}
+                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted group"
                       >
                         <StatusIcon status={file} />
                         <span className="truncate flex-1" title={file.path}>
@@ -423,10 +395,7 @@ export function GitPanel() {
                           {statusLabel(file)}
                         </span>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAddFile(file.path);
-                          }}
+                          onClick={() => handleAddFile(file.path)}
                           className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent transition-all"
                           title="Stage file"
                         >

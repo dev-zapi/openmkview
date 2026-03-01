@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 import { useShallow } from "zustand/shallow";
 import { codeToHtml } from "shiki";
-import { FileText, Eye, Code, List } from "lucide-react";
+import { FileText, Eye, Code, List, GitCommit } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { processMarkdown, extractHeadings } from "@/lib/markdown";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { WelcomePage } from "./welcome-page";
 import { OutlinePanel, OutlinePanelContent } from "@/components/outline-panel/outline-panel";
+import type { GitFileStatus } from "@/types";
 
 export function MarkdownViewer() {
   const { theme, systemTheme } = useTheme();
@@ -26,6 +27,10 @@ export function MarkdownViewer() {
     openProjects,
     selectedFilePath,
     settings,
+    gitStatus,
+    fetchGitStatus,
+    gitDiff,
+    gitDiffContent,
   } = useAppStore(
     useShallow((state) => ({
       fileContent: state.fileContent,
@@ -38,6 +43,10 @@ export function MarkdownViewer() {
       openProjects: state.openProjects,
       selectedFilePath: state.selectedFilePath,
       settings: state.settings,
+      gitStatus: state.gitStatus,
+      fetchGitStatus: state.fetchGitStatus,
+      gitDiff: state.gitDiff,
+      gitDiffContent: state.gitDiffContent,
     }))
   );
   
@@ -47,9 +56,41 @@ export function MarkdownViewer() {
   const [processedContent, setProcessedContent] = useState<React.ReactElement | null>(null);
   const [highlightedSource, setHighlightedSource] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [localDiffContent, setLocalDiffContent] = useState<string>("");
 
   const currentTheme = theme === "system" ? systemTheme : theme;
   const shikiTheme = currentTheme === "dark" ? "github-dark" : "github-light";
+
+  // Get current file's git status
+  const currentFileStatus: GitFileStatus | undefined = selectedFilePath && gitStatus?.files
+    ? gitStatus.files.find((f) => selectedFilePath.endsWith(f.path) || f.path === selectedFilePath)
+    : undefined;
+
+  const hasChanges = currentFileStatus !== undefined;
+  const isModified = currentFileStatus?.workTree === "M" || currentFileStatus?.index === "M";
+  const isUntracked = currentFileStatus?.workTree === "?";
+
+  // Fetch git status when project changes
+  useEffect(() => {
+    if (activeProjectId) {
+      fetchGitStatus(activeProjectId);
+    }
+  }, [activeProjectId, fetchGitStatus]);
+
+  // Fetch diff when switching to diff mode
+  useEffect(() => {
+    if (viewMode === "diff" && activeProjectId && selectedFilePath && currentFileStatus) {
+      const isStaged = currentFileStatus.index !== " " && currentFileStatus.index !== "?";
+      gitDiff(activeProjectId, currentFileStatus.path, isStaged);
+    }
+  }, [viewMode, activeProjectId, selectedFilePath, currentFileStatus, gitDiff]);
+
+  // Update local diff content when store changes
+  useEffect(() => {
+    if (viewMode === "diff") {
+      setLocalDiffContent(gitDiffContent);
+    }
+  }, [gitDiffContent, viewMode]);
 
   // Compute markdown content width style
   const markdownWidth = settings.markdownWidth;
@@ -162,10 +203,23 @@ export function MarkdownViewer() {
     <div className="flex h-full flex-col bg-background">
       {/* Toolbar */}
       <div className="flex h-10 items-center justify-between border-b px-2 sm:px-4">
-        {/* Left: File name */}
+        {/* Left: File name with git status */}
         <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
           <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <span className="font-medium truncate">{fileName}</span>
+          {hasChanges && (
+            <span
+              className={`flex-shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${
+                isUntracked
+                  ? "bg-muted text-muted-foreground"
+                  : isModified
+                    ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400"
+                    : "bg-green-500/20 text-green-700 dark:text-green-400"
+              }`}
+            >
+              {isUntracked ? "U" : isModified ? "M" : currentFileStatus?.workTree || currentFileStatus?.index}
+            </span>
+          )}
         </div>
 
         {/* Center/Right: View mode toggle */}
@@ -188,6 +242,17 @@ export function MarkdownViewer() {
             <Code className="h-4 w-4" />
             <span className="hidden sm:inline">Source</span>
           </Button>
+          {hasChanges && !isUntracked && (
+            <Button
+              variant={viewMode === "diff" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("diff")}
+              className="gap-1.5"
+            >
+              <GitCommit className="h-4 w-4" />
+              <span className="hidden sm:inline">Diff</span>
+            </Button>
+          )}
 
           <Separator orientation="vertical" className="mx-2 h-6" />
 
@@ -217,12 +282,41 @@ export function MarkdownViewer() {
                 <article className={`prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden table-${settings.tableWidth ?? "full"}`} style={markdownFontStyle}>
                   {processedContent}
                 </article>
-              ) : (
+              ) : viewMode === "source" ? (
                 /* Source mode */
                 <div
                   className="shiki-source"
                   dangerouslySetInnerHTML={{ __html: highlightedSource }}
                 />
+              ) : (
+                /* Diff mode */
+                <div className="diff-view">
+                  {localDiffContent.trim() === "" ? (
+                    <p className="text-sm text-muted-foreground py-8 text-center">
+                      No changes to display
+                    </p>
+                  ) : (
+                    <div className="font-mono text-sm">
+                      {localDiffContent.split("\n").map((line, i) => {
+                        let className = "whitespace-pre px-2 py-0.5";
+                        if (line.startsWith("+") && !line.startsWith("+++")) {
+                          className += " bg-green-500/20 text-green-700 dark:text-green-400";
+                        } else if (line.startsWith("-") && !line.startsWith("---")) {
+                          className += " bg-red-500/20 text-red-700 dark:text-red-400";
+                        } else if (line.startsWith("@@")) {
+                          className += " bg-blue-500/20 text-blue-700 dark:text-blue-400";
+                        } else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++")) {
+                          className += " text-muted-foreground";
+                        }
+                        return (
+                          <div key={i} className={className}>
+                            {line || " "}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

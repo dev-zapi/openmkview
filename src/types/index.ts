@@ -23,7 +23,7 @@ export interface HeadingInfo {
   depth: number;
 }
 
-export type ViewMode = "preview" | "source";
+export type ViewMode = "preview" | "source" | "diff";
 
 export type ThemeMode = "light" | "dark" | "system";
 
