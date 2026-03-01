@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
+  SheetTitle,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -122,7 +123,8 @@ export function MobileNav() {
 
       {/* Sidebar Sheet */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-[320px] p-0 flex flex-row">
+        <SheetContent side="left" className="w-[320px] p-0 flex flex-row" showCloseButton={false}>
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
           {/* Left: Activity Bar with project icons */}
           <TooltipProvider delayDuration={100}>
             <aside className="flex h-full w-12 flex-col items-center border-r bg-muted/50 py-2 flex-shrink-0">
@@ -205,5 +207,5 @@ function MobileFileExplorer({ onFileSelect }: { onFileSelect: () => void }) {
     prevPathRef.current = selectedFilePath;
   }, [selectedFilePath, onFileSelect]);
 
-  return <FileExplorer />;
+  return <FileExplorer showCloseButton={false} />;
 }

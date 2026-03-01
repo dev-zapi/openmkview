@@ -102,7 +102,11 @@ function getDisplayPath(fullPath: string): string {
   return normalizedPath;
 }
 
-export function FileExplorer() {
+interface FileExplorerProps {
+  showCloseButton?: boolean;
+}
+
+export function FileExplorer({ showCloseButton = true }: FileExplorerProps) {
   const {
     openProjects,
     activeProjectId,
@@ -182,13 +186,15 @@ export function FileExplorer() {
               {displayPath}
             </p>
           </div>
-          <button
-            onClick={handleCloseProject}
-            className="flex-shrink-0 p-2 hover:bg-muted rounded-sm transition-colors"
-            title="Close project"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {showCloseButton && (
+            <button
+              onClick={handleCloseProject}
+              className="flex-shrink-0 p-2 hover:bg-muted rounded-sm transition-colors"
+              title="Close project"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
