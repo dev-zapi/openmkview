@@ -234,11 +234,13 @@ export function MarkdownViewer() {
         </div>
 
         {/* Outline panel - mobile only (slides from right within content area) */}
-        {outlineVisible && (
-          <div className="absolute inset-y-0 right-0 w-[280px] bg-background border-l shadow-lg z-10 md:hidden">
-            <OutlinePanelContent onClose={toggleOutline} />
-          </div>
-        )}
+        <div 
+          className={`absolute inset-y-0 right-0 w-[280px] bg-background border-l shadow-lg z-10 md:hidden transition-transform duration-300 ease-out ${
+            outlineVisible ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <OutlinePanelContent onClose={toggleOutline} />
+        </div>
       </div>
     </div>
   );
