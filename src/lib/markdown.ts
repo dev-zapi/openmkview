@@ -53,7 +53,8 @@ function hashCode(str: string): number {
 
 export function extractHeadings(markdown: string): HeadingInfo[] {
   const headings: HeadingInfo[] = [];
-  const lines = markdown.split("\n");
+  // Normalize line endings to handle Windows CRLF
+  const lines = markdown.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
 
   for (const line of lines) {
     const match = line.match(/^(#{1,6})\s+(.+)$/);

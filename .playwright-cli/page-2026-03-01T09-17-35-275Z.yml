@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - button "Open Project" [ref=e4]:
+        - img [ref=e5]
+      - button "Toggle theme" [ref=e6]:
+        - img [ref=e7]
+      - button "Settings" [ref=e9]:
+        - img [ref=e10]
+    - generic [ref=e13]:
+      - heading "Open Project" [level=2] [ref=e14]
+      - paragraph [ref=e15]: Search for a directory to open as a project
+    - generic [ref=e16]:
+      - paragraph [ref=e21]: No project selected
+      - separator [ref=e22]
+      - generic [ref=e27]:
+        - heading "OpenMKView" [level=1] [ref=e28]
+        - button "Open Project" [ref=e29]:
+          - img
+          - text: Open Project
+        - paragraph [ref=e30]: Open a project to get started
+  - region "Notifications alt+T"

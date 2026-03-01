@@ -1,0 +1,33 @@
+Total messages: 31 (Errors: 0, Warnings: 0)
+
+[INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:25630
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [Fast Refresh] done in 30ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[LOG] [Fast Refresh] done in 446ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [Fast Refresh] done in 538ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [Fast Refresh] done in 744ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [Fast Refresh] done in 435ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [DEBUG] processContent called, fileContent: This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] Extracted headings: [] @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:91
+[LOG] [Fast Refresh] done in 2961ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[LOG] [DEBUG] processContent called, fileContent: This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] Extracted headings: [] @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:91
+[LOG] [DEBUG] processContent called, fileContent: This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] Extracted headings: [] @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:91
+[INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:25630
+[LOG] [DEBUG] processContent called, fileContent: undefined @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] processContent called, fileContent: This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] Extracted headings: [] @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:91
+[LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[LOG] [DEBUG] processContent called, fileContent: This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] Extracted headings: [Object, Object, Object, Object, Object, Object] @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:91
+[LOG] [Fast Refresh] done in 2639ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:25630
+[LOG] [DEBUG] processContent called, fileContent: undefined @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] processContent called, fileContent: This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:80
+[LOG] [DEBUG] Extracted headings: [Object, Object, Object, Object, Object, Object] @ webpack-internal:///(app-pages-browser)/./src/components/markdown-viewer/markdown-viewer.tsx:91

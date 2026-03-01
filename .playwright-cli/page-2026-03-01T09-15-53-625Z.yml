@@ -1,0 +1,120 @@
+- generic [ref=e1]:
+  - generic [ref=e55]:
+    - complementary [ref=e56]:
+      - generic [ref=e57]:
+        - button "O" [ref=e58]
+        - button "B" [ref=e59]
+      - button "Open Project" [ref=e60]:
+        - img [ref=e61]
+      - button "Toggle theme" [ref=e62]:
+        - img [ref=e63]
+      - button "Settings" [ref=e65]:
+        - img [ref=e66]
+    - generic [ref=e69]:
+      - heading "Open Project" [level=2] [ref=e70]
+      - paragraph [ref=e71]: Search for a directory to open as a project
+    - generic [ref=e72]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - heading "openmkview" [level=2] [ref=e79]
+            - paragraph [ref=e80]: ~/github/openmkview
+          - button "Close project" [ref=e81]:
+            - img [ref=e82]
+        - tree [ref=e86]:
+          - generic [ref=e89]:
+            - treeitem "README.md" [active] [level=1] [selected] [ref=e90]:
+              - generic [ref=e91] [cursor=pointer]:
+                - img [ref=e92]
+                - generic [ref=e95]: README.md
+            - treeitem "REQUIREMENTS.md" [level=1] [ref=e96]:
+              - generic [ref=e97] [cursor=pointer]:
+                - img [ref=e98]
+                - generic [ref=e101]: REQUIREMENTS.md
+      - separator [ref=e102]
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - img [ref=e112]
+            - generic [ref=e115]: README.md
+          - generic [ref=e116]:
+            - button "Preview" [ref=e117]:
+              - img
+              - generic [ref=e118]: Preview
+            - button "Source" [ref=e119]:
+              - img
+              - generic [ref=e120]: Source
+            - button "Toggle Outline" [ref=e121]:
+              - img
+        - article [ref=e126]:
+          - paragraph [ref=e127]:
+            - text: This is a
+            - link "Next.js" [ref=e128] [cursor=pointer]:
+              - /url: https://nextjs.org
+            - text: project bootstrapped with
+            - 'link "`create-next-app`" [ref=e129] [cursor=pointer]':
+              - /url: https://nextjs.org/docs/app/api-reference/cli/create-next-app
+              - code [ref=e130]: "`create-next-app`"
+            - text: .
+          - heading "Getting Started" [level=2] [ref=e131]
+          - paragraph [ref=e132]: "First, run the development server:"
+          - generic [ref=e133]:
+            - button "Copy code" [ref=e135] [cursor=pointer]:
+              - img [ref=e136]
+            - code [ref=e140]:
+              - generic [ref=e141]: npm run dev
+              - generic [ref=e142]: "# or"
+              - generic [ref=e143]: yarn dev
+              - generic [ref=e144]: "# or"
+              - generic [ref=e145]: pnpm dev
+              - generic [ref=e146]: "# or"
+              - generic [ref=e147]: bun dev
+          - paragraph [ref=e148]:
+            - text: Open
+            - link "http://localhost:3000" [ref=e149] [cursor=pointer]:
+              - /url: http://localhost:3000
+            - text: with your browser to see the result.
+          - paragraph [ref=e150]:
+            - text: You can start editing the page by modifying
+            - code [ref=e151]: "`app/page.tsx`"
+            - text: . The page auto-updates as you edit the file.
+          - paragraph [ref=e152]:
+            - text: This project uses
+            - 'link "`next/font`" [ref=e153] [cursor=pointer]':
+              - /url: https://nextjs.org/docs/app/building-your-application/optimizing/fonts
+              - code [ref=e154]: "`next/font`"
+            - text: to automatically optimize and load
+            - link "Geist" [ref=e155] [cursor=pointer]:
+              - /url: https://vercel.com/font
+            - text: ", a new font family for Vercel."
+          - heading "Learn More" [level=2] [ref=e156]
+          - paragraph [ref=e157]: "To learn more about Next.js, take a look at the following resources:"
+          - list [ref=e158]:
+            - listitem [ref=e159]:
+              - link "Next.js Documentation" [ref=e160] [cursor=pointer]:
+                - /url: https://nextjs.org/docs
+              - text: "- learn about Next.js features and API."
+            - listitem [ref=e161]:
+              - link "Learn Next.js" [ref=e162] [cursor=pointer]:
+                - /url: https://nextjs.org/learn
+              - text: "- an interactive Next.js tutorial."
+          - paragraph [ref=e163]:
+            - text: You can check out
+            - link "the Next.js GitHub repository" [ref=e164] [cursor=pointer]:
+              - /url: https://github.com/vercel/next.js
+            - text: "- your feedback and contributions are welcome!"
+          - heading "Deploy on Vercel" [level=2] [ref=e165]
+          - paragraph [ref=e166]:
+            - text: The easiest way to deploy your Next.js app is to use the
+            - link "Vercel Platform" [ref=e167] [cursor=pointer]:
+              - /url: https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme
+            - text: from the creators of Next.js.
+          - paragraph [ref=e168]:
+            - text: Check out our
+            - link "Next.js deployment documentation" [ref=e169] [cursor=pointer]:
+              - /url: https://nextjs.org/docs/app/building-your-application/deploying
+            - text: for more details.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e50] [cursor=pointer]:
+    - img [ref=e51]
+  - alert [ref=e54]
