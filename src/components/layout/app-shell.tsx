@@ -11,12 +11,31 @@ import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useAppStore } from "@/lib/store";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useShallow } from "zustand/shallow";
 import { useUrlSync } from "@/hooks/use-url-sync";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const DEFAULT_LAYOUT = { "file-explorer": 20, viewer: 80 };
+const LAYOUT_STORAGE_KEY = "openmkview-panel-layout";
+
+function getSavedLayout(): { "file-explorer": number; viewer: number } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (
+      typeof parsed["file-explorer"] === "number" &&
+      typeof parsed["viewer"] === "number"
+    ) {
+      return parsed;
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
 
 export function AppShell() {
   const { activeProjectId, settings } = useAppStore(
@@ -27,6 +46,21 @@ export function AppShell() {
   );
   const groupRef = useGroupRef();
   const isMobile = useIsMobile();
+
+  // Get initial layout from localStorage or use default
+  const initialLayout = useMemo(() => getSavedLayout() ?? DEFAULT_LAYOUT, []);
+
+  // Save layout to localStorage when it changes
+  const handleLayoutChanged = useCallback(
+    (layout: { [panelId: string]: number }) => {
+      try {
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+      } catch {
+        // Ignore storage errors
+      }
+    },
+    []
+  );
 
   // URL ↔ store synchronization (handles init, project/file loading)
   useUrlSync();
@@ -97,7 +131,8 @@ export function AppShell() {
         orientation="horizontal"
         className="flex-1"
         groupRef={groupRef}
-        defaultLayout={DEFAULT_LAYOUT}
+        defaultLayout={initialLayout}
+        onLayoutChanged={handleLayoutChanged}
       >
         {/* Column 2: File Explorer */}
         <Panel
