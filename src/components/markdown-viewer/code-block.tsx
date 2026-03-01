@@ -72,25 +72,24 @@ export function CodeBlock(props: any) {
 
   return (
     <div className="code-block-wrapper group relative">
-      {/* Header bar with language label and copy button */}
-      <div className="code-block-header">
-        {language && (
-          <span className="code-block-lang">{language}</span>
+      {/* Language label in top-left corner */}
+      {language && (
+        <span className="code-block-lang">{language}</span>
+      )}
+      {/* Copy button floating in top-right corner */}
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="code-block-copy"
+        aria-label={copied ? "Copied" : "Copy code"}
+        title={copied ? "Copied!" : "Copy code"}
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
         )}
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="code-block-copy"
-          aria-label={copied ? "Copied" : "Copy code"}
-          title={copied ? "Copied!" : "Copy code"}
-        >
-          {copied ? (
-            <Check className="h-3.5 w-3.5" />
-          ) : (
-            <Copy className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </div>
+      </button>
       <pre className={className} {...rest}>
         {children}
       </pre>

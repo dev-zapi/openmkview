@@ -182,7 +182,7 @@ html.dark .shiki span {
   line-height: 1.7;
 }
 
-/* Code block wrapper with copy button */
+/* Code block wrapper with floating copy button */
 .code-block-wrapper {
   position: relative;
   border-radius: 0.5rem;
@@ -191,48 +191,48 @@ html.dark .shiki span {
 
 .code-block-wrapper pre {
   margin: 0 !important;
-  border-radius: 0 0 0.5rem 0.5rem !important;
+  border-radius: 0.5rem !important;
   padding: 1rem 1.25rem !important;
 }
 
-.code-block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  line-height: 1;
-  border-bottom: 1px solid oklch(0 0 0 / 8%);
-  background: oklch(0.96 0 0);
-}
-
-.dark .code-block-header {
-  border-bottom-color: oklch(1 0 0 / 8%);
-  background: oklch(0.2 0 0);
-}
-
+/* Language label - floating top-left inside code block */
 .code-block-lang {
-  color: oklch(0.5 0 0);
+  position: absolute;
+  top: 0.5rem;
+  left: 0.75rem;
+  font-size: 0.625rem;
+  line-height: 1;
+  color: oklch(0.55 0 0);
   font-family: var(--font-geist-mono), monospace;
   user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .dark .code-block-lang {
-  color: oklch(0.6 0 0);
+  color: oklch(0.5 0 0);
 }
 
+/* Copy button - floating top-right */
 .code-block-copy {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.25rem;
-  border-radius: 0.25rem;
+  padding: 0.375rem;
+  border-radius: 0.375rem;
   color: oklch(0.5 0 0);
   cursor: pointer;
-  transition: color 0.15s, background-color 0.15s;
-  background: transparent;
-  border: none;
+  transition: opacity 0.2s ease, color 0.15s, background-color 0.15s, transform 0.15s;
+  background: oklch(0.95 0 0 / 90%);
+  backdrop-filter: blur(4px);
+  border: 1px solid oklch(0 0 0 / 8%);
   opacity: 0;
+  z-index: 2;
 }
 
 .group:hover .code-block-copy,
@@ -242,16 +242,23 @@ html.dark .shiki span {
 
 .code-block-copy:hover {
   color: oklch(0.3 0 0);
-  background: oklch(0 0 0 / 6%);
+  background: oklch(0.92 0 0);
+  transform: scale(1.05);
+}
+
+.code-block-copy:active {
+  transform: scale(0.95);
 }
 
 .dark .code-block-copy {
-  color: oklch(0.6 0 0);
+  color: oklch(0.7 0 0);
+  background: oklch(0.25 0 0 / 90%);
+  border-color: oklch(1 0 0 / 10%);
 }
 
 .dark .code-block-copy:hover {
-  color: oklch(0.85 0 0);
-  background: oklch(1 0 0 / 10%);
+  color: oklch(0.95 0 0);
+  background: oklch(0.3 0 0);
 }
 
 /* Scrollbar styles */
@@ -279,6 +286,48 @@ html.dark .shiki span {
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: oklch(0.5 0 0 / 50%);
+}
+
+/* View transition animations */
+@keyframes view-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes view-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.view-content {
+  animation: view-fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* File content transition - smooth cross-fade */
+.file-content-wrapper {
+  position: relative;
+}
+
+.file-content {
+  animation: view-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Prevent layout shift during animations */
+.content-stable {
+  min-height: 100px;
 }
 
 /* react-arborist: ensure virtual list fills its container */

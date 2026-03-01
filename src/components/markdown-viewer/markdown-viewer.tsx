@@ -275,32 +275,39 @@ export function MarkdownViewer() {
       <div className="relative flex flex-1 overflow-hidden">
         <ScrollArea className="flex-1">
           <div className="p-3 sm:p-6">
-            <div style={contentWidthStyle}>
+            <div style={contentWidthStyle} className="content-stable">
               {isProcessing ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
-              ) : viewMode === "preview" ? (
-                /* Preview mode */
-                <article className={`prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden table-${settings.tableWidth ?? "full"}`} style={markdownFontStyle}>
-                  {processedContent}
-                </article>
-              ) : viewMode === "source" ? (
-                /* Source mode */
-                <div
-                  className="shiki-source"
-                  dangerouslySetInnerHTML={{ __html: highlightedSource }}
-                />
               ) : (
-                /* Diff mode */
-                <div className="diff-view">
-                  <InlineDiffViewer
-                    oldContent={headContent}
-                    newContent={fileContent || ""}
-                    oldTitle="HEAD"
-                    newTitle="Working Tree"
-                    fileName={fileName || "file"}
-                  />
+                <div 
+                  key={`${selectedFilePath || "empty"}-${viewMode}`}
+                  className="view-content"
+                >
+                  {viewMode === "preview" ? (
+                    /* Preview mode */
+                    <article className={`prose prose-neutral dark:prose-invert max-w-none overflow-x-hidden table-${settings.tableWidth ?? "full"}`} style={markdownFontStyle}>
+                      {processedContent}
+                    </article>
+                  ) : viewMode === "source" ? (
+                    /* Source mode */
+                    <div
+                      className="shiki-source"
+                      dangerouslySetInnerHTML={{ __html: highlightedSource }}
+                    />
+                  ) : (
+                    /* Diff mode */
+                    <div className="diff-view">
+                      <InlineDiffViewer
+                        oldContent={headContent}
+                        newContent={fileContent || ""}
+                        oldTitle="HEAD"
+                        newTitle="Working Tree"
+                        fileName={fileName || "file"}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
