@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { toast } from "sonner";
 import type { Project, ViewMode, FileTreeNode, HeadingInfo, SystemSettings } from "@/types";
 
 interface AppState {
@@ -103,6 +104,7 @@ export const useAppStore = create<AppState>()(
           });
         } catch (error) {
           console.error("Failed to fetch projects:", error);
+          toast.error("获取项目列表失败");
         }
       },
 
@@ -118,6 +120,7 @@ export const useAppStore = create<AppState>()(
           if (!res.ok) {
             const error = await res.json();
             console.error("Failed to open project:", error);
+            toast.error("打开项目失败", { description: error.error || "未知错误" });
             return null;
           }
 
@@ -126,6 +129,7 @@ export const useAppStore = create<AppState>()(
           return project;
         } catch (error) {
           console.error("Failed to open project:", error);
+          toast.error("打开项目失败", { description: "无法连接到服务器" });
           return null;
         }
       },
@@ -137,6 +141,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchProjects();
         } catch (error) {
           console.error("Failed to close project:", error);
+          toast.error("关闭项目失败");
         }
       },
 
@@ -157,10 +162,17 @@ export const useAppStore = create<AppState>()(
         try {
           set({ isLoading: true });
           const res = await fetch(`/api/files/tree?projectId=${projectId}`);
+          if (!res.ok) {
+            const error = await res.json();
+            toast.error("加载文件树失败", { description: error.error || "未知错误" });
+            set({ fileTree: [], isLoading: false });
+            return;
+          }
           const tree = await res.json();
           set({ fileTree: Array.isArray(tree) ? tree : [], isLoading: false });
         } catch (error) {
           console.error("Failed to fetch file tree:", error);
+          toast.error("加载文件树失败");
           set({ fileTree: [], isLoading: false });
         }
       },
@@ -172,6 +184,12 @@ export const useAppStore = create<AppState>()(
           const res = await fetch(
             `/api/files/content?path=${encodeURIComponent(filePath)}&projectId=${projectId}`
           );
+          if (!res.ok) {
+            const error = await res.json();
+            toast.error("读取文件失败", { description: error.error || "未知错误" });
+            set({ fileContent: null, fileName: null, isLoading: false });
+            return;
+          }
           const data = await res.json();
           set({
             fileContent: data.content || null,
@@ -180,6 +198,7 @@ export const useAppStore = create<AppState>()(
           });
         } catch (error) {
           console.error("Failed to fetch file content:", error);
+          toast.error("读取文件失败");
           set({ fileContent: null, fileName: null, isLoading: false });
         }
       },
@@ -211,6 +230,9 @@ export const useAppStore = create<AppState>()(
           if (res.ok) {
             const settings = await res.json();
             set({ settings });
+          } else {
+            const error = await res.json();
+            toast.error("保存设置失败", { description: error.error || "未知错误" });
           }
         } catch (error) {
           console.error("Failed to update settings:", error);

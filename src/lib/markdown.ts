@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeShiki from "@shikijs/rehype";
 import rehypeReact from "rehype-react";
-import { createElement, Fragment } from "react";
+import { createElement, Fragment, isValidElement, type ReactNode } from "react";
 import type { HeadingInfo } from "@/types";
 import { CodeBlock } from "@/components/markdown-viewer/code-block";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -15,6 +15,15 @@ interface ProcessedMarkdown {
   content: React.ReactElement;
   headings: HeadingInfo[];
 }
+
+interface HeadingComponentProps {
+  children?: ReactNode;
+  className?: string;
+  [key: string]: unknown;
+}
+
+// Type for rehype-react options to avoid complex generic inference
+type RehypeReactOptions = Parameters<typeof rehypeReact>[0];
 
 function generateId(text: string): string {
   return text
@@ -75,7 +84,7 @@ export async function processMarkdown(
         h6: createHeadingComponent(6),
         pre: CodeBlock,
       },
-    })
+    } as unknown as RehypeReactOptions)
     .process(markdown);
 
   return {
@@ -86,8 +95,7 @@ export async function processMarkdown(
 
 function createHeadingComponent(level: number) {
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return function HeadingComponent(props: any) {
+  return function HeadingComponent(props: HeadingComponentProps) {
     const text =
       typeof props.children === "string"
         ? props.children
@@ -97,14 +105,13 @@ function createHeadingComponent(level: number) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getTextContent(children: any): string {
+function getTextContent(children: ReactNode): string {
   if (typeof children === "string") return children;
   if (Array.isArray(children)) {
     return children.map(getTextContent).join("");
   }
-  if (children?.props?.children) {
-    return getTextContent(children.props.children);
+  if (isValidElement(children) && children.props?.children) {
+    return getTextContent(children.props.children as ReactNode);
   }
   return "";
 }

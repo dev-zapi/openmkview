@@ -73,18 +73,28 @@ function NodeRenderer({
 }
 
 function getDisplayPath(fullPath: string): string {
-  // Replace home directory with ~ for common patterns
+  // Unix: /home/user/... or /Users/user/...
   if (fullPath.startsWith("/home/")) {
     const parts = fullPath.split("/");
     if (parts.length >= 3) {
-      return "~" + "/" + parts.slice(3).join("/");
+      return "~/" + parts.slice(3).join("/");
     }
   }
   if (fullPath.startsWith("/Users/")) {
     const parts = fullPath.split("/");
     if (parts.length >= 3) {
-      return "~" + "/" + parts.slice(3).join("/");
+      return "~/" + parts.slice(3).join("/");
     }
+  }
+  // Windows: C:\Users\username\...
+  const winUserMatch = fullPath.match(/^[A-Za-z]:\\Users\\[^\\]+\\(.*)$/);
+  if (winUserMatch) {
+    return "~\\" + winUserMatch[1];
+  }
+  // Windows: C:\Users\username (no subdirectory)
+  const winUserRoot = fullPath.match(/^[A-Za-z]:\\Users\\[^\\]+$/);
+  if (winUserRoot) {
+    return "~";
   }
   return fullPath;
 }

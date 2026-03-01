@@ -30,6 +30,7 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "shiki": "^3.23.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "unified": "^11.0.5",
     "zustand": "^5.0.11"
