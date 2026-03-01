@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Menu, Plus, Sun, Moon, Monitor, Settings } from "lucide-react";
+import { Menu, Plus, Sun, Moon, Monitor, Settings, GitBranch } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 
@@ -23,12 +23,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { OpenProjectDialog } from "@/components/activity-bar/open-project-dialog";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
+import { GitPanel } from "@/components/git/git-panel";
 
 export function MobileNav() {
   const {
     openProjects,
     activeProjectId,
     setSettingsDialogOpen,
+    setGitPanelOpen,
   } = useAppStore();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -73,8 +75,17 @@ export function MobileNav() {
           </span>
         </div>
 
-        {/* Right: Theme & Settings */}
-        <div className="flex items-center justify-end gap-1 w-20">
+        {/* Right: Git, Theme & Settings */}
+        <div className="flex items-center justify-end gap-1 w-24">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setGitPanelOpen(true)}
+            aria-label="Git"
+          >
+            <GitBranch className="h-4 w-4" />
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Toggle theme">
@@ -169,6 +180,8 @@ export function MobileNav() {
       />
 
       <SettingsDialog />
+
+      <GitPanel />
     </>
   );
 }
