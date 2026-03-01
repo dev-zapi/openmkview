@@ -23,7 +23,24 @@ export function OutlinePanelContent({ onClose }: OutlinePanelContentProps) {
   const handleHeadingClick = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Find the scroll container (ScrollArea viewport)
+      const scrollContainer = element.closest('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        // Calculate position relative to scroll container
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const scrollTop = scrollContainer.scrollTop;
+        const offsetTop = elementRect.top - containerRect.top + scrollTop;
+        
+        // Scroll with offset for toolbar (4rem = 64px)
+        scrollContainer.scrollTo({
+          top: Math.max(0, offsetTop - 64),
+          behavior: 'smooth'
+        });
+      } else {
+        // Fallback to scrollIntoView
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
     // Close outline on mobile after clicking
     if (onClose) {
