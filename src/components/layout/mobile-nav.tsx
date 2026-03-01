@@ -11,8 +11,6 @@ import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -20,6 +18,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { OpenProjectDialog } from "@/components/activity-bar/open-project-dialog";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
@@ -47,7 +52,6 @@ export function MobileNav() {
     if (projectId !== activeProjectId) {
       router.push(buildProjectUrl(projectId));
     }
-    setSidebarOpen(false);
   };
 
   const activeProject = openProjects.find((p) => p.id === activeProjectId);
@@ -118,40 +122,60 @@ export function MobileNav() {
 
       {/* Sidebar Sheet */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-[300px] p-0 flex flex-col">
-          <SheetHeader className="px-3 py-3 border-b">
-            <SheetTitle className="text-base">Projects</SheetTitle>
-          </SheetHeader>
+        <SheetContent side="left" className="w-[320px] p-0 flex flex-row">
+          {/* Left: Activity Bar with project icons */}
+          <TooltipProvider delayDuration={100}>
+            <aside className="flex h-full w-12 flex-col items-center border-r bg-muted/50 py-2 flex-shrink-0">
+              {/* Project List - Scrollable */}
+              <ScrollArea className="flex-1 w-full">
+                <div className="flex flex-col items-center gap-1 px-1">
+                  {openProjects.map((project) => {
+                    const isActive = project.id === activeProjectId;
+                    const initial = project.name.charAt(0).toUpperCase();
 
-          {/* Project tabs */}
-          <div className="flex items-center gap-2 px-3 py-3 overflow-x-auto flex-shrink-0 border-b">
-            {openProjects.map((project) => {
-              const isActive = project.id === activeProjectId;
-              return (
-                <button
-                  key={project.id}
-                  onClick={() => handleProjectClick(project.id)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  {project.name}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setIsOpenProjectDialogOpen(true)}
-              className="flex-shrink-0 flex items-center justify-center h-9 w-9 rounded-full text-muted-foreground hover:bg-accent transition-colors"
-              aria-label="Open Project"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-          </div>
+                    return (
+                      <Tooltip key={project.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleProjectClick(project.id)}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                              isActive
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-accent"
+                            }`}
+                          >
+                            {initial}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{project.name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
 
-          {/* File Explorer */}
-          <div className="flex-1 overflow-hidden">
+              {/* Open Project Button - Fixed at bottom */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setIsOpenProjectDialogOpen(true)}
+                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground mt-1"
+                    aria-label="Open Project"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Open Project</p>
+                </TooltipContent>
+              </Tooltip>
+            </aside>
+          </TooltipProvider>
+
+          {/* Right: File Explorer */}
+          <div className="flex-1 flex flex-col overflow-hidden">
             <MobileFileExplorer onFileSelect={() => setSidebarOpen(false)} />
           </div>
         </SheetContent>
