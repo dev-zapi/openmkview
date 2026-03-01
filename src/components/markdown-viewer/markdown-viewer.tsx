@@ -10,8 +10,9 @@ import { processMarkdown, extractHeadings } from "@/lib/markdown";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { WelcomePage } from "./welcome-page";
-import { OutlinePanel } from "@/components/outline-panel/outline-panel";
+import { OutlinePanel, OutlinePanelContent } from "@/components/outline-panel/outline-panel";
 
 export function MarkdownViewer() {
   const { theme, systemTheme } = useTheme();
@@ -227,8 +228,18 @@ export function MarkdownViewer() {
           </div>
         </ScrollArea>
 
-        {/* Outline panel */}
-        <OutlinePanel />
+        {/* Outline panel - desktop only (hidden on mobile) */}
+        <div className="hidden md:block">
+          <OutlinePanel />
+        </div>
+
+        {/* Outline Sheet - mobile only */}
+        <Sheet open={outlineVisible} onOpenChange={(open) => !open && toggleOutline()}>
+          <SheetContent side="right" className="w-[280px] p-0 md:hidden" showCloseButton={false}>
+            <SheetTitle className="sr-only">Outline</SheetTitle>
+            <OutlinePanelContent onClose={toggleOutline} />
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );

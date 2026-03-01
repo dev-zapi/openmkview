@@ -26,12 +26,29 @@ interface HeadingComponentProps {
 type RehypeReactOptions = Parameters<typeof rehypeReact>[0];
 
 function generateId(text: string): string {
-  return text
+  // Support both English and non-ASCII characters (like Chinese)
+  const normalized = text
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .trim();
+  
+  // If result is empty (all special chars removed), use hash of original text
+  if (!normalized || normalized === "-") {
+    return `heading-${hashCode(text)}`;
+  }
+  
+  return normalized;
+}
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
 }
 
 export function extractHeadings(markdown: string): HeadingInfo[] {

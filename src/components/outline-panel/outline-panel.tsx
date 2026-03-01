@@ -5,28 +5,28 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function OutlinePanel() {
-  const { headings, outlineVisible, toggleOutline } = useAppStore();
+interface OutlinePanelContentProps {
+  onClose?: () => void;
+}
 
-  // Only render if outline is visible
-  if (!outlineVisible) {
-    return null;
-  }
+export function OutlinePanelContent({ onClose }: OutlinePanelContentProps) {
+  const { headings, toggleOutline } = useAppStore();
+
+  const handleClose = onClose || toggleOutline;
 
   const handleHeadingClick = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+    // Close outline on mobile after clicking
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col h-full w-56 bg-muted/30 border-l border-border",
-        "transition-all duration-200 ease-in-out"
-      )}
-    >
+    <div className="flex flex-col h-full bg-muted/30">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2">
@@ -34,7 +34,7 @@ export function OutlinePanel() {
           <span className="text-sm font-medium">Outline</span>
         </div>
         <button
-          onClick={toggleOutline}
+          onClick={handleClose}
           className="p-1 hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors"
           title="Close outline"
         >
@@ -50,9 +50,9 @@ export function OutlinePanel() {
           </div>
         ) : (
           <div className="px-2">
-            {headings.map((heading) => (
+            {headings.map((heading, index) => (
               <button
-                key={heading.id}
+                key={`${heading.id}-${index}`}
                 onClick={() => handleHeadingClick(heading.id)}
                 className={cn(
                   "w-full text-left text-sm rounded-sm cursor-pointer truncate",
@@ -71,6 +71,26 @@ export function OutlinePanel() {
           </div>
         )}
       </ScrollArea>
+    </div>
+  );
+}
+
+export function OutlinePanel() {
+  const { outlineVisible } = useAppStore();
+
+  // Only render if outline is visible
+  if (!outlineVisible) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col h-full w-56 border-l border-border",
+        "transition-all duration-200 ease-in-out"
+      )}
+    >
+      <OutlinePanelContent />
     </div>
   );
 }
