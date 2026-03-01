@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { getDb } from "@/lib/db";
-import type { GitFileStatus, GitFileStatusCode, GitStatus } from "@/types";
+import type { GitFileStatus, GitFileStatusCode, GitStatus, GitLogEntry } from "@/types";
 
 const execFileAsync = promisify(execFile);
 
@@ -16,6 +16,27 @@ function getProjectPath(projectId: number): string | null {
 
 async function runGit(cwd: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
   return execFileAsync("git", args, { cwd, maxBuffer: 10 * 1024 * 1024 });
+}
+
+// Parse git log output with custom format
+function parseLogOutput(stdout: string): GitLogEntry[] {
+  const entries: GitLogEntry[] = [];
+  const lines = stdout.trim().split("\n");
+  for (const line of lines) {
+    if (!line) continue;
+    const [hash, authorName, authorEmail, dateIso, ...messageParts] = line.split("\x00");
+    if (hash) {
+      entries.push({
+        hash,
+        shortHash: hash.slice(0, 7),
+        authorName: authorName ?? "",
+        authorEmail: authorEmail ?? "",
+        date: dateIso ?? "",
+        message: messageParts.join("\x00"),
+      });
+    }
+  }
+  return entries;
 }
 
 function parseStatus(stdout: string): GitFileStatus[] {
@@ -50,11 +71,14 @@ async function gitStatus(cwd: string): Promise<GitStatus> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, projectId, files, message } = body as {
+    const { action, projectId, files, message, limit, filePath, command } = body as {
       action: string;
       projectId: number;
       files?: string[];
       message?: string;
+      limit?: number;
+      filePath?: string;
+      command?: string;
     };
 
     if (!projectId) {
@@ -92,6 +116,70 @@ export async function POST(request: NextRequest) {
         await runGit(cwd, ["push"]);
         const status = await gitStatus(cwd);
         return NextResponse.json(status);
+      }
+
+      case "pull": {
+        const result = await runGit(cwd, ["pull"]);
+        const status = await gitStatus(cwd);
+        return NextResponse.json({ ...status, output: result.stdout + result.stderr });
+      }
+
+      case "pull-rebase": {
+        const result = await runGit(cwd, ["pull", "--rebase"]);
+        const status = await gitStatus(cwd);
+        return NextResponse.json({ ...status, output: result.stdout + result.stderr });
+      }
+
+      case "fetch": {
+        const result = await runGit(cwd, ["fetch", "--all"]);
+        const status = await gitStatus(cwd);
+        return NextResponse.json({ ...status, output: result.stdout + result.stderr });
+      }
+
+      case "log": {
+        const n = limit && limit > 0 ? limit : 50;
+        const logFormat = "%H%x00%an%x00%ae%x00%aI%x00%s";
+        const result = await runGit(cwd, ["log", `--format=${logFormat}`, `-n`, String(n)]);
+        const entries = parseLogOutput(result.stdout);
+        return NextResponse.json({ entries });
+      }
+
+      case "diff": {
+        const args = ["diff"];
+        if (filePath) {
+          args.push("--", filePath);
+        }
+        const result = await runGit(cwd, args);
+        return NextResponse.json({ diff: result.stdout });
+      }
+
+      case "diff-staged": {
+        const args = ["diff", "--cached"];
+        if (filePath) {
+          args.push("--", filePath);
+        }
+        const result = await runGit(cwd, args);
+        return NextResponse.json({ diff: result.stdout });
+      }
+
+      case "show": {
+        // Show a specific commit diff
+        if (!message) {
+          return NextResponse.json({ error: "Commit hash is required" }, { status: 400 });
+        }
+        const result = await runGit(cwd, ["show", message]);
+        return NextResponse.json({ diff: result.stdout });
+      }
+
+      case "exec": {
+        // Execute arbitrary git subcommand
+        if (!command || command.trim().length === 0) {
+          return NextResponse.json({ error: "Command is required" }, { status: 400 });
+        }
+        // Parse command string into args (simple split, doesn't handle quotes)
+        const cmdArgs = command.trim().split(/\s+/);
+        const result = await runGit(cwd, cmdArgs);
+        return NextResponse.json({ output: result.stdout + result.stderr });
       }
 
       default:

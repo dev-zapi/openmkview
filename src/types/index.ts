@@ -61,4 +61,14 @@ export interface GitStatus {
   branch: string;
   files: GitFileStatus[];
   isRepo: boolean;
+  output?: string; // For pull/fetch operations
+}
+
+export interface GitLogEntry {
+  hash: string;
+  shortHash: string;
+  authorName: string;
+  authorEmail: string;
+  date: string;
+  message: string;
 }

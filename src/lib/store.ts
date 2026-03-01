@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { toast } from "sonner";
-import type { Project, ViewMode, FileTreeNode, HeadingInfo, SystemSettings, GitStatus } from "@/types";
+import type { Project, ViewMode, FileTreeNode, HeadingInfo, SystemSettings, GitStatus, GitLogEntry } from "@/types";
 
 interface AppState {
   // Projects
@@ -30,6 +30,13 @@ interface AppState {
   // Git
   gitStatus: GitStatus | null;
   gitPanelOpen: boolean;
+  gitLogEntries: GitLogEntry[];
+  gitLogDialogOpen: boolean;
+  gitDiffContent: string;
+  gitDiffDialogOpen: boolean;
+  gitDiffTitle: string;
+  gitCommandDialogOpen: boolean;
+  gitCommandOutput: string;
 
   // Actions
   setOpenProjects: (projects: Project[]) => void;
@@ -49,6 +56,17 @@ interface AppState {
   gitAdd: (projectId: number, files?: string[]) => Promise<void>;
   gitCommit: (projectId: number, message: string) => Promise<void>;
   gitPush: (projectId: number) => Promise<void>;
+  gitPull: (projectId: number) => Promise<string>;
+  gitPullRebase: (projectId: number) => Promise<string>;
+  gitFetch: (projectId: number) => Promise<string>;
+  gitLog: (projectId: number, limit?: number) => Promise<void>;
+  gitDiff: (projectId: number, filePath?: string, staged?: boolean) => Promise<void>;
+  gitShow: (projectId: number, commitHash: string) => Promise<void>;
+  gitExec: (projectId: number, command: string) => Promise<string>;
+  setGitLogDialogOpen: (open: boolean) => void;
+  setGitDiffDialogOpen: (open: boolean) => void;
+  setGitCommandDialogOpen: (open: boolean) => void;
+  setGitCommandOutput: (output: string) => void;
 
   // Complex actions
   fetchProjects: () => Promise<void>;
@@ -86,6 +104,13 @@ export const useAppStore = create<AppState>()(
       settingsDialogOpen: false,
       gitStatus: null,
       gitPanelOpen: false,
+      gitLogEntries: [],
+      gitLogDialogOpen: false,
+      gitDiffContent: "",
+      gitDiffDialogOpen: false,
+      gitDiffTitle: "",
+      gitCommandDialogOpen: false,
+      gitCommandOutput: "",
 
       // Simple setters
       setOpenProjects: (projects) => set({ openProjects: projects }),
@@ -101,6 +126,10 @@ export const useAppStore = create<AppState>()(
 
       // Git
       setGitPanelOpen: (open) => set({ gitPanelOpen: open }),
+      setGitLogDialogOpen: (open) => set({ gitLogDialogOpen: open }),
+      setGitDiffDialogOpen: (open) => set({ gitDiffDialogOpen: open }),
+      setGitCommandDialogOpen: (open) => set({ gitCommandDialogOpen: open }),
+      setGitCommandOutput: (output) => set({ gitCommandOutput: output }),
 
       fetchGitStatus: async (projectId) => {
         try {
@@ -170,6 +199,143 @@ export const useAppStore = create<AppState>()(
           }
         } catch (error) {
           console.error("Failed to git push:", error);
+          throw error;
+        }
+      },
+
+      gitPull: async (projectId) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "pull", projectId }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ gitStatus: data });
+            return data.output || "Pull completed";
+          } else {
+            const err = await res.json();
+            throw new Error(err.error);
+          }
+        } catch (error) {
+          console.error("Failed to git pull:", error);
+          throw error;
+        }
+      },
+
+      gitPullRebase: async (projectId) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "pull-rebase", projectId }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ gitStatus: data });
+            return data.output || "Pull --rebase completed";
+          } else {
+            const err = await res.json();
+            throw new Error(err.error);
+          }
+        } catch (error) {
+          console.error("Failed to git pull --rebase:", error);
+          throw error;
+        }
+      },
+
+      gitFetch: async (projectId) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "fetch", projectId }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ gitStatus: data });
+            return data.output || "Fetch completed";
+          } else {
+            const err = await res.json();
+            throw new Error(err.error);
+          }
+        } catch (error) {
+          console.error("Failed to git fetch:", error);
+          throw error;
+        }
+      },
+
+      gitLog: async (projectId, limit = 50) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "log", projectId, limit }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ gitLogEntries: data.entries || [] });
+          }
+        } catch (error) {
+          console.error("Failed to git log:", error);
+        }
+      },
+
+      gitDiff: async (projectId, filePath, staged = false) => {
+        try {
+          const action = staged ? "diff-staged" : "diff";
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, projectId, filePath }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const title = filePath
+              ? `${staged ? "Staged: " : ""}${filePath}`
+              : staged
+                ? "Staged Changes"
+                : "Working Tree Changes";
+            set({ gitDiffContent: data.diff || "", gitDiffTitle: title });
+          }
+        } catch (error) {
+          console.error("Failed to git diff:", error);
+        }
+      },
+
+      gitShow: async (projectId, commitHash) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "show", projectId, message: commitHash }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ gitDiffContent: data.diff || "", gitDiffTitle: `Commit: ${commitHash.slice(0, 7)}` });
+          }
+        } catch (error) {
+          console.error("Failed to git show:", error);
+        }
+      },
+
+      gitExec: async (projectId, command) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "exec", projectId, command }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            return data.output || "";
+          } else {
+            const err = await res.json();
+            throw new Error(err.error);
+          }
+        } catch (error) {
+          console.error("Failed to git exec:", error);
           throw error;
         }
       },

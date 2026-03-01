@@ -24,6 +24,9 @@ import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { OpenProjectDialog } from "@/components/activity-bar/open-project-dialog";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { GitPanel } from "@/components/git/git-panel";
+import { GitLogDialog } from "@/components/git/git-log-dialog";
+import { GitDiffDialog } from "@/components/git/git-diff-dialog";
+import { GitCommandDialog } from "@/components/git/git-command-dialog";
 
 export function MobileNav() {
   const {
@@ -182,6 +185,12 @@ export function MobileNav() {
       <SettingsDialog />
 
       <GitPanel />
+
+      <GitLogDialog />
+
+      <GitDiffDialog />
+
+      <GitCommandDialog />
     </>
   );
 }

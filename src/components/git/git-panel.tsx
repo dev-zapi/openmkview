@@ -23,6 +23,10 @@ import {
   FileX,
   FileQuestion,
   Loader2,
+  Download,
+  History,
+  FileDiff,
+  Terminal,
 } from "lucide-react";
 import type { GitFileStatus } from "@/types";
 
@@ -59,19 +63,43 @@ function isStaged(status: GitFileStatus): boolean {
 }
 
 export function GitPanel() {
-  const { gitStatus, gitPanelOpen, setGitPanelOpen, activeProjectId, fetchGitStatus, gitAdd, gitCommit, gitPush } =
-    useAppStore(
-      useShallow((state) => ({
-        gitStatus: state.gitStatus,
-        gitPanelOpen: state.gitPanelOpen,
-        setGitPanelOpen: state.setGitPanelOpen,
-        activeProjectId: state.activeProjectId,
-        fetchGitStatus: state.fetchGitStatus,
-        gitAdd: state.gitAdd,
-        gitCommit: state.gitCommit,
-        gitPush: state.gitPush,
-      }))
-    );
+  const {
+    gitStatus,
+    gitPanelOpen,
+    setGitPanelOpen,
+    activeProjectId,
+    fetchGitStatus,
+    gitAdd,
+    gitCommit,
+    gitPush,
+    gitPull,
+    gitPullRebase,
+    gitFetch,
+    gitLog,
+    gitDiff,
+    setGitLogDialogOpen,
+    setGitDiffDialogOpen,
+    setGitCommandDialogOpen,
+  } = useAppStore(
+    useShallow((state) => ({
+      gitStatus: state.gitStatus,
+      gitPanelOpen: state.gitPanelOpen,
+      setGitPanelOpen: state.setGitPanelOpen,
+      activeProjectId: state.activeProjectId,
+      fetchGitStatus: state.fetchGitStatus,
+      gitAdd: state.gitAdd,
+      gitCommit: state.gitCommit,
+      gitPush: state.gitPush,
+      gitPull: state.gitPull,
+      gitPullRebase: state.gitPullRebase,
+      gitFetch: state.gitFetch,
+      gitLog: state.gitLog,
+      gitDiff: state.gitDiff,
+      setGitLogDialogOpen: state.setGitLogDialogOpen,
+      setGitDiffDialogOpen: state.setGitDiffDialogOpen,
+      setGitCommandDialogOpen: state.setGitCommandDialogOpen,
+    }))
+  );
 
   const [commitMessage, setCommitMessage] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -139,6 +167,67 @@ export function GitPanel() {
     }
   };
 
+  const handlePull = async () => {
+    if (!activeProjectId) return;
+    setLoading(true);
+    setError("");
+    try {
+      await gitPull(activeProjectId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Pull failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePullRebase = async () => {
+    if (!activeProjectId) return;
+    setLoading(true);
+    setError("");
+    try {
+      await gitPullRebase(activeProjectId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Pull --rebase failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFetch = async () => {
+    if (!activeProjectId) return;
+    setLoading(true);
+    setError("");
+    try {
+      await gitFetch(activeProjectId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fetch failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShowLog = async () => {
+    if (!activeProjectId) return;
+    await gitLog(activeProjectId);
+    setGitLogDialogOpen(true);
+  };
+
+  const handleShowDiff = async () => {
+    if (!activeProjectId) return;
+    await gitDiff(activeProjectId);
+    setGitDiffDialogOpen(true);
+  };
+
+  const handleShowFileDiff = async (filePath: string, staged: boolean) => {
+    if (!activeProjectId) return;
+    await gitDiff(activeProjectId, filePath, staged);
+    setGitDiffDialogOpen(true);
+  };
+
+  const handleShowCommand = () => {
+    setGitCommandDialogOpen(true);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -176,7 +265,7 @@ export function GitPanel() {
         ) : (
           <div className="flex flex-col gap-3 flex-1 min-h-0">
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleRefresh}
                 disabled={loading}
@@ -203,6 +292,60 @@ export function GitPanel() {
               >
                 <Upload className="w-4 h-4" />
                 Push
+              </button>
+              <button
+                onClick={handlePull}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title="Pull from remote"
+              >
+                <Download className="w-4 h-4" />
+                Pull
+              </button>
+              <button
+                onClick={handlePullRebase}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title="Pull with rebase"
+              >
+                <Download className="w-4 h-4" />
+                Rebase
+              </button>
+              <button
+                onClick={handleFetch}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title="Fetch from remote"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Fetch
+              </button>
+              <button
+                onClick={handleShowLog}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title="View commit history"
+              >
+                <History className="w-4 h-4" />
+                Log
+              </button>
+              <button
+                onClick={handleShowDiff}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title="View working tree diff"
+              >
+                <FileDiff className="w-4 h-4" />
+                Diff
+              </button>
+              <button
+                onClick={handleShowCommand}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title="Run git command"
+              >
+                <Terminal className="w-4 h-4" />
+                Command
               </button>
             </div>
 
@@ -243,7 +386,8 @@ export function GitPanel() {
                     {stagedFiles.map((file) => (
                       <div
                         key={`staged-${file.path}`}
-                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted"
+                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted group cursor-pointer"
+                        onClick={() => handleShowFileDiff(file.path, true)}
                       >
                         <StatusIcon status={file} />
                         <span className="truncate flex-1" title={file.path}>
@@ -268,7 +412,8 @@ export function GitPanel() {
                     {unstagedFiles.map((file) => (
                       <div
                         key={`unstaged-${file.path}`}
-                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted group"
+                        className="flex items-center gap-2 px-2 py-1 rounded text-sm hover:bg-muted group cursor-pointer"
+                        onClick={() => handleShowFileDiff(file.path, false)}
                       >
                         <StatusIcon status={file} />
                         <span className="truncate flex-1" title={file.path}>
@@ -278,7 +423,10 @@ export function GitPanel() {
                           {statusLabel(file)}
                         </span>
                         <button
-                          onClick={() => handleAddFile(file.path)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddFile(file.path);
+                          }}
                           className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent transition-all"
                           title="Stage file"
                         >
