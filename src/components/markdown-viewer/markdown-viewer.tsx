@@ -22,7 +22,6 @@ export function MarkdownViewer() {
     setViewMode,
     outlineVisible,
     toggleOutline,
-    setHeadings,
     activeProjectId,
     openProjects,
     selectedFilePath,
@@ -35,13 +34,15 @@ export function MarkdownViewer() {
       setViewMode: state.setViewMode,
       outlineVisible: state.outlineVisible,
       toggleOutline: state.toggleOutline,
-      setHeadings: state.setHeadings,
       activeProjectId: state.activeProjectId,
       openProjects: state.openProjects,
       selectedFilePath: state.selectedFilePath,
       settings: state.settings,
     }))
   );
+  
+  // Get setHeadings directly from store to avoid reference instability
+  const setHeadings = useAppStore((state) => state.setHeadings);
 
   const [processedContent, setProcessedContent] = useState<React.ReactElement | null>(null);
   const [highlightedSource, setHighlightedSource] = useState<string>("");
