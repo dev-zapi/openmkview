@@ -73,30 +73,33 @@ function NodeRenderer({
 }
 
 function getDisplayPath(fullPath: string): string {
+  // Normalize Windows backslashes to forward slashes
+  const normalizedPath = fullPath.replace(/\\/g, "/");
+  
   // Unix: /home/user/... or /Users/user/...
-  if (fullPath.startsWith("/home/")) {
-    const parts = fullPath.split("/");
+  if (normalizedPath.startsWith("/home/")) {
+    const parts = normalizedPath.split("/");
     if (parts.length >= 3) {
       return "~/" + parts.slice(3).join("/");
     }
   }
-  if (fullPath.startsWith("/Users/")) {
-    const parts = fullPath.split("/");
+  if (normalizedPath.startsWith("/Users/")) {
+    const parts = normalizedPath.split("/");
     if (parts.length >= 3) {
       return "~/" + parts.slice(3).join("/");
     }
   }
-  // Windows: C:\Users\username\...
-  const winUserMatch = fullPath.match(/^[A-Za-z]:\\Users\\[^\\]+\\(.*)$/);
+  // Windows: C:/Users/username/...
+  const winUserMatch = normalizedPath.match(/^[A-Za-z]:\/Users\/[^/]+\/(.*)$/);
   if (winUserMatch) {
-    return "~\\" + winUserMatch[1];
+    return "~/" + winUserMatch[1];
   }
-  // Windows: C:\Users\username (no subdirectory)
-  const winUserRoot = fullPath.match(/^[A-Za-z]:\\Users\\[^\\]+$/);
+  // Windows: C:/Users/username (no subdirectory)
+  const winUserRoot = normalizedPath.match(/^[A-Za-z]:\/Users\/[^/]+$/);
   if (winUserRoot) {
     return "~";
   }
-  return fullPath;
+  return normalizedPath;
 }
 
 export function FileExplorer() {
