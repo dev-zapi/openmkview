@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 export function OutlinePanel() {
   const { headings, outlineVisible, toggleOutline } = useAppStore();
 
-  // Only render if outline is visible and there are headings
-  if (!outlineVisible || headings.length === 0) {
+  // Only render if outline is visible
+  if (!outlineVisible) {
     return null;
   }
 
