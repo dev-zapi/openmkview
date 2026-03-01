@@ -1,5 +1,6 @@
 "use client";
 
+import { useShallow } from "zustand/shallow";
 import { useAppStore } from "@/lib/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, List } from "lucide-react";
@@ -10,7 +11,12 @@ interface OutlinePanelContentProps {
 }
 
 export function OutlinePanelContent({ onClose }: OutlinePanelContentProps) {
-  const { headings, toggleOutline } = useAppStore();
+  const { headings, toggleOutline } = useAppStore(
+    useShallow((state) => ({
+      headings: state.headings,
+      toggleOutline: state.toggleOutline,
+    }))
+  );
 
   const handleClose = onClose || toggleOutline;
 
@@ -76,7 +82,7 @@ export function OutlinePanelContent({ onClose }: OutlinePanelContentProps) {
 }
 
 export function OutlinePanel() {
-  const { outlineVisible } = useAppStore();
+  const outlineVisible = useAppStore((state) => state.outlineVisible);
 
   // Only render if outline is visible
   if (!outlineVisible) {
