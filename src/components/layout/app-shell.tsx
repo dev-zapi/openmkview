@@ -11,7 +11,7 @@ import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useAppStore } from "@/lib/store";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import { useUrlSync } from "@/hooks/use-url-sync";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -46,9 +46,7 @@ export function AppShell() {
   );
   const groupRef = useGroupRef();
   const isMobile = useIsMobile();
-
-  // Get initial layout from localStorage or use default
-  const initialLayout = useMemo(() => getSavedLayout() ?? DEFAULT_LAYOUT, []);
+  const [layoutRestored, setLayoutRestored] = useState(false);
 
   // Save layout to localStorage when it changes
   const handleLayoutChanged = useCallback(
@@ -61,6 +59,19 @@ export function AppShell() {
     },
     []
   );
+
+  // Restore saved layout from localStorage on mount
+  useEffect(() => {
+    if (isMobile || layoutRestored) return;
+    const group = groupRef.current;
+    if (!group) return;
+
+    const saved = getSavedLayout();
+    if (saved) {
+      group.setLayout(saved);
+    }
+    setLayoutRestored(true);
+  }, [groupRef, isMobile, layoutRestored]);
 
   // URL ↔ store synchronization (handles init, project/file loading)
   useUrlSync();
@@ -104,7 +115,8 @@ export function AppShell() {
       currentLayout["file-explorer"] === undefined ||
       currentLayout["file-explorer"] < 10
     ) {
-      group.setLayout(DEFAULT_LAYOUT);
+      const saved = getSavedLayout();
+      group.setLayout(saved ?? DEFAULT_LAYOUT);
     }
   }, [activeProjectId, groupRef, isMobile]);
 
@@ -131,7 +143,7 @@ export function AppShell() {
         orientation="horizontal"
         className="flex-1"
         groupRef={groupRef}
-        defaultLayout={initialLayout}
+        defaultLayout={DEFAULT_LAYOUT}
         onLayoutChanged={handleLayoutChanged}
       >
         {/* Column 2: File Explorer */}
