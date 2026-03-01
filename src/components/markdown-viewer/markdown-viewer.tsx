@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { WelcomePage } from "./welcome-page";
 import { OutlinePanel, OutlinePanelContent } from "@/components/outline-panel/outline-panel";
+import { InlineDiffViewer } from "./inline-diff-viewer";
 import type { GitFileStatus } from "@/types";
 
 export function MarkdownViewer() {
@@ -29,8 +30,7 @@ export function MarkdownViewer() {
     settings,
     gitStatus,
     fetchGitStatus,
-    gitDiff,
-    gitDiffContent,
+    fetchGitFileAtHead,
   } = useAppStore(
     useShallow((state) => ({
       fileContent: state.fileContent,
@@ -45,8 +45,7 @@ export function MarkdownViewer() {
       settings: state.settings,
       gitStatus: state.gitStatus,
       fetchGitStatus: state.fetchGitStatus,
-      gitDiff: state.gitDiff,
-      gitDiffContent: state.gitDiffContent,
+      fetchGitFileAtHead: state.fetchGitFileAtHead,
     }))
   );
   
@@ -56,7 +55,7 @@ export function MarkdownViewer() {
   const [processedContent, setProcessedContent] = useState<React.ReactElement | null>(null);
   const [highlightedSource, setHighlightedSource] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [localDiffContent, setLocalDiffContent] = useState<string>("");
+  const [headContent, setHeadContent] = useState<string>("");
 
   const currentTheme = theme === "system" ? systemTheme : theme;
   const shikiTheme = currentTheme === "dark" ? "github-dark" : "github-light";
@@ -77,20 +76,12 @@ export function MarkdownViewer() {
     }
   }, [activeProjectId, fetchGitStatus]);
 
-  // Fetch diff when switching to diff mode
+  // Fetch HEAD content when switching to diff mode
   useEffect(() => {
-    if (viewMode === "diff" && activeProjectId && selectedFilePath && currentFileStatus) {
-      const isStaged = currentFileStatus.index !== " " && currentFileStatus.index !== "?";
-      gitDiff(activeProjectId, currentFileStatus.path, isStaged);
+    if (viewMode === "diff" && activeProjectId && currentFileStatus && !isUntracked) {
+      fetchGitFileAtHead(activeProjectId, currentFileStatus.path).then(setHeadContent);
     }
-  }, [viewMode, activeProjectId, selectedFilePath, currentFileStatus, gitDiff]);
-
-  // Update local diff content when store changes
-  useEffect(() => {
-    if (viewMode === "diff") {
-      setLocalDiffContent(gitDiffContent);
-    }
-  }, [gitDiffContent, viewMode]);
+  }, [viewMode, activeProjectId, currentFileStatus, isUntracked, fetchGitFileAtHead]);
 
   // Compute markdown content width style
   const markdownWidth = settings.markdownWidth;
@@ -291,31 +282,13 @@ export function MarkdownViewer() {
               ) : (
                 /* Diff mode */
                 <div className="diff-view">
-                  {localDiffContent.trim() === "" ? (
-                    <p className="text-sm text-muted-foreground py-8 text-center">
-                      No changes to display
-                    </p>
-                  ) : (
-                    <div className="font-mono text-sm">
-                      {localDiffContent.split("\n").map((line, i) => {
-                        let className = "whitespace-pre px-2 py-0.5";
-                        if (line.startsWith("+") && !line.startsWith("+++")) {
-                          className += " bg-green-500/20 text-green-700 dark:text-green-400";
-                        } else if (line.startsWith("-") && !line.startsWith("---")) {
-                          className += " bg-red-500/20 text-red-700 dark:text-red-400";
-                        } else if (line.startsWith("@@")) {
-                          className += " bg-blue-500/20 text-blue-700 dark:text-blue-400";
-                        } else if (line.startsWith("diff ") || line.startsWith("index ") || line.startsWith("---") || line.startsWith("+++")) {
-                          className += " text-muted-foreground";
-                        }
-                        return (
-                          <div key={i} className={className}>
-                            {line || " "}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <InlineDiffViewer
+                    oldContent={headContent}
+                    newContent={fileContent || ""}
+                    oldTitle="HEAD"
+                    newTitle="Working Tree"
+                    splitView={true}
+                  />
                 </div>
               )}
             </div>

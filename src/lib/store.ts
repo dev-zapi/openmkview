@@ -37,6 +37,7 @@ interface AppState {
   gitDiffTitle: string;
   gitCommandDialogOpen: boolean;
   gitCommandOutput: string;
+  gitFileHeadContent: string; // HEAD version of current file for diff
 
   // Actions
   setOpenProjects: (projects: Project[]) => void;
@@ -67,6 +68,7 @@ interface AppState {
   setGitDiffDialogOpen: (open: boolean) => void;
   setGitCommandDialogOpen: (open: boolean) => void;
   setGitCommandOutput: (output: string) => void;
+  fetchGitFileAtHead: (projectId: number, filePath: string) => Promise<string>;
 
   // Complex actions
   fetchProjects: () => Promise<void>;
@@ -111,6 +113,7 @@ export const useAppStore = create<AppState>()(
       gitDiffTitle: "",
       gitCommandDialogOpen: false,
       gitCommandOutput: "",
+      gitFileHeadContent: "",
 
       // Simple setters
       setOpenProjects: (projects) => set({ openProjects: projects }),
@@ -337,6 +340,26 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           console.error("Failed to git exec:", error);
           throw error;
+        }
+      },
+
+      fetchGitFileAtHead: async (projectId, filePath) => {
+        try {
+          const res = await fetch("/api/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "file-at-head", projectId, filePath }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const content = data.content || "";
+            set({ gitFileHeadContent: content });
+            return content;
+          }
+          return "";
+        } catch (error) {
+          console.error("Failed to fetch file at HEAD:", error);
+          return "";
         }
       },
 

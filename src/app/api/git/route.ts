@@ -171,6 +171,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ diff: result.stdout });
       }
 
+      case "file-at-head": {
+        // Get file content at HEAD for diff comparison
+        if (!filePath) {
+          return NextResponse.json({ error: "filePath is required" }, { status: 400 });
+        }
+        try {
+          const result = await runGit(cwd, ["show", `HEAD:${filePath}`]);
+          return NextResponse.json({ content: result.stdout });
+        } catch {
+          // File might be new (untracked or only staged), return empty
+          return NextResponse.json({ content: "" });
+        }
+      }
+
       case "exec": {
         // Execute arbitrary git subcommand
         if (!command || command.trim().length === 0) {

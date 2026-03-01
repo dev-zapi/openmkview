@@ -23,6 +23,7 @@
     "radix-ui": "^1.4.3",
     "react": "^18.3.1",
     "react-arborist": "^3.4.3",
+    "react-diff-viewer-continued": "^4.1.2",
     "react-dom": "^18.3.1",
     "react-resizable-panels": "^4.6.5",
     "rehype-react": "^8.0.0",
