@@ -32,7 +32,11 @@ export function InlineDiffViewer({
   const currentTheme = theme === "system" ? systemTheme : theme;
   const useDarkTheme = currentTheme === "dark";
 
-  if (oldContent === newContent) {
+  // Normalize line endings to LF to avoid false positives from CRLF differences
+  const normalizedOld = oldContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalizedNew = newContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  if (normalizedOld === normalizedNew) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">
         No changes to display
@@ -43,8 +47,8 @@ export function InlineDiffViewer({
   return (
     <div className="diff-viewer-wrapper overflow-x-auto">
       <ReactDiffViewer
-        oldValue={oldContent}
-        newValue={newContent}
+        oldValue={normalizedOld}
+        newValue={normalizedNew}
         splitView={splitView}
         useDarkTheme={useDarkTheme}
         leftTitle={oldTitle}

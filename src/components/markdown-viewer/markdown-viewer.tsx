@@ -76,6 +76,18 @@ export function MarkdownViewer() {
     }
   }, [activeProjectId, fetchGitStatus]);
 
+  // Reset headContent when file changes
+  useEffect(() => {
+    setHeadContent("");
+  }, [selectedFilePath]);
+
+  // Auto-switch to preview mode when switching to a file without changes
+  useEffect(() => {
+    if (viewMode === "diff" && !hasChanges) {
+      setViewMode("preview");
+    }
+  }, [selectedFilePath, hasChanges, viewMode, setViewMode]);
+
   // Fetch HEAD content when switching to diff mode
   useEffect(() => {
     if (viewMode === "diff" && activeProjectId && currentFileStatus && !isUntracked) {
