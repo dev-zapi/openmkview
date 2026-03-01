@@ -282,7 +282,7 @@ export function MarkdownViewer() {
                 </div>
               ) : (
                 <div 
-                  key={`${selectedFilePath || "empty"}-${viewMode}`}
+                  key={viewMode}
                   className="view-content"
                 >
                   {viewMode === "preview" ? (
