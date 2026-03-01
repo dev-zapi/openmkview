@@ -19,12 +19,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { OpenProjectDialog } from "@/components/activity-bar/open-project-dialog";
@@ -126,55 +120,42 @@ export function MobileNav() {
         <SheetContent side="left" className="w-[320px] p-0 flex flex-row" showCloseButton={false}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           {/* Left: Activity Bar with project icons */}
-          <TooltipProvider delayDuration={100}>
-            <aside className="flex h-full w-12 flex-col items-center border-r bg-muted/50 py-2 flex-shrink-0">
-              {/* Project List - Scrollable */}
-              <ScrollArea className="flex-1 w-full">
-                <div className="flex flex-col items-center gap-1 px-1">
-                  {openProjects.map((project) => {
-                    const isActive = project.id === activeProjectId;
-                    const initial = project.name.charAt(0).toUpperCase();
+          <aside className="flex h-full w-12 flex-col items-center border-r bg-muted/50 py-2 flex-shrink-0">
+            {/* Project List - Scrollable */}
+            <ScrollArea className="flex-1 w-full">
+              <div className="flex flex-col items-center gap-1 px-1">
+                {openProjects.map((project) => {
+                  const isActive = project.id === activeProjectId;
+                  const initial = project.name.charAt(0).toUpperCase();
 
-                    return (
-                      <Tooltip key={project.id}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => handleProjectClick(project.id)}
-                            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                              isActive
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:bg-accent"
-                            }`}
-                          >
-                            {initial}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>{project.name}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                  return (
+                    <button
+                      key={project.id}
+                      onClick={() => handleProjectClick(project.id)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                      title={project.name}
+                    >
+                      {initial}
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
 
-              {/* Open Project Button - Fixed at bottom */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setIsOpenProjectDialogOpen(true)}
-                    className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground mt-1"
-                    aria-label="Open Project"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>Open Project</p>
-                </TooltipContent>
-              </Tooltip>
-            </aside>
-          </TooltipProvider>
+            {/* Open Project Button - Fixed at bottom */}
+            <button
+              onClick={() => setIsOpenProjectDialogOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground mt-1"
+              aria-label="Open Project"
+              title="Open Project"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </aside>
 
           {/* Right: File Explorer */}
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -207,5 +188,5 @@ function MobileFileExplorer({ onFileSelect }: { onFileSelect: () => void }) {
     prevPathRef.current = selectedFilePath;
   }, [selectedFilePath, onFileSelect]);
 
-  return <FileExplorer showCloseButton={false} />;
+  return <FileExplorer showCloseButton={true} />;
 }
