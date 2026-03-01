@@ -57,24 +57,26 @@ export function MobileNav() {
       {/* Top navigation bar */}
       <div className="flex h-12 items-center justify-between border-b bg-muted/50 px-3 flex-shrink-0">
         {/* Left: Menu button */}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1 w-20">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </div>
 
         {/* Center: Current context */}
-        <div className="flex-1 min-w-0 mx-3 text-center">
+        <div className="flex-1 min-w-0 text-center">
           <span className="text-sm font-medium truncate block">
             {fileName ?? activeProject?.name ?? "OpenMKView"}
           </span>
         </div>
 
         {/* Right: Theme & Settings */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-end gap-1 w-20">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Toggle theme">
