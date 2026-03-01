@@ -18,7 +18,7 @@ OpenMKView is a web-based Markdown file previewer with a VS Code-like three-colu
 | File Tree | **react-arborist** | Virtual scrolling, keyboard nav, expand/collapse; built for file trees |
 | Resizable Panels | **react-resizable-panels** | Lightweight, persistable panel sizes, collapsible panels |
 | Data Persistence | **better-sqlite3** (or JSON file) | Server-side storage for project list/history; atomic writes |
-| Animation | **Tailwind animations** + **framer-motion** | Tailwind for simple transitions; framer-motion for complex orchestration |
+| Animation | **Tailwind animations** | Tailwind for simple transitions (hover, focus, enter/leave) |
 | Runtime | **Node.js** | Filesystem access via server-side APIs |
 
 ---
