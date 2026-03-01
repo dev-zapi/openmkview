@@ -28,7 +28,6 @@ export function MobileNav() {
   const {
     openProjects,
     activeProjectId,
-    fileName,
     setSettingsDialogOpen,
   } = useAppStore();
   const { theme, setTheme } = useTheme();
@@ -70,7 +69,7 @@ export function MobileNav() {
         {/* Center: Current context */}
         <div className="flex-1 min-w-0 text-center">
           <span className="text-sm font-medium truncate block">
-            {fileName ?? activeProject?.name ?? "OpenMKView"}
+            {activeProject?.name ?? "OpenMKView"}
           </span>
         </div>
 
