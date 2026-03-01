@@ -11,7 +11,7 @@ import { FileExplorer } from "@/components/file-explorer/file-explorer";
 import { MarkdownViewer } from "@/components/markdown-viewer/markdown-viewer";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useAppStore } from "@/lib/store";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useShallow } from "zustand/shallow";
 import { useUrlSync } from "@/hooks/use-url-sync";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -46,7 +46,6 @@ export function AppShell() {
   );
   const groupRef = useGroupRef();
   const isMobile = useIsMobile();
-  const [layoutRestored, setLayoutRestored] = useState(false);
 
   // Save layout to localStorage when it changes
   const handleLayoutChanged = useCallback(
@@ -60,18 +59,24 @@ export function AppShell() {
     []
   );
 
-  // Restore saved layout from localStorage on mount
+  // Restore saved layout from localStorage on mount (use timeout to ensure groupRef is ready)
   useEffect(() => {
-    if (isMobile || layoutRestored) return;
-    const group = groupRef.current;
-    if (!group) return;
+    if (isMobile) return;
 
-    const saved = getSavedLayout();
-    if (saved) {
-      group.setLayout(saved);
-    }
-    setLayoutRestored(true);
-  }, [groupRef, isMobile, layoutRestored]);
+    const restoreLayout = () => {
+      const group = groupRef.current;
+      if (!group) return;
+
+      const saved = getSavedLayout();
+      if (saved) {
+        group.setLayout(saved);
+      }
+    };
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    const frameId = requestAnimationFrame(restoreLayout);
+    return () => cancelAnimationFrame(frameId);
+  }, [groupRef, isMobile]);
 
   // URL ↔ store synchronization (handles init, project/file loading)
   useUrlSync();
