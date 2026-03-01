@@ -77,7 +77,7 @@ export function AppShell() {
   // Mobile layout
   if (isMobile) {
     return (
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background app-shell">
+      <div className="flex h-dvh w-screen flex-col overflow-hidden bg-background app-shell">
         <MobileNav />
         <div className="flex-1 overflow-hidden">
           <MarkdownViewer />
@@ -88,7 +88,7 @@ export function AppShell() {
 
   // Desktop layout
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background app-shell">
+    <div className="flex h-dvh w-screen overflow-hidden bg-background app-shell">
       {/* Column 1: Activity Bar */}
       <ActivityBar />
 
