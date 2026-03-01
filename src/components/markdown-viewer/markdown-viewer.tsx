@@ -10,7 +10,6 @@ import { processMarkdown, extractHeadings } from "@/lib/markdown";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { WelcomePage } from "./welcome-page";
 import { OutlinePanel, OutlinePanelContent } from "@/components/outline-panel/outline-panel";
 
@@ -204,7 +203,7 @@ export function MarkdownViewer() {
       </div>
 
       {/* Content area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
         <ScrollArea className="flex-1">
           <div className="p-3 sm:p-6">
             <div style={contentWidthStyle}>
@@ -233,13 +232,12 @@ export function MarkdownViewer() {
           <OutlinePanel />
         </div>
 
-        {/* Outline Sheet - mobile only */}
-        <Sheet open={outlineVisible} onOpenChange={(open) => !open && toggleOutline()}>
-          <SheetContent side="right" className="w-[280px] p-0 md:hidden" showCloseButton={false}>
-            <SheetTitle className="sr-only">Outline</SheetTitle>
+        {/* Outline panel - mobile only (slides from right within content area) */}
+        {outlineVisible && (
+          <div className="absolute inset-y-0 right-0 w-[280px] bg-background border-l shadow-lg z-10 md:hidden">
             <OutlinePanelContent onClose={toggleOutline} />
-          </SheetContent>
-        </Sheet>
+          </div>
+        )}
       </div>
     </div>
   );
