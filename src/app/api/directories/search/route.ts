@@ -79,16 +79,26 @@ async function getDirectories(): Promise<string[]> {
 // 根据路径前缀实时扫描子目录
 async function searchByPath(inputPath: string): Promise<string[]> {
   const homeDir = os.homedir();
+  const isWindows = process.platform === "win32";
 
-  // 以 / 开头视为绝对路径，否则视为相对于 home 的路径
-  const basePath = inputPath.startsWith("/")
-    ? inputPath
-    : path.join(homeDir, inputPath);
+  // Normalize forward slashes to platform-specific separator
+  const normalizedInput = isWindows ? inputPath.replace(/\//g, "\\") : inputPath;
 
-  // 找到最后一个 / 的位置，分离父目录和搜索前缀
-  const lastSlash = basePath.lastIndexOf("/");
-  const parentDir = basePath.substring(0, lastSlash) || "/";
-  const prefix = basePath.substring(lastSlash + 1).toLowerCase();
+  // Determine if it's an absolute path
+  const isAbsolute = isWindows
+    ? /^[A-Za-z]:[\\/]/.test(normalizedInput) // Windows: C:\ or C:/
+    : normalizedInput.startsWith("/"); // Unix: /
+
+  // Build base path
+  const basePath = isAbsolute
+    ? normalizedInput
+    : path.join(homeDir, normalizedInput);
+
+  // Find the last separator to split parent directory and prefix
+  const sep = path.sep;
+  const lastSep = basePath.lastIndexOf(sep);
+  const parentDir = lastSep > 0 ? basePath.substring(0, lastSep) : (isWindows ? basePath.substring(0, 3) : "/");
+  const prefix = basePath.substring(lastSep + 1).toLowerCase();
 
   if (!fs.existsSync(parentDir)) {
     return [];
@@ -111,7 +121,7 @@ async function searchByPath(inputPath: string): Promise<string[]> {
       return fullPaths.slice(0, 50);
     }
 
-    // 按前缀过滤
+    // Filter by prefix
     return fullPaths
       .filter((p) => path.basename(p).toLowerCase().startsWith(prefix))
       .slice(0, 50);
@@ -151,8 +161,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([...recent, ...others]);
     }
 
-    // 以 / 开头 → 绝对路径搜索；包含 / → 相对路径搜索
-    if (query.startsWith("/") || query.includes("/")) {
+    // Check if query contains path separators (/ or \) for path-based search
+    const hasPathSeparator = query.includes("/") || query.includes("\\");
+    const isWindowsAbsolute = /^[A-Za-z]:[\\/]/.test(query);
+    const isUnixAbsolute = query.startsWith("/");
+    
+    if (hasPathSeparator || isWindowsAbsolute || isUnixAbsolute) {
       const dirs = await searchByPath(query);
       const mapped = dirs.map((dir) => formatResult(dir, homeDir));
       return NextResponse.json(mapped);
