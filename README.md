@@ -2,7 +2,7 @@
 
 # OpenMKView
 
-**A modern, web-based Markdown previewer with a VS Code-inspired interface.**
+**A modern, web-based Markdown previewer inspired by OpenCode Web UI.**
 
 Browse local directories, preview `.md` / `.mdx` files, manage Git — all from the browser.
 
@@ -26,7 +26,7 @@ No Electron. No desktop app. Just `npm run dev` and you're ready.
 
 ## Features
 
-### Three-Column VS Code Layout
+### Three-Column Layout (Inspired by OpenCode Web UI)
 
 A familiar, productive layout: **Activity Bar** (project switching) → **File Explorer** (directory tree) → **Markdown Viewer** (preview / source / diff).
 
