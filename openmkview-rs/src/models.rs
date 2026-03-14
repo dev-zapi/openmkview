@@ -71,18 +71,10 @@ pub enum TableWidthMode {
     Full,
 }
 
-/// 构建文件树
 pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
     use std::collections::BTreeMap;
-    
-    fn build_node(
-        files: &[&PathBuf],
-        depth: usize,
-        current_prefix: &str,
-        root_path: &Path,
-    ) -> Vec<FileTreeNode> {
+    fn build_node(files: &[&PathBuf], depth: usize, current_prefix: &str, root_path: &Path) -> Vec<FileTreeNode> {
         let mut groups: BTreeMap<String, Vec<&PathBuf>> = BTreeMap::new();
-        
         for file in files {
             let components: Vec<_> = file.components().collect();
             if components.len() > depth {
@@ -90,11 +82,9 @@ pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
                 groups.entry(name).or_default().push(file);
             }
         }
-        
         let mut nodes = Vec::new();
         for (name, group_files) in groups {
             let is_file = group_files.iter().any(|f| f.components().count() == depth + 1);
-            
             if is_file {
                 for file in &group_files {
                     let full_path = root_path.join(file);
@@ -107,14 +97,8 @@ pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
                     });
                 }
             } else {
-                let child_prefix = if current_prefix.is_empty() {
-                    name.clone()
-                } else {
-                    format!("{}/{}", current_prefix, name)
-                };
-                
+                let child_prefix = if current_prefix.is_empty() { name.clone() } else { format!("{}/{}", current_prefix, name) };
                 let children = build_node(&group_files, depth + 1, &child_prefix, root_path);
-                
                 nodes.push(FileTreeNode {
                     id: child_prefix.clone(),
                     name,
@@ -124,10 +108,8 @@ pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
                 });
             }
         }
-        
         nodes
     }
-    
     let file_refs: Vec<&PathBuf> = files.iter().collect();
     let mut tree = build_node(&file_refs, 0, "", root_path);
     sort_tree(&mut tree);
@@ -136,23 +118,15 @@ pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
 
 fn sort_tree(nodes: &mut [FileTreeNode]) {
     nodes.sort_by(|a, b| {
-        if a.is_folder && !b.is_folder {
-            std::cmp::Ordering::Less
-        } else if !a.is_folder && b.is_folder {
-            std::cmp::Ordering::Greater
-        } else {
-            a.name.cmp(&b.name)
-        }
+        if a.is_folder && !b.is_folder { std::cmp::Ordering::Less }
+        else if !a.is_folder && b.is_folder { std::cmp::Ordering::Greater }
+        else { a.name.cmp(&b.name) }
     });
-    
     for node in nodes.iter_mut() {
-        if let Some(children) = &mut node.children {
-            sort_tree(children);
-        }
+        if let Some(children) = &mut node.children { sort_tree(children); }
     }
 }
 
-/// Markdown 标题信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HeadingInfo {
     pub id: String,
@@ -160,66 +134,36 @@ pub struct HeadingInfo {
     pub depth: i32,
 }
 
-/// Markdown 渲染结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderedMarkdown {
     pub html: String,
     pub headings: Vec<HeadingInfo>,
 }
 
-/// 提取 Markdown 标题
 pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
     let mut headings = Vec::new();
-    
     for line in markdown.lines() {
         if let Some(stripped) = line.strip_prefix('#') {
             let depth = stripped.chars().take_while(|&c| c == '#').count() + 1;
             if depth >= 1 && depth <= 6 {
                 let text = stripped.trim_start_matches('#').trim();
-                let clean_text = text
-                    .replace('*', "")
-                    .replace('_', "")
-                    .replace('`', "")
-                    .replace('[', "")
-                    .replace(']', "");
-                
-                let id = text_to_id(&clean_text);
-                headings.push(HeadingInfo {
-                    id,
-                    text: clean_text,
-                    depth: depth as i32,
-                });
+                let clean_text = text.replace('*', "").replace('_', "").replace('`', "").replace('[', "").replace(']', "");
+                let id = text.to_lowercase().chars().filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-').collect::<String>().replace(' ', "-");
+                headings.push(HeadingInfo { id, text: clean_text, depth: depth as i32 });
             }
         }
     }
-    
     headings
 }
 
-/// 将文本转换为 ID（用于锚点）
-fn text_to_id(text: &str) -> String {
-    text.to_lowercase()
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
-        .collect::<String>()
-        .replace(' ', "-")
-}
-
-/// 渲染 Markdown 为 HTML
 pub fn render_markdown(markdown: &str) -> RenderedMarkdown {
     let headings = extract_headings(markdown);
-    
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TABLES);
     options.insert(Options::ENABLE_TASKLISTS);
-    
     let parser = Parser::new_ext(markdown, options);
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
-    
-    RenderedMarkdown {
-        html: html_output,
-        headings,
-    }
+    RenderedMarkdown { html: html_output, headings }
 }
