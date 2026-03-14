@@ -1,0 +1,40 @@
+[package]
+name = "openmkview"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+# Web 框架
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "trace", "cors"] }
+
+# 模板引擎
+askama = "0.13"
+
+# 数据库
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 工具
+uuid = { version = "1", features = ["v4"] }
+walkdir = "2"
+glob = "0.3"
+rust-embed = { version = "8", features = ["include-exclude"] }
+thiserror = "2"
+anyhow = "1"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# 时间
+chrono = "0.4"
+
+# Markdown 处理
+pulldown-cmark = "0.12"
+syntect = "5"
