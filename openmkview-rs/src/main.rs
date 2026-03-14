@@ -1,4 +1,5 @@
 use actix_web::{web, App, HttpServer, HttpResponse, Result};
+use actix_files::Files;
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -621,6 +622,13 @@ async fn get_settings(data: web::Data<AppState>) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(models::SystemSettings::default()))
 }
 
+async fn index() -> Result<HttpResponse> {
+    use std::fs;
+    let html = fs::read_to_string("src/templates/index.html")
+        .unwrap_or_else(|_| String::from("<h1>Loading...</h1>"));
+    Ok(HttpResponse::Ok().content_type("text/html").body(html))
+}
+
 async fn update_settings(
     data: web::Data<AppState>,
     body: web::Json<models::SystemSettings>,
@@ -679,6 +687,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
+            .route("/", web::get().to(index))
             .route("/api/projects", web::get().to(list_projects))
             .route("/api/projects", web::post().to(create_project))
             .route("/api/projects/{id}", web::delete().to(delete_project))
@@ -687,6 +696,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/settings", web::get().to(get_settings))
             .route("/api/settings", web::put().to(update_settings))
             .route("/api/git", web::post().to(execute_git))
+            .service(Files::new("/static", "./templates").show_files_listing())
     })
     .bind("0.0.0.0:3000")?
     .run()
