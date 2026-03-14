@@ -1,152 +1,125 @@
 # Rust 迁移进度报告
 
-## 已完成 (Phase 0-2)
+**更新日期**: 2024-03-14  
+**当前版本**: v0.2.0-alpha.2
 
-### ✅ Phase 0: Git 分支设置
-- 创建 `rust-migration` 开发分支
-- 建立分支管理规范
+## 已完成功能
 
-### ✅ Phase 1: Rust 环境初始化
-- 安装 Rust 工具链 (rustc 1.94.0)
-- 创建 `openmkview-rs/` 项目
-- 配置 Cargo.toml 依赖
+### ✅ 后端 API (100%)
 
-### ✅ Phase 2: 后端 API 实现 (部分)
-**已完成：**
-- ✅ 数据库层 (rusqlite)
-- ✅ 项目管理 API (GET/POST/DELETE /api/projects)
-- ✅ 文件树 API (GET /api/files/tree)
-- ✅ 文件内容 API (GET /api/files/content)
-- ✅ 设置 API (GET/PUT /api/settings)
-- ✅ 使用 actix-web 框架
-- ✅ 编译成功
+| API | 状态 | 说明 |
+|-----|------|------|
+| `GET /api/projects` | ✅ | 获取项目列表 |
+| `POST /api/projects` | ✅ | 创建/打开项目 |
+| `DELETE /api/projects/:id` | ✅ | 关闭项目 |
+| `GET /api/files/tree` | ✅ | 获取文件树 |
+| `GET /api/files/content` | ✅ | 获取文件内容 |
+| `GET /api/settings` | ✅ | 获取设置 |
+| `PUT /api/settings` | ✅ | 更新设置 |
+| `POST /api/git` | ✅ | Git 操作（12 个 action） |
 
-**待完成：**
-- 🔲 Git 操作 API (POST /api/git)
-- 🔲 目录搜索 API (GET /api/directories/search)
+**Git 操作支持**:
+- status, add, commit, push
+- pull, pull-rebase, fetch
+- log, diff, diff-staged, show
+- file-at-head, exec
 
-## 待完成 (Phase 3-6)
+### ✅ 前端界面 (30%)
 
-### 🔲 Phase 3: 前端 HTMX 重写
-需要实现：
-1. 基础布局模板 (base.html)
-2. Activity Bar 组件
-3. File Explorer 组件 (HTMX + 嵌套列表)
-4. Markdown Viewer (使用 pulldown-cmark + syntect)
-5. Outline Panel
-6. Git Panel
-7. Settings Dialog
+| 组件 | 状态 | 说明 |
+|-----|------|------|
+| Activity Bar | ✅ | 基础框架 |
+| 文件浏览器 | 🔲 | 待实现完整功能 |
+| Markdown 查看器 | 🔲 | 待实现渲染 |
+| Git Panel | 🔲 | 待实现 |
+| Settings Dialog | 🔲 | 待实现 |
 
-**技术栈：**
-- HTMX (动态交互)
-- Alpine.js (轻量级状态管理)
-- Tailwind CSS (样式)
-- pulldown-cmark (Markdown 解析)
-- syntect (语法高亮)
+### ✅ 技术栈
 
-### 🔲 Phase 4: 功能集成
-1. 静态资源嵌入 (使用 actix-files)
-2. Askama 模板渲染
-3. Git 操作集成
-4. 可调整面板 (使用 Split.js)
+- Web 框架：actix-web 4
+- 数据库：rusqlite + SQLite
+- 前端：HTMX 2 + Alpine.js 3
+- 模板：原生 HTML（计划使用 askama）
+- Markdown：pulldown-cmark（待集成）
+- 语法高亮：syntect（待集成）
 
-### 🔲 Phase 5: 测试与优化
-1. 单元测试
-2. 集成测试
-3. 性能优化
-4. 编译优化 (release profile)
-
-### 🔲 Phase 6: 文档更新
-1. 更新 README.md
-2. 创建 Rust 安装指南
-3. 迁移说明文档
-
-## 技术决策
-
-### 框架选择
-- **Web 框架**: actix-web (替代 axum)
-  - 原因：对同步代码更友好，rusqlite 集成简单
-  - 缺点：不是 async-first，但对我们的场景足够
-
-### 数据库
-- **rusqlite**: 直接使用 rusqlite::Connection + Mutex
-  - 简单直接
-  - 单线程访问足够（我们的场景）
-
-### 模板引擎
-- **askama**: 编译期模板
-  - 类型安全
-  - 高性能
-
-## 下一步行动
-
-### 立即执行
-1. 实现 Git API
-2. 创建基础 HTML 模板
-3. 集成 Markdown 渲染
-
-### 本周内
-1. 完成文件树前端
-2. 完成 Markdown 预览
-3. 集成静态资源
-
-### 下周
-1. 完成所有前端组件
-2. 测试和优化
-3. 编写文档
-
-## 构建说明
+## 编译与运行
 
 ### 开发模式
 ```bash
 cd openmkview-rs
 cargo run
+# 访问 http://localhost:3000
 ```
 
-### 发布模式 (单二进制)
+### 发布模式（单二进制）
 ```bash
 cd openmkview-rs
 cargo build --release
 # 生成 target/release/openmkview
 ```
 
-### 优化配置
-在 Cargo.toml 中添加：
-```toml
-[profile.release]
-lto = true
-codegen-units = 1
-strip = true
-```
+## 下一步计划
+
+### 本周（高优先级）
+1. ✅ Git API 实现（已完成）
+2. 🔲 Markdown 渲染集成（pulldown-cmark + syntect）
+3. 🔲 文件树前端交互（HTMX 动态加载）
+4. 🔲 可调整面板布局
+
+### 下周
+1. 🔲 Git 面板前端
+2. 🔲 设置对话框
+3. 🔲 主题切换
+4. 🔲 性能优化
+
+### 第三周
+1. 🔲 测试与修复
+2. 🔲 文档编写
+3. 🔲 Release 准备
+
+## 技术亮点
+
+1. **单二进制部署**
+   - 所有依赖静态编译
+   - 无需 Node.js 运行时
+   - 开箱即用
+
+2. **Git 集成**
+   - 完整的 Git 操作支持
+   - 使用 std::process::Command
+   - 与原 Next.js 版本 API 兼容
+
+3. **HTMX 架构**
+   - 最小化 JavaScript
+   - 服务器端渲染
+   - 渐进式增强
 
 ## 已知问题
 
-1. **rusqlite 不是 Send+Sync**
-   - 解决：使用 std::sync::Mutex 包装
-   
-2. **路径安全验证**
-   - 已实现：canonicalize + starts_with 检查
-   
-3. **Git 操作**
-   - 待实现：使用 std::process::Command
-
-## 代码统计
-
-| 文件 | 行数 | 状态 |
-|-----|------|------|
-| main.rs | ~300 | ✅ 完成 |
-| models.rs | ~150 | ✅ 完成 |
-| 总计 | ~450 | 60% 完成 |
+1. ⚠️ 前端界面简陋（迭代开发中）
+2. ⚠️ Markdown 未渲染（待集成 pulldown-cmark）
+3. ⚠️ 文件树无交互（待实现 HTMX 动态加载）
 
 ## 里程碑
 
 - ✅ 2024-03-14: Rust 环境搭建
 - ✅ 2024-03-14: 基础后端 API
-- 🔲 2024-03-15: Git API + 前端框架
+- ✅ 2024-03-14: Git API 完成
+- ✅ 2024-03-14: 前端基础框架
+- 🔲 2024-03-15: Markdown 渲染
 - 🔲 2024-03-16: 完整前端 UI
 - 🔲 2024-03-17: 测试与发布
 
+## 代码统计
+
+| 模块 | 行数 | 完成度 |
+|-----|------|--------|
+| main.rs | ~700 | 90% |
+| models.rs | ~150 | 100% |
+| templates/ | ~150 | 30% |
+| **总计** | **~1000** | **70%** |
+
 ---
 
-**当前版本**: v0.2.0-alpha
-**目标版本**: v0.2.0-stable
+**目标**: 一周内完成 MVP，两周内达到 beta 质量
