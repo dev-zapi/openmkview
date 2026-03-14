@@ -698,6 +698,9 @@ async fn main() -> std::io::Result<()> {
             .route("/api/projects/{id}", web::delete().to(delete_project))
             .route("/api/files/tree", web::get().to(get_file_tree))
             .route("/api/files/content", web::get().to(get_file_content))
+            .route("/api/files", web::post().to(create_file))
+            .route("/api/files", web::put().to(rename_file))
+            .route("/api/files", web::delete().to(delete_file))
             .route("/api/settings", web::get().to(get_settings))
             .route("/api/settings", web::put().to(update_settings))
             .route("/api/git", web::post().to(execute_git))
@@ -706,4 +709,125 @@ async fn main() -> std::io::Result<()> {
     .bind("0.0.0.0:3000")?
     .run()
     .await
+}
+
+// File operations
+#[derive(Debug, Deserialize)]
+struct CreateFileRequest {
+    action: String,
+    project_id: i64,
+    #[serde(default)]
+    path: Option<String>,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    newName: Option<String>,
+}
+
+async fn create_file(
+    data: web::Data<AppState>,
+    body: web::Json<CreateFileRequest>,
+) -> Result<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    
+    let project_path: String = match conn.query_row(
+        "SELECT path FROM projects WHERE id = ?",
+        [body.project_id],
+        |row| row.get(0)
+    ) {
+        Ok(p) => p,
+        Err(_) => return Ok(HttpResponse::NotFound().body("项目未找到")),
+    };
+    
+    let file_name = match &body.name {
+        Some(n) => n,
+        None => return Ok(HttpResponse::BadRequest().body("文件名是必需的")),
+    };
+    
+    let file_path = PathBuf::from(&project_path).join(file_name);
+    
+    if file_path.exists() {
+        return Ok(HttpResponse::BadRequest().body("文件已存在"));
+    }
+    
+    match std::fs::write(&file_path, "") {
+        Ok(_) => Ok(HttpResponse::Ok().body("文件创建成功")),
+        Err(e) => Ok(HttpResponse::InternalServerError().body(format!("创建失败：{}", e))),
+    }
+}
+
+async fn rename_file(
+    data: web::Data<AppState>,
+    body: web::Json<CreateFileRequest>,
+) -> Result<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    
+    let project_path: String = match conn.query_row(
+        "SELECT path FROM projects WHERE id = ?",
+        [body.project_id],
+        |row| row.get(0)
+    ) {
+        Ok(p) => p,
+        Err(_) => return Ok(HttpResponse::NotFound().body("项目未找到")),
+    };
+    
+    let old_path = match &body.path {
+        Some(p) => PathBuf::from(&project_path).join(p),
+        None => return Ok(HttpResponse::BadRequest().body("文件路径是必需的")),
+    };
+    
+    let new_name = match &body.newName {
+        Some(n) => n,
+        None => return Ok(HttpResponse::BadRequest().body("新文件名是必需的")),
+    };
+    
+    let new_path = old_path.parent().unwrap().join(new_name);
+    
+    if !old_path.exists() {
+        return Ok(HttpResponse::NotFound().body("文件不存在"));
+    }
+    
+    if new_path.exists() {
+        return Ok(HttpResponse::BadRequest().body("目标文件已存在"));
+    }
+    
+    match std::fs::rename(&old_path, &new_path) {
+        Ok(_) => Ok(HttpResponse::Ok().body("重命名成功")),
+        Err(e) => Ok(HttpResponse::InternalServerError().body(format!("重命名失败：{}", e))),
+    }
+}
+
+async fn delete_file(
+    data: web::Data<AppState>,
+    body: web::Json<serde_json::Value>,
+) -> Result<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    
+    let project_id = match body["project_id"].as_i64() {
+        Some(id) => id,
+        None => return Ok(HttpResponse::BadRequest().body("project_id 是必需的")),
+    };
+    
+    let project_path: String = match conn.query_row(
+        "SELECT path FROM projects WHERE id = ?",
+        [project_id],
+        |row| row.get(0)
+    ) {
+        Ok(p) => p,
+        Err(_) => return Ok(HttpResponse::NotFound().body("项目未找到")),
+    };
+    
+    let file_path = match body["path"].as_str() {
+        Some(p) => PathBuf::from(&project_path).join(p),
+        None => return Ok(HttpResponse::BadRequest().body("文件路径是必需的")),
+    };
+    
+    if !file_path.exists() {
+        return Ok(HttpResponse::NotFound().body("文件不存在"));
+    }
+    
+    match std::fs::remove_file(&file_path) {
+        Ok(_) => Ok(HttpResponse::Ok().body("删除成功")),
+        Err(e) => Ok(HttpResponse::InternalServerError().body(format!("删除失败：{}", e))),
+    }
 }
