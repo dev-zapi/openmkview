@@ -1,8 +1,9 @@
 use actix_web::{web, App, HttpServer, HttpResponse, Result};
 use rusqlite::{Connection, params};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::process::Command;
 
 mod models;
 
@@ -29,6 +30,57 @@ struct FileTreeParams {
 struct FileContentParams {
     path: String,
     project_id: i64,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitRequest {
+    action: String,
+    project_id: i64,
+    #[serde(default)]
+    files: Option<Vec<String>>,
+    #[serde(default)]
+    message: Option<String>,
+    #[serde(default)]
+    limit: Option<i32>,
+    #[serde(default)]
+    file_path: Option<String>,
+    #[serde(default)]
+    command: Option<String>,
+    #[serde(default)]
+    staged: Option<bool>,
+    #[serde(default)]
+    commit_hash: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct GitFileStatus {
+    path: String,
+    index: String,
+    #[serde(rename = "workTree")]
+    work_tree: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct GitStatus {
+    branch: String,
+    files: Vec<GitFileStatus>,
+    #[serde(rename = "isRepo")]
+    is_repo: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct GitLogEntry {
+    hash: String,
+    #[serde(rename = "shortHash")]
+    short_hash: String,
+    #[serde(rename = "authorName")]
+    author_name: String,
+    #[serde(rename = "authorEmail")]
+    author_email: String,
+    date: String,
+    message: String,
 }
 
 async fn list_projects(
@@ -155,6 +207,309 @@ async fn delete_project(
         "success": true,
         "message": "项目已关闭"
     })))
+}
+
+/// Git 操作辅助函数
+fn get_project_path(conn: &Connection, project_id: i64) -> Option<PathBuf> {
+    let path: String = conn.query_row(
+        "SELECT path FROM projects WHERE id = ?",
+        [project_id],
+        |row| row.get(0)
+    ).ok()?;
+    Some(PathBuf::from(path))
+}
+
+fn run_git(cwd: &PathBuf, args: &[&str]) -> Result<(String, String), String> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .map_err(|e| format!("Git 执行失败：{}", e))?;
+    
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    
+    Ok((stdout, stderr))
+}
+
+fn parse_status(stdout: &str) -> Vec<GitFileStatus> {
+    let mut files = Vec::new();
+    
+    for line in stdout.lines() {
+        if line.len() < 4 {
+            continue;
+        }
+        
+        let chars: Vec<char> = line.chars().collect();
+        let index = chars[0].to_string();
+        let work_tree = chars[1].to_string();
+        let path = if line.len() > 3 {
+            line[3..].to_string()
+        } else {
+            String::new()
+        };
+        
+        files.push(GitFileStatus {
+            path,
+            index,
+            work_tree,
+        });
+    }
+    
+    files
+}
+
+fn git_status(cwd: &PathBuf) -> GitStatus {
+    match run_git(cwd, &["status", "--porcelain"]) {
+        Ok((stdout, _)) => {
+            let files = parse_status(&stdout);
+            
+            let branch = run_git(cwd, &["branch", "--show-current"])
+                .map(|(out, _)| out.trim().to_string())
+                .unwrap_or_default();
+            
+            GitStatus {
+                is_repo: true,
+                branch,
+                files,
+                output: None,
+            }
+        }
+        Err(_) => GitStatus {
+            is_repo: false,
+            branch: String::new(),
+            files: Vec::new(),
+            output: None,
+        }
+    }
+}
+
+async fn execute_git(
+    data: web::Data<AppState>,
+    body: web::Json<GitRequest>,
+) -> Result<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    
+    let cwd = match get_project_path(&conn, body.project_id) {
+        Some(p) => p,
+        None => return Ok(HttpResponse::NotFound().body("项目未找到")),
+    };
+    
+    match body.action.as_str() {
+        "status" => {
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(status))
+        }
+        
+        "add" => {
+            let mut args = vec!["add"];
+            if let Some(ref files) = body.files {
+                for f in files {
+                    args.push(f.as_str());
+                }
+            } else {
+                args.push(".");
+            }
+            
+            if let Err(e) = run_git(&cwd, &args) {
+                return Ok(HttpResponse::InternalServerError().body(e));
+            }
+            
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(status))
+        }
+        
+        "commit" => {
+            let message = match &body.message {
+                Some(m) if !m.is_empty() => m,
+                _ => return Ok(HttpResponse::BadRequest().body("提交信息是必需的")),
+            };
+            
+            if let Err(e) = run_git(&cwd, &["commit", "-m", message]) {
+                return Ok(HttpResponse::InternalServerError().body(e));
+            }
+            
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(status))
+        }
+        
+        "push" => {
+            if let Err(e) = run_git(&cwd, &["push"]) {
+                return Ok(HttpResponse::InternalServerError().body(e));
+            }
+            
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(status))
+        }
+        
+        "pull" => {
+            let (stdout, stderr) = match run_git(&cwd, &["pull"]) {
+                Ok(r) => r,
+                Err(e) => return Ok(HttpResponse::InternalServerError().body(e)),
+            };
+            
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "branch": status.branch,
+                "files": status.files,
+                "isRepo": status.is_repo,
+                "output": format!("{}{}", stdout, stderr)
+            })))
+        }
+        
+        "pull-rebase" => {
+            let (stdout, stderr) = match run_git(&cwd, &["pull", "--rebase"]) {
+                Ok(r) => r,
+                Err(e) => return Ok(HttpResponse::InternalServerError().body(e)),
+            };
+            
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "branch": status.branch,
+                "files": status.files,
+                "isRepo": status.is_repo,
+                "output": format!("{}{}", stdout, stderr)
+            })))
+        }
+        
+        "fetch" => {
+            let (stdout, stderr) = match run_git(&cwd, &["fetch", "--all"]) {
+                Ok(r) => r,
+                Err(e) => return Ok(HttpResponse::InternalServerError().body(e)),
+            };
+            
+            let status = git_status(&cwd);
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "branch": status.branch,
+                "files": status.files,
+                "isRepo": status.is_repo,
+                "output": format!("{}{}", stdout, stderr)
+            })))
+        }
+        
+        "log" => {
+            let limit = body.limit.unwrap_or(50);
+            let format = "%H%x00%an%x00%ae%x00%aI%x00%s";
+            
+            let (stdout, _) = match run_git(&cwd, &[
+                "log", 
+                &format!("--format={}", format), 
+                "-n", 
+                &limit.to_string()
+            ]) {
+                Ok(r) => r,
+                Err(e) => return Ok(HttpResponse::InternalServerError().body(e)),
+            };
+            
+            let entries: Vec<GitLogEntry> = stdout
+                .lines()
+                .filter(|l| !l.is_empty())
+                .filter_map(|line| {
+                    let parts: Vec<&str> = line.split('\0').collect();
+                    if parts.len() >= 5 {
+                        Some(GitLogEntry {
+                            hash: parts[0].to_string(),
+                            short_hash: parts[0][..7.min(parts[0].len())].to_string(),
+                            author_name: parts[1].to_string(),
+                            author_email: parts[2].to_string(),
+                            date: parts[3].to_string(),
+                            message: parts[4].to_string(),
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            Ok(HttpResponse::Ok().json(serde_json::json!({ "entries": entries })))
+        }
+        
+        "diff" => {
+            let mut args = vec!["diff"];
+            if let Some(ref path) = body.file_path {
+                args.push("--");
+                args.push(path);
+            }
+            
+            let (stdout, _) = match run_git(&cwd, &args) {
+                Ok(r) => r,
+                Err(_) => (String::new(), String::new()),
+            };
+            
+            Ok(HttpResponse::Ok().json(serde_json::json!({ "diff": stdout })))
+        }
+        
+        "diff-staged" => {
+            let mut args = vec!["diff", "--cached"];
+            if let Some(ref path) = body.file_path {
+                args.push("--");
+                args.push(path);
+            }
+            
+            let (stdout, _) = match run_git(&cwd, &args) {
+                Ok(r) => r,
+                Err(_) => (String::new(), String::new()),
+            };
+            
+            Ok(HttpResponse::Ok().json(serde_json::json!({ "diff": stdout })))
+        }
+        
+        "show" => {
+            let commit_hash = body.commit_hash.as_ref().or(body.message.as_ref());
+            
+            match commit_hash {
+                Some(hash) => {
+                    let (stdout, _) = match run_git(&cwd, &["show", hash]) {
+                        Ok(r) => r,
+                        Err(_) => (String::new(), String::new()),
+                    };
+                    
+                    Ok(HttpResponse::Ok().json(serde_json::json!({ "diff": stdout })))
+                }
+                None => Ok(HttpResponse::BadRequest().body("提交哈希是必需的")),
+            }
+        }
+        
+        "file-at-head" => {
+            match &body.file_path {
+                Some(file_path) => {
+                    match run_git(&cwd, &["show", &format!("HEAD:{}", file_path)]) {
+                        Ok((stdout, _)) => {
+                            Ok(HttpResponse::Ok().json(serde_json::json!({ "content": stdout })))
+                        }
+                        Err(_) => {
+                            Ok(HttpResponse::Ok().json(serde_json::json!({ "content": "" })))
+                        }
+                    }
+                }
+                None => Ok(HttpResponse::BadRequest().body("文件路径是必需的")),
+            }
+        }
+        
+        "exec" => {
+            match &body.command {
+                Some(cmd) if !cmd.trim().is_empty() => {
+                    let args: Vec<&str> = cmd.split_whitespace().collect();
+                    
+                    if args.is_empty() {
+                        return Ok(HttpResponse::BadRequest().body("命令不能为空"));
+                    }
+                    
+                    let (stdout, stderr) = match run_git(&cwd, &args) {
+                        Ok(r) => r,
+                        Err(e) => return Ok(HttpResponse::InternalServerError().body(e)),
+                    };
+                    
+                    Ok(HttpResponse::Ok().json(serde_json::json!({ 
+                        "output": format!("{}{}", stdout, stderr) 
+                    })))
+                }
+                _ => Ok(HttpResponse::BadRequest().body("命令是必需的")),
+            }
+        }
+        
+        _ => Ok(HttpResponse::BadRequest().body(format!("未知操作：{}", body.action))),
+    }
 }
 
 async fn get_file_tree(
@@ -331,6 +686,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/files/content", web::get().to(get_file_content))
             .route("/api/settings", web::get().to(get_settings))
             .route("/api/settings", web::put().to(update_settings))
+            .route("/api/git", web::post().to(execute_git))
     })
     .bind("0.0.0.0:3000")?
     .run()

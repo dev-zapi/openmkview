@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenMKView Rust</title>
+    <script src="https://unpkg.com/htmx.org@2"></script>
+    <script src="https://unpkg.com/alpinejs@3" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; height: 100vh; display: flex; }
+        .sidebar { width: 250px; background: #1e1e1e; color: #fff; padding: 1rem; }
+        .main { flex: 1; padding: 2rem; background: #f5f5f5; }
+        .btn { padding: 0.5rem 1rem; background: #007acc; color: white; border: none; cursor: pointer; }
+        .btn:hover { background: #005fa3; }
+        .file-tree ul { list-style: none; padding-left: 1rem; }
+        .file-tree a { color: #fff; text-decoration: none; display: block; padding: 0.25rem 0; }
+        .file-tree a:hover { text-decoration: underline; }
+        h1 { margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>OpenMKView</h2>
+        <br/>
+        <button class="btn" onclick="alert('项目功能开发中...')">打开项目</button>
+        <br/><br/>
+        <div id="projects" hx-get="/api/projects" hx-trigger="load">
+            <p>加载中...</p>
+        </div>
+    </div>
+    <div class="main">
+        <h1>欢迎使用 OpenMKView Rust 版本</h1>
+        <p>后端 API 已就绪，前端开发中...</p>
+        <br/>
+        <h3>API 端点:</h3>
+        <ul>
+            <li>GET /api/projects - 获取项目列表</li>
+            <li>POST /api/projects - 创建项目</li>
+            <li>GET /api/files/tree?project_id=1 - 获取文件树</li>
+            <li>GET /api/files/content?path=README.md&project_id=1 - 获取文件内容</li>
+            <li>GET /api/settings - 获取设置</li>
+            <li>PUT /api/settings - 更新设置</li>
+        </ul>
+    </div>
+</body>
+</html>
