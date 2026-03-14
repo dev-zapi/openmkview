@@ -597,8 +597,13 @@ async fn get_file_content(
     
     let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
     
+    // 渲染 Markdown
+    let rendered = models::render_markdown(&content);
+    
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "content": content,
+        "html": rendered.html,
+        "headings": rendered.headings,
         "fileName": file_name,
         "path": resolved.to_str().unwrap()
     })))

@@ -32,7 +32,6 @@ askama_actix = "0.13"
 
 # Markdown 处理
 pulldown-cmark = "0.12"
-syntect = "5"
 
 # 静态资源嵌入
 rust-embed = "8"

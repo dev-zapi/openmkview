@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use pulldown_cmark::{Parser, Options, html};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
@@ -148,5 +149,80 @@ fn sort_tree(nodes: &mut [FileTreeNode]) {
         if let Some(children) = &mut node.children {
             sort_tree(children);
         }
+    }
+}
+
+/// Markdown 标题信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeadingInfo {
+    pub id: String,
+    pub text: String,
+    pub depth: i32,
+}
+
+/// Markdown 渲染结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenderedMarkdown {
+    pub html: String,
+    pub headings: Vec<HeadingInfo>,
+}
+
+/// 提取 Markdown 标题
+pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
+    let mut headings = Vec::new();
+    
+    for line in markdown.lines() {
+        if let Some(stripped) = line.strip_prefix('#') {
+            let depth = 1 + line.chars().take_while(|&c| c == '#').count() - stripped.chars().take_while(|&c| c == '#').count();
+            if depth >= 1 && depth <= 6 {
+                let text = stripped.trim_start_matches('#').trim();
+                // 移除 Markdown 格式
+                let clean_text = text
+                    .replace('*', "")
+                    .replace('_', "")
+                    .replace('`', "")
+                    .replace('[', "")
+                    .replace(']', "");
+                
+                let id = text_to_id(&clean_text);
+                headings.push(HeadingInfo {
+                    id,
+                    text: clean_text,
+                    depth: depth as i32,
+                });
+            }
+        }
+    }
+    
+    headings
+}
+
+/// 将文本转换为 ID（用于锚点）
+fn text_to_id(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
+        .collect::<String>()
+        .replace(' ', "-")
+}
+
+/// 渲染 Markdown 为 HTML
+pub fn render_markdown(markdown: &str) -> RenderedMarkdown {
+    let headings = extract_headings(markdown);
+    
+    // 设置 pulldown-cmark 选项
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_TASKLISTS);
+    
+    // 解析并渲染 Markdown
+    let parser = Parser::new_ext(markdown, options);
+    let mut html_output = String::new();
+    html::push_html(&mut html_output, parser);
+    
+    RenderedMarkdown {
+        html: html_output,
+        headings,
     }
 }
