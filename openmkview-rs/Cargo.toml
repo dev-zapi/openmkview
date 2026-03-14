@@ -35,3 +35,5 @@ pulldown-cmark = "0.12"
 
 # 静态资源嵌入
 rust-embed = "8"
+syntect = "5.3.0"
+lazy_static = "1.5.0"

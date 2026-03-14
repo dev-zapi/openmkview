@@ -173,10 +173,9 @@ pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
     
     for line in markdown.lines() {
         if let Some(stripped) = line.strip_prefix('#') {
-            let depth = 1 + line.chars().take_while(|&c| c == '#').count() - stripped.chars().take_while(|&c| c == '#').count();
+            let depth = stripped.chars().take_while(|&c| c == '#').count() + 1;
             if depth >= 1 && depth <= 6 {
                 let text = stripped.trim_start_matches('#').trim();
-                // 移除 Markdown 格式
                 let clean_text = text
                     .replace('*', "")
                     .replace('_', "")
@@ -210,13 +209,11 @@ fn text_to_id(text: &str) -> String {
 pub fn render_markdown(markdown: &str) -> RenderedMarkdown {
     let headings = extract_headings(markdown);
     
-    // 设置 pulldown-cmark 选项
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TABLES);
     options.insert(Options::ENABLE_TASKLISTS);
     
-    // 解析并渲染 Markdown
     let parser = Parser::new_ext(markdown, options);
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
