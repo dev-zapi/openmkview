@@ -11,9 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
         with:
-          node-version: "20"
-          cache: "npm"
+          toolchain: stable
+          components: rustfmt, clippy
 
-      - run: npm ci
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build dependencies
+        run: cargo build --workspace --all-targets
