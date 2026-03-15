@@ -721,7 +721,7 @@ struct CreateFileRequest {
     #[serde(default)]
     name: Option<String>,
     #[serde(default)]
-    newName: Option<String>,
+    new_name: Option<String>,
 }
 
 async fn create_file(
@@ -776,7 +776,7 @@ async fn rename_file(
         None => return Ok(HttpResponse::BadRequest().body("文件路径是必需的")),
     };
     
-    let new_name = match &body.newName {
+    let new_name = match &body.new_name {
         Some(n) => n,
         None => return Ok(HttpResponse::BadRequest().body("新文件名是必需的")),
     };
