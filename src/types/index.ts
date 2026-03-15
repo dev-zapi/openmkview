@@ -25,8 +25,6 @@ export interface HeadingInfo {
 
 export type ViewMode = "preview" | "source" | "diff";
 
-export type ThemeMode = "light" | "dark" | "system";
-
 // Settings
 export type MarkdownWidthMode = "full" | "fixed";
 export type TableWidthMode = "auto" | "full";
