@@ -6,11 +6,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'list',
+  reporter: [['html', { outputFile: 'playwright-report.html' }], ['list']],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    screenshot: 'always',
+    browserName: 'chromium',
   },
   projects: [
     {
@@ -19,8 +20,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: 'npm run preview',
+    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
+    timeout: 60000,
   },
 });
