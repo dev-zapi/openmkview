@@ -10,8 +10,9 @@ mod services;
 
 use db::init_db;
 use handlers::{
-    create_file, create_project, delete_file, delete_project, execute_git, get_file_content,
-    get_file_tree, get_settings, list_projects, rename_file, update_settings,
+    create_file, create_project, delete_file, delete_project, execute_git,
+    get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff,
+    get_file_tree, get_settings, get_tags, list_projects, rename_file, update_settings,
 };
 use openmkview::AppState;
 
@@ -49,6 +50,11 @@ async fn main() -> std::io::Result<()> {
             .route("/api/settings", web::get().to(get_settings))
             .route("/api/settings", web::put().to(update_settings))
             .route("/api/git", web::post().to(execute_git))
+            .route("/api/git/commits", web::get().to(get_commits))
+            .route("/api/git/branches", web::get().to(get_branches))
+            .route("/api/git/tags", web::get().to(get_tags))
+            .route("/api/git/diff", web::post().to(get_file_diff))
+            .route("/api/git/file", web::get().to(get_file_at_ref))
             .service(Files::new("/static", "./static").show_files_listing())
     })
     .bind("0.0.0.0:3000")?

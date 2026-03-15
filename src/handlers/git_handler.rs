@@ -1,6 +1,6 @@
 use crate::db::ProjectRepository;
 use crate::errors::{AppError, AppResult};
-use crate::services::{GitService, ProjectService};
+use crate::services::{FileDiff, GitService, ProjectService};
 use crate::AppState;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
@@ -159,4 +159,92 @@ fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpRespons
         }
         _ => Ok(HttpResponse::BadRequest().body("命令是必需的")),
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DiffQuery {
+    pub project_id: i64,
+    pub path: Option<String>,
+    pub old_ref: Option<String>,
+    pub new_ref: Option<String>,
+}
+
+pub async fn get_commits(
+    data: web::Data<AppState>,
+    query: web::Query<DiffQuery>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(query.project_id)?;
+    let limit = 50;
+    let entries = GitService::log(&project_path, limit)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "entries": entries })))
+}
+
+pub async fn get_branches(
+    data: web::Data<AppState>,
+    query: web::Query<DiffQuery>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(query.project_id)?;
+    let branches = GitService::branches(&project_path)?;
+
+    Ok(HttpResponse::Ok().json(branches))
+}
+
+pub async fn get_tags(
+    data: web::Data<AppState>,
+    query: web::Query<DiffQuery>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(query.project_id)?;
+    let tags = GitService::tags(&project_path)?;
+
+    Ok(HttpResponse::Ok().json(tags))
+}
+
+pub async fn get_file_diff(
+    data: web::Data<AppState>,
+    body: web::Json<DiffQuery>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(body.project_id)?;
+
+    let file_path = body.path.as_deref().unwrap_or("");
+    let old_ref = body.old_ref.as_deref().unwrap_or("HEAD~1");
+    let new_ref = body.new_ref.as_deref().unwrap_or("HEAD");
+
+    let diff = GitService::file_diff(&project_path, file_path, old_ref, new_ref)?;
+
+    Ok(HttpResponse::Ok().json(diff))
+}
+
+pub async fn get_file_at_ref(
+    data: web::Data<AppState>,
+    query: web::Query<DiffQuery>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(query.project_id)?;
+
+    let file_path = query.path.as_deref().unwrap_or("");
+    let reference = query.old_ref.as_deref().unwrap_or("HEAD");
+
+    let content = GitService::file_at_ref(&project_path, file_path, reference)?;
+
+    Ok(HttpResponse::Ok().body(content))
 }

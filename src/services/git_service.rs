@@ -162,6 +162,183 @@ impl GitService {
             Self::run_git(cwd, &["show", &format!("HEAD:{}", file_path)]).unwrap_or_default();
         Ok(stdout)
     }
+
+    pub fn branches(cwd: &PathBuf) -> AppResult<Vec<String>> {
+        let (stdout, _) = Self::run_git(cwd, &["branch", "-a"])
+            .map_err(|e| AppError::GitError(e))?;
+        
+        let branches: Vec<String> = stdout
+            .lines()
+            .filter_map(|line| {
+                let branch = line.trim().trim_start_matches("* ").to_string();
+                if !branch.is_empty() {
+                    Some(branch)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        Ok(branches)
+    }
+
+    pub fn tags(cwd: &PathBuf) -> AppResult<Vec<String>> {
+        let (stdout, _) = Self::run_git(cwd, &["tag", "-l"])
+            .map_err(|e| AppError::GitError(e))?;
+        
+        let tags: Vec<String> = stdout
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| l.trim().to_string())
+            .collect();
+        
+        Ok(tags)
+    }
+
+    pub fn file_at_ref(cwd: &PathBuf, file_path: &str, reference: &str) -> AppResult<String> {
+        let (stdout, _) = Self::run_git(cwd, &["show", &format!("{}:{}", reference, file_path)])
+            .unwrap_or_default();
+        Ok(stdout)
+    }
+
+    pub fn file_diff(
+        cwd: &PathBuf,
+        file_path: &str,
+        old_ref: &str,
+        new_ref: &str,
+    ) -> AppResult<FileDiff> {
+        let old_content = Self::file_at_ref(cwd, file_path, old_ref).unwrap_or_default();
+        let new_content = Self::file_at_ref(cwd, file_path, new_ref).unwrap_or_default();
+
+        let diff_output = Self::run_git(cwd, &["diff", old_ref, new_ref, "--", file_path])
+            .map_err(|e| AppError::GitError(e))?
+            .0;
+
+        let hunks = Self::parse_diff_hunks(&diff_output);
+
+        Ok(FileDiff {
+            old_file_name: file_path.to_string(),
+            new_file_name: file_path.to_string(),
+            old_content,
+            new_content,
+            hunks,
+        })
+    }
+
+    fn parse_diff_hunks(diff_output: &str) -> Vec<DiffHunk> {
+        let mut hunks = Vec::new();
+        let mut current_hunk: Option<DiffHunk> = None;
+
+        for line in diff_output.lines() {
+            if line.starts_with("@@") {
+                if let Some(hunk) = current_hunk.take() {
+                    hunks.push(hunk);
+                }
+
+                if let Some((old_start, old_lines, new_start, new_lines)) =
+                    Self::parse_hunk_header(line)
+                {
+                    current_hunk = Some(DiffHunk {
+                        old_start,
+                        old_lines,
+                        new_start,
+                        new_lines,
+                        lines: Vec::new(),
+                    });
+                }
+            } else if let Some(ref mut hunk) = current_hunk {
+                if line.starts_with('+') && !line.starts_with("+++") {
+                    hunk.lines.push(DiffLine {
+                        line_type: "add".to_string(),
+                        content: line[1..].to_string(),
+                        old_line_number: None,
+                        new_line_number: Some((hunk.lines.len() as u32) + hunk.new_start),
+                    });
+                } else if line.starts_with('-') && !line.starts_with("---") {
+                    hunk.lines.push(DiffLine {
+                        line_type: "remove".to_string(),
+                        content: line[1..].to_string(),
+                        old_line_number: Some((hunk.lines.len() as u32) + hunk.old_start),
+                        new_line_number: None,
+                    });
+                } else if !line.starts_with("diff ") 
+                    && !line.starts_with("index ") 
+                    && !line.starts_with("--- ")
+                    && !line.starts_with("+++ ")
+                    && !line.is_empty()
+                {
+                    hunk.lines.push(DiffLine {
+                        line_type: "normal".to_string(),
+                        content: line.to_string(),
+                        old_line_number: Some((hunk.lines.len() as u32) + hunk.old_start),
+                        new_line_number: Some((hunk.lines.len() as u32) + hunk.new_start),
+                    });
+                }
+            }
+        }
+
+        if let Some(hunk) = current_hunk {
+            hunks.push(hunk);
+        }
+
+        hunks
+    }
+
+    fn parse_hunk_header(line: &str) -> Option<(u32, u32, u32, u32)> {
+        let parts: Vec<&str> = line.split(' ').collect();
+        if parts.len() >= 4 {
+            let old_part = parts[1].trim_start_matches('-');
+            let new_part = parts[3].trim_start_matches('+');
+
+            let old_parts: Vec<&str> = old_part.split(',').collect();
+            let new_parts: Vec<&str> = new_part.split(',').collect();
+
+            let old_start = old_parts.get(0)?.parse().ok()?;
+            let old_lines = old_parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1);
+            let new_start = new_parts.get(0)?.parse().ok()?;
+            let new_lines = new_parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1);
+
+            return Some((old_start, old_lines, new_start, new_lines));
+        }
+        None
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileDiff {
+    #[serde(rename = "oldFileName")]
+    pub old_file_name: String,
+    #[serde(rename = "newFileName")]
+    pub new_file_name: String,
+    #[serde(rename = "oldContent")]
+    pub old_content: String,
+    #[serde(rename = "newContent")]
+    pub new_content: String,
+    pub hunks: Vec<DiffHunk>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DiffHunk {
+    #[serde(rename = "oldStart")]
+    pub old_start: u32,
+    #[serde(rename = "oldLines")]
+    pub old_lines: u32,
+    #[serde(rename = "newStart")]
+    pub new_start: u32,
+    #[serde(rename = "newLines")]
+    pub new_lines: u32,
+    pub lines: Vec<DiffLine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DiffLine {
+    #[serde(rename = "type")]
+    pub line_type: String,
+    pub content: String,
+    #[serde(rename = "oldLineNumber")]
+    pub old_line_number: Option<u32>,
+    #[serde(rename = "newLineNumber")]
+    pub new_line_number: Option<u32>,
 }
 
 #[cfg(test)]
