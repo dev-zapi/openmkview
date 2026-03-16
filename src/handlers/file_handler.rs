@@ -8,11 +8,13 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct FileTreeParams {
     pub project_id: i64,
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct FileContentParams {
     pub path: String,
     pub project_id: i64,
@@ -121,6 +123,7 @@ pub async fn delete_file(
     Ok(HttpResponse::Ok().body("删除成功"))
 }
 
+#[allow(dead_code)]
 fn collect_markdown_files(root_path: &PathBuf) -> Vec<PathBuf> {
     let mut files = Vec::new();
 

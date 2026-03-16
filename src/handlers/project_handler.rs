@@ -59,6 +59,7 @@ pub async fn delete_project(
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct ProjectListParams {
     open: Option<bool>,
 }

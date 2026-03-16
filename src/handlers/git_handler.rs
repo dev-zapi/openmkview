@@ -1,12 +1,13 @@
 use crate::db::ProjectRepository;
 use crate::errors::{AppError, AppResult};
-use crate::services::{FileDiff, GitService, ProjectService};
+use crate::services::{GitService, ProjectService};
 use crate::AppState;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct GitRequest {
     pub action: String,
     pub project_id: i64,
@@ -54,11 +55,13 @@ pub async fn execute_git(
     }
 }
 
+#[allow(dead_code)]
 fn handle_status(cwd: &PathBuf) -> AppResult<HttpResponse> {
     let status = GitService::status(cwd);
     Ok(HttpResponse::Ok().json(status))
 }
 
+#[allow(dead_code)]
 fn handle_add(cwd: &PathBuf, files: &Option<Vec<String>>) -> AppResult<HttpResponse> {
     let mut args = vec!["add"];
     if let Some(files) = files {
@@ -73,6 +76,7 @@ fn handle_add(cwd: &PathBuf, files: &Option<Vec<String>>) -> AppResult<HttpRespo
     handle_status(cwd)
 }
 
+#[allow(dead_code)]
 fn handle_commit(cwd: &PathBuf, message: &Option<String>) -> AppResult<HttpResponse> {
     let msg = message
         .as_ref()
@@ -84,6 +88,7 @@ fn handle_commit(cwd: &PathBuf, message: &Option<String>) -> AppResult<HttpRespo
     handle_status(cwd)
 }
 
+#[allow(dead_code)]
 fn handle_command(cwd: &PathBuf, args: &[&str]) -> AppResult<HttpResponse> {
     GitService::run_git(cwd, args).map_err(|e| AppError::GitError(e))?;
 
@@ -91,6 +96,7 @@ fn handle_command(cwd: &PathBuf, args: &[&str]) -> AppResult<HttpResponse> {
     Ok(HttpResponse::Ok().json(status))
 }
 
+#[allow(dead_code)]
 fn handle_pull(cwd: &PathBuf, rebase: bool) -> AppResult<HttpResponse> {
     let args = if rebase {
         vec!["pull", "--rebase"]
@@ -109,16 +115,19 @@ fn handle_pull(cwd: &PathBuf, rebase: bool) -> AppResult<HttpResponse> {
     })))
 }
 
+#[allow(dead_code)]
 fn handle_log(cwd: &PathBuf, limit: i32) -> AppResult<HttpResponse> {
     let entries = GitService::log(cwd, limit)?;
     Ok(HttpResponse::Ok().json(serde_json::json!({ "entries": entries })))
 }
 
+#[allow(dead_code)]
 fn handle_diff(cwd: &PathBuf, staged: bool, file_path: Option<&str>) -> AppResult<HttpResponse> {
     let diff = GitService::diff(cwd, staged, file_path)?;
     Ok(HttpResponse::Ok().json(serde_json::json!({ "diff": diff })))
 }
 
+#[allow(dead_code)]
 fn handle_show(cwd: &PathBuf, body: &GitRequest) -> AppResult<HttpResponse> {
     let commit_hash = body.commit_hash.as_ref().or(body.message.as_ref());
 
@@ -131,6 +140,7 @@ fn handle_show(cwd: &PathBuf, body: &GitRequest) -> AppResult<HttpResponse> {
     }
 }
 
+#[allow(dead_code)]
 fn handle_file_at_head(cwd: &PathBuf, file_path: &Option<String>) -> AppResult<HttpResponse> {
     match file_path {
         Some(path) => {
@@ -141,6 +151,7 @@ fn handle_file_at_head(cwd: &PathBuf, file_path: &Option<String>) -> AppResult<H
     }
 }
 
+#[allow(dead_code)]
 fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpResponse> {
     match command {
         Some(cmd) if !cmd.trim().is_empty() => {
@@ -162,6 +173,7 @@ fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpRespons
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct DiffQuery {
     pub project_id: i64,
     pub path: Option<String>,

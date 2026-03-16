@@ -12,6 +12,7 @@ pub struct FileTreeNode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct FileContentResponse {
     pub content: String,
     pub html: String,
@@ -29,6 +30,7 @@ pub struct HeadingInfo {
 
 #[derive(Debug, Deserialize)]
 pub struct FileOperationRequest {
+    #[allow(dead_code)]
     pub action: String,
     pub project_id: i64,
     #[serde(default)]
