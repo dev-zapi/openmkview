@@ -20,11 +20,15 @@ use openmkview::AppState;
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-    let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let data_dir = cwd.join("data");
-    std::fs::create_dir_all(&data_dir).expect("无法创建数据目录");
-
-    let db_path = data_dir.join("openmkview.db");
+    let db_path = if let Ok(path) = std::env::var("OPENMKVIEW_DB_PATH") {
+        std::path::PathBuf::from(path)
+    } else {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let config_dir = std::path::PathBuf::from(home).join(".config/openmkview");
+        std::fs::create_dir_all(&config_dir).expect("无法创建配置目录");
+        config_dir.join("openmkview.db")
+    };
+    
     let conn = init_db(&db_path).expect("数据库初始化失败");
 
     log::info!("数据库初始化完成：{:?}", db_path);
