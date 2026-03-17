@@ -42,7 +42,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .route("/", web::get().to(index))
+            // API routes
             .route("/api/projects", web::get().to(list_projects))
             .route("/api/projects", web::post().to(create_project))
             .route("/api/projects/{id}", web::delete().to(delete_project))
@@ -59,20 +59,11 @@ async fn main() -> std::io::Result<()> {
             .route("/api/git/tags", web::get().to(get_tags))
             .route("/api/git/diff", web::post().to(get_file_diff))
             .route("/api/git/file", web::get().to(get_file_at_ref))
-            .service(Files::new("/static", "./static").show_files_listing())
-            .service(Files::new("/assets", "./dist/assets").show_files_listing())
+            // Static files - serve from dist directory
+            .service(Files::new("/assets", "./dist/assets"))
+            .service(Files::new("/", "./dist").index_file("index.html"))
     })
     .bind("0.0.0.0:3000")?
     .run()
     .await
-}
-
-async fn index() -> actix_web::Result<actix_web::HttpResponse> {
-    use actix_web::HttpResponse;
-    use std::fs;
-
-    let html = fs::read_to_string("dist/index.html")
-        .unwrap_or_else(|_| String::from("<h1>OpenMKView - Building...</h1>"));
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(html))
 }
