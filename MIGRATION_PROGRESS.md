@@ -67,11 +67,44 @@ git commit -m "refactor: 迁移后端静态文件服务到 frontend/dist 目录"
 | 布局 | react-resizable-panels | 固定布局 |
 | 主题 | next-themes | 自定义实现 |
 
-### 待办事项
-1. [ ] 安装 Tailwind CSS v4
-2. [ ] 配置 Tailwind 与 SolidJS
-3. [ ] 创建基础布局组件
-4. [ ] 重构 ActivityBar 组件
-5. [ ] 重构 Sidebar/Explorer 组件
-6. [ ] 重构 MarkdownViewer 组件
-7. [ ] 添加响应式布局支持
+### 5. 引入 Tailwind CSS v4 ✅
+
+**安装依赖**:
+```bash
+npm install -D tailwindcss@^4 @tailwindcss/vite@^4
+```
+
+**配置变更**:
+- `vite.config.ts`: 添加 `tailwindcss()` 插件
+- `src/index.css`: 使用 `@import "tailwindcss"` 语法
+
+**主题系统**:
+- 保留 Pierre 主题色彩作为 CSS 变量
+- 支持亮色/暗色模式
+- 添加完整组件样式
+
+## 当前状态
+
+✅ **已完成**:
+1. 后端静态文件服务修复
+2. Alpine.js 方案删除
+3. Tailwind CSS v4 引入
+
+🔄 **进行中**:
+4. 组件渐进式重构
+
+## 下一步工作
+
+### 组件重构计划
+
+1. **ActivityBar** - 使用 Tailwind 类名重构
+2. **FileExplorer** - 优化文件树样式
+3. **MarkdownViewer** - 改进 Markdown 渲染样式
+4. **GitPanel** - 面板样式优化
+5. **SettingsPanel** - 表单样式改进
+
+### 待添加功能
+- [ ] 响应式布局（移动端适配）
+- [ ] 可调整大小的面板
+- [ ] Lucide 图标替换 Emoji
+- [ ] 主题切换动画
