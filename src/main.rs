@@ -60,6 +60,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/git/diff", web::post().to(get_file_diff))
             .route("/api/git/file", web::get().to(get_file_at_ref))
             .service(Files::new("/static", "./static").show_files_listing())
+            .service(Files::new("/assets", "./dist/assets").show_files_listing())
     })
     .bind("0.0.0.0:3000")?
     .run()
@@ -70,8 +71,8 @@ async fn index() -> actix_web::Result<actix_web::HttpResponse> {
     use actix_web::HttpResponse;
     use std::fs;
 
-    let html = fs::read_to_string("src/templates/index.html")
-        .unwrap_or_else(|_| String::from("<h1>Loading...</h1>"));
+    let html = fs::read_to_string("dist/index.html")
+        .unwrap_or_else(|_| String::from("<h1>OpenMKView - Building...</h1>"));
 
     Ok(HttpResponse::Ok().content_type("text/html").body(html))
 }
