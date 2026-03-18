@@ -46,15 +46,23 @@ pub async fn get_file_content(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let (content, file_name, path) = FileService::get_file_content(&project_path, &query.path)?;
+    let (content, file_name, path, file_size, last_modified) = FileService::get_file_content(&project_path, &query.path)?;
     let (html, headings) = FileService::render_file_content(&content)?;
+
+    // 将 SystemTime 转换为 ISO 8601 字符串
+    let last_modified_str = last_modified.map(|t| {
+        let datetime: chrono::DateTime<chrono::Utc> = t.into();
+        datetime.to_rfc3339()
+    });
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "content": content,
         "html": html,
         "headings": headings,
         "fileName": file_name,
-        "path": path
+        "path": path,
+        "fileSize": file_size,
+        "lastModified": last_modified_str
     })))
 }
 

@@ -87,7 +87,7 @@ impl FileService {
     pub fn get_file_content(
         project_path: &Path,
         file_path: &str,
-    ) -> AppResult<(String, String, String)> {
+    ) -> AppResult<(String, String, String, u64, Option<std::time::SystemTime>)> {
         let file_path = PathBuf::from(file_path);
         let resolved = file_path
             .canonicalize()
@@ -113,8 +113,13 @@ impl FileService {
         let content = std::fs::read_to_string(&resolved)?;
         let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
         let path = resolved.to_str().unwrap().to_string();
+        
+        // 获取文件大小和修改时间
+        let metadata = std::fs::metadata(&resolved)?;
+        let file_size = metadata.len();
+        let last_modified = metadata.modified().ok();
 
-        Ok((content, file_name, path))
+        Ok((content, file_name, path, file_size, last_modified))
     }
 
     pub fn render_file_content(
@@ -226,12 +231,14 @@ mod tests {
         let file_path = temp_dir.path().join("test.md");
         fs::write(&file_path, "# Test").unwrap();
 
-        let (content, file_name, path) =
+        let (content, file_name, path, file_size, last_modified) =
             FileService::get_file_content(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
 
         assert_eq!(content, "# Test");
         assert_eq!(file_name, "test.md");
         assert!(path.ends_with("test.md"));
+        assert_eq!(file_size, 6); // "# Test" = 6 bytes
+        assert!(last_modified.is_some());
     }
 
     #[test]
