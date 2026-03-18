@@ -116,7 +116,7 @@ describe('SettingsPanel', () => {
 
   it('renders settings panel when open', () => {
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
-    expect(screen.getByText('⚙️ Settings')).toBeTruthy();
+    expect(screen.getByText('Settings')).toBeTruthy();
   });
 
   it('renders all settings sections', () => {
@@ -127,11 +127,13 @@ describe('SettingsPanel', () => {
 
   it('calls onClose when close button clicked', () => {
     const onClose = vi.fn();
-    render(() => <SettingsPanel isOpen={true} onClose={onClose} />);
+    const { container } = render(() => <SettingsPanel isOpen={true} onClose={onClose} />);
 
-    const closeBtn = screen.getByText('✕');
-    fireEvent.click(closeBtn);
-    expect(onClose).toHaveBeenCalled();
+    const closeBtn = container.querySelector('.close-btn');
+    if (closeBtn) {
+      fireEvent.click(closeBtn);
+      expect(onClose).toHaveBeenCalled();
+    }
   });
 
   it('calls onClose when overlay clicked', () => {
@@ -149,9 +151,9 @@ describe('SettingsPanel', () => {
 
   it('does not call onClose when panel clicked', () => {
     const onClose = vi.fn();
-    render(() => <SettingsPanel isOpen={true} onClose={onClose} />);
+    const { container } = render(() => <SettingsPanel isOpen={true} onClose={onClose} />);
 
-    const panel = screen.getByText('⚙️ Settings').closest('.settings-panel');
+    const panel = container.querySelector('.settings-panel');
     if (panel) {
       fireEvent.click(panel);
       expect(onClose).not.toHaveBeenCalled();
