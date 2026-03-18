@@ -12,7 +12,8 @@ use db::init_db;
 use handlers::{
     create_file, create_project, delete_file, delete_project, execute_git,
     get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff,
-    get_file_tree, get_settings, get_tags, list_projects, rename_file, update_settings,
+    get_file_tree, get_recent_projects, get_settings, get_tags, list_projects, open_project,
+    rename_file, resolve_path, update_settings, validate_project,
 };
 use openmkview::AppState;
 
@@ -45,7 +46,11 @@ async fn main() -> std::io::Result<()> {
             // API routes
             .route("/api/projects", web::get().to(list_projects))
             .route("/api/projects", web::post().to(create_project))
+            .route("/api/projects/recent", web::get().to(get_recent_projects))
+            .route("/api/projects/validate", web::post().to(validate_project))
+            .route("/api/projects/open", web::post().to(open_project))
             .route("/api/projects/{id}", web::delete().to(delete_project))
+            .route("/api/projects/resolve", web::post().to(resolve_path))
             .route("/api/files/tree", web::get().to(get_file_tree))
             .route("/api/files/content", web::get().to(get_file_content))
             .route("/api/files", web::post().to(create_file))
