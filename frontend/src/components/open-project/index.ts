@@ -1,9 +1,9 @@
 /**
- * open-project 组件索引
- * 
- * 统一导出所有与"打开项目"功能相关的组件
+ * OpenProject 组件导出
  */
 
-export { default as PathInput } from './PathInput';
-export { default as PathInputExample, BasicExample, WithStateExample, DialogExample, UsageGuide } from './PathInputExample';
-export type { PathInputProps } from './PathInput';
+export { default as OpenProjectDialog } from './OpenProjectDialog';
+export { default } from './OpenProjectDialog';
+export type { OpenProjectDialogProps } from './OpenProjectDialog';
+export { useOpenProject } from './hooks/useOpenProject';
+export type { UseOpenProjectReturn } from './hooks/useOpenProject';

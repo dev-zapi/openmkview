@@ -1,0 +1,422 @@
+/**
+ * OpenProjectDialog 样式
+ * 使用 Tailwind CSS v4 语法
+ */
+
+/* 遮罩层 */
+.open-project-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* 对话框容器 */
+.open-project-dialog {
+  background-color: var(--color-bg);
+  border-radius: 12px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 90vw;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: dialogSlideIn 0.3s ease-out;
+}
+
+/* Header */
+.open-project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.open-project-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-h);
+  margin: 0;
+}
+
+.open-project-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.open-project-close-btn:hover {
+  background-color: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+/* Body */
+.open-project-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+.open-project-left {
+  flex: 1;
+  padding: 20px;
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.open-project-right {
+  width: 320px;
+  padding: 20px;
+  background-color: var(--color-bg-subtle);
+  overflow-y: auto;
+}
+
+/* 路径输入占位 */
+.path-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.path-input-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-h);
+}
+
+.path-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-bg);
+  color: var(--color-text-h);
+  transition: all 0.15s ease;
+}
+
+.path-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-bg);
+}
+
+.path-input::placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+/* 候选路径列表 */
+.path-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.candidates-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.path-candidate {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.path-candidate:hover {
+  background-color: var(--color-hover-bg);
+}
+
+.path-candidate.is-selected {
+  background-color: var(--color-accent-bg);
+  border-color: var(--color-accent-border);
+}
+
+.candidate-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-h);
+}
+
+.candidate-path {
+  font-size: 12px;
+  color: var(--color-text);
+  opacity: 0.8;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 加载状态 */
+.open-project-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.open-project-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 错误状态 */
+.open-project-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+  color: var(--color-error);
+  font-size: 14px;
+}
+
+.error-close-btn {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--color-error);
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.error-close-btn:hover {
+  opacity: 0.9;
+}
+
+/* 最近项目 */
+.recent-projects-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-h);
+  margin: 0 0 12px 0;
+}
+
+.no-recent-projects {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text);
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.recent-projects-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 最近项目卡片 */
+.recent-project-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.recent-project-card:hover {
+  background-color: var(--color-hover-bg);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.recent-project-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.recent-project-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-project-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-project-path {
+  font-size: 12px;
+  color: var(--color-text);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-project-time {
+  font-size: 11px;
+  color: var(--color-text);
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+/* Footer */
+.open-project-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.open-project-cancel-btn,
+.open-project-confirm-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.open-project-cancel-btn {
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.open-project-cancel-btn:hover:not(:disabled) {
+  background-color: var(--color-hover-bg);
+}
+
+.open-project-confirm-btn {
+  border: none;
+  background-color: var(--color-accent);
+  color: white;
+}
+
+.open-project-confirm-btn:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.open-project-confirm-btn:disabled,
+.open-project-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .open-project-dialog {
+    width: 95vw;
+    max-height: 90vh;
+  }
+
+  .open-project-body {
+    flex-direction: column;
+  }
+
+  .open-project-left {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    min-height: 200px;
+  }
+
+  .open-project-right {
+    width: 100%;
+    max-height: 250px;
+  }
+}
+
+/* 深色模式优化 */
+@media (prefers-color-scheme: dark) {
+  .recent-project-card {
+    box-shadow: none;
+  }
+
+  .recent-project-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.dark-theme .recent-project-card {
+  box-shadow: none;
+}
+
+.dark-theme .recent-project-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}

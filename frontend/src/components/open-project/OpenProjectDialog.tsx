@@ -3,8 +3,9 @@
  * 项目打开对话框容器，包含路径输入和最近项目列表
  */
 
-import { Component, Show, For, createSignal, createEffect } from 'solid-js';
+import { Component, Show, For, createEffect } from 'solid-js';
 import { useOpenProject } from './hooks/useOpenProject';
+import PathInput from './PathInput';
 import type { RecentProject } from '../../../types/openProject';
 import './OpenProjectDialog.css';
 
@@ -42,7 +43,7 @@ const ErrorState: Component<{ message: string; onClose?: () => void }> = (props)
   </div>
 );
 
-/** 最近项目卡片占位组件 */
+/** 最近项目卡片组件 */
 const RecentProjectCard: Component<{
   project: RecentProject;
   onClick: () => void;
@@ -76,53 +77,11 @@ const RecentProjectCard: Component<{
   );
 };
 
-/** 路径输入占位组件 */
-const PathInputPlaceholder: Component<{
-  value: string;
-  onChange: (value: string) => void;
-  candidates: import('../../../types/openProject').PathCandidate[];
-  selectedIndex: number;
-  onSelectCandidate: (index: number) => void;
-}> = (props) => {
-  return (
-    <div class="path-input-container">
-      <label class="path-input-label">项目路径</label>
-      <input
-        type="text"
-        class="path-input"
-        placeholder="输入项目路径或名称..."
-        value={props.value}
-        onInput={(e) => props.onChange(e.currentTarget.value)}
-      />
-      
-      {props.candidates.length > 0 && (
-        <div class="path-candidates">
-          <div class="candidates-label">匹配的项目：</div>
-          <For each={props.candidates}>
-            {(candidate, index) => (
-              <div
-                class="path-candidate"
-                classList={{ 'is-selected': index() === props.selectedIndex }}
-                onClick={() => props.onSelectCandidate(index())}
-              >
-                <span class="candidate-name">{candidate.name}</span>
-                <span class="candidate-path">{candidate.path}</span>
-              </div>
-            )}
-          </For>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   const {
     state,
     recentProjects,
     isLoadingRecent,
-    setInput,
-    selectCandidate,
     handleOpenProject,
     openProjectByPath,
     resetState,
@@ -147,8 +106,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       props.onClose();
-    } else if (e.key === 'Enter' && !state.isLoading) {
-      handleOpenProject();
     }
   };
 
@@ -184,17 +141,12 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
           <div class="open-project-body">
             {/* 左侧：路径输入 */}
             <div class="open-project-left">
-              <PathInputPlaceholder
-                value={state.input}
-                onChange={setInput}
-                candidates={state.candidates}
-                selectedIndex={state.selectedIndex}
-                onSelectCandidate={selectCandidate}
+              <PathInput
+                placeholder="输入项目路径或名称..."
+                onSubmit={(path) => openProjectByPath(path)}
+                disabled={state.isLoading}
+                loading={state.isLoading}
               />
-
-              {state.isLoading && (
-                <LoadingState message="正在打开项目..." />
-              )}
 
               {state.error && (
                 <ErrorState
@@ -242,8 +194,8 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             </button>
             <button
               class="open-project-confirm-btn"
-              onClick={handleOpenProject}
-              disabled={state.isLoading || !state.input.trim()}
+              onClick={() => handleOpenProject()}
+              disabled={state.isLoading}
             >
               {state.isLoading ? '打开中...' : '打开项目'}
             </button>
