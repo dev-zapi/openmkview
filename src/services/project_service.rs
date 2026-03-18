@@ -52,4 +52,60 @@ impl<'a> ProjectService<'a> {
         let path = self.project_repo.get_path(id)?;
         Ok(PathBuf::from(path))
     }
+
+    /// 获取最近打开的项目列表
+    pub fn get_recent_projects(&self, limit: i64) -> AppResult<Vec<Project>> {
+        self.project_repo.get_recent_projects(limit)
+    }
+
+    /// 验证项目路径是否有效
+    pub fn validate_project_path(&self, path: &str,
+    ) -> AppResult<( bool, Option<String>) > {
+        let path_buf = PathBuf::from(path);
+
+        // 检查路径是否存在
+        if !path_buf.exists() {
+            return Ok((false, Some("路径不存在".to_string())));
+        }
+
+        // 检查是否为目录
+        if !path_buf.is_dir() {
+            return Ok((false, Some("路径不是目录".to_string())));
+        }
+
+        // 检查是否包含 Markdown 文件
+        let has_markdown = self.check_markdown_files(&path_buf)?;
+        if !has_markdown {
+            return Ok((false, Some("目录中未找到 Markdown 文件(.md 或 .mdx)".to_string())));
+        }
+
+        Ok((true, None))
+    }
+
+    /// 递归检查目录中是否包含 Markdown 文件
+    fn check_markdown_files(&self, dir: &PathBuf,
+    ) -> AppResult<bool> {
+        let entries = std::fs::read_dir(dir)?;
+
+        for entry in entries {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    let ext = ext.to_string_lossy().to_lowercase();
+                    if ext == "md" || ext == "mdx" {
+                        return Ok(true);
+                    }
+                }
+            } else if path.is_dir() {
+                // 递归检查子目录
+                if self.check_markdown_files(&path)? {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
+    }
 }

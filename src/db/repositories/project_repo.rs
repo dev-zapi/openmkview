@@ -107,4 +107,27 @@ impl<'a> ProjectRepository<'a> {
             })
             .map_err(|e| e.into())
     }
+
+    /// 获取最近打开的项目（最多 limit 条）
+    pub fn get_recent_projects(&self, limit: i64) -> AppResult<Vec<Project>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, path, name, created_at, last_opened_at, is_open 
+             FROM projects 
+             ORDER BY last_opened_at DESC 
+             LIMIT ?"
+        )?;
+        
+        let projects = stmt.query_map([limit], |row| {
+            Ok(Project {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                name: row.get(2)?,
+                created_at: row.get(3)?,
+                last_opened_at: row.get(4)?,
+                is_open: row.get::<_, i32>(5)? != 0,
+            })
+        })?;
+
+        Ok(projects.filter_map(|r| r.ok()).collect())
+    }
 }
