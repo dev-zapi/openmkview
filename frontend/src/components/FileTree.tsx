@@ -1,22 +1,27 @@
-import { Component, For, createSignal, Show } from 'solid-js';
+import { Component, For, Show, createEffect } from 'solid-js';
 import type { FileNode } from '../types';
 
 interface FileTreeProps {
   nodes: FileNode[];
   onFileClick: (path: string, name: string) => void;
+  expandedFolders?: Set<string>;
+  onFolderToggle?: (path: string, expanded: boolean) => void;
 }
 
 interface TreeNodeProps {
   node: FileNode;
   onFileClick: (path: string, name: string) => void;
+  expandedFolders?: Set<string>;
+  onFolderToggle?: (path: string, expanded: boolean) => void;
 }
 
 const TreeNode: Component<TreeNodeProps> = (props) => {
-  const [expanded, setExpanded] = createSignal(false);
+  const isExpanded = () => props.expandedFolders?.has(props.node.path) || false;
 
   const handleClick = () => {
     if (props.node.isFolder) {
-      setExpanded(!expanded());
+      const newExpanded = !isExpanded();
+      props.onFolderToggle?.(props.node.path, newExpanded);
     } else {
       props.onFileClick(props.node.path, props.node.name);
     }
@@ -29,15 +34,20 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
         onClick={handleClick}
       >
         <span class="icon">
-          {props.node.isFolder ? (expanded() ? '📂' : '📁') : '📄'}
+          {props.node.isFolder ? (isExpanded() ? '📂' : '📁') : '📄'}
         </span>
         <span class="name">{props.node.name}</span>
       </div>
-      <Show when={props.node.isFolder && expanded() && props.node.children}>
+      <Show when={props.node.isFolder && isExpanded() && props.node.children}>
         <ul class="folder-children">
           <For each={props.node.children}>
             {(child) => (
-              <TreeNode node={child} onFileClick={props.onFileClick} />
+              <TreeNode 
+                node={child} 
+                onFileClick={props.onFileClick}
+                expandedFolders={props.expandedFolders}
+                onFolderToggle={props.onFolderToggle}
+              />
             )}
           </For>
         </ul>
@@ -52,7 +62,12 @@ const FileTree: Component<FileTreeProps> = (props) => {
       <ul>
         <For each={props.nodes}>
           {(node) => (
-            <TreeNode node={node} onFileClick={props.onFileClick} />
+            <TreeNode 
+              node={node} 
+              onFileClick={props.onFileClick}
+              expandedFolders={props.expandedFolders}
+              onFolderToggle={props.onFolderToggle}
+            />
           )}
         </For>
       </ul>
