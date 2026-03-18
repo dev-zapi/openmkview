@@ -13,9 +13,12 @@ export interface Heading {
 
 export interface FileContent {
   content: string;
+  html?: string;  // 后端返回的渲染后 HTML
   headings: Heading[];
   fileName: string;
   path: string;
+  fileSize?: number;
+  lastModified?: string;
 }
 
 export interface GitCommit {

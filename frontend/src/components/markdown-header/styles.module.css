@@ -1,0 +1,465 @@
+.markdownHeader {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.breadcrumbBar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+}
+
+.breadcrumbLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--color-text);
+  transition: background-color 0.15s ease;
+}
+
+.backButton:hover {
+  background: var(--color-hover-bg);
+}
+
+.projectName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-h);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+  transition: background-color 0.15s ease;
+}
+
+.projectName:hover {
+  background: var(--color-hover-bg);
+}
+
+.separator {
+  color: var(--color-text);
+  opacity: 0.5;
+  font-size: 13px;
+  padding: 0 4px;
+}
+
+.breadcrumbSegment {
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  transition: background-color 0.15s ease;
+}
+
+.breadcrumbSegment:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.breadcrumbSegment.active {
+  color: var(--color-text-h);
+  font-weight: 500;
+}
+
+.breadcrumbRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.favoriteButton,
+.moreButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--color-text);
+  transition: background-color 0.15s ease;
+}
+
+.favoriteButton:hover,
+.moreButton:hover {
+  background: var(--color-hover-bg);
+}
+
+.documentTitleBar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--color-bg);
+}
+
+.documentLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.documentTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileIcon {
+  font-size: 18px;
+}
+
+.fileName {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.documentMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.metaSeparator {
+  opacity: 0.5;
+}
+
+.documentRight {
+  flex-shrink: 0;
+}
+
+.viewTabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tabItem {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tabItem:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.tabItem.active {
+  color: var(--color-text-h);
+  background: var(--color-active-bg);
+}
+
+.tabItem.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 1px;
+}
+
+.actionToolbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  gap: 16px;
+}
+
+.toolbarLeft,
+.toolbarCenter,
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  margin: 0 8px;
+}
+
+.toolbarButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.toolbarButton:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.toolbarButton.active {
+  background: var(--color-active-bg);
+  color: var(--color-text-h);
+}
+
+.badge {
+  background: var(--color-accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* 下拉菜单 */
+.dropdown {
+  position: relative;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  min-width: 160px;
+  z-index: 100;
+  animation: dropdownSlide 0.15s ease;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-text);
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.dropdownItem:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.dropdownIcon {
+  font-size: 14px;
+}
+
+.searchBox {
+  padding: 8px 16px;
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--color-border);
+  animation: slideDown 0.15s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.searchInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  padding: 4px;
+  background: transparent;
+  color: var(--color-text-h);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
+.searchResults {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.resultButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-text);
+  transition: background-color 0.15s ease;
+}
+
+.resultButton:hover {
+  background: var(--color-hover-bg);
+}
+
+.resultCount {
+  font-size: 12px;
+  color: var(--color-text);
+  min-width: 40px;
+  text-align: center;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--color-text);
+  transition: background-color 0.15s ease;
+}
+
+.closeButton:hover {
+  background: var(--color-hover-bg);
+}
+
+@media (max-width: 768px) {
+  .breadcrumbBar {
+    display: none;
+  }
+
+  .fileName {
+    font-size: 16px;
+  }
+
+  .actionToolbar {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .actionToolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .toolbarButton span {
+    display: none;
+  }
+}
+
+/* Toast 提示 */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  z-index: 1000;
+  animation: slideUp 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toast.success {
+  background: var(--color-success, #22c55e);
+}
+
+.toast.error {
+  background: var(--color-error, #ef4444);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}

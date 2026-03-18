@@ -1,4 +1,4 @@
-import { Component, createSignal, onMount, Show, createEffect, For } from 'solid-js';
+import { Component, createSignal, onMount, Show, createEffect, For, onCleanup } from 'solid-js';
 import FileTree from './components/FileTree';
 import MarkdownView from './components/MarkdownView';
 import DiffViewer from './components/DiffViewer';
@@ -6,12 +6,18 @@ import DiffSelector from './components/DiffSelector';
 import GitPanel from './components/GitPanel';
 import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
+import { MarkdownHeader } from './components/markdown-header';
 import { api } from './services/api';
 import { diffStore } from './stores/diffStore';
 import type { FileNode, FileContent, Project } from './types';
 import './styles/global.css';
 
-// Load settings from localStorage
+type ThemeMode = 'light' | 'dark' | 'system';
+
+const getSystemTheme = (): 'light' | 'dark' => {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
 const loadSettings = () => {
   try {
     const saved = localStorage.getItem('openmkview-settings');
@@ -21,7 +27,21 @@ const loadSettings = () => {
   } catch (e) {
     console.error('Failed to load settings:', e);
   }
-  return { markdownWidth: 'full', fixedWidth: '900px', theme: 'light' };
+  return {
+    markdownWidth: 'full',
+    fixedWidth: '900px',
+    theme: 'system' as ThemeMode,
+    uiFontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    markdownFontFamily: 'Georgia, "Noto Serif", serif',
+    uiFontSize: '14px',
+    markdownFontSize: '16px',
+  };
+};
+
+const applyTheme = (theme: ThemeMode) => {
+  const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+  document.body.classList.remove('light-theme', 'dark-theme');
+  document.body.classList.add(`${effectiveTheme}-theme`);
 };
 
 const App: Component = () => {
@@ -36,27 +56,51 @@ const App: Component = () => {
   const [outlineOpen, setOutlineOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [settings, setSettings] = createSignal(loadSettings());
+  const [systemTheme, setSystemTheme] = createSignal<'light' | 'dark'>(getSystemTheme());
+  const [isFavorite, setIsFavorite] = createSignal(false);
+  const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set());
+
+  let mediaQuery: MediaQueryList;
 
   onMount(async () => {
     const projectList = await api.getProjects();
     setProjects(projectList);
 
-    // Apply theme on mount
-    const s = settings();
-    if (s.theme === 'dark') {
-      document.body.classList.add('dark-theme');
-    }
+    applyTheme(settings().theme as ThemeMode);
+
+    mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleThemeChange = (e: MediaQueryListEvent) => {
+      setSystemTheme(e.matches ? 'dark' : 'light');
+      if (settings().theme === 'system') {
+        applyTheme('system');
+      }
+    };
+    mediaQuery.addEventListener('change', handleThemeChange);
+    onCleanup(() => mediaQuery.removeEventListener('change', handleThemeChange));
   });
 
   createEffect(() => {
-    // Re-apply settings when they change
-    const s = settings();
-    if (s.theme === 'dark') {
-      document.body.classList.add('dark-theme');
-    } else {
-      document.body.classList.remove('dark-theme');
-    }
+    applyTheme(settings().theme as ThemeMode);
   });
+
+  // Apply font settings
+  createEffect(() => {
+    const s = settings();
+    // Apply UI font
+    document.body.style.fontFamily = s.uiFontFamily;
+    document.body.style.fontSize = s.uiFontSize;
+    // Apply Markdown font via CSS variables
+    document.documentElement.style.setProperty('--markdown-font', s.markdownFontFamily);
+    document.documentElement.style.setProperty('--markdown-size', s.markdownFontSize);
+  });
+
+  const toggleTheme = () => {
+    const currentTheme = settings().theme;
+    const themes: ThemeMode[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(currentTheme);
+    const nextTheme = themes[(currentIndex + 1) % themes.length];
+    setSettings(prev => ({ ...prev, theme: nextTheme }));
+  };
 
   const handleOpenProject = async () => {
     const path = prompt('Project directory path:');
@@ -100,6 +144,7 @@ const App: Component = () => {
         setActiveProject(null);
         setFileTree([]);
         setCurrentFile(null);
+        setExpandedFolders(new Set<string>());
         if (updated.length > 0) {
           await handleSwitchProject(updated[0]);
         }
@@ -126,6 +171,41 @@ const App: Component = () => {
     }
   };
 
+  const handleFolderToggle = (path: string, expanded: boolean) => {
+    setExpandedFolders(prev => {
+      const newSet = new Set(prev);
+      if (expanded) {
+        newSet.add(path);
+      } else {
+        newSet.delete(path);
+      }
+      return newSet;
+    });
+  };
+
+  const handleNavigate = (path: string) => {
+    if (!path) {
+      // 点击项目名，跳转到根目录，收起所有文件夹
+      setExpandedFolders(new Set<string>());
+      return;
+    }
+    // 点击文件夹路径，展开该文件夹及其父文件夹
+    setExpandedFolders(prev => {
+      const newSet = new Set(prev);
+      // 展开当前文件夹
+      newSet.add(path);
+      
+      // 展开所有父文件夹
+      const segments = path.split('/');
+      let currentPath = '';
+      for (let i = 0; i < segments.length - 1; i++) {
+        currentPath = currentPath ? `${currentPath}/${segments[i]}` : segments[i];
+        newSet.add(currentPath);
+      }
+      return newSet;
+    });
+  };
+
   const handleCloseDiff = () => {
     diffStore.reset();
     setActiveTab('preview');
@@ -146,64 +226,93 @@ const App: Component = () => {
   return (
     <div class="app-container">
       <aside class="activity-bar">
-        <button
-          class={activePanel() === 'explorer' ? 'active' : ''}
-          title="Explorer"
-          onClick={() => setActivePanel('explorer')}
+        {/* 项目列表区域 - 可滚动 */}
+        <div class="activity-bar-projects"
         >
-          📁
-        </button>
+          <For each={projects()}>
+            {(p) => (
+              <button
+                class={activeProject()?.id === p.id ? 'active' : ''}
+                title={p.name}
+                onClick={() => handleSwitchProject(p)}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </button>
+            )}
+          </For>
+        </div>
+
+        {/* 加号按钮 */}
         <button
-          class={gitPanelOpen() ? 'active' : ''}
-          title="Git"
-          onClick={() => setGitPanelOpen(!gitPanelOpen())}
+          class="activity-bar-add"
+          title="Open Project"
+          onClick={handleOpenProject}
         >
-          🌿
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
         </button>
-        <button
-          title="Settings"
-          onClick={() => setSettingsOpen(true)}
-        >
-          ⚙️
-        </button>
+
+        {/* 底部固定区域 */}
+        <div class="activity-bar-bottom">
+          <button
+            class={settings().theme === 'dark' ? 'active' : ''}
+            title={`Theme: ${settings().theme} (click to toggle)`}
+            onClick={toggleTheme}
+          >
+            <Show when={settings().theme === 'light'}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            </Show>
+            <Show when={settings().theme === 'dark'}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            </Show>
+            <Show when={settings().theme === 'system'}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+            </Show>
+          </button>
+          <button
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
       </aside>
 
       <Show when={activePanel() === 'explorer'}>
         <aside class="sidebar">
           <div class="sidebar-header">Explorer</div>
           <div class="sidebar-content">
-            <button class="btn" onClick={handleOpenProject} disabled={loading()}>
-              📂 Open Project
-            </button>
-
-            <Show when={projects().length > 0} fallback={
-              <p class="empty-state">No projects</p>
+            <Show when={activeProject()} fallback={
+              <p class="empty-state">点击左侧 + 按钮打开项目</p>
             }>
-              <div class="project-list">
-                <For each={projects()}>
-                  {(p) => (
-                    <div
-                      class={`project-item ${activeProject()?.id === p.id ? 'active' : ''}`}
-                      onClick={() => handleSwitchProject(p)}
-                    >
-                      <span class="project-name">📁 {p.name}</span>
-                      <button
-                        class="project-close"
-                        onClick={(e) => handleCloseProject(e, p.id)}
-                        title="Close project"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </Show>
-
-            <Show when={activeProject()}>
               <FileTree
                 nodes={fileTree()}
                 onFileClick={handleFileClick}
+                expandedFolders={expandedFolders()}
+                onFolderToggle={handleFolderToggle}
               />
             </Show>
           </div>
@@ -211,40 +320,25 @@ const App: Component = () => {
       </Show>
 
       <main class="main">
-        <header class="main-header">
-          <div class="tabs">
-            <div
-              class={`tab ${activeTab() === 'preview' ? 'active' : ''}`}
-              onClick={() => setActiveTab('preview')}
-            >
-              Preview
-            </div>
-            <div
-              class={`tab ${activeTab() === 'diff' ? 'active' : ''}`}
-              onClick={() => setActiveTab('diff')}
-            >
-              Diff
-            </div>
-            <div
-              class={`tab ${activeTab() === 'source' ? 'active' : ''}`}
-              onClick={() => setActiveTab('source')}
-            >
-              Source
-            </div>
-          </div>
-          <Show when={currentFile()}>
-            <div class="header-right">
-              <span class="file-name">{currentFile()!.fileName}</span>
-              <button
-                class="outline-toggle"
-                onClick={() => setOutlineOpen(!outlineOpen())}
-                title="Toggle Outline"
-              >
-                📋
-              </button>
-            </div>
-          </Show>
-        </header>
+        <Show when={currentFile()}>
+          <MarkdownHeader
+            fileName={currentFile()!.fileName}
+            filePath={currentFile()!.path}
+            projectName={activeProject()?.name || ''}
+            lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
+            fileSize={currentFile()!.fileSize}
+            activeTab={activeTab()}
+            isOutlineOpen={outlineOpen()}
+            outlineCount={currentFile()!.headings?.length || 0}
+            isFavorite={isFavorite()}
+            content={currentFile()!.content}
+            htmlContent={currentFile()!.html}
+            onTabChange={(tab) => setActiveTab(tab)}
+            onOutlineToggle={() => setOutlineOpen(!outlineOpen())}
+            onNavigate={handleNavigate}
+            onFavoriteToggle={() => setIsFavorite(!isFavorite())}
+          />
+        </Show>
 
         <div class="main-content">
           <Show when={loading()}>
