@@ -6,7 +6,8 @@
 import { Component, Show, For, createEffect } from 'solid-js';
 import { useOpenProject } from './hooks/useOpenProject';
 import PathInput from './PathInput';
-import type { RecentProject } from '../../../types/openProject';
+import RecentProjectCard from './RecentProjectCard';
+import type { RecentProject } from '../../types/openProject';
 import './OpenProjectDialog.css';
 
 export interface OpenProjectDialogProps {
@@ -43,55 +44,13 @@ const ErrorState: Component<{ message: string; onClose?: () => void }> = (props)
   </div>
 );
 
-/** 最近项目卡片组件 */
-const RecentProjectCard: Component<{
-  project: RecentProject;
-  onClick: () => void;
-}> = (props) => {
-  // 格式化日期
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('zh-CN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  return (
-    <div class="recent-project-card" onClick={props.onClick}>
-      <div class="recent-project-icon">
-        📁
-      </div>
-      <div class="recent-project-info">
-        <div class="recent-project-name">{props.project.name}</div>
-        <div class="recent-project-path" title={props.project.path}>
-          {props.project.path}
-        </div>
-        <div class="recent-project-time">
-          {formatDate(props.project.last_opened_at)}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
-  const {
-    state,
-    recentProjects,
-    isLoadingRecent,
-    handleOpenProject,
-    openProjectByPath,
-    resetState,
-    clearError,
-  } = useOpenProject(() => props.isOpen, props.onProjectOpened);
+  const state = useOpenProject(() => props.isOpen, props.onProjectOpened);
 
   // 当对话框关闭时重置状态
   createEffect(() => {
     if (!props.isOpen) {
-      resetState();
+      state.resetState();
     }
   });
 
@@ -107,6 +66,11 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     if (e.key === 'Escape') {
       props.onClose();
     }
+  };
+
+  // 处理项目打开
+  const handleProjectOpen = async (path: string) => {
+    await state.openProjectByPath(path);
   };
 
   return (
@@ -143,17 +107,19 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             <div class="open-project-left">
               <PathInput
                 placeholder="输入项目路径或名称..."
-                onSubmit={(path) => openProjectByPath(path)}
-                disabled={state.isLoading}
-                loading={state.isLoading}
+                onSubmit={(path) => handleProjectOpen(path)}
+                disabled={state.state.isLoading}
+                loading={state.state.isLoading}
               />
 
-              {state.error && (
-                <ErrorState
-                  message={state.error}
-                  onClose={clearError}
-                />
-              )}
+              <Show when={state.state.error}>
+                {(error) => (
+                  <ErrorState
+                    message={error()}
+                    onClose={state.clearError}
+                  />
+                )}
+              </Show>
             </div>
 
             {/* 右侧：最近项目 */}
@@ -161,19 +127,20 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
               <h3 class="recent-projects-title">最近打开</h3>
               
               <Show
-                when={!isLoadingRecent()}
+                when={!state.isLoadingRecent}
                 fallback={<LoadingState message="加载最近项目..." />}
               >
                 <Show
-                  when={recentProjects().length > 0}
+                  when={state.recentProjects.length > 0}
                   fallback={<div class="no-recent-projects">暂无最近项目</div>}
                 >
                   <div class="recent-projects-grid">
-                    <For each={recentProjects()}>
+                    <For each={state.recentProjects}>
                       {(project) => (
                         <RecentProjectCard
                           project={project}
-                          onClick={() => openProjectByPath(project.path)}
+                          onClick={() => handleProjectOpen(project.path)}
+                          disabled={state.state.isLoading}
                         />
                       )}
                     </For>
@@ -188,16 +155,16 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             <button
               class="open-project-cancel-btn"
               onClick={props.onClose}
-              disabled={state.isLoading}
+              disabled={state.state.isLoading}
             >
               取消
             </button>
             <button
               class="open-project-confirm-btn"
-              onClick={() => handleOpenProject()}
-              disabled={state.isLoading}
+              onClick={() => state.handleOpenProject()}
+              disabled={state.state.isLoading}
             >
-              {state.isLoading ? '打开中...' : '打开项目'}
+              {state.state.isLoading ? '打开中...' : '打开项目'}
             </button>
           </div>
         </div>

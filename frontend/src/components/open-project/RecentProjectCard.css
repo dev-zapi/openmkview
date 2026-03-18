@@ -1,0 +1,205 @@
+/**
+ * RecentProjectCard 组件样式
+ */
+
+.recent-project-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.recent-project-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--color-accent);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.recent-project-card:hover {
+  background-color: var(--color-hover-bg);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.recent-project-card:hover::before {
+  transform: scaleY(1);
+}
+
+.recent-project-card.is-selected {
+  background-color: var(--color-accent-bg);
+  border-color: var(--color-accent);
+}
+
+.recent-project-card.is-selected::before {
+  transform: scaleY(1);
+}
+
+.recent-project-card.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.recent-project-card.is-disabled:hover {
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.recent-project-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-bg), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 项目图标 */
+.recent-project-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-subtle);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+/* 项目信息区域 */
+.recent-project-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 项目名称 */
+.recent-project-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.recent-project-card:hover .recent-project-name {
+  color: var(--color-accent);
+}
+
+/* 项目路径 */
+.recent-project-path {
+  font-size: 12px;
+  color: var(--color-text);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+/* 打开时间 */
+.recent-project-time {
+  font-size: 11px;
+  color: var(--color-text);
+  opacity: 0.6;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.4;
+}
+
+.recent-project-time svg {
+  flex-shrink: 0;
+}
+
+/* 箭头图标 */
+.recent-project-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.recent-project-card:hover .recent-project-arrow {
+  opacity: 1;
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .recent-project-card {
+    box-shadow: none;
+  }
+
+  .recent-project-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .recent-project-icon {
+    background-color: var(--color-bg-elevated);
+  }
+}
+
+.dark-theme .recent-project-card {
+  box-shadow: none;
+}
+
+.dark-theme .recent-project-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.dark-theme .recent-project-icon {
+  background-color: var(--color-bg-elevated);
+}
+
+/* 焦点样式 */
+.recent-project-card:focus-visible .recent-project-name {
+  color: var(--color-accent);
+}
+
+/* 选中状态下的样式 */
+.recent-project-card.is-selected .recent-project-name {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.recent-project-card.is-selected .recent-project-icon {
+  background-color: var(--color-accent-bg);
+  border-color: var(--color-accent-border);
+}
+
+/* 动画效果 */
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.recent-project-card {
+  animation: cardAppear 0.2s ease-out;
+}

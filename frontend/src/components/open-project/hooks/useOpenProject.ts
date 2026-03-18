@@ -205,9 +205,9 @@ export function useOpenProject(
   };
 
   return {
-    state: state(),
-    recentProjects,
-    isLoadingRecent,
+    get state() { return state(); },
+    get recentProjects() { return recentProjects(); },
+    get isLoadingRecent() { return isLoadingRecent(); },
     setInput,
     selectCandidate,
     handleOpenProject,

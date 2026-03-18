@@ -5,8 +5,8 @@
  */
 
 import { Component, createSignal } from 'solid-js';
-import { OpenProjectDialog } from './components/open-project';
-import type { RecentProject } from './types/openProject';
+import { OpenProjectDialog } from './index';
+import type { RecentProject } from '../../types/openProject';
 
 const App: Component = () => {
   // 控制对话框显示状态

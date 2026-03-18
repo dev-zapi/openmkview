@@ -7,9 +7,12 @@ import GitPanel from './components/GitPanel';
 import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
 import { MarkdownHeader } from './components/markdown-header';
+import { OpenProjectDialog } from './components/open-project';
 import { api } from './services/api';
 import { diffStore } from './stores/diffStore';
+import { openProjectStore } from './stores/openProjectStore';
 import type { FileNode, FileContent, Project } from './types';
+import type { RecentProject } from './types/openProject';
 import './styles/global.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -59,6 +62,7 @@ const App: Component = () => {
   const [systemTheme, setSystemTheme] = createSignal<'light' | 'dark'>(getSystemTheme());
   const [isFavorite, setIsFavorite] = createSignal(false);
   const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set());
+  const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = createSignal(false);
 
   let mediaQuery: MediaQueryList;
 
@@ -102,15 +106,36 @@ const App: Component = () => {
     setSettings(prev => ({ ...prev, theme: nextTheme }));
   };
 
-  const handleOpenProject = async () => {
-    const path = prompt('Project directory path:');
-    if (!path) return;
+  // 打开项目对话框
+  const handleOpenProject = () => {
+    setIsOpenProjectDialogOpen(true);
+  };
 
+  // 关闭项目对话框
+  const handleCloseOpenProjectDialog = () => {
+    setIsOpenProjectDialogOpen(false);
+  };
+
+  // 项目打开成功回调
+  const handleProjectOpened = async (recentProject: RecentProject) => {
     setLoading(true);
+    setIsOpenProjectDialogOpen(false);
+    
     try {
-      const project = await api.createProject(path);
-      setProjects([...projects(), project]);
+      // 创建或获取项目
+      const project = await api.createProject(recentProject.path);
+      
+      // 添加到项目列表（如果不存在）
+      const existingProject = projects().find(p => p.id === project.id);
+      if (!existingProject) {
+        setProjects([...projects(), project]);
+      }
+      
+      // 切换到新项目
       await handleSwitchProject(project);
+      
+      // 更新最近项目列表
+      openProjectStore.addRecentProject(recentProject);
     } catch (error) {
       console.error('Failed to open project:', error);
       alert('Failed to open project. Please check the path and try again.');
@@ -350,7 +375,7 @@ const App: Component = () => {
               <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
                 <div class="welcome">
                   <h1>OpenMKView</h1>
-                  <p>Click "Open Project" to get started</p>
+                  <p>点击 "Open Project" 或左侧 + 按钮开始</p>
                 </div>
               </Show>
 
@@ -407,6 +432,13 @@ const App: Component = () => {
       <SettingsPanel
         isOpen={settingsOpen()}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* 打开项目对话框 */}
+      <OpenProjectDialog
+        isOpen={isOpenProjectDialogOpen()}
+        onClose={handleCloseOpenProjectDialog}
+        onProjectOpened={handleProjectOpened}
       />
     </div>
   );

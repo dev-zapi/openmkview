@@ -24,6 +24,8 @@ export interface PathInputProps {
   disabled?: boolean;
   /** 加载状态 */
   loading?: boolean;
+  /** 是否自动聚焦 */
+  autoFocus?: boolean;
 }
 
 /**
@@ -100,6 +102,9 @@ const PathInput: Component<PathInputProps> = (props) => {
   
   // 错误信息
   const [error, setError] = createSignal<string | null>(null);
+  
+  // input ref for autoFocus
+  let inputRef: HTMLInputElement | undefined;
 
   // 计算路径类型
   const pathType = createMemo(() => detectPathType(input()));
@@ -112,6 +117,13 @@ const PathInput: Component<PathInputProps> = (props) => {
   
   // 是否是模糊搜索模式
   const isFuzzyMode = createMemo(() => pathType() === 'fuzzy');
+
+  // autoFocus effect
+  createEffect(() => {
+    if (props.autoFocus && inputRef) {
+      inputRef.focus();
+    }
+  });
 
   // 输入变化时处理
   createEffect(() => {
@@ -239,6 +251,7 @@ const PathInput: Component<PathInputProps> = (props) => {
         <div class="flex gap-2">
           <div class="relative flex-1">
             <input
+              ref={inputRef}
               type="text"
               value={input()}
               onInput={handleInput}
