@@ -44,10 +44,11 @@ const getSystemTheme = (): 'light' | 'dark' => {
 
 const loadSidebarWidth = () => {
   try {
-    const saved = localStorage.getItem('openmkview-sidebar-width');
+    const saved = localStorage.getItem('filetree-sidebar-width');
     if (saved) {
       const width = parseInt(saved, 10);
-      if (width >= 200 && width <= 400) {
+      const maxWidth = window.innerWidth * 0.4;
+      if (width >= 200 && width <= maxWidth) {
         return width;
       }
     }
@@ -101,6 +102,17 @@ const App: Component = () => {
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
+
+    // Adjust sidebar width on window resize
+    const handleWindowResize = () => {
+      const maxWidth = window.innerWidth * 0.4;
+      const currentWidth = sidebarWidth();
+      if (currentWidth > maxWidth) {
+        setSidebarWidth(maxWidth);
+        localStorage.setItem('filetree-sidebar-width', String(maxWidth));
+      }
+    };
+    window.addEventListener('resize', handleWindowResize);
     
     mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleThemeChange = (e: MediaQueryListEvent) => {
@@ -114,7 +126,8 @@ const App: Component = () => {
     // Sidebar resize handlers
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        const newWidth = Math.max(200, Math.min(400, e.clientX - 52)); // 52 is activity bar width
+        const maxWidth = window.innerWidth * 0.4;
+        const newWidth = Math.max(200, Math.min(maxWidth, e.clientX - 52));
         setSidebarWidth(newWidth);
       }
     };
@@ -125,7 +138,7 @@ const App: Component = () => {
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
         // Save to localStorage
-        localStorage.setItem('openmkview-sidebar-width', String(sidebarWidth()));
+        localStorage.setItem('filetree-sidebar-width', String(sidebarWidth()));
       }
     };
     
@@ -135,6 +148,7 @@ const App: Component = () => {
     onCleanup(() => {
       mediaQuery.removeEventListener('change', handleThemeChange);
       window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('resize', handleWindowResize);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     });
