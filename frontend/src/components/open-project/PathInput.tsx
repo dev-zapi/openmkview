@@ -3,15 +3,13 @@
  * 
  * 功能：
  * - 实时检测路径类型（absolute/relative/fuzzy）
- * - 路径类型提示标签（带颜色和图标）
- * - 深度提示（深度 ≤ 2）
  * - 模糊搜索候选列表下拉框
- * - 输入框和提交按钮
+ * - 支持键盘上下导航和 Tab/Enter 补全
  */
 
-import { Component, createSignal, createMemo, createEffect, Show, For } from 'solid-js';
+import { Component, createSignal, createEffect, Show, For, onCleanup, createMemo } from 'solid-js';
 import { projectClient } from '../../api/client';
-import type { PathType, PathCandidate } from '../../types/openProject';
+import type { PathCandidate } from '../../types/openProject';
 
 export interface PathInputProps {
   /** 输入框占位符 */
@@ -31,7 +29,7 @@ export interface PathInputProps {
 /**
  * 检测路径类型（本地逻辑，不调用 API）
  */
-function detectPathType(input: string): PathType | null {
+function detectPathType(input: string): 'fuzzy' | 'absolute' | 'relative' | null {
   if (!input || input.trim() === '') {
     return null;
   }
@@ -53,46 +51,30 @@ function detectPathType(input: string): PathType | null {
 }
 
 /**
- * 计算路径深度
+ * 简单防抖函数
  */
-function calculateDepth(input: string): number {
-  if (!input || input.trim() === '') {
-    return 0;
-  }
-  
-  const trimmed = input.trim();
-  const parts = trimmed.split(/[/\\]/).filter(p => p.length > 0);
-  
-  return parts.length;
+function debounce<T extends (...args: string[]) => void>(fn: T, delay: number): T {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return ((...args: string[]) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(() => {
+      fn(...args);
+      timeoutId = null;
+    }, delay);
+  }) as T;
 }
-
-/**
- * 路径类型标签配置
- */
-const pathTypeConfig: Record<PathType, { label: string; colorClass: string; icon: string }> = {
-  absolute: {
-    label: '绝对路径',
-    colorClass: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
-    icon: '📍',
-  },
-  relative: {
-    label: '相对路径',
-    colorClass: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
-    icon: '📂',
-  },
-  fuzzy: {
-    label: '模糊搜索',
-    colorClass: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
-    icon: '🔍',
-  },
-};
 
 const PathInput: Component<PathInputProps> = (props) => {
   // 输入值
   const [input, setInput] = createSignal(props.initialValue || '');
   
-  // 候选列表
-  const [candidates, setCandidates] = createSignal<PathCandidate[]>([]);
+  // 搜索结果列表
+  const [searchResults, setSearchResults] = createSignal<PathCandidate[]>([]);
+  
+  // 过滤后的最近列表
+  const [filteredRecent, setFilteredRecent] = createSignal<Array<{name: string; path: string}>>([]);
   
   // 是否显示候选列表
   const [showCandidates, setShowCandidates] = createSignal(false);
@@ -100,24 +82,21 @@ const PathInput: Component<PathInputProps> = (props) => {
   // 加载状态
   const [isLoading, setIsLoading] = createSignal(false);
   
-  // 错误信息
-  const [error, setError] = createSignal<string | null>(null);
+  // 键盘选中索引（-1 表示未选中）
+  const [selectedIndex, setSelectedIndex] = createSignal(-1);
   
-  // input ref for autoFocus
+  // 输入 ref
   let inputRef: HTMLInputElement | undefined;
-
+  
+  // 总候选数（搜索结果 + 过滤的最近）
+  const totalCandidates = () => searchResults().length + filteredRecent().length;
+  
   // 计算路径类型
   const pathType = createMemo(() => detectPathType(input()));
   
-  // 计算路径深度
-  const depth = createMemo(() => calculateDepth(input()));
-  
-  // 是否显示深度提示
-  const showDepthHint = createMemo(() => depth() > 0 && depth() <= 2);
-  
   // 是否是模糊搜索模式
   const isFuzzyMode = createMemo(() => pathType() === 'fuzzy');
-
+  
   // autoFocus effect
   createEffect(() => {
     if (props.autoFocus && inputRef) {
@@ -125,81 +104,134 @@ const PathInput: Component<PathInputProps> = (props) => {
     }
   });
 
-  // 输入变化时处理
-  createEffect(() => {
-    const value = input();
-    const type = pathType();
-    
-    // 重置错误
-    setError(null);
-    
-    // 模糊搜索模式下调用 API 获取候选
-    if (type === 'fuzzy' && value.trim().length > 0) {
-      setIsLoading(true);
-      
-      // 防抖处理
-      const timeoutId = setTimeout(async () => {
-        try {
-          const result = await projectClient.resolvePath(value);
-          
-          if (result.success && result.candidates.length > 0) {
-            setCandidates(result.candidates);
-            setShowCandidates(true);
-          } else {
-            setCandidates([]);
-            setShowCandidates(false);
-          }
-        } catch (err) {
-          console.error('Failed to resolve path:', err);
-          setCandidates([]);
-          setShowCandidates(false);
-        } finally {
-          setIsLoading(false);
-        }
-      }, 150); // 150ms 防抖
-      
-      return () => clearTimeout(timeoutId);
-    } else {
-      setCandidates([]);
+  // 防抖搜索
+  const debouncedSearch = debounce(async (query: string) => {
+    if (!query.trim() || !isFuzzyMode()) {
+      setSearchResults([]);
       setShowCandidates(false);
+      setIsLoading(false);
+      return;
     }
-  });
 
-  // 处理输入变化
+    try {
+      const result = await projectClient.resolvePath(query);
+      setSearchResults(result.candidates || []);
+      
+      // 过滤最近项目（最多显示5个）
+      const recentStr = localStorage.getItem('openmkview-recent-projects');
+      if (recentStr) {
+        try {
+          const recent = JSON.parse(recentStr);
+          const filtered = (recent as Array<{name: string; path: string}>)
+            .filter(p => p.name.toLowerCase().includes(query.toLowerCase()))
+            .slice(0, 5);
+          setFilteredRecent(filtered);
+        } catch {
+          setFilteredRecent([]);
+        }
+      } else {
+        setFilteredRecent([]);
+      }
+      
+      setShowCandidates(true);
+      setSelectedIndex(-1);
+    } catch (err) {
+      console.error('Failed to resolve path:', err);
+      setSearchResults([]);
+      setFilteredRecent([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, 350);
+
+  // 输入变化时处理
   const handleInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
-    setInput(e.currentTarget.value);
+    const value = e.currentTarget.value;
+    setInput(value);
+    setSelectedIndex(-1);
+    
+    if (value.trim().length > 0) {
+      setIsLoading(true);
+      debouncedSearch(value);
+    } else {
+      setSearchResults([]);
+      setFilteredRecent([]);
+      setShowCandidates(false);
+      setIsLoading(false);
+    }
   };
 
   // 处理提交
   const handleSubmit = () => {
     const value = input().trim();
     if (value && !props.disabled && !props.loading) {
-      // 如果有候选列表且正在显示，选择第一个
-      if (isFuzzyMode() && candidates().length > 0 && showCandidates()) {
-        const firstCandidate = candidates()[0];
-        setInput(firstCandidate.path);
-        setShowCandidates(false);
-        props.onSubmit(firstCandidate.path);
-      } else {
-        props.onSubmit(value);
+      // 如果有候选列表且正在显示，选择第一个或当前选中项
+      if (showCandidates()) {
+        const idx = selectedIndex();
+        if (idx >= 0 && idx < totalCandidates()) {
+          let path: string;
+          if (idx < searchResults().length) {
+            path = searchResults()[idx].path;
+          } else {
+            path = filteredRecent()[idx - searchResults().length].path;
+          }
+          setInput(path);
+          setShowCandidates(false);
+          props.onSubmit(path);
+          return;
+        }
       }
+      props.onSubmit(value);
     }
   };
 
   // 处理候选选择
-  const handleCandidateClick = (candidate: PathCandidate) => {
-    setInput(candidate.path);
+  const handleCandidateSelect = (path: string, name: string) => {
+    setInput(name || path);
     setShowCandidates(false);
-    props.onSubmit(candidate.path);
+    props.onSubmit(path);
   };
 
   // 处理键盘事件
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    const total = totalCandidates();
+    
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      handleSubmit();
+      if (!showCandidates()) {
+        setShowCandidates(true);
+        setSelectedIndex(0);
+      } else {
+        setSelectedIndex(prev => (prev + 1) % Math.max(total, 1));
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (showCandidates()) {
+        setSelectedIndex(prev => (prev <= 0 ? total - 1 : prev - 1));
+      }
+    } else if (e.key === 'Tab' || e.key === 'Enter') {
+      if (showCandidates() && total > 0) {
+        e.preventDefault();
+        const idx = selectedIndex() >= 0 ? selectedIndex() : 0;
+        if (idx < searchResults().length) {
+          const candidate = searchResults()[idx];
+          setInput(candidate.path);
+          setShowCandidates(false);
+          props.onSubmit(candidate.path);
+        } else {
+          const recent = filteredRecent()[idx - searchResults().length];
+          if (recent) {
+            setInput(recent.path);
+            setShowCandidates(false);
+            props.onSubmit(recent.path);
+          }
+        }
+      } else if (e.key === 'Enter') {
+        handleSubmit();
+      }
     } else if (e.key === 'Escape') {
       setShowCandidates(false);
+      setSelectedIndex(-1);
     }
   };
 
@@ -207,45 +239,25 @@ const PathInput: Component<PathInputProps> = (props) => {
   const handleBlur = () => {
     setTimeout(() => {
       setShowCandidates(false);
+      setSelectedIndex(-1);
     }, 200);
   };
 
-  // 获取路径类型标签配置
-  const getPathTypeConfig = () => {
-    const type = pathType();
-    return type ? pathTypeConfig[type] : null;
+  // 处理鼠标悬停
+  const handleMouseEnter = (index: number) => {
+    setSelectedIndex(index);
+  };
+
+  // 计算全局索引
+  const getGlobalIndex = (section: 'search' | 'recent', localIndex: number): number => {
+    if (section === 'search') {
+      return localIndex;
+    }
+    return searchResults().length + localIndex;
   };
 
   return (
     <div class="path-input-container w-full">
-      {/* 路径类型标签 */}
-      <Show when={getPathTypeConfig()}>
-        {(config) => (
-          <div class="flex items-center gap-2 mb-2">
-            <span
-              class={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border ${config().colorClass}`}
-            >
-              <span>{config().icon}</span>
-              <span>{config().label}</span>
-            </span>
-            
-            {/* 深度提示 */}
-            <Show when={showDepthHint()}>
-              <span class="text-xs text-gray-500 dark:text-gray-400">
-                深度 ≤ 2
-              </span>
-            </Show>
-            
-            {/* 加载指示器 */}
-            <Show when={isLoading()}>
-              <span class="text-xs text-gray-400 animate-pulse">
-                搜索中...
-              </span>
-            </Show>
-          </div>
-        )}
-      </Show>
-
       {/* 输入框区域 */}
       <div class="relative">
         <div class="flex gap-2">
@@ -257,83 +269,106 @@ const PathInput: Component<PathInputProps> = (props) => {
               onInput={handleInput}
               onKeyDown={handleKeyDown}
               onBlur={handleBlur}
+              onFocus={() => {
+                // 聚焦时如果有内容且是模糊模式，显示候选列表
+                if (input().trim().length > 0 && isFuzzyMode() && totalCandidates() > 0) {
+                  setShowCandidates(true);
+                }
+              }}
               disabled={props.disabled || props.loading}
-              placeholder={props.placeholder || '输入项目路径...'}
+              placeholder={props.placeholder || '输入项目路径或名称...'}
               class="w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg 
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
                      disabled:opacity-50 disabled:cursor-not-allowed
                      placeholder:text-gray-400 dark:placeholder:text-gray-500
-                     text-gray-900 dark:text-gray-100"
+                     text-gray-900 dark:text-gray-100 transition-all duration-150"
             />
             
-            {/* 候选列表下拉框 */}
-            <Show when={showCandidates() && candidates().length > 0}>
-              <div class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto">
-                <For each={candidates()}>
-                  {(candidate, index) => (
-                    <button
-                      type="button"
-                      onClick={() => handleCandidateClick(candidate)}
-                      class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 
-                             border-b border-gray-100 dark:border-gray-700 last:border-b-0
-                             focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700/50"
-                    >
-                      <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                          <span class="text-gray-500 dark:text-gray-400">📁</span>
-                          <span class="font-medium text-gray-900 dark:text-gray-100">
-                            {candidate.name}
-                          </span>
+            {/* 加载指示器 */}
+            <Show when={isLoading()}>
+              <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                <div class="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+            </Show>
+            
+            {/* 候选列表下拉框 - 分栏设计 */}
+            <Show when={showCandidates() && totalCandidates() > 0}>
+              <div class="candidate-dropdown">
+                {/* 搜索结果区域 */}
+                <Show when={searchResults().length > 0}>
+                  <div class="search-results-section">
+                    <div class="section-label">搜索结果</div>
+                    <For each={searchResults().slice(0, 5)}>
+                      {(candidate, index) => (
+                        <div
+                          class="candidate-item"
+                          classList={{ 'is-selected': selectedIndex() === getGlobalIndex('search', index()) }}
+                          onClick={() => handleCandidateSelect(candidate.path, candidate.name)}
+                          onMouseEnter={() => handleMouseEnter(getGlobalIndex('search', index()))}
+                        >
+                          <div class="flex items-center gap-2">
+                            <span class="text-gray-500 dark:text-gray-400">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                              </svg>
+                            </span>
+                            <span class="font-medium text-gray-900 dark:text-gray-100">
+                              {candidate.name}
+                            </span>
+                          </div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400 truncate ml-6">
+                            {candidate.relative_path}
+                          </div>
                         </div>
-                        <Show when={candidate.depth <= 2}>
-                          <span class="text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                            浅层
-                          </span>
-                        </Show>
-                      </div>
-                      <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {candidate.relative_path}
-                      </div>
-                    </button>
-                  )}
-                </For>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+                
+                {/* 分隔线 */}
+                <Show when={searchResults().length > 0 && filteredRecent().length > 0}>
+                  <div class="section-divider"></div>
+                </Show>
+                
+                {/* 过滤的最近项目区域 */}
+                <Show when={filteredRecent().length > 0}>
+                  <div class="recent-results-section">
+                    <div class="section-label">最近打开</div>
+                    <For each={filteredRecent()}>
+                      {(recent, index) => (
+                        <div
+                          class="candidate-item"
+                          classList={{ 'is-selected': selectedIndex() === getGlobalIndex('recent', index()) }}
+                          onClick={() => handleCandidateSelect(recent.path, recent.name)}
+                          onMouseEnter={() => handleMouseEnter(getGlobalIndex('recent', index()))}
+                        >
+                          <div class="flex items-center gap-2">
+                            <span class="text-gray-500 dark:text-gray-400">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                              </svg>
+                            </span>
+                            <span class="font-medium text-gray-900 dark:text-gray-100">
+                              {recent.name}
+                            </span>
+                          </div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400 truncate ml-6">
+                            {recent.path}
+                          </div>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
               </div>
             </Show>
           </div>
-          
-          {/* 提交按钮 */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!input().trim() || props.disabled || props.loading}
-            class="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   rounded-lg transition-colors duration-150
-                   flex items-center gap-2"
-          >
-            <Show when={props.loading} fallback={
-              <>
-                <span>打开</span>
-                <span>→</span>
-              </>
-            }>
-              <span class="animate-spin">⏳</span>
-              <span>加载中</span>
-            </Show>
-          </button>
         </div>
       </div>
-      
-      {/* 错误提示 */}
-      <Show when={error()}>
-        <div class="mt-2 text-sm text-red-600 dark:text-red-400">
-          {error()}
-        </div>
-      </Show>
     </div>
   );
 };
 
 export default PathInput;
-export { detectPathType, calculateDepth };
+export { detectPathType };

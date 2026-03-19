@@ -8,6 +8,7 @@ import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
 import { MarkdownHeader } from './components/markdown-header';
 import { OpenProjectDialog } from './components/open-project';
+import { MobileLayout, mobileLayoutStore } from './components/mobile';
 import { api } from './services/api';
 import { diffStore } from './stores/diffStore';
 import { openProjectStore } from './stores/openProjectStore';
@@ -21,7 +22,7 @@ const getSystemTheme = (): 'light' | 'dark' => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-const loadSettings = () => {
+  const loadSettings = () => {
   try {
     const saved = localStorage.getItem('openmkview-settings');
     if (saved) {
@@ -39,6 +40,21 @@ const loadSettings = () => {
     uiFontSize: '14px',
     markdownFontSize: '16px',
   };
+};
+
+const loadSidebarWidth = () => {
+  try {
+    const saved = localStorage.getItem('openmkview-sidebar-width');
+    if (saved) {
+      const width = parseInt(saved, 10);
+      if (width >= 200 && width <= 400) {
+        return width;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load sidebar width:', e);
+  }
+  return 280;
 };
 
 const applyTheme = (theme: ThemeMode) => {
@@ -63,8 +79,12 @@ const App: Component = () => {
   const [isFavorite, setIsFavorite] = createSignal(false);
   const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set());
   const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = createSignal(false);
+  const [isMobile, setIsMobile] = createSignal(false);
+  const [sidebarWidth, setSidebarWidth] = createSignal(280);
 
   let mediaQuery: MediaQueryList;
+  let sidebarRef: HTMLDivElement | undefined;
+  let isDragging = false;
 
   onMount(async () => {
     const projectList = await api.getProjects();
@@ -72,6 +92,16 @@ const App: Component = () => {
 
     applyTheme(settings().theme as ThemeMode);
 
+    // Load sidebar width from localStorage
+    setSidebarWidth(loadSidebarWidth());
+
+    // Detect mobile viewport
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
     mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleThemeChange = (e: MediaQueryListEvent) => {
       setSystemTheme(e.matches ? 'dark' : 'light');
@@ -80,7 +110,34 @@ const App: Component = () => {
       }
     };
     mediaQuery.addEventListener('change', handleThemeChange);
-    onCleanup(() => mediaQuery.removeEventListener('change', handleThemeChange));
+    
+    // Sidebar resize handlers
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        const newWidth = Math.max(200, Math.min(400, e.clientX - 52)); // 52 is activity bar width
+        setSidebarWidth(newWidth);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        // Save to localStorage
+        localStorage.setItem('openmkview-sidebar-width', String(sidebarWidth()));
+      }
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    onCleanup(() => {
+      mediaQuery.removeEventListener('change', handleThemeChange);
+      window.removeEventListener('resize', checkMobile);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    });
   });
 
   createEffect(() => {
@@ -236,6 +293,20 @@ const App: Component = () => {
     setActiveTab('preview');
   };
 
+  const handleMobileMenuClick = () => {
+    if (isMobile()) {
+      mobileLayoutStore.toggleLeftDrawer();
+    }
+  };
+
+  const handleMobileOutlineToggle = () => {
+    if (isMobile()) {
+      mobileLayoutStore.toggleRightDrawer();
+    } else {
+      setOutlineOpen(!outlineOpen());
+    }
+  };
+
   const getMarkdownStyle = () => {
     const s = settings();
     if (s.markdownWidth === 'fixed') {
@@ -249,87 +320,288 @@ const App: Component = () => {
   };
 
   return (
-    <div class="app-container">
-      <aside class="activity-bar">
-        {/* 项目列表区域 - 可滚动 */}
-        <div class="activity-bar-projects"
-        >
-          <For each={projects()}>
-            {(p) => (
+    <>
+      {/* Desktop layout */}
+      <Show when={!isMobile()}>
+        <div class="app-container">
+          <aside class="activity-bar">
+            {/* 项目列表区域 - 可滚动 */}
+            <div class="activity-bar-projects"
+            >
+              <For each={projects()}>
+                {(p) => (
+                  <button
+                    class={activeProject()?.id === p.id ? 'active' : ''}
+                    title={p.name}
+                    onClick={() => handleSwitchProject(p)}
+                  >
+                    <span class="project-initial">{p.name.charAt(0).toUpperCase()}</span>
+                  </button>
+                )}
+              </For>
+            </div>
+
+            {/* 加号按钮 */}
+            <button
+              class="activity-bar-add"
+              title="Open Project"
+              onClick={handleOpenProject}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+
+            {/* 底部固定区域 */}
+            <div class="activity-bar-bottom">
               <button
-                class={activeProject()?.id === p.id ? 'active' : ''}
-                title={p.name}
-                onClick={() => handleSwitchProject(p)}
+                class={settings().theme === 'dark' ? 'active' : ''}
+                title={`Theme: ${settings().theme} (click to toggle)`}
+                onClick={toggleTheme}
+              >
+                <Show when={settings().theme === 'light'}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                </Show>
+                <Show when={settings().theme === 'dark'}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                </Show>
+                <Show when={settings().theme === 'system'}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                </Show>
+              </button>
+              <button
+                title="Settings"
+                onClick={() => setSettingsOpen(true)}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
               </button>
-            )}
-          </For>
+            </div>
+          </aside>
+
+          <Show when={activePanel() === 'explorer'}>
+            <aside 
+              class="sidebar" 
+              ref={sidebarRef}
+              style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.15s ease' }}
+            >
+              <div class="sidebar-header">
+                {activeProject()?.name || 'Explorer'}
+              </div>
+              <div class="sidebar-content">
+                <Show when={activeProject()} fallback={
+                  <p class="empty-state">点击左侧 + 按钮打开项目</p>
+                }>
+                  <FileTree
+                    nodes={fileTree()}
+                    onFileClick={handleFileClick}
+                    expandedFolders={expandedFolders()}
+                    onFolderToggle={handleFolderToggle}
+                  />
+                </Show>
+              </div>
+              {/* Resize handle */}
+              <div 
+                class="sidebar-resize-handle"
+                onMouseDown={() => {
+                  isDragging = true;
+                  document.body.style.cursor = 'col-resize';
+                  document.body.style.userSelect = 'none';
+                }}
+              />
+            </aside>
+          </Show>
+
+          <main class="main">
+            <Show when={currentFile()}>
+              <MarkdownHeader
+                fileName={currentFile()!.fileName}
+                filePath={currentFile()!.path}
+                projectName={activeProject()?.name || ''}
+                lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
+                fileSize={currentFile()!.fileSize}
+                activeTab={activeTab()}
+                isOutlineOpen={outlineOpen()}
+                outlineCount={currentFile()!.headings?.length || 0}
+                isFavorite={isFavorite()}
+                content={currentFile()!.content}
+                htmlContent={currentFile()!.html}
+                onTabChange={(tab) => setActiveTab(tab)}
+                onOutlineToggle={handleMobileOutlineToggle}
+                onNavigate={handleNavigate}
+                onFavoriteToggle={() => setIsFavorite(!isFavorite())}
+                onMenuClick={handleMobileMenuClick}
+              />
+            </Show>
+
+            <div class="main-content">
+              <Show when={loading()}>
+                <div class="loading">Loading...</div>
+              </Show>
+
+              <div class="content-area">
+                <div class="content-main" classList={{ 'with-outline': outlineOpen() }}>
+                  <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
+                    <div class="welcome">
+                      <h1>OpenMKView</h1>
+                      <p>点击 "Open Project" 或左侧 + 按钮开始</p>
+                    </div>
+                  </Show>
+
+                  <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
+                    <div class="markdown-wrapper" style={getMarkdownStyle()}>
+                      <MarkdownView content={currentFile()!.content} />
+                    </div>
+                  </Show>
+
+                  <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
+                    <DiffSelector
+                      projectId={activeProject()!.id}
+                      filePath={currentFile()!.path}
+                    />
+
+                    <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
+                      <DiffViewer
+                        diffData={diffStore.state.diffData!}
+                        theme={settings().theme}
+                        mode="split"
+                        onClose={handleCloseDiff}
+                      />
+                    </Show>
+
+                    <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
+                      <div class="diff-empty">
+                        <p>Select versions to compare</p>
+                      </div>
+                    </Show>
+                  </Show>
+
+                  <Show when={!loading() && currentFile() && activeTab() === 'source'}>
+                    <pre class="source-view">
+                      <code>{currentFile()!.content}</code>
+                    </pre>
+                  </Show>
+                </div>
+
+                <OutlinePanel
+                  headings={currentFile()?.headings || []}
+                  isOpen={outlineOpen()}
+                  onClose={() => setOutlineOpen(false)}
+                />
+              </div>
+            </div>
+          </main>
+
+          <GitPanel
+            projectId={activeProject()?.id || 0}
+            isOpen={gitPanelOpen()}
+            onClose={() => setGitPanelOpen(false)}
+          />
+
+          <SettingsPanel
+            isOpen={settingsOpen()}
+            onClose={() => setSettingsOpen(false)}
+          />
+
+          {/* 打开项目对话框 */}
+          <OpenProjectDialog
+            isOpen={isOpenProjectDialogOpen()}
+            onClose={handleCloseOpenProjectDialog}
+            onProjectOpened={handleProjectOpened}
+          />
         </div>
+      </Show>
 
-        {/* 加号按钮 */}
-        <button
-          class="activity-bar-add"
-          title="Open Project"
-          onClick={handleOpenProject}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
-
-        {/* 底部固定区域 */}
-        <div class="activity-bar-bottom">
-          <button
-            class={settings().theme === 'dark' ? 'active' : ''}
-            title={`Theme: ${settings().theme} (click to toggle)`}
-            onClick={toggleTheme}
-          >
-            <Show when={settings().theme === 'light'}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5"/>
-                <line x1="12" y1="1" x2="12" y2="3"/>
-                <line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/>
-                <line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-              </svg>
-            </Show>
-            <Show when={settings().theme === 'dark'}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
-            </Show>
-            <Show when={settings().theme === 'system'}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-            </Show>
-          </button>
-          <button
-            title="Settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </button>
-        </div>
-      </aside>
-
-      <Show when={activePanel() === 'explorer'}>
-        <aside class="sidebar">
-          <div class="sidebar-header">Explorer</div>
-          <div class="sidebar-content">
+      {/* Mobile layout */}
+      <Show when={isMobile()}>
+        <MobileLayout
+          activityBarContent={
+            <>
+              <For each={projects()}>
+                {(p) => (
+                  <button
+                    class={activeProject()?.id === p.id ? 'active' : ''}
+                    title={p.name}
+                    onClick={() => handleSwitchProject(p)}
+                  >
+                    <span class="project-initial">{p.name.charAt(0).toUpperCase()}</span>
+                  </button>
+                )}
+              </For>
+              <button
+                class="activity-bar-add"
+                title="Open Project"
+                onClick={handleOpenProject}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+              <div class="activity-bar-bottom">
+                <button
+                  class={settings().theme === 'dark' ? 'active' : ''}
+                  title={`Theme: ${settings().theme} (click to toggle)`}
+                  onClick={toggleTheme}
+                >
+                  <Show when={settings().theme === 'light'}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="5"/>
+                      <line x1="12" y1="1" x2="12" y2="3"/>
+                      <line x1="12" y1="21" x2="12" y2="23"/>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                      <line x1="1" y1="12" x2="3" y2="12"/>
+                      <line x1="21" y1="12" x2="23" y2="12"/>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                  </Show>
+                  <Show when={settings().theme === 'dark'}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                  </Show>
+                  <Show when={settings().theme === 'system'}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                      <line x1="8" y1="21" x2="16" y2="21"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                  </Show>
+                </button>
+                <button
+                  title="Settings"
+                  onClick={() => setSettingsOpen(true)}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </button>
+              </div>
+            </>
+          }
+          sidebarContent={
             <Show when={activeProject()} fallback={
               <p class="empty-state">点击左侧 + 按钮打开项目</p>
             }>
@@ -340,107 +612,86 @@ const App: Component = () => {
                 onFolderToggle={handleFolderToggle}
               />
             </Show>
-          </div>
-        </aside>
-      </Show>
-
-      <main class="main">
-        <Show when={currentFile()}>
-          <MarkdownHeader
-            fileName={currentFile()!.fileName}
-            filePath={currentFile()!.path}
-            projectName={activeProject()?.name || ''}
-            lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
-            fileSize={currentFile()!.fileSize}
-            activeTab={activeTab()}
-            isOutlineOpen={outlineOpen()}
-            outlineCount={currentFile()!.headings?.length || 0}
-            isFavorite={isFavorite()}
-            content={currentFile()!.content}
-            htmlContent={currentFile()!.html}
-            onTabChange={(tab) => setActiveTab(tab)}
-            onOutlineToggle={() => setOutlineOpen(!outlineOpen())}
-            onNavigate={handleNavigate}
-            onFavoriteToggle={() => setIsFavorite(!isFavorite())}
-          />
-        </Show>
-
-        <div class="main-content">
-          <Show when={loading()}>
-            <div class="loading">Loading...</div>
-          </Show>
-
-          <div class="content-area">
-            <div class="content-main" classList={{ 'with-outline': outlineOpen() }}>
-              <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
-                <div class="welcome">
-                  <h1>OpenMKView</h1>
-                  <p>点击 "Open Project" 或左侧 + 按钮开始</p>
-                </div>
-              </Show>
-
-              <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
-                <div class="markdown-wrapper" style={getMarkdownStyle()}>
-                  <MarkdownView content={currentFile()!.content} />
-                </div>
-              </Show>
-
-              <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
-                <DiffSelector
-                  projectId={activeProject()!.id}
-                  filePath={currentFile()!.path}
-                />
-
-                <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
-                  <DiffViewer
-                    diffData={diffStore.state.diffData!}
-                    theme={settings().theme}
-                    mode="split"
-                    onClose={handleCloseDiff}
-                  />
-                </Show>
-
-                <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
-                  <div class="diff-empty">
-                    <p>Select versions to compare</p>
-                  </div>
-                </Show>
-              </Show>
-
-              <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-                <pre class="source-view">
-                  <code>{currentFile()!.content}</code>
-                </pre>
-              </Show>
-            </div>
-
+          }
+          outlinePanelContent={
             <OutlinePanel
               headings={currentFile()?.headings || []}
-              isOpen={outlineOpen()}
-              onClose={() => setOutlineOpen(false)}
+              isOpen={true}
+              onClose={() => mobileLayoutStore.closeRightDrawer()}
             />
+          }
+          headerContent={
+            <Show when={currentFile()}>
+              <MarkdownHeader
+                fileName={currentFile()!.fileName}
+                filePath={currentFile()!.path}
+                projectName={activeProject()?.name || ''}
+                lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
+                fileSize={currentFile()!.fileSize}
+                activeTab={activeTab()}
+                isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
+                outlineCount={currentFile()!.headings?.length || 0}
+                isFavorite={isFavorite()}
+                content={currentFile()!.content}
+                htmlContent={currentFile()!.html}
+                onTabChange={(tab) => setActiveTab(tab)}
+                onOutlineToggle={handleMobileOutlineToggle}
+                onNavigate={handleNavigate}
+                onFavoriteToggle={() => setIsFavorite(!isFavorite())}
+                onMenuClick={handleMobileMenuClick}
+              />
+            </Show>
+          }
+        >
+          <div class="mobile-main-content">
+            <Show when={loading()}>
+              <div class="loading">Loading...</div>
+            </Show>
+
+            <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
+              <div class="welcome">
+                <h1>OpenMKView</h1>
+                <p>点击 "Open Project" 或左侧 + 按钮开始</p>
+              </div>
+            </Show>
+
+            <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
+              <div class="markdown-wrapper" style={getMarkdownStyle()}>
+                <MarkdownView content={currentFile()!.content} />
+              </div>
+            </Show>
+
+            <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
+              <DiffSelector
+                projectId={activeProject()!.id}
+                filePath={currentFile()!.path}
+              />
+
+              <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
+                <DiffViewer
+                  diffData={diffStore.state.diffData!}
+                  theme={settings().theme}
+                  mode="split"
+                  onClose={handleCloseDiff}
+                />
+              </Show>
+
+              <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
+                <div class="diff-empty">
+                  <p>Select versions to compare</p>
+                </div>
+              </Show>
+            </Show>
+
+            <Show when={!loading() && currentFile() && activeTab() === 'source'}>
+              <pre class="source-view">
+                <code>{currentFile()!.content}</code>
+              </pre>
+            </Show>
           </div>
-        </div>
-      </main>
-
-      <GitPanel
-        projectId={activeProject()?.id || 0}
-        isOpen={gitPanelOpen()}
-        onClose={() => setGitPanelOpen(false)}
-      />
-
-      <SettingsPanel
-        isOpen={settingsOpen()}
-        onClose={() => setSettingsOpen(false)}
-      />
-
-      {/* 打开项目对话框 */}
-      <OpenProjectDialog
-        isOpen={isOpenProjectDialogOpen()}
-        onClose={handleCloseOpenProjectDialog}
-        onProjectOpened={handleProjectOpened}
-      />
-    </div>
+        </MobileLayout>
+      </Show>
+    </>
   );
 };
 

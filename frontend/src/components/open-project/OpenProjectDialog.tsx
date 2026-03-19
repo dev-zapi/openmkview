@@ -103,7 +103,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
 
           {/* Body */}
           <div class="open-project-body">
-            {/* 左侧：路径输入 */}
+            {/* 左侧：项目列表 */}
             <div class="open-project-left">
               <PathInput
                 placeholder="输入项目路径或名称..."
@@ -120,32 +120,88 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
                   />
                 )}
               </Show>
+
+              {/* 项目列表 */}
+              <div class="project-list-container">
+                <h3 class="project-list-title">项目列表</h3>
+                
+                <Show
+                  when={!state.isLoadingRecent}
+                  fallback={<LoadingState message="加载项目列表..." />}
+                >
+                  <Show
+                    when={state.recentProjects.length > 0}
+                    fallback={<div class="no-projects">暂无项目</div>}
+                  >
+                    <div class="project-list">
+                      <For each={state.recentProjects}>
+                        {(project) => (
+                          <RecentProjectCard
+                            project={project}
+                            isSelected={state.selectedProject()?.id === project.id}
+                            onClick={() => {
+                              state.setSelectedProject(project);
+                              handleProjectOpen(project.path);
+                            }}
+                            disabled={state.state.isLoading}
+                          />
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </Show>
+              </div>
             </div>
 
-            {/* 右侧：最近项目 */}
+            {/* 右侧：项目详情 */}
             <div class="open-project-right">
-              <h3 class="recent-projects-title">最近打开</h3>
-              
               <Show
-                when={!state.isLoadingRecent}
-                fallback={<LoadingState message="加载最近项目..." />}
-              >
-                <Show
-                  when={state.recentProjects.length > 0}
-                  fallback={<div class="no-recent-projects">暂无最近项目</div>}
-                >
-                  <div class="recent-projects-grid">
-                    <For each={state.recentProjects}>
-                      {(project) => (
-                        <RecentProjectCard
-                          project={project}
-                          onClick={() => handleProjectOpen(project.path)}
-                          disabled={state.state.isLoading}
-                        />
-                      )}
-                    </For>
+                when={state.selectedProject()}
+                fallback={
+                  <div class="project-detail-empty">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <p>选择项目查看详情</p>
                   </div>
-                </Show>
+                }
+              >
+                {(project) => (
+                  <div class="project-detail">
+                    <div class="project-detail-header">
+                      <div class="project-detail-icon">
+                        {project().name.charAt(0).toUpperCase()}
+                      </div>
+                      <div class="project-detail-title">
+                        <h3>{project().name}</h3>
+                        <span class="project-detail-type">{project().type || '项目'}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="project-detail-info">
+                      <div class="detail-row">
+                        <span class="detail-label">路径</span>
+                        <span class="detail-value" title={project().path}>{project().path}</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">最后打开</span>
+                        <span class="detail-value">{new Date(project().last_opened_at).toLocaleString('zh-CN')}</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">项目ID</span>
+                        <span class="detail-value">{project().id}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      class="project-detail-open-btn"
+                      onClick={() => handleProjectOpen(project().path)}
+                      disabled={state.state.isLoading}
+                    >
+                      {state.state.isLoading ? '打开中...' : '打开此项目'}
+                    </button>
+                  </div>
+                )}
               </Show>
             </div>
           </div>

@@ -7,6 +7,7 @@ export interface BreadcrumbBarProps {
   isFavorite?: boolean;
   onNavigate: (path: string) => void;
   onFavoriteToggle: () => void;
+  onMenuClick?: () => void;  // Mobile menu button callback
 }
 
 export const BreadcrumbBar: Component<BreadcrumbBarProps> = (props) => {
@@ -27,6 +28,18 @@ export const BreadcrumbBar: Component<BreadcrumbBarProps> = (props) => {
   return (
     <div class={styles.breadcrumbBar}>
       <div class={styles.breadcrumbLeft}>
+        {/* Mobile menu button */}
+        <button
+          class={styles.menuButton}
+          onClick={props.onMenuClick}
+          title="菜单"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
         <button
           class={styles.backButton}
           onClick={handleProjectClick}

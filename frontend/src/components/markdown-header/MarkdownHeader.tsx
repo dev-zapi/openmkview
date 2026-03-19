@@ -16,11 +16,12 @@ export interface MarkdownHeaderProps {
   outlineCount: number;
   isFavorite?: boolean;
   content: string;  // 用于复制功能
-  htmlContent?: string; // 用于导出HTML
+  htmlContent?: string; // 用于导出 HTML
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
   onOutlineToggle: () => void;
   onNavigate: (path: string) => void;
   onFavoriteToggle?: () => void;
+  onMenuClick?: () => void;  // Mobile menu button callback
 }
 
 export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
@@ -184,6 +185,7 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         isFavorite={props.isFavorite}
         onNavigate={props.onNavigate}
         onFavoriteToggle={props.onFavoriteToggle || (() => {})}
+        onMenuClick={props.onMenuClick}
       />
       <SearchBox
         isOpen={isSearchOpen()}

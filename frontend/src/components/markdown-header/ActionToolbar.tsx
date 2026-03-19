@@ -34,21 +34,6 @@ export const ActionToolbar: Component<ActionToolbarProps> = (props) => {
           </svg>
           <span>搜索</span>
         </button>
-        <button
-          class={`${styles.toolbarButton} ${props.isOutlineOpen ? styles.active : ''}`}
-          onClick={props.onOutlineToggle}
-          title="大纲"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4" y1="6" x2="20" y2="6"/>
-            <line x1="4" y1="12" x2="20" y2="12"/>
-            <line x1="4" y1="18" x2="20" y2="18"/>
-          </svg>
-          <span>大纲</span>
-          {props.outlineCount > 0 && (
-            <span class={styles.badge}>{props.outlineCount}</span>
-          )}
-        </button>
       </div>
 
       <div class={styles.toolbarDivider} />
@@ -109,7 +94,24 @@ export const ActionToolbar: Component<ActionToolbarProps> = (props) => {
         </button>
       </div>
 
+      <div class={styles.toolbarDivider} />
+
       <div class={styles.toolbarRight}>
+        <button
+          class={`${styles.toolbarButton} ${props.isOutlineOpen ? styles.active : ''}`}
+          onClick={props.onOutlineToggle}
+          title="大纲"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="20" y2="18"/>
+          </svg>
+          <span>大纲</span>
+          {props.outlineCount > 0 && (
+            <span class={styles.badge}>{props.outlineCount}</span>
+          )}
+        </button>
         <button
           class={styles.toolbarButton}
           onClick={props.onFullscreenToggle}

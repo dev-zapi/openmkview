@@ -33,6 +33,10 @@ export interface UseOpenProjectReturn {
   recentProjects: RecentProject[];
   /** 是否正在加载最近项目 */
   isLoadingRecent: boolean;
+  /** 当前选中的项目 */
+  selectedProject: () => RecentProject | null;
+  /** 设置选中的项目 */
+  setSelectedProject: (project: RecentProject | null) => void;
   /** 更新输入路径 */
   setInput: (input: string) => void;
   /** 选择候选路径 */
@@ -53,6 +57,9 @@ export function useOpenProject(
 ): UseOpenProjectReturn {
   // 本地状态管理
   const [state, setState] = createSignal<OpenProjectState>(createInitialState());
+  
+  // 当前选中的项目
+  const [selectedProject, setSelectedProject] = createSignal<RecentProject | null>(null);
   
   // 获取最近项目列表
   const [recentProjectsResource, { refetch: refetchRecent }] = createResource(
@@ -195,6 +202,7 @@ export function useOpenProject(
    */
   const resetState = () => {
     setState(createInitialState());
+    setSelectedProject(null);
   };
 
   /**
@@ -208,6 +216,8 @@ export function useOpenProject(
     get state() { return state(); },
     get recentProjects() { return recentProjects(); },
     get isLoadingRecent() { return isLoadingRecent(); },
+    selectedProject,
+    setSelectedProject,
     setInput,
     selectCandidate,
     handleOpenProject,
