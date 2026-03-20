@@ -55,9 +55,9 @@ describe('GitPanel', () => {
 
 describe('OutlinePanel', () => {
   const mockHeadings = [
-    { level: 1, text: 'Introduction', id: 'introduction' },
-    { level: 2, text: 'Getting Started', id: 'getting-started' },
-    { level: 3, text: 'Installation', id: 'installation' },
+    { depth: 1, text: 'Introduction', id: 'introduction' },
+    { depth: 2, text: 'Getting Started', id: 'getting-started' },
+    { depth: 3, text: 'Installation', id: 'installation' },
   ];
 
   it('renders nothing when closed', () => {

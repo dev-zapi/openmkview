@@ -414,9 +414,9 @@ const App: Component = () => {
 
           <Show when={activePanel() === 'explorer'}>
             <aside 
-              class="sidebar" 
+              class="sidebar sidebar-enter" 
               ref={sidebarRef}
-              style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.15s ease' }}
+              style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
             >
               <div class="sidebar-header">
                 {activeProject()?.name || 'Explorer'}
@@ -482,35 +482,37 @@ const App: Component = () => {
                   </Show>
 
                   <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
-                    <div class="markdown-wrapper" style={getMarkdownStyle()}>
+                    <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
                       <MarkdownView content={currentFile()!.content} />
                     </div>
                   </Show>
 
                   <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
-                    <DiffSelector
-                      projectId={activeProject()!.id}
-                      filePath={currentFile()!.path}
-                    />
-
-                    <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
-                      <DiffViewer
-                        diffData={diffStore.state.diffData!}
-                        theme={settings().theme}
-                        mode="split"
-                        onClose={handleCloseDiff}
+                    <div class="content-fade-enter">
+                      <DiffSelector
+                        projectId={activeProject()!.id}
+                        filePath={currentFile()!.path}
                       />
-                    </Show>
 
-                    <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
-                      <div class="diff-empty">
-                        <p>Select versions to compare</p>
-                      </div>
-                    </Show>
+                      <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
+                        <DiffViewer
+                          diffData={diffStore.state.diffData!}
+                          theme={settings().theme}
+                          mode="split"
+                          onClose={handleCloseDiff}
+                        />
+                      </Show>
+
+                      <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
+                        <div class="diff-empty">
+                          <p>Select versions to compare</p>
+                        </div>
+                      </Show>
+                    </div>
                   </Show>
 
                   <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-                    <pre class="source-view">
+                    <pre class="source-view content-fade-enter">
                       <code>{currentFile()!.content}</code>
                     </pre>
                   </Show>
@@ -630,7 +632,7 @@ const App: Component = () => {
           outlinePanelContent={
             <OutlinePanel
               headings={currentFile()?.headings || []}
-              isOpen={true}
+              isOpen={mobileLayoutStore.rightDrawerOpen}
               onClose={() => mobileLayoutStore.closeRightDrawer()}
             />
           }

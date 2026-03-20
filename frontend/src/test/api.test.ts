@@ -51,7 +51,7 @@ describe('api service', () => {
     it('returns file content', async () => {
       const mockContent = {
         content: '# Hello World',
-        headings: [{ level: 1, text: 'Hello World', id: 'hello-world' }],
+        headings: [{ depth: 1, text: 'Hello World', id: 'hello-world' }],
         fileName: 'README.md',
         path: '/project/README.md',
       };

@@ -209,6 +209,51 @@ body {
   animation: spin 1s linear infinite;
 }
 
+/* Button click ripple effect */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  animation: ripple 0.6s ease-out;
+}
+
+/* Button scale effect on click */
+.btn-scale:active {
+  transform: scale(0.96) !important;
+}
+
+/* Interactive element press feedback */
+.interactive-press {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.interactive-press:active {
+  transform: scale(0.98);
+}
+
 /* Activity Bar */
 .activity-bar {
   width: 52px;
@@ -278,6 +323,23 @@ body {
 
 .activity-bar-projects button.active::after {
   height: 24px;
+}
+
+/* Activity bar item transition animation */
+.activity-bar-projects button,
+.activity-bar-bottom button {
+  animation: activityItemFadeIn 0.3s ease forwards;
+}
+
+@keyframes activityItemFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Project initial letter */
@@ -407,6 +469,42 @@ body {
   background: var(--color-accent);
 }
 
+/* Sidebar width transition animation */
+.sidebar {
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar show/hide animation */
+@keyframes sidebarSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sidebarSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+.sidebar-enter {
+  animation: sidebarSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sidebar-exit {
+  animation: sidebarSlideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 .sidebar {
   position: relative;
 }
@@ -483,6 +581,27 @@ textarea {
   background: var(--color-accent-bg);
   border-color: var(--color-accent-border);
   color: var(--color-accent);
+}
+
+/* Project item click animation */
+.project-item {
+  animation: projectItemSlideIn 0.2s ease forwards;
+}
+
+@keyframes projectItemSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Active indicator transition */
+.project-item.active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .project-name {
@@ -577,6 +696,17 @@ textarea {
   width: 60%;
 }
 
+/* Tab indicator animation */
+.tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 2px 2px 0 0;
+  transition: width 0.2s ease, transform 0.2s ease;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -618,6 +748,37 @@ textarea {
   overflow-y: auto;
   padding: 32px;
   transition: padding 0.3s ease;
+}
+
+/* Content tab fade transition */
+.content-fade-enter {
+  animation: contentFadeIn 0.25s ease forwards;
+}
+
+.content-fade-exit {
+  animation: contentFadeOut 0.2s ease forwards;
+}
+
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes contentFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
 .content-main.with-outline {
@@ -776,6 +937,64 @@ textarea {
 
 .file-tree .folder-children {
   padding-left: 16px;
+  overflow: hidden;
+}
+
+/* Folder expand/collapse animation */
+.file-tree .folder-children {
+  animation: folderExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes folderExpand {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    max-height: 2000px;
+    transform: translateY(0);
+  }
+}
+
+@keyframes folderCollapse {
+  from {
+    opacity: 1;
+    max-height: 2000px;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* Folder icon rotation animation */
+.folder-icon {
+  display: inline-block;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.folder-icon.expanded {
+  transform: rotate(90deg);
+}
+
+/* Tree item animation */
+.file-tree .tree-item {
+  animation: treeItemFadeIn 0.2s ease forwards;
+}
+
+@keyframes treeItemFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .file-tree .icon {
@@ -793,7 +1012,38 @@ textarea {
   right: 0;
   height: 100vh;
   z-index: 100;
-  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Panel slide in animation */
+@keyframes panelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Panel slide out animation */
+@keyframes panelSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.panel-enter {
+  animation: panelSlideIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.panel-exit {
+  animation: panelSlideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Font Presets */
@@ -967,6 +1217,7 @@ textarea {
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
 
 .git-panel-header {
@@ -1035,8 +1286,7 @@ textarea {
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  animation: slideInRight 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  transition: width 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, width 0.2s ease;
 }
 
 .outline-panel-header {
@@ -1079,6 +1329,24 @@ textarea {
 .outline-item:hover {
   background: var(--color-hover-bg);
   border-left-color: var(--color-accent);
+  padding-left: calc(12px + 4px);
+}
+
+/* Outline item active state animation */
+.outline-item.active {
+  background: var(--color-accent-bg);
+  border-left-color: var(--color-accent);
+  padding-left: calc(12px + 4px);
+}
+
+/* Outline item click feedback */
+.outline-item {
+  cursor: pointer;
+}
+
+.outline-item:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
 }
 
 .outline-level {
