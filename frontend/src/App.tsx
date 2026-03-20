@@ -129,16 +129,16 @@ const App: Component = () => {
         const maxWidth = window.innerWidth * 0.4;
         const newWidth = Math.max(200, Math.min(maxWidth, e.clientX - 52));
         setSidebarWidth(newWidth);
+        // Save to localStorage immediately with the new width value
+        localStorage.setItem('filetree-sidebar-width', String(newWidth));
       }
     };
-    
+
     const handleMouseUp = () => {
       if (isDragging) {
         isDragging = false;
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        // Save to localStorage
-        localStorage.setItem('filetree-sidebar-width', String(sidebarWidth()));
       }
     };
     

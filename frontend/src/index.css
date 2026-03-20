@@ -231,8 +231,8 @@ body {
   padding-top: 12px;
   overflow-y: auto;
   overflow-x: hidden;
-  flex-shrink: 1;
-  min-height: 0;
+  flex: 1;
+  min-height: 100px;
 }
 
 .activity-bar-projects button {
