@@ -3,7 +3,7 @@
  * 项目打开对话框容器，包含路径输入和最近项目列表
  */
 
-import { Component, Show, For, createEffect } from 'solid-js';
+import { Component, Show, For, createEffect, createSignal } from 'solid-js';
 import { useOpenProject } from './hooks/useOpenProject';
 import PathInput from './PathInput';
 import RecentProjectCard from './RecentProjectCard';
@@ -46,29 +46,35 @@ const ErrorState: Component<{ message: string; onClose?: () => void }> = (props)
 
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   const state = useOpenProject(() => props.isOpen, props.onProjectOpened);
+  const [isClosing, setIsClosing] = createSignal(false);
 
-  // 当对话框关闭时重置状态
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      props.onClose();
+    }, 150);
+  };
+
   createEffect(() => {
     if (!props.isOpen) {
+      setIsClosing(false);
       state.resetState();
     }
   });
 
-  // 处理点击遮罩关闭
   const handleOverlayClick = (e: MouseEvent) => {
     if (e.target === e.currentTarget) {
-      props.onClose();
+      handleClose();
     }
   };
 
-  // 处理键盘事件
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      props.onClose();
+      handleClose();
     }
   };
 
-  // 处理项目打开
   const handleProjectOpen = async (path: string) => {
     await state.openProjectByPath(path);
   };
@@ -76,14 +82,14 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   return (
     <Show when={props.isOpen}>
       <div
-        class="open-project-overlay"
+        class={`open-project-overlay ${isClosing() ? 'closing' : ''}`}
         onClick={handleOverlayClick}
         onKeyDown={handleKeyDown}
         role="dialog"
         aria-modal="true"
         aria-labelledby="open-project-title"
       >
-        <div class="open-project-dialog">
+        <div class={`open-project-dialog ${isClosing() ? 'closing' : ''}`}>
           {/* Header */}
           <div class="open-project-header">
             <h2 id="open-project-title" class="open-project-title">
@@ -91,7 +97,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             </h2>
             <button
               class="open-project-close-btn"
-              onClick={props.onClose}
+              onClick={handleClose}
               aria-label="关闭"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -210,7 +216,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
           <div class="open-project-footer">
             <button
               class="open-project-cancel-btn"
-              onClick={props.onClose}
+              onClick={handleClose}
               disabled={state.state.isLoading}
             >
               取消

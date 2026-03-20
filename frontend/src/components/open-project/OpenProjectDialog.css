@@ -13,7 +13,33 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease-out;
+  animation: overlayFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    background-color: rgba(0, 0, 0, 0);
+  }
+  to {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+}
+
+@keyframes overlayFadeOut {
+  from {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+  to {
+    opacity: 0;
+    background-color: rgba(0, 0, 0, 0);
+  }
+}
+
+.open-project-overlay.closing {
+  animation: overlayFadeOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* 对话框容器 */
@@ -29,7 +55,33 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: dialogSlideIn 0.3s ease-out;
+  animation: dialogSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialogSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+.open-project-dialog.closing {
+  animation: dialogSlideOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Header */

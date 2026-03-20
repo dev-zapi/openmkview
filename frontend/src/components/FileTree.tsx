@@ -33,7 +33,7 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
         class={`tree-item ${props.node.isFolder ? 'folder' : 'file'}`}
         onClick={handleClick}
       >
-        <span class="icon">
+        <span class={`icon ${props.node.isFolder ? (isExpanded() ? 'folder-icon expanded' : 'folder-icon') : ''}`}>
           {props.node.isFolder ? (isExpanded() ? '📂' : '📁') : '📄'}
         </span>
         <span class="name">{props.node.name}</span>
