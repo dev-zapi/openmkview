@@ -29,19 +29,19 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
     }
   };
 
-  const getIndentStyle = (level: number) => {
-    return { 'padding-left': `${(level - 1) * 16}px` };
+  const getIndentStyle = (depth: number) => {
+    return { 'padding-left': `${(depth - 1) * 16}px` };
   };
 
-  const getLevelIcon = (level: number) => {
-    switch (level) {
+  const getLevelIcon = (depth: number) => {
+    switch (depth) {
       case 1: return 'H1';
       case 2: return 'H2';
       case 3: return 'H3';
       case 4: return 'H4';
       case 5: return 'H5';
       case 6: return 'H6';
-      default: return `H${level}`;
+      default: return `H${depth}`;
     }
   };
 
@@ -78,12 +78,12 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
               {(heading) => (
                 <div
                   class="outline-item"
-                  style={getIndentStyle(heading.level)}
+                  style={getIndentStyle(heading.depth)}
                   onClick={(e) => handleClick(heading.id, e)}
                   title={heading.text}
                 >
-                  <span class={`outline-level outline-level-${heading.level}`}>
-                    {getLevelIcon(heading.level)}
+                  <span class={`outline-level outline-level-${heading.depth}`}>
+                    {getLevelIcon(heading.depth)}
                   </span>
                   <span class="outline-text">{heading.text}</span>
                 </div>

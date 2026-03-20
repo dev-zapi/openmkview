@@ -6,7 +6,7 @@ export interface FileNode {
 }
 
 export interface Heading {
-  level: number;
+  depth: number;
   text: string;
   id: string;
 }
