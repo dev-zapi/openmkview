@@ -1,11 +1,9 @@
 use crate::errors::AppResult;
 use crate::models::HeadingInfo;
-use pulldown_cmark::{html, Options, Parser};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderedMarkdown {
-    pub html: String,
     pub headings: Vec<HeadingInfo>,
 }
 
@@ -42,17 +40,7 @@ pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
 pub fn render_markdown(markdown: &str) -> AppResult<RenderedMarkdown> {
     let headings = extract_headings(markdown);
 
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_STRIKETHROUGH);
-    options.insert(Options::ENABLE_TABLES);
-    options.insert(Options::ENABLE_TASKLISTS);
-
-    let parser = Parser::new_ext(markdown, options);
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-
     Ok(RenderedMarkdown {
-        html: html_output,
         headings,
     })
 }
@@ -117,36 +105,38 @@ mod tests {
     fn test_render_markdown_basic() {
         let markdown = "# Hello\n\nThis is **bold** text.";
         let rendered = render_markdown(markdown).unwrap();
-        assert!(rendered.html.contains("<h1>"));
-        assert!(rendered.html.contains("<strong>bold</strong>"));
         assert_eq!(rendered.headings.len(), 1);
+        assert_eq!(rendered.headings[0].text, "Hello");
     }
 
     #[test]
     fn test_render_markdown_tables() {
         let markdown = "| Col1 | Col2 |\n|------|------|\n| A | B |";
         let rendered = render_markdown(markdown).unwrap();
-        assert!(rendered.html.contains("<table>"));
+        // 只检查 headings，不再检查 html
+        assert!(rendered.headings.is_empty());
     }
 
     #[test]
     fn test_render_markdown_task_lists() {
         let markdown = "- [x] Done\n- [ ] Todo";
         let rendered = render_markdown(markdown).unwrap();
-        assert!(rendered.html.contains("<input"));
+        // 只检查 headings，不再检查 html
+        assert!(rendered.headings.is_empty());
     }
 
     #[test]
     fn test_render_markdown_strikethrough() {
         let markdown = "~~deleted~~";
         let rendered = render_markdown(markdown).unwrap();
-        assert!(rendered.html.contains("<del>"));
+        // 只检查 headings，不再检查 html
+        assert!(rendered.headings.is_empty());
     }
 
     #[test]
     fn test_render_markdown_empty() {
         let markdown = "";
         let rendered = render_markdown(markdown).unwrap();
-        assert!(rendered.html.is_empty() || rendered.html == "");
+        assert!(rendered.headings.is_empty());
     }
 }

@@ -16,7 +16,6 @@ export interface MarkdownHeaderProps {
   outlineCount: number;
   isFavorite?: boolean;
   content: string;  // 用于复制功能
-  htmlContent?: string; // 用于导出 HTML
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
   onOutlineToggle: () => void;
   onNavigate: (path: string) => void;
@@ -69,15 +68,48 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
     }
   };
 
-  const handleExportClick = (format: 'pdf' | 'html' | 'md') => {
+  const handleExportClick = (format: 'pdf' | 'md') => {
     const timestamp = new Date().toISOString().slice(0, 10);
     const baseName = props.fileName.replace(/\.[^/.]+$/, '');
+    
+    // 简单的 Markdown 到 HTML 转换函数（用于 PDF 导出）
+    const markdownToHtml = (markdown: string): string => {
+      return markdown
+        // 代码块
+        .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+        // 行内代码
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // 标题
+        .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
+        .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
+        .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        // 粗体
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.*?)__/g, '<strong>$1</strong>')
+        // 斜体
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/_(.*?)_/g, '<em>$1</em>')
+        // 删除线
+        .replace(/~~(.*?)~~/g, '<del>$1</del>')
+        // 链接
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        // 图片
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
+        // 引用
+        .replace(/^\u003e (.*$)/gim, '<blockquote>$1</blockquote>')
+        // 换行
+        .replace(/\n/g, '<br />');
+    };
     
     switch (format) {
       case 'pdf':
         // 使用浏览器打印功能导出PDF
         const printWindow = window.open('', '_blank');
         if (printWindow) {
+          const htmlBody = markdownToHtml(props.content);
           printWindow.document.write(`
             <!DOCTYPE html>
             <html>
@@ -91,7 +123,7 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
               </style>
             </head>
             <body>
-              ${props.htmlContent || `<pre>${escapeHtml(props.content)}</pre>`}
+              ${htmlBody}
             </body>
             </html>
           `);
@@ -99,33 +131,6 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
           printWindow.print();
         }
         setToast({ message: 'PDF 导出中...', type: 'success' });
-        break;
-        
-      case 'html':
-        // 导出为 HTML 文件
-        const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>${props.fileName}</title>
-  <style>
-    body { font-family: Georgia, serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; color: #333; }
-    h1, h2, h3, h4, h5, h6 { color: #222; margin-top: 24px; margin-bottom: 16px; }
-    p { margin-bottom: 16px; }
-    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
-    pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
-    blockquote { border-left: 4px solid #ddd; padding-left: 16px; margin-left: 0; color: #666; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f4f4f4; }
-  </style>
-</head>
-<body>
-  ${props.htmlContent || `<pre>${escapeHtml(props.content)}</pre>`}
-</body>
-</html>`;
-        downloadFile(htmlContent, `${baseName}_${timestamp}.html`, 'text/html');
-        setToast({ message: 'HTML 已下载', type: 'success' });
         break;
         
       case 'md':
@@ -136,12 +141,6 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
     }
     
     setTimeout(() => setToast(null), 2000);
-  };
-
-  const escapeHtml = (text: string): string => {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   };
 
   const downloadFile = (content: string, filename: string, mimeType: string) => {

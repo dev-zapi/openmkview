@@ -9,13 +9,13 @@ export interface ActionToolbarProps {
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
   onCopyClick: () => void;
-  onExportClick: (format: 'pdf' | 'html' | 'md') => void;
+  onExportClick: (format: 'pdf' | 'md') => void;
 }
 
 export const ActionToolbar: Component<ActionToolbarProps> = (props) => {
   const [exportMenuOpen, setExportMenuOpen] = createSignal(false);
 
-  const handleExport = (format: 'pdf' | 'html' | 'md') => {
+  const handleExport = (format: 'pdf' | 'md') => {
     props.onExportClick(format);
     setExportMenuOpen(false);
   };
@@ -73,10 +73,6 @@ export const ActionToolbar: Component<ActionToolbarProps> = (props) => {
               <button class={styles.dropdownItem} onClick={() => handleExport('pdf')}>
                 <span class={styles.dropdownIcon}>📄</span>
                 <span>导出为 PDF</span>
-              </button>
-              <button class={styles.dropdownItem} onClick={() => handleExport('html')}>
-                <span class={styles.dropdownIcon}>🌐</span>
-                <span>导出为 HTML</span>
               </button>
               <button class={styles.dropdownItem} onClick={() => handleExport('md')}>
                 <span class={styles.dropdownIcon}>📝</span>

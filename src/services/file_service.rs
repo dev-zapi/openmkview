@@ -126,7 +126,13 @@ impl FileService {
         content: &str,
     ) -> AppResult<(String, Vec<crate::models::HeadingInfo>)> {
         let rendered = render_markdown(content)?;
-        Ok((rendered.html, rendered.headings))
+        // 为了兼容旧代码，返回空字符串作为 html，以及 headings
+        Ok((String::new(), rendered.headings))
+    }
+
+    pub fn extract_headings(content: &str) -> AppResult<Vec<crate::models::HeadingInfo>> {
+        let rendered = render_markdown(content)?;
+        Ok(rendered.headings)
     }
 
     pub fn create_file(project_path: &Path, file_name: &str) -> AppResult<()> {
@@ -326,7 +332,9 @@ mod tests {
     fn test_render_file_content() {
         let content = "# Hello\n\n**bold**";
         let (html, headings) = FileService::render_file_content(content).unwrap();
-        assert!(html.contains("<h1>"));
+        // html 现在为空字符串（前端渲染）
+        assert!(html.is_empty());
         assert_eq!(headings.len(), 1);
+        assert_eq!(headings[0].text, "Hello");
     }
 }

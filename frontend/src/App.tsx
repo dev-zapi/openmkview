@@ -458,7 +458,6 @@ const App: Component = () => {
                 outlineCount={currentFile()!.headings?.length || 0}
                 isFavorite={isFavorite()}
                 content={currentFile()!.content}
-                htmlContent={currentFile()!.html}
                 onTabChange={(tab) => setActiveTab(tab)}
                 onOutlineToggle={handleMobileOutlineToggle}
                 onNavigate={handleNavigate}
@@ -649,7 +648,6 @@ const App: Component = () => {
                 outlineCount={currentFile()!.headings?.length || 0}
                 isFavorite={isFavorite()}
                 content={currentFile()!.content}
-                htmlContent={currentFile()!.html}
                 onTabChange={(tab) => setActiveTab(tab)}
                 onOutlineToggle={handleMobileOutlineToggle}
                 onNavigate={handleNavigate}

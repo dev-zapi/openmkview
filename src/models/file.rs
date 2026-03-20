@@ -15,7 +15,6 @@ pub struct FileTreeNode {
 #[allow(dead_code)]
 pub struct FileContentResponse {
     pub content: String,
-    pub html: String,
     pub headings: Vec<HeadingInfo>,
     pub file_name: String,
     pub path: String,
