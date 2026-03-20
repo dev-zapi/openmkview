@@ -15,6 +15,22 @@ interface MarkdownViewProps {
   class?: string;
 }
 
+/**
+ * 生成 heading ID，与后端 extract_headings 函数保持一致
+ * 规则：
+ * 1. 转为小写
+ * 2. 只保留字母数字、空格、连字符
+ * 3. 空格替换为连字符
+ */
+const generateHeadingId = (text: string): string => {
+  return text
+    .toLowerCase()
+    .split('')
+    .filter(c => /[a-z0-9\s-]/.test(c))
+    .join('')
+    .replace(/\s+/g, '-');
+};
+
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const renderedContent = createMemo(() => props.content);
 
@@ -36,12 +52,29 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
+  /**
+   * 渲染 heading 组件，添加 id 属性用于大纲跳转
+   */
+  const renderHeading = (level: number) => (headingProps: any) => {
+    const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+    const text = String(headingProps.children || '');
+    const id = generateHeadingId(text);
+
+    return <Tag id={id}>{headingProps.children}</Tag>;
+  };
+
   return (
     <div class={`markdown-view ${props.class || ''}`}>
       <SolidMarkdown
         children={renderedContent()}
         components={{
           code: renderCode,
+          h1: renderHeading(1),
+          h2: renderHeading(2),
+          h3: renderHeading(3),
+          h4: renderHeading(4),
+          h5: renderHeading(5),
+          h6: renderHeading(6),
         }}
       />
     </div>
