@@ -6,6 +6,7 @@ interface OutlinePanelProps {
   isOpen: boolean;
   onClose: () => void;
   onHeadingClick?: (id: string) => void;
+  preventAutoClose?: boolean;
 }
 
 const OutlinePanel: Component<OutlinePanelProps> = (props) => {

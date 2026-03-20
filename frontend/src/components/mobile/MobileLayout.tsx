@@ -57,6 +57,7 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         onClose={mobileLayoutStore.closeRightDrawer}
         position="right"
         width="85%"
+        disableOverlayClose={true}
       >
         <div class={styles.rightDrawerContent}>
           <Show when={props.outlinePanelContent}>

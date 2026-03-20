@@ -7,6 +7,7 @@ interface MobileDrawerProps {
   position: 'left' | 'right';
   children: JSX.Element;
   width?: string;
+  disableOverlayClose?: boolean;
 }
 
 export const MobileDrawer: Component<MobileDrawerProps> = (props) => {
@@ -36,6 +37,9 @@ export const MobileDrawer: Component<MobileDrawerProps> = (props) => {
 
   // Handle click outside drawer content
   const handleOverlayClick = (e: MouseEvent) => {
+    if (props.disableOverlayClose) {
+      return;
+    }
     if (drawerRef && !drawerRef.contains(e.target as Node)) {
       props.onClose();
     }
