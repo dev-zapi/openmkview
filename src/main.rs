@@ -1,5 +1,6 @@
 use actix_files::Files;
 use actix_web::{web, App, HttpServer};
+use clap::Parser;
 use std::sync::{Arc, Mutex};
 
 mod db;
@@ -17,9 +18,24 @@ use handlers::{
 };
 use openmkview::AppState;
 
+/// OpenMKView - Markdown file previewer
+#[derive(Parser, Debug)]
+#[command(name = "openmkview", version, about = "A Markdown file previewer with web UI")]
+struct Cli {
+    /// Host address to bind
+    #[arg(long, env = "OPENMKVIEW_HOST", default_value = "0.0.0.0")]
+    host: String,
+
+    /// Port to listen on
+    #[arg(short, long, env = "OPENMKVIEW_PORT", default_value_t = 4567)]
+    port: u16,
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
+    let cli = Cli::parse();
 
     let db_path = if let Ok(path) = std::env::var("OPENMKVIEW_DB_PATH") {
         std::path::PathBuf::from(path)
@@ -38,7 +54,8 @@ async fn main() -> std::io::Result<()> {
         db: Arc::new(Mutex::new(conn)),
     });
 
-    log::info!("服务器启动于 http://0.0.0.0:3000");
+    let bind_addr = format!("{}:{}", cli.host, cli.port);
+    log::info!("服务器启动于 http://{}", bind_addr);
 
     HttpServer::new(move || {
         App::new()
@@ -68,7 +85,7 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/assets", "./dist/assets"))
             .service(Files::new("/", "./dist").index_file("index.html"))
     })
-    .bind("0.0.0.0:3000")?
+    .bind(&bind_addr)?
     .run()
     .await
 }

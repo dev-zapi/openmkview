@@ -113,21 +113,13 @@ impl FileService {
         let content = std::fs::read_to_string(&resolved)?;
         let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
         let path = resolved.to_str().unwrap().to_string();
-        
+
         // 获取文件大小和修改时间
         let metadata = std::fs::metadata(&resolved)?;
         let file_size = metadata.len();
         let last_modified = metadata.modified().ok();
 
         Ok((content, file_name, path, file_size, last_modified))
-    }
-
-    pub fn render_file_content(
-        content: &str,
-    ) -> AppResult<(String, Vec<crate::models::HeadingInfo>)> {
-        let rendered = render_markdown(content)?;
-        // 为了兼容旧代码，返回空字符串作为 html，以及 headings
-        Ok((String::new(), rendered.headings))
     }
 
     pub fn extract_headings(content: &str) -> AppResult<Vec<crate::models::HeadingInfo>> {
@@ -326,15 +318,5 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let result = FileService::delete_file(temp_dir.path(), "nonexistent.md");
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_render_file_content() {
-        let content = "# Hello\n\n**bold**";
-        let (html, headings) = FileService::render_file_content(content).unwrap();
-        // html 现在为空字符串（前端渲染）
-        assert!(html.is_empty());
-        assert_eq!(headings.len(), 1);
-        assert_eq!(headings[0].text, "Hello");
     }
 }
