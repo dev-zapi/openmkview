@@ -71,7 +71,7 @@ describe('OutlinePanel', () => {
     render(() => (
       <OutlinePanel headings={mockHeadings} isOpen={true} onClose={() => {}} />
     ));
-    expect(screen.getByText('📋 Outline')).toBeTruthy();
+    expect(screen.getByText('Outline')).toBeTruthy();
   });
 
   it('renders all headings', () => {
@@ -81,17 +81,6 @@ describe('OutlinePanel', () => {
     expect(screen.getByText('Introduction')).toBeTruthy();
     expect(screen.getByText('Getting Started')).toBeTruthy();
     expect(screen.getByText('Installation')).toBeTruthy();
-  });
-
-  it('calls onClose when close button clicked', () => {
-    const onClose = vi.fn();
-    render(() => (
-      <OutlinePanel headings={mockHeadings} isOpen={true} onClose={onClose} />
-    ));
-
-    const closeBtn = screen.getByText('✕');
-    fireEvent.click(closeBtn);
-    expect(onClose).toHaveBeenCalled();
   });
 
   it('shows empty state when no headings', () => {

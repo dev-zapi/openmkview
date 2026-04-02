@@ -482,7 +482,7 @@ const App: Component = () => {
 
                   <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
                     <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
-                      <MarkdownView content={currentFile()!.content} />
+                      <MarkdownView content={currentFile()!.content} headings={currentFile()!.headings} />
                     </div>
                   </Show>
 
@@ -671,7 +671,7 @@ const App: Component = () => {
 
             <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
               <div class="markdown-wrapper" style={getMarkdownStyle()}>
-                <MarkdownView content={currentFile()!.content} />
+                <MarkdownView content={currentFile()!.content} headings={currentFile()!.headings} />
               </div>
             </Show>
 
