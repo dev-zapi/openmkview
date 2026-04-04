@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       mockServerPlugin(),
     ],
     optimizeDeps: {
-      include: ['debug'],
+      include: ['debug', 'extend'],
     },
     server: {
       host: '0.0.0.0',

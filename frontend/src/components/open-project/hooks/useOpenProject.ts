@@ -1,6 +1,6 @@
 /**
  * OpenProjectDialog 状态管理 Hook
- * 管理对话框状态、路径解析和项目打开流程
+ * 管理对话框状态、搜索查询和项目打开流程
  */
 
 import { createSignal, createResource, createEffect, batch } from 'solid-js';
@@ -11,7 +11,6 @@ import type {
 } from '../../../types/openProject';
 import {
   resolvePath,
-  validateProjectPath,
   openProject,
   getRecentProjects,
 } from '../../../api/client';
@@ -29,24 +28,20 @@ const createInitialState = (): OpenProjectState => ({
 export interface UseOpenProjectReturn {
   /** 当前状态 */
   state: OpenProjectState;
+  /** 搜索查询字符串 */
+  searchQuery: () => string;
+  /** 搜索结果 */
+  searchResults: () => PathCandidate[];
+  /** 是否正在搜索 */
+  isSearching: () => boolean;
   /** 最近项目列表 */
-  recentProjects: RecentProject[];
+  recentProjects: () => RecentProject[];
   /** 是否正在加载最近项目 */
-  isLoadingRecent: boolean;
-  /** 当前选中的项目 */
-  selectedProject: () => RecentProject | null;
-  /** 设置选中的项目 */
-  setSelectedProject: (project: RecentProject | null) => void;
-  /** 更新输入路径 */
-  setInput: (input: string) => void;
-  /** 选择候选路径 */
-  selectCandidate: (index: number) => void;
-  /** 打开选中的项目 */
-  handleOpenProject: () => Promise<void>;
+  isLoadingRecent: () => boolean;
+  /** 设置搜索查询 */
+  setSearchQuery: (query: string) => void;
   /** 通过路径直接打开项目 */
   openProjectByPath: (path: string) => Promise<void>;
-  /** 重置状态 */
-  resetState: () => void;
   /** 清除错误 */
   clearError: () => void;
 }
@@ -58,75 +53,47 @@ export function useOpenProject(
   // 本地状态管理
   const [state, setState] = createSignal<OpenProjectState>(createInitialState());
   
-  // 当前选中的项目
-  const [selectedProject, setSelectedProject] = createSignal<RecentProject | null>(null);
+  // 搜索查询
+  const [searchQuery, setSearchQuery] = createSignal('');
   
   // 获取最近项目列表
-  const [recentProjectsResource, { refetch: refetchRecent }] = createResource(
-    () => isOpen() ? getRecentProjects() : null,
+  const [recentProjectsResource] = createResource(
+    () => isOpen() ? 'recent' : null,
+    async () => {
+      try {
+        return await getRecentProjects();
+      } catch (err) {
+        console.error('Failed to get recent projects:', err);
+        return { projects: [], total: 0 };
+      }
+    },
     { initialValue: { projects: [], total: 0 } }
   );
 
-  // 当对话框打开时刷新最近项目列表
-  createEffect(() => {
-    if (isOpen()) {
-      refetchRecent();
-    }
-  });
+  // 搜索结果资源（基于搜索查询）
+  const [searchResultsResource] = createResource(
+    () => {
+      // 只在对话框打开且有搜索内容时触发
+      if (!isOpen() || !searchQuery().trim()) return null;
+      return searchQuery().trim();
+    },
+    async (query) => {
+      try {
+        const result = await resolvePath(query);
+        return result.candidates || [];
+      } catch (err) {
+        console.error('Search failed:', err);
+        return [];
+      }
+    },
+    { initialValue: [] }
+  );
 
-  // 派生状态
+  // 派生状态 - 使用 getter 函数
   const recentProjects = () => recentProjectsResource()?.projects ?? [];
   const isLoadingRecent = () => recentProjectsResource.loading;
-
-  /**
-   * 更新输入路径并解析候选
-   */
-  const setInput = async (input: string) => {
-    batch(() => {
-      setState(prev => ({ ...prev, input, error: null }));
-    });
-
-    if (!input.trim()) {
-      setState(prev => ({ ...prev, candidates: [], selectedIndex: -1 }));
-      return;
-    }
-
-    try {
-      const result = await resolvePath(input);
-      batch(() => {
-        setState(prev => ({
-          ...prev,
-          candidates: result.candidates,
-          selectedIndex: result.candidates.length > 0 ? 0 : -1,
-        }));
-      });
-    } catch (err) {
-      batch(() => {
-        setState(prev => ({
-          ...prev,
-          candidates: [],
-          selectedIndex: -1,
-          error: err instanceof Error ? err.message : '路径解析失败',
-        }));
-      });
-    }
-  };
-
-  /**
-   * 选择候选路径
-   */
-  const selectCandidate = (index: number) => {
-    const candidates = state().candidates;
-    if (index >= 0 && index < candidates.length) {
-      batch(() => {
-        setState(prev => ({
-          ...prev,
-          selectedIndex: index,
-          input: candidates[index].path,
-        }));
-      });
-    }
-  };
+  const searchResults = () => searchResultsResource() || [];
+  const isSearching = () => searchResultsResource.loading;
 
   /**
    * 验证并打开项目
@@ -142,21 +109,8 @@ export function useOpenProject(
     });
 
     try {
-      // 先验证路径
-      const validation = await validateProjectPath(path);
-      if (!validation.valid) {
-        batch(() => {
-          setState(prev => ({
-            ...prev,
-            isLoading: false,
-            error: validation.error || '无效的项目路径',
-          }));
-        });
-        return;
-      }
-
-      // 打开项目
-      const result = await openProject(validation.normalized_path || path);
+      // 打开项目（后端会自动验证路径）
+      const result = await openProject(path.trim());
       if (result.success && result.project) {
         batch(() => {
           setState(prev => ({ ...prev, isLoading: false }));
@@ -183,29 +137,6 @@ export function useOpenProject(
   };
 
   /**
-   * 处理打开项目按钮点击
-   */
-  const handleOpenProject = async () => {
-    const currentState = state();
-    let pathToOpen = currentState.input;
-
-    // 如果有选中的候选，使用候选路径
-    if (currentState.selectedIndex >= 0 && currentState.candidates.length > 0) {
-      pathToOpen = currentState.candidates[currentState.selectedIndex].path;
-    }
-
-    await openProjectByPath(pathToOpen);
-  };
-
-  /**
-   * 重置状态
-   */
-  const resetState = () => {
-    setState(createInitialState());
-    setSelectedProject(null);
-  };
-
-  /**
    * 清除错误信息
    */
   const clearError = () => {
@@ -214,15 +145,13 @@ export function useOpenProject(
 
   return {
     get state() { return state(); },
-    get recentProjects() { return recentProjects(); },
-    get isLoadingRecent() { return isLoadingRecent(); },
-    selectedProject,
-    setSelectedProject,
-    setInput,
-    selectCandidate,
-    handleOpenProject,
+    searchQuery,
+    searchResults,
+    isSearching,
+    recentProjects,
+    isLoadingRecent,
+    setSearchQuery,
     openProjectByPath,
-    resetState,
     clearError,
   };
 }

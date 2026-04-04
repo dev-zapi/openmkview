@@ -1,51 +1,53 @@
 /**
- * OpenProjectDialog 主组件
- * 项目打开对话框容器，包含路径输入和最近项目列表
+ * OpenProjectDialog - 简化版项目打开对话框
+ * 
+ * 结构：
+ * - Header: Open project + 关闭按钮
+ * - PathInput: 搜索输入框
+ * - Error: 错误信息显示
+ * - Recent projects: 最近项目列表（最多3个）
+ * - Open project: 快速访问文件夹
  */
 
-import { Component, Show, For, createEffect, createSignal } from 'solid-js';
+import { Component, Show, For, createSignal, createEffect, createMemo } from 'solid-js';
 import { useOpenProject } from './hooks/useOpenProject';
 import PathInput from './PathInput';
-import RecentProjectCard from './RecentProjectCard';
 import type { RecentProject } from '../../types/openProject';
 import './OpenProjectDialog.css';
 
 export interface OpenProjectDialogProps {
-  /** 是否显示对话框 */
   isOpen: boolean;
-  /** 关闭对话框回调 */
   onClose: () => void;
-  /** 项目成功打开后的回调 */
   onProjectOpened: (project: RecentProject) => void;
 }
 
-/** 加载状态组件 */
-const LoadingState: Component<{ message?: string }> = (props) => (
-  <div class="open-project-loading">
-    <div class="open-project-spinner"></div>
-    <span>{props.message || '加载中...'}</span>
-  </div>
-);
+interface QuickAccessFolder {
+  name: string;
+  path: string;
+  icon: string;
+}
 
-/** 错误状态组件 */
-const ErrorState: Component<{ message: string; onClose?: () => void }> = (props) => (
-  <div class="open-project-error">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="8" x2="12" y2="12"/>
-      <line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-    <span>{props.message}</span>
-    {props.onClose && (
-      <button class="error-close-btn" onClick={props.onClose}>
-        关闭
-      </button>
-    )}
-  </div>
-);
+const quickAccessFolders: QuickAccessFolder[] = [
+  { name: 'Desktop', path: '~/Desktop/', icon: '💻' },
+  { name: 'Documents', path: '~/Documents/', icon: '📄' },
+  { name: 'Downloads', path: '~/Downloads/', icon: '📥' },
+  { name: 'Music', path: '~/Music/', icon: '🎵' },
+  { name: 'Pictures', path: '~/Pictures/', icon: '🖼️' },
+];
 
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
-  const state = useOpenProject(() => props.isOpen, props.onProjectOpened);
+  const { 
+    state, 
+    recentProjects, 
+    isLoadingRecent,
+    searchQuery,
+    searchResults,
+    isSearching,
+    setSearchQuery,
+    openProjectByPath,
+    clearError 
+  } = useOpenProject(() => props.isOpen, props.onProjectOpened);
+  
   const [isClosing, setIsClosing] = createSignal(false);
 
   const handleClose = () => {
@@ -59,7 +61,8 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   createEffect(() => {
     if (!props.isOpen) {
       setIsClosing(false);
-      state.resetState();
+      setSearchQuery('');
+      clearError();
     }
   });
 
@@ -75,9 +78,37 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     }
   };
 
-  const handleProjectOpen = async (path: string) => {
-    await state.openProjectByPath(path);
+  const handleInputSubmit = (value: string) => {
+    // 如果搜索有结果，打开第一个
+    if (searchResults().length > 0) {
+      openProjectByPath(searchResults()[0].path);
+    } else if (value.trim()) {
+      // 否则尝试直接打开输入的路径
+      openProjectByPath(value.trim());
+    }
   };
+
+  // 过滤最近项目（限制3个）
+  const filteredRecentProjects = createMemo(() => {
+    const projects = recentProjects();
+    if (!searchQuery()) return projects.slice(0, 3);
+    
+    const query = searchQuery().toLowerCase();
+    return projects
+      .filter((p: RecentProject) => p.name.toLowerCase().includes(query) || p.path.toLowerCase().includes(query))
+      .slice(0, 3);
+  });
+
+  // 过滤快速访问文件夹
+  const filteredQuickAccess = createMemo(() => {
+    if (!searchQuery()) return quickAccessFolders;
+    
+    const query = searchQuery().toLowerCase();
+    return quickAccessFolders.filter(f => 
+      f.name.toLowerCase().includes(query) || 
+      f.path.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <Show when={props.isOpen}>
@@ -93,7 +124,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
           {/* Header */}
           <div class="open-project-header">
             <h2 id="open-project-title" class="open-project-title">
-              🗂️ 打开项目
+              Open project
             </h2>
             <button
               class="open-project-close-btn"
@@ -109,125 +140,90 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
 
           {/* Body */}
           <div class="open-project-body">
-            {/* 左侧：项目列表 */}
-            <div class="open-project-left">
+            {/* Search Input */}
+            <div class="search-section">
               <PathInput
-                placeholder="输入项目路径或名称..."
-                onSubmit={(path) => handleProjectOpen(path)}
-                disabled={state.state.isLoading}
-                loading={state.state.isLoading}
+                value={searchQuery()}
+                onChange={setSearchQuery}
+                onSubmit={handleInputSubmit}
+                placeholder="Search folders"
+                disabled={state.isLoading}
+                loading={isSearching()}
               />
-
-              <Show when={state.state.error}>
-                {(error) => (
-                  <ErrorState
-                    message={error()}
-                    onClose={state.clearError}
-                  />
-                )}
+              
+              {/* Error Message */}
+              <Show when={state.error}>
+                <div class="error-message">
+                  {state.error}
+                </div>
               </Show>
+            </div>
 
-              {/* 项目列表 */}
-              <div class="project-list-container">
-                <h3 class="project-list-title">项目列表</h3>
-                
-                <Show
-                  when={!state.isLoadingRecent}
-                  fallback={<LoadingState message="加载项目列表..." />}
-                >
-                  <Show
-                    when={state.recentProjects.length > 0}
-                    fallback={<div class="no-projects">暂无项目</div>}
+            {/* Recent Projects Section */}
+            <Show when={filteredRecentProjects().length > 0 || isLoadingRecent()}>
+              <div class="section">
+                <h3 class="section-title">Recent projects</h3>
+                <div class="folder-list">
+                  <Show 
+                    when={!isLoadingRecent()} 
+                    fallback={<div class="loading-text">Loading...</div>}
                   >
-                    <div class="project-list">
-                      <For each={state.recentProjects}>
-                        {(project) => (
-                          <RecentProjectCard
-                            project={project}
-                            isSelected={state.selectedProject()?.id === project.id}
-                            onClick={() => {
-                              state.setSelectedProject(project);
-                              handleProjectOpen(project.path);
-                            }}
-                            disabled={state.state.isLoading}
-                          />
-                        )}
-                      </For>
-                    </div>
+                    <For each={filteredRecentProjects()}>
+                      {(project) => (
+                        <div 
+                          class="folder-item"
+                          onClick={() => openProjectByPath(project.path)}
+                        >
+                          <span class="folder-icon">📁</span>
+                          <span class="folder-path">{project.path}</span>
+                        </div>
+                      )}
+                    </For>
                   </Show>
-                </Show>
+                </div>
+              </div>
+            </Show>
+
+            {/* Quick Access Section */}
+            <div class="section">
+              <h3 class="section-title">Open project</h3>
+              <div class="folder-list">
+                <For each={filteredQuickAccess()}>
+                  {(folder) => (
+                    <div 
+                      class="folder-item"
+                      onClick={() => openProjectByPath(folder.path)}
+                    >
+                      <span class="folder-icon">{folder.icon}</span>
+                      <span class="folder-path">{folder.path}</span>
+                    </div>
+                  )}
+                </For>
               </div>
             </div>
 
-            {/* 右侧：项目详情 */}
-            <div class="open-project-right">
-              <Show
-                when={state.selectedProject()}
-                fallback={
-                  <div class="project-detail-empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
-                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                    </svg>
-                    <p>选择项目查看详情</p>
-                  </div>
-                }
-              >
-                {(project) => (
-                  <div class="project-detail">
-                    <div class="project-detail-header">
-                      <div class="project-detail-icon">
-                        {project().name.charAt(0).toUpperCase()}
+            {/* Search Results Section */}
+            <Show when={searchQuery() && searchResults().length > 0}>
+              <div class="section">
+                <h3 class="section-title">Search results</h3>
+                <div class="folder-list">
+                  <For each={searchResults().slice(0, 5)}>
+                    {(result) => (
+                      <div 
+                        class="folder-item"
+                        onClick={() => openProjectByPath(result.path)}
+                      >
+                        <span class="folder-icon">📁</span>
+                        <div class="folder-info">
+                          <span class="folder-name">{result.name}</span>
+                          <span class="folder-path-small">{result.relative_path}</span>
+                        </div>
                       </div>
-                      <div class="project-detail-title">
-                        <h3>{project().name}</h3>
-                        <span class="project-detail-type">{project().type || '项目'}</span>
-                      </div>
-                    </div>
-                    
-                    <div class="project-detail-info">
-                      <div class="detail-row">
-                        <span class="detail-label">路径</span>
-                        <span class="detail-value" title={project().path}>{project().path}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="detail-label">最后打开</span>
-                        <span class="detail-value">{new Date(project().last_opened_at).toLocaleString('zh-CN')}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="detail-label">项目ID</span>
-                        <span class="detail-value">{project().id}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      class="project-detail-open-btn"
-                      onClick={() => handleProjectOpen(project().path)}
-                      disabled={state.state.isLoading}
-                    >
-                      {state.state.isLoading ? '打开中...' : '打开此项目'}
-                    </button>
-                  </div>
-                )}
-              </Show>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div class="open-project-footer">
-            <button
-              class="open-project-cancel-btn"
-              onClick={handleClose}
-              disabled={state.state.isLoading}
-            >
-              取消
-            </button>
-            <button
-              class="open-project-confirm-btn"
-              onClick={() => state.handleOpenProject()}
-              disabled={state.state.isLoading}
-            >
-              {state.state.isLoading ? '打开中...' : '打开项目'}
-            </button>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </Show>
           </div>
         </div>
       </div>

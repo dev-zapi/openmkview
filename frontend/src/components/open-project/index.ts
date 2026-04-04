@@ -7,5 +7,3 @@ export { default } from './OpenProjectDialog';
 export type { OpenProjectDialogProps } from './OpenProjectDialog';
 export { useOpenProject } from './hooks/useOpenProject';
 export type { UseOpenProjectReturn } from './hooks/useOpenProject';
-export { default as RecentProjectCard } from './RecentProjectCard';
-export type { RecentProjectCardProps } from './RecentProjectCard';
