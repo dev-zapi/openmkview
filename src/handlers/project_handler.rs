@@ -6,6 +6,7 @@ use crate::models::{
 use crate::services::ProjectService;
 use crate::AppState;
 use actix_web::{web, HttpResponse};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
@@ -18,11 +19,13 @@ pub struct ProjectListParams {
 
 /// 获取最近打开的项目列表
 pub async fn get_recent_projects(data: web::Data<AppState>) -> AppResult<HttpResponse> {
+    debug!("[project] 获取最近打开的项目列表");
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let projects = service.get_recent_projects(10)?;
+    debug!("[project] 获取到 {} 个最近项目", projects.len());
     Ok(HttpResponse::Ok().json(projects))
 }
 
@@ -45,11 +48,13 @@ pub async fn validate_project(
     data: web::Data<AppState>,
     body: web::Json<ValidateProjectRequest>,
 ) -> AppResult<HttpResponse> {
+    debug!("[project] 验证项目路径: {}", body.path);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let (valid, reason) = service.validate_project_path(&body.path)?;
+    debug!("[project] 路径验证结果: valid={}, reason={:?}", valid, reason);
 
     Ok(HttpResponse::Ok().json(ValidateProjectResponse { valid, reason }))
 }
@@ -65,16 +70,17 @@ pub async fn open_project(
     data: web::Data<AppState>,
     body: web::Json<OpenProjectRequest>,
 ) -> AppResult<HttpResponse> {
+    debug!("[project] 打开项目路径: {}", body.path);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
-    // 复用 create_or_open_project 逻辑
     let create_req = CreateProjectRequest {
         path: body.path.clone(),
     };
 
     let project = service.create_or_open_project(&create_req)?;
+    debug!("[project] 项目打开成功: id={}, name={}, path={}", project.id, project.name, project.path);
 
     let mut status = if project.is_open {
         HttpResponse::Ok()
@@ -89,11 +95,14 @@ pub async fn list_projects(
     data: web::Data<AppState>,
     query: web::Query<ProjectListParams>,
 ) -> AppResult<HttpResponse> {
+    let open_only = query.open.unwrap_or(false);
+    debug!("[project] 列出项目列表, open_only={}", open_only);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
-    let projects = service.list_projects(query.open.unwrap_or(false))?;
+    let projects = service.list_projects(open_only)?;
+    debug!("[project] 获取到 {} 个项目", projects.len());
     Ok(HttpResponse::Ok().json(projects))
 }
 
@@ -101,11 +110,13 @@ pub async fn create_project(
     data: web::Data<AppState>,
     body: web::Json<CreateProjectRequest>,
 ) -> AppResult<HttpResponse> {
+    debug!("[project] 创建项目: path={}", body.path);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let project = service.create_or_open_project(&body)?;
+    debug!("[project] 项目创建成功: id={}, name={}", project.id, project.name);
 
     let mut status = if project.is_open {
         HttpResponse::Ok()
@@ -120,17 +131,20 @@ pub async fn delete_project(
     data: web::Data<AppState>,
     path: web::Path<i64>,
 ) -> AppResult<HttpResponse> {
+    let id = path.into_inner();
+    debug!("[project] 关闭项目: id={}", id);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
-    let id = path.into_inner();
     let updated = service.close_project(id)?;
 
     if !updated {
+        debug!("[project] 项目未找到: id={}", id);
         return Ok(HttpResponse::NotFound().body("项目未找到"));
     }
 
+    debug!("[project] 项目已关闭: id={}", id);
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "success": true,
         "message": "项目已关闭"
@@ -146,6 +160,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
 }
 
 fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<PathCandidate> {
+    debug!("[path_search] 搜索路径: target={}, base={}, max_depth={}", target, base_path.display(), max_depth);
     let mut candidates = Vec::new();
     let target_lower = target.to_lowercase();
 
@@ -178,23 +193,30 @@ fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<Path
         }
     }
 
+    debug!("[path_search] 搜索完成: 找到 {} 个候选结果", candidates.len());
     candidates
 }
 
 pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<HttpResponse> {
     let path_input = &body.path;
+    debug!("[resolve_path] 解析路径输入: {}", path_input);
 
     let (path_type, candidates) = if path_input.starts_with('/') {
+        debug!("[resolve_path] 路径类型: Absolute");
         (PathType::Absolute, vec![])
     } else if path_input.contains('/') {
+        debug!("[resolve_path] 路径类型: Relative");
         (PathType::Relative, vec![])
     } else {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         let home_path = PathBuf::from(home);
+        debug!("[resolve_path] 路径类型: Fuzzy, 搜索目录: {}", home_path.display());
         let search_results = search_with_depth(&home_path, path_input, 2);
+        debug!("[resolve_path] Fuzzy 搜索返回 {} 个候选结果", search_results.len());
         (PathType::Fuzzy, search_results)
     };
 
+    debug!("[resolve_path] 解析完成: path_type={:?}, candidates_count={}", path_type, candidates.len());
     Ok(HttpResponse::Ok().json(ResolvePathResponse {
         path_type,
         candidates,
