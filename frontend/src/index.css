@@ -21,8 +21,8 @@
   --color-error: #ef4444;
   
   /* Fonts */
-  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'MiSans', sans-serif;
+  --font-heading: 'MiSans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
   
   /* Markdown Font Variables */
