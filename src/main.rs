@@ -40,10 +40,11 @@ async fn main() -> std::io::Result<()> {
     let db_path = if let Ok(path) = std::env::var("OPENMKVIEW_DB_PATH") {
         std::path::PathBuf::from(path)
     } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let config_dir = std::path::PathBuf::from(home).join(".config/openmkview");
-        std::fs::create_dir_all(&config_dir).expect("无法创建配置目录");
-        config_dir.join("openmkview.db")
+        let data_dir = dirs::data_local_dir()
+            .unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"))
+            .join("openmkview");
+        std::fs::create_dir_all(&data_dir).expect("无法创建数据目录");
+        data_dir.join("openmkview.db")
     };
     
     let conn = init_db(&db_path).expect("数据库初始化失败");

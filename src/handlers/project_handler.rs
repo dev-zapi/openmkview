@@ -5,7 +5,7 @@ use crate::services::ProjectService;
 use crate::AppState;
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Deserialize)]
@@ -189,8 +189,7 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
     } else if path_input.contains('/') {
         (PathType::Relative, vec![])
     } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let home_path = PathBuf::from(home);
+        let home_path = dirs::home_dir().unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"));
         let search_results = search_with_depth(&home_path, path_input, 2);
         (PathType::Fuzzy, search_results)
     };
