@@ -84,7 +84,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-border, #2a2a2a);
 }
 
@@ -118,8 +118,8 @@
 .open-project-body {
   display: flex;
   flex-direction: column;
-  padding: 16px 20px;
-  gap: 20px;
+  padding: 10px 14px;
+  gap: 10px;
   overflow-y: auto;
 }
 
@@ -127,12 +127,12 @@
 .search-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 /* Error Message */
 .error-message {
-  padding: 10px 12px;
+  padding: 6px 8px;
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: 6px;
@@ -144,7 +144,7 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .section-title {
@@ -159,14 +159,14 @@
 .folder-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .folder-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -194,7 +194,7 @@
 .folder-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
