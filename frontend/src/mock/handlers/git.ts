@@ -42,7 +42,7 @@ function sendJson(res: any, data: any, status = 200) {
 export async function handleGitApi(
   req: Connect.IncomingMessage,
   res: any,
-  next: NextFunction
+  _next: NextFunction
 ): Promise<boolean> {
   const url = new URL(req.url || '', 'http://localhost');
   const pathname = url.pathname;
@@ -51,10 +51,10 @@ export async function handleGitApi(
   // GET /api/git/commits - 获取提交列表
   if (req.method === 'GET' && pathname === '/api/git/commits') {
     const projectId = searchParams.get('project_id');
-    const filePath = searchParams.get('path');
+    // filePath parameter is available but not used in mock
+    // const filePath = searchParams.get('path');
 
     if (projectId) {
-      // 可以根据 filePath 返回特定文件的提交
       sendJson(res, { entries: mockCommits });
       return true;
     }

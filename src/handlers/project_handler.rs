@@ -68,6 +68,27 @@ pub struct OpenProjectRequest {
     pub path: String,
 }
 
+/// 打开项目响应中的项目信息（适配前端 RecentProject 类型）
+#[derive(Debug, Serialize)]
+pub struct OpenProjectInfo {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub last_opened_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+}
+
+/// 打开项目响应
+#[derive(Debug, Serialize)]
+pub struct OpenProjectResponse {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project: Option<OpenProjectInfo>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 /// 打开项目（如果不存在则创建）
 pub async fn open_project(
     data: web::Data<AppState>,
@@ -88,13 +109,19 @@ pub async fn open_project(
         project.id, project.name, project.path
     );
 
-    let mut status = if project.is_open {
-        HttpResponse::Ok()
-    } else {
-        HttpResponse::Created()
+    let response = OpenProjectResponse {
+        success: true,
+        project: Some(OpenProjectInfo {
+            id: project.id.to_string(),
+            name: project.name,
+            path: project.path,
+            last_opened_at: project.last_opened_at,
+            r#type: None,
+        }),
+        error: None,
     };
 
-    Ok(status.json(project))
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub async fn list_projects(
