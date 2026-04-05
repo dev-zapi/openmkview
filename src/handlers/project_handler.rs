@@ -8,7 +8,7 @@ use crate::AppState;
 use actix_web::{web, HttpResponse};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Deserialize)]
@@ -208,8 +208,7 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
         debug!("[resolve_path] 路径类型: Relative");
         (PathType::Relative, vec![])
     } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let home_path = PathBuf::from(home);
+        let home_path = dirs::home_dir().unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"));
         debug!("[resolve_path] 路径类型: Fuzzy, 搜索目录: {}", home_path.display());
         let search_results = search_with_depth(&home_path, path_input, 2);
         debug!("[resolve_path] Fuzzy 搜索返回 {} 个候选结果", search_results.len());
