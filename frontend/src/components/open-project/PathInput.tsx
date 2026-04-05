@@ -23,6 +23,10 @@ export interface PathInputProps {
   onChange: (value: string) => void;
   /** 提交回调（按Enter） */
   onSubmit: (value: string) => void;
+  /** Tab键补全回调 */
+  onTab?: () => void;
+  /** 键盘事件回调（用于父组件处理上下键等） */
+  onKeyDown?: (e: KeyboardEvent) => void;
   /** 占位符文本 */
   placeholder?: string;
   /** 是否禁用 */
@@ -31,10 +35,17 @@ export interface PathInputProps {
   loading?: boolean;
   /** 是否自动聚焦 */
   autoFocus?: boolean;
+  /** 输入框ref回调 */
+  ref?: (el: HTMLInputElement) => void;
 }
 
 const PathInput: Component<PathInputProps> = (props) => {
   let inputRef: HTMLInputElement | undefined;
+
+  const handleRef = (el: HTMLInputElement) => {
+    inputRef = el;
+    props.ref?.(el);
+  };
 
   onMount(() => {
     if (props.autoFocus && inputRef) {
@@ -53,9 +64,18 @@ const PathInput: Component<PathInputProps> = (props) => {
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Tab' && !props.disabled && !props.loading) {
+      e.preventDefault();
+      props.onTab?.();
+      return;
+    }
     if (e.key === 'Enter' && !props.disabled && !props.loading) {
       e.preventDefault();
       props.onSubmit(props.value);
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      props.onKeyDown?.(e);
     }
   };
 
@@ -77,7 +97,7 @@ const PathInput: Component<PathInputProps> = (props) => {
         </svg>
         
         <input
-          ref={inputRef}
+          ref={handleRef}
           type="text"
           value={props.value}
           onInput={handleInput}

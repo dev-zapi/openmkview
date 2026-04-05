@@ -12,7 +12,7 @@
 import { Component, Show, For, createSignal, createEffect, createMemo } from 'solid-js';
 import { useOpenProject } from './hooks/useOpenProject';
 import PathInput from './PathInput';
-import type { RecentProject } from '../../types/openProject';
+import type { RecentProject, PathCandidate } from '../../types/openProject';
 import './OpenProjectDialog.css';
 
 export interface OpenProjectDialogProps {
@@ -25,6 +25,14 @@ interface QuickAccessFolder {
   name: string;
   path: string;
   icon: string;
+}
+
+interface ListableItem {
+  path: string;
+  name: string;
+  icon: string;
+  relativePath?: string;
+  type: 'recent' | 'quickAccess' | 'searchResult';
 }
 
 const quickAccessFolders: QuickAccessFolder[] = [
@@ -49,6 +57,8 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   } = useOpenProject(() => props.isOpen, props.onProjectOpened);
   
   const [isClosing, setIsClosing] = createSignal(false);
+  const [selectedIndex, setSelectedIndex] = createSignal(-1);
+  let inputRef: HTMLInputElement | undefined;
 
   const handleClose = () => {
     setIsClosing(true);
@@ -63,6 +73,9 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
       setIsClosing(false);
       setSearchQuery('');
       clearError();
+      setSelectedIndex(-1);
+    } else {
+      setSelectedIndex(-1);
     }
   });
 
@@ -79,12 +92,94 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   };
 
   const handleInputSubmit = (value: string) => {
-    // 如果搜索有结果，打开第一个
-    if (searchResults().length > 0) {
+    if (selectedIndex() >= 0 && allListItems().length > selectedIndex()) {
+      openProjectByPath(allListItems()[selectedIndex()].path);
+    } else if (searchResults().length > 0) {
       openProjectByPath(searchResults()[0].path);
     } else if (value.trim()) {
-      // 否则尝试直接打开输入的路径
       openProjectByPath(value.trim());
+    }
+  };
+
+  const allListItems = createMemo<ListableItem[]>(() => {
+    const items: ListableItem[] = [];
+    
+    const recent = filteredRecentProjects();
+    for (const p of recent) {
+      items.push({ path: p.path, name: p.name, icon: '📁', type: 'recent' });
+    }
+    
+    const quick = filteredQuickAccess();
+    for (const f of quick) {
+      items.push({ path: f.path, name: f.name, icon: f.icon, type: 'quickAccess' });
+    }
+    
+    if (searchQuery() && searchResults().length > 0) {
+      const results = searchResults().slice(0, 5);
+      for (const r of results) {
+        items.push({ 
+          path: r.path, 
+          name: r.name, 
+          icon: '📁', 
+          relativePath: r.relative_path, 
+          type: 'searchResult' 
+        });
+      }
+    }
+    
+    return items;
+  });
+
+  const handleTab = () => {
+    const firstItem = allListItems()[0];
+    if (firstItem) {
+      setSearchQuery(firstItem.path);
+      setSelectedIndex(0);
+    }
+  };
+
+  const handleInputKeyDown = (e: KeyboardEvent) => {
+    const items = allListItems();
+    const current = selectedIndex();
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (current < items.length - 1) {
+        setSelectedIndex(current + 1);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (current > 0) {
+        setSelectedIndex(current - 1);
+      } else if (current === 0) {
+        setSelectedIndex(-1);
+        inputRef?.focus();
+      }
+    }
+  };
+
+  const handleListItemKeyDown = (e: KeyboardEvent) => {
+    const items = allListItems();
+    const current = selectedIndex();
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (current < items.length - 1) {
+        setSelectedIndex(current + 1);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (current > 0) {
+        setSelectedIndex(current - 1);
+      } else if (current === 0) {
+        setSelectedIndex(-1);
+        inputRef?.focus();
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (current >= 0 && items[current]) {
+        openProjectByPath(items[current].path);
+      }
     }
   };
 
@@ -146,9 +241,12 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
                 value={searchQuery()}
                 onChange={setSearchQuery}
                 onSubmit={handleInputSubmit}
+                onTab={handleTab}
+                onKeyDown={handleInputKeyDown}
                 placeholder="Search folders"
                 disabled={state.isLoading}
                 loading={isSearching()}
+                ref={(el) => inputRef = el}
               />
               
               {/* Error Message */}
@@ -159,70 +257,54 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
               </Show>
             </div>
 
-            {/* Recent Projects Section */}
-            <Show when={filteredRecentProjects().length > 0 || isLoadingRecent()}>
-              <div class="section">
-                <h3 class="section-title">Recent projects</h3>
-                <div class="folder-list">
-                  <Show 
-                    when={!isLoadingRecent()} 
-                    fallback={<div class="loading-text">Loading...</div>}
-                  >
-                    <For each={filteredRecentProjects()}>
-                      {(project) => (
-                        <div 
-                          class="folder-item"
-                          onClick={() => openProjectByPath(project.path)}
-                        >
-                          <span class="folder-icon">📁</span>
-                          <span class="folder-path">{project.path}</span>
-                        </div>
-                      )}
-                    </For>
-                  </Show>
-                </div>
-              </div>
-            </Show>
-
-            {/* Quick Access Section */}
-            <div class="section">
-              <h3 class="section-title">Open project</h3>
-              <div class="folder-list">
-                <For each={filteredQuickAccess()}>
-                  {(folder) => (
-                    <div 
-                      class="folder-item"
-                      onClick={() => openProjectByPath(folder.path)}
-                    >
-                      <span class="folder-icon">{folder.icon}</span>
-                      <span class="folder-path">{folder.path}</span>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </div>
-
-            {/* Search Results Section */}
-            <Show when={searchQuery() && searchResults().length > 0}>
-              <div class="section">
-                <h3 class="section-title">Search results</h3>
-                <div class="folder-list">
-                  <For each={searchResults().slice(0, 5)}>
-                    {(result) => (
-                      <div 
-                        class="folder-item"
-                        onClick={() => openProjectByPath(result.path)}
-                      >
-                        <span class="folder-icon">📁</span>
-                        <div class="folder-info">
-                          <span class="folder-name">{result.name}</span>
-                          <span class="folder-path-small">{result.relative_path}</span>
-                        </div>
+            {/* All List Items */}
+            <For each={allListItems()}>
+              {(item, index) => {
+                const showRecentTitle = index() === 0 && item.type === 'recent';
+                const showQuickAccessTitle = item.type === 'quickAccess' && 
+                  index() === allListItems().findIndex(i => i.type === 'quickAccess');
+                const showSearchTitle = item.type === 'searchResult' && 
+                  index() === allListItems().findIndex(i => i.type === 'searchResult');
+                
+                return (
+                  <>
+                    <Show when={showRecentTitle}>
+                      <div class="section">
+                        <h3 class="section-title">Recent projects</h3>
                       </div>
-                    )}
-                  </For>
-                </div>
-              </div>
+                    </Show>
+                    <Show when={showQuickAccessTitle}>
+                      <div class="section">
+                        <h3 class="section-title">Open project</h3>
+                      </div>
+                    </Show>
+                    <Show when={showSearchTitle}>
+                      <div class="section">
+                        <h3 class="section-title">Search results</h3>
+                      </div>
+                    </Show>
+                    <div 
+                      class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
+                      onClick={() => openProjectByPath(item.path)}
+                      onKeyDown={handleListItemKeyDown}
+                      tabIndex={0}
+                      role="button"
+                    >
+                      <span class="folder-icon">{item.icon}</span>
+                      <Show when={item.relativePath} fallback={<span class="folder-path">{item.path}</span>}>
+                        <div class="folder-info">
+                          <span class="folder-name">{item.name}</span>
+                          <span class="folder-path-small">{item.relativePath}</span>
+                        </div>
+                      </Show>
+                    </div>
+                  </>
+                );
+              }}
+            </For>
+
+            <Show when={isLoadingRecent()}>
+              <div class="loading-text">Loading...</div>
             </Show>
           </div>
         </div>
