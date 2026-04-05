@@ -11,16 +11,20 @@ mod services;
 
 use db::init_db;
 use handlers::{
-    create_file, create_project, delete_file, delete_project, execute_git,
-    get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff,
-    get_file_tree, get_recent_projects, get_settings, get_tags, list_projects, open_project,
-    rename_file, resolve_path, update_settings, validate_project,
+    create_file, create_project, delete_file, delete_project, execute_git, get_branches,
+    get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
+    get_recent_projects, get_settings, get_tags, list_projects, open_project, rename_file,
+    resolve_path, update_settings, validate_project,
 };
 use openmkview::AppState;
 
 /// OpenMKView - Markdown file previewer
 #[derive(Parser, Debug)]
-#[command(name = "openmkview", version, about = "A Markdown file previewer with web UI")]
+#[command(
+    name = "openmkview",
+    version,
+    about = "A Markdown file previewer with web UI"
+)]
 struct Cli {
     /// Host address to bind
     #[arg(long, env = "OPENMKVIEW_HOST", default_value = "0.0.0.0")]
@@ -29,6 +33,10 @@ struct Cli {
     /// Port to listen on
     #[arg(short, long, env = "OPENMKVIEW_PORT", default_value_t = 4567)]
     port: u16,
+
+    /// Number of HTTP worker threads
+    #[arg(long, env = "OPENMKVIEW_WORKERS")]
+    workers: Option<usize>,
 }
 
 #[actix_web::main]
@@ -45,7 +53,7 @@ async fn main() -> std::io::Result<()> {
         std::fs::create_dir_all(&config_dir).expect("无法创建配置目录");
         config_dir.join("openmkview.db")
     };
-    
+
     let conn = init_db(&db_path).expect("数据库初始化失败");
 
     log::info!("数据库初始化完成：{:?}", db_path);
@@ -57,7 +65,7 @@ async fn main() -> std::io::Result<()> {
     let bind_addr = format!("{}:{}", cli.host, cli.port);
     log::info!("服务器启动于 http://{}", bind_addr);
 
-    HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             // API routes
@@ -85,7 +93,12 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/assets", "./dist/assets"))
             .service(Files::new("/", "./dist").index_file("index.html"))
     })
-    .bind(&bind_addr)?
-    .run()
-    .await
+    .bind(&bind_addr)?;
+
+    if let Some(workers) = cli.workers {
+        log::info!("使用 {} 个工作线程", workers);
+        server = server.workers(workers);
+    }
+
+    server.run().await
 }
