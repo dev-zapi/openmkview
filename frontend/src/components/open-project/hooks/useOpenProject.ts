@@ -3,7 +3,7 @@
  * 管理对话框状态、搜索查询和项目打开流程
  */
 
-import { createSignal, createResource, createEffect, batch } from 'solid-js';
+import { createSignal, createResource, createEffect, batch, onCleanup } from 'solid-js';
 import type {
   OpenProjectState,
   PathCandidate,
@@ -14,6 +14,9 @@ import {
   openProject,
   getRecentProjects,
 } from '../../../api/client';
+
+/** 防抖延迟（毫秒） */
+const DEBOUNCE_DELAY = 150;
 
 /** 初始状态 */
 const createInitialState = (): OpenProjectState => ({
@@ -56,6 +59,28 @@ export function useOpenProject(
   // 搜索查询
   const [searchQuery, setSearchQuery] = createSignal('');
   
+  // 防抖后的搜索查询
+  const [debouncedQuery, setDebouncedQuery] = createSignal('');
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // 防抖处理
+  const setSearchQueryWithDebounce = (query: string) => {
+    setSearchQuery(query);
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, DEBOUNCE_DELAY);
+  };
+
+  // 组件卸载时清理定时器
+  onCleanup(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+  });
+  
   // 获取最近项目列表
   const [recentProjectsResource] = createResource(
     () => isOpen() ? 'recent' : null,
@@ -70,12 +95,12 @@ export function useOpenProject(
     { initialValue: { projects: [], total: 0 } }
   );
 
-  // 搜索结果资源（基于搜索查询）
+  // 搜索结果资源（基于防抖后的搜索查询）
   const [searchResultsResource] = createResource(
     () => {
       // 只在对话框打开且有搜索内容时触发
-      if (!isOpen() || !searchQuery().trim()) return null;
-      return searchQuery().trim();
+      if (!isOpen() || !debouncedQuery().trim()) return null;
+      return debouncedQuery().trim();
     },
     async (query) => {
       try {
@@ -150,7 +175,7 @@ export function useOpenProject(
     isSearching,
     recentProjects,
     isLoadingRecent,
-    setSearchQuery,
+    setSearchQuery: setSearchQueryWithDebounce,
     openProjectByPath,
     clearError,
   };

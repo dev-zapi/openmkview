@@ -130,6 +130,72 @@
   gap: 4px;
 }
 
+/* Folder List Animations */
+.folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search Results Animation */
+.search-section + .section {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Folder Item Stagger Animation */
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--color-bg-hover, transparent);
+  animation: itemFadeIn 0.15s ease-out;
+  animation-fill-mode: both;
+}
+
+.folder-item:nth-child(1) { animation-delay: 0ms; }
+.folder-item:nth-child(2) { animation-delay: 30ms; }
+.folder-item:nth-child(3) { animation-delay: 60ms; }
+.folder-item:nth-child(4) { animation-delay: 90ms; }
+.folder-item:nth-child(5) { animation-delay: 120ms; }
+
+@keyframes itemFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* Error Message */
 .error-message {
   padding: 6px 8px;
@@ -155,24 +221,7 @@
   opacity: 0.8;
 }
 
-/* Folder List */
-.folder-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  background-color: var(--color-bg-hover, transparent);
-}
-
+/* Folder Item Hover */
 .folder-item:hover {
   background-color: var(--color-hover-bg, #2a2a2a);
 }
