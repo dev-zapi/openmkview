@@ -54,7 +54,10 @@ pub async fn validate_project(
     let service = ProjectService::new(project_repo);
 
     let (valid, reason) = service.validate_project_path(&body.path)?;
-    debug!("[project] 路径验证结果: valid={}, reason={:?}", valid, reason);
+    debug!(
+        "[project] 路径验证结果: valid={}, reason={:?}",
+        valid, reason
+    );
 
     Ok(HttpResponse::Ok().json(ValidateProjectResponse { valid, reason }))
 }
@@ -80,7 +83,10 @@ pub async fn open_project(
     };
 
     let project = service.create_or_open_project(&create_req)?;
-    debug!("[project] 项目打开成功: id={}, name={}, path={}", project.id, project.name, project.path);
+    debug!(
+        "[project] 项目打开成功: id={}, name={}, path={}",
+        project.id, project.name, project.path
+    );
 
     let mut status = if project.is_open {
         HttpResponse::Ok()
@@ -116,7 +122,10 @@ pub async fn create_project(
     let service = ProjectService::new(project_repo);
 
     let project = service.create_or_open_project(&body)?;
-    debug!("[project] 项目创建成功: id={}, name={}", project.id, project.name);
+    debug!(
+        "[project] 项目创建成功: id={}, name={}",
+        project.id, project.name
+    );
 
     let mut status = if project.is_open {
         HttpResponse::Ok()
@@ -160,7 +169,12 @@ fn is_hidden(entry: &DirEntry) -> bool {
 }
 
 fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<PathCandidate> {
-    debug!("[path_search] 搜索路径: target={}, base={}, max_depth={}", target, base_path.display(), max_depth);
+    debug!(
+        "[path_search] 搜索路径: target={}, base={}, max_depth={}",
+        target,
+        base_path.display(),
+        max_depth
+    );
     let mut candidates = Vec::new();
     let target_lower = target.to_lowercase();
 
@@ -193,7 +207,10 @@ fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<Path
         }
     }
 
-    debug!("[path_search] 搜索完成: 找到 {} 个候选结果", candidates.len());
+    debug!(
+        "[path_search] 搜索完成: 找到 {} 个候选结果",
+        candidates.len()
+    );
     candidates
 }
 
@@ -208,14 +225,25 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
         debug!("[resolve_path] 路径类型: Relative");
         (PathType::Relative, vec![])
     } else {
-        let home_path = dirs::home_dir().unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"));
-        debug!("[resolve_path] 路径类型: Fuzzy, 搜索目录: {}", home_path.display());
+        let home_path =
+            dirs::home_dir().unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"));
+        debug!(
+            "[resolve_path] 路径类型: Fuzzy, 搜索目录: {}",
+            home_path.display()
+        );
         let search_results = search_with_depth(&home_path, path_input, 2);
-        debug!("[resolve_path] Fuzzy 搜索返回 {} 个候选结果", search_results.len());
+        debug!(
+            "[resolve_path] Fuzzy 搜索返回 {} 个候选结果",
+            search_results.len()
+        );
         (PathType::Fuzzy, search_results)
     };
 
-    debug!("[resolve_path] 解析完成: path_type={:?}, candidates_count={}", path_type, candidates.len());
+    debug!(
+        "[resolve_path] 解析完成: path_type={:?}, candidates_count={}",
+        path_type,
+        candidates.len()
+    );
     Ok(HttpResponse::Ok().json(ResolvePathResponse {
         path_type,
         candidates,
