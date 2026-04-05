@@ -16,7 +16,7 @@ import {
 } from '../../../api/client';
 
 /** 防抖延迟（毫秒） */
-const DEBOUNCE_DELAY = 150;
+const DEBOUNCE_DELAY = 300;
 
 /** 初始状态 */
 const createInitialState = (): OpenProjectState => ({
