@@ -164,9 +164,9 @@ impl GitService {
     }
 
     pub fn branches(cwd: &PathBuf) -> AppResult<Vec<String>> {
-        let (stdout, _) = Self::run_git(cwd, &["branch", "-a"])
-            .map_err(|e| AppError::GitError(e))?;
-        
+        let (stdout, _) =
+            Self::run_git(cwd, &["branch", "-a"]).map_err(|e| AppError::GitError(e))?;
+
         let branches: Vec<String> = stdout
             .lines()
             .filter_map(|line| {
@@ -178,20 +178,19 @@ impl GitService {
                 }
             })
             .collect();
-        
+
         Ok(branches)
     }
 
     pub fn tags(cwd: &PathBuf) -> AppResult<Vec<String>> {
-        let (stdout, _) = Self::run_git(cwd, &["tag", "-l"])
-            .map_err(|e| AppError::GitError(e))?;
-        
+        let (stdout, _) = Self::run_git(cwd, &["tag", "-l"]).map_err(|e| AppError::GitError(e))?;
+
         let tags: Vec<String> = stdout
             .lines()
             .filter(|l| !l.is_empty())
             .map(|l| l.trim().to_string())
             .collect();
-        
+
         Ok(tags)
     }
 
@@ -261,8 +260,8 @@ impl GitService {
                         old_line_number: Some((hunk.lines.len() as u32) + hunk.old_start),
                         new_line_number: None,
                     });
-                } else if !line.starts_with("diff ") 
-                    && !line.starts_with("index ") 
+                } else if !line.starts_with("diff ")
+                    && !line.starts_with("index ")
                     && !line.starts_with("--- ")
                     && !line.starts_with("+++ ")
                     && !line.is_empty()

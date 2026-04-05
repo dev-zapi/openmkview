@@ -114,9 +114,9 @@ impl<'a> ProjectRepository<'a> {
             "SELECT id, path, name, created_at, last_opened_at, is_open 
              FROM projects 
              ORDER BY last_opened_at DESC 
-             LIMIT ?"
+             LIMIT ?",
         )?;
-        
+
         let projects = stmt.query_map([limit], |row| {
             Ok(Project {
                 id: row.get(0)?,

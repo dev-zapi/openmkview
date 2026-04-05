@@ -59,8 +59,7 @@ impl<'a> ProjectService<'a> {
     }
 
     /// 验证项目路径是否有效
-    pub fn validate_project_path(&self, path: &str,
-    ) -> AppResult<( bool, Option<String>) > {
+    pub fn validate_project_path(&self, path: &str) -> AppResult<(bool, Option<String>)> {
         let path_buf = PathBuf::from(path);
 
         // 检查路径是否存在
@@ -76,15 +75,17 @@ impl<'a> ProjectService<'a> {
         // 检查是否包含 Markdown 文件
         let has_markdown = self.check_markdown_files(&path_buf)?;
         if !has_markdown {
-            return Ok((false, Some("目录中未找到 Markdown 文件(.md 或 .mdx)".to_string())));
+            return Ok((
+                false,
+                Some("目录中未找到 Markdown 文件(.md 或 .mdx)".to_string()),
+            ));
         }
 
         Ok((true, None))
     }
 
     /// 递归检查目录中是否包含 Markdown 文件
-    fn check_markdown_files(&self, dir: &PathBuf,
-    ) -> AppResult<bool> {
+    fn check_markdown_files(&self, dir: &PathBuf) -> AppResult<bool> {
         let entries = std::fs::read_dir(dir)?;
 
         for entry in entries {

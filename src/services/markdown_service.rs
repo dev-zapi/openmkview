@@ -40,9 +40,7 @@ pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
 pub fn render_markdown(markdown: &str) -> AppResult<RenderedMarkdown> {
     let headings = extract_headings(markdown);
 
-    Ok(RenderedMarkdown {
-        headings,
-    })
+    Ok(RenderedMarkdown { headings })
 }
 
 #[cfg(test)]

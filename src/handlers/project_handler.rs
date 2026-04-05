@@ -1,6 +1,8 @@
 use crate::db::ProjectRepository;
 use crate::errors::AppResult;
-use crate::models::{CreateProjectRequest, PathCandidate, PathType, ResolvePathRequest, ResolvePathResponse};
+use crate::models::{
+    CreateProjectRequest, PathCandidate, PathType, ResolvePathRequest, ResolvePathResponse,
+};
 use crate::services::ProjectService;
 use crate::AppState;
 use actix_web::{web, HttpResponse};
@@ -15,9 +17,7 @@ pub struct ProjectListParams {
 }
 
 /// 获取最近打开的项目列表
-pub async fn get_recent_projects(
-    data: web::Data<AppState>,
-) -> AppResult<HttpResponse> {
+pub async fn get_recent_projects(data: web::Data<AppState>) -> AppResult<HttpResponse> {
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
@@ -50,7 +50,7 @@ pub async fn validate_project(
     let service = ProjectService::new(project_repo);
 
     let (valid, reason) = service.validate_project_path(&body.path)?;
-    
+
     Ok(HttpResponse::Ok().json(ValidateProjectResponse { valid, reason }))
 }
 
@@ -73,7 +73,7 @@ pub async fn open_project(
     let create_req = CreateProjectRequest {
         path: body.path.clone(),
     };
-    
+
     let project = service.create_or_open_project(&create_req)?;
 
     let mut status = if project.is_open {
@@ -162,7 +162,7 @@ fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<Path
                 if let Ok(relative) = full_path.strip_prefix(base_path) {
                     let relative_path = relative.to_string_lossy().to_string();
                     let depth = relative.components().count() as i32;
-                    
+
                     candidates.push(PathCandidate {
                         name: file_name.to_string(),
                         path: full_path.to_string_lossy().to_string(),

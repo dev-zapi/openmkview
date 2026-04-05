@@ -46,7 +46,8 @@ pub async fn get_file_content(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let (content, file_name, path, file_size, last_modified) = FileService::get_file_content(&project_path, &query.path)?;
+    let (content, file_name, path, file_size, last_modified) =
+        FileService::get_file_content(&project_path, &query.path)?;
     let headings = FileService::extract_headings(&content)?;
 
     // 将 SystemTime 转换为 ISO 8601 字符串
