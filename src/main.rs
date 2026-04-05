@@ -45,6 +45,10 @@ struct Cli {
     /// Port to listen on
     #[arg(short, long, env = "OPENMKVIEW_PORT", default_value_t = 4567)]
     port: u16,
+
+    /// Number of HTTP worker threads
+    #[arg(long, env = "OPENMKVIEW_WORKERS")]
+    workers: Option<usize>,
 }
 
 #[actix_web::main]
@@ -73,7 +77,7 @@ async fn main() -> std::io::Result<()> {
     let bind_addr = format!("{}:{}", cli.host, cli.port);
     log::info!("服务器启动于 http://{}", bind_addr);
 
-    HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         App::new()
             .wrap(Logger::new(DEBUG_LOG_FORMAT).log_target("openmkview::http"))
             .app_data(app_state.clone())
@@ -102,7 +106,12 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/assets", "./dist/assets"))
             .service(Files::new("/", "./dist").index_file("index.html"))
     })
-    .bind(&bind_addr)?
-    .run()
-    .await
+    .bind(&bind_addr)?;
+
+    if let Some(workers) = cli.workers {
+        log::info!("使用 {} 个工作线程", workers);
+        server = server.workers(workers);
+    }
+
+    server.run().await
 }
