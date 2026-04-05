@@ -1,7 +1,19 @@
 use actix_files::Files;
-use actix_web::{web, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use clap::Parser;
 use std::sync::{Arc, Mutex};
+
+const DEBUG_LOG_FORMAT: &str = r#"=== HTTP Request ===
+Method: %m
+URI: %U
+Version: %V
+Query: %q
+Peer: %a
+Headers: %{Accept}i, %{User-Agent}i, %{Content-Type}i
+=== HTTP Response ===
+Status: %s
+Size: %b bytes
+Time: %T seconds"#;
 
 mod db;
 mod errors;
@@ -11,16 +23,20 @@ mod services;
 
 use db::init_db;
 use handlers::{
-    create_file, create_project, delete_file, delete_project, execute_git,
-    get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff,
-    get_file_tree, get_recent_projects, get_settings, get_tags, list_projects, open_project,
-    rename_file, resolve_path, update_settings, validate_project,
+    create_file, create_project, delete_file, delete_project, execute_git, get_branches,
+    get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
+    get_recent_projects, get_settings, get_tags, list_projects, open_project, rename_file,
+    resolve_path, update_settings, validate_project,
 };
 use openmkview::AppState;
 
 /// OpenMKView - Markdown file previewer
 #[derive(Parser, Debug)]
-#[command(name = "openmkview", version, about = "A Markdown file previewer with web UI")]
+#[command(
+    name = "openmkview",
+    version,
+    about = "A Markdown file previewer with web UI"
+)]
 struct Cli {
     /// Host address to bind
     #[arg(long, env = "OPENMKVIEW_HOST", default_value = "0.0.0.0")]
@@ -33,7 +49,7 @@ struct Cli {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
 
     let cli = Cli::parse();
 
@@ -45,7 +61,7 @@ async fn main() -> std::io::Result<()> {
         std::fs::create_dir_all(&config_dir).expect("无法创建配置目录");
         config_dir.join("openmkview.db")
     };
-    
+
     let conn = init_db(&db_path).expect("数据库初始化失败");
 
     log::info!("数据库初始化完成：{:?}", db_path);
@@ -59,6 +75,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(Logger::new(DEBUG_LOG_FORMAT).log_target("openmkview::http"))
             .app_data(app_state.clone())
             // API routes
             .route("/api/projects", web::get().to(list_projects))
