@@ -91,6 +91,28 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     }
   };
 
+  // 过滤最近项目（限制3个）
+  const filteredRecentProjects = createMemo(() => {
+    const projects = recentProjects();
+    if (!searchQuery()) return projects.slice(0, 3);
+    
+    const query = searchQuery().toLowerCase();
+    return projects
+      .filter((p: RecentProject) => p.name.toLowerCase().includes(query) || p.path.toLowerCase().includes(query))
+      .slice(0, 3);
+  });
+
+  // 过滤快速访问文件夹
+  const filteredQuickAccess = createMemo(() => {
+    if (!searchQuery()) return quickAccessFolders;
+    
+    const query = searchQuery().toLowerCase();
+    return quickAccessFolders.filter(f => 
+      f.name.toLowerCase().includes(query) || 
+      f.path.toLowerCase().includes(query)
+    );
+  });
+
   const handleInputSubmit = (value: string) => {
     if (selectedIndex() >= 0 && allListItems().length > selectedIndex()) {
       openProjectByPath(allListItems()[selectedIndex()].path);
@@ -182,28 +204,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
       }
     }
   };
-
-  // 过滤最近项目（限制3个）
-  const filteredRecentProjects = createMemo(() => {
-    const projects = recentProjects();
-    if (!searchQuery()) return projects.slice(0, 3);
-    
-    const query = searchQuery().toLowerCase();
-    return projects
-      .filter((p: RecentProject) => p.name.toLowerCase().includes(query) || p.path.toLowerCase().includes(query))
-      .slice(0, 3);
-  });
-
-  // 过滤快速访问文件夹
-  const filteredQuickAccess = createMemo(() => {
-    if (!searchQuery()) return quickAccessFolders;
-    
-    const query = searchQuery().toLowerCase();
-    return quickAccessFolders.filter(f => 
-      f.name.toLowerCase().includes(query) || 
-      f.path.toLowerCase().includes(query)
-    );
-  });
 
   return (
     <Show when={props.isOpen}>
