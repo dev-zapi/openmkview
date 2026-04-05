@@ -21,7 +21,7 @@ const API_BASE = '/api/projects';
  * @returns 解析结果，包含候选路径列表
  */
 export async function resolvePath(input: string): Promise<ResolvePathResult> {
-  const request: ResolvePathRequest = { input };
+  const request: ResolvePathRequest = { path: input };
   const res = await fetch(`${API_BASE}/resolve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
