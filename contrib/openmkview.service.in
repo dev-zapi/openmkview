@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenMKView - Markdown file previewer
+Documentation=https://github.com/anomalyco/openmkview
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{BINDIR}}/openmkview
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
