@@ -47,7 +47,7 @@ function sendJson(res: any, data: any, status = 200) {
 export async function handleProjectsApi(
   req: Connect.IncomingMessage,
   res: any,
-  next: NextFunction
+  _next: NextFunction
 ): Promise<boolean> {
   const url = new URL(req.url || '', 'http://localhost');
   const pathname = url.pathname;

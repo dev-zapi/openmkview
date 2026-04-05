@@ -193,8 +193,12 @@ const App: Component = () => {
     setIsOpenProjectDialogOpen(false);
     
     try {
-      // 创建或获取项目
-      const project = await api.createProject(recentProject.path);
+      // 将 RecentProject 转换为 Project 类型
+      const project: Project = {
+        id: parseInt(recentProject.id, 10),
+        name: recentProject.name,
+        path: recentProject.path,
+      };
       
       // 添加到项目列表（如果不存在）
       const existingProject = projects().find(p => p.id === project.id);
