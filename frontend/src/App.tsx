@@ -35,7 +35,7 @@ const getSystemTheme = (): 'light' | 'dark' => {
     markdownWidth: 'full',
     fixedWidth: '900px',
     theme: 'system' as ThemeMode,
-    uiFontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+    uiFontFamily: 'MiSans, sans-serif',
     markdownFontFamily: 'Georgia, "Noto Serif", serif',
     uiFontSize: '14px',
     markdownFontSize: '16px',

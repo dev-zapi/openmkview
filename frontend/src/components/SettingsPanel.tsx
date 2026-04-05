@@ -21,7 +21,7 @@ const defaultSettings: Settings = {
   fixedWidth: '900px',
   theme: 'system',
   // Font defaults
-  uiFontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+  uiFontFamily: 'MiSans, sans-serif',
   markdownFontFamily: 'Georgia, "Noto Serif", serif',
   uiFontSize: '14px',
   markdownFontSize: '16px',
@@ -119,10 +119,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   type="text"
                   value={settings().uiFontFamily}
                   onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
-                  placeholder="例如: Inter, system-ui, sans-serif"
+                  placeholder="例如: MiSans, sans-serif"
                 />
                 <div class="font-presets">
-                  <button onClick={() => updateSetting('uiFontFamily', 'Inter, system-ui, -apple-system, sans-serif')}>系统默认</button>
+                  <button onClick={() => updateSetting('uiFontFamily', 'MiSans, sans-serif')}>系统默认</button>
                   <button onClick={() => updateSetting('uiFontFamily', '"Segoe UI", Roboto, sans-serif')}>Segoe UI</button>
                   <button onClick={() => updateSetting('uiFontFamily', '"Helvetica Neue", Arial, sans-serif')}>Helvetica</button>
                   <button onClick={() => updateSetting('uiFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>中文黑体</button>
