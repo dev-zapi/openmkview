@@ -556,7 +556,7 @@ const App: Component = () => {
               </Show>
 
               <div class="content-area">
-                <div class="content-main" classList={{ 'with-outline': outlineOpen() }}>
+                <div class="content-main">
                   <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
                     <div class="welcome">
                       <h1>OpenMKView</h1>
