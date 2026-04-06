@@ -21,27 +21,13 @@ export interface OpenProjectDialogProps {
   onProjectOpened: (project: RecentProject) => void;
 }
 
-interface QuickAccessFolder {
-  name: string;
-  path: string;
-  icon: string;
-}
-
 interface ListableItem {
   path: string;
   name: string;
   icon: string;
   relativePath?: string;
-  type: 'recent' | 'quickAccess' | 'searchResult';
+  type: 'recent' | 'searchResult';
 }
-
-const quickAccessFolders: QuickAccessFolder[] = [
-  { name: 'Desktop', path: '~/Desktop/', icon: '💻' },
-  { name: 'Documents', path: '~/Documents/', icon: '📄' },
-  { name: 'Downloads', path: '~/Downloads/', icon: '📥' },
-  { name: 'Music', path: '~/Music/', icon: '🎵' },
-  { name: 'Pictures', path: '~/Pictures/', icon: '🖼️' },
-];
 
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   const { 
@@ -103,17 +89,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
       .slice(0, 3);
   });
 
-  // 过滤快速访问文件夹 - 使用防抖后的查询
-  const filteredQuickAccess = createMemo(() => {
-    if (!debouncedQuery()) return quickAccessFolders;
-    
-    const query = debouncedQuery().toLowerCase();
-    return quickAccessFolders.filter(f => 
-      f.name.toLowerCase().includes(query) || 
-      f.path.toLowerCase().includes(query)
-    );
-  });
-
   const handleInputSubmit = (value: string) => {
     if (selectedIndex() >= 0 && allListItems().length > selectedIndex()) {
       openProjectByPath(allListItems()[selectedIndex()].path);
@@ -130,11 +105,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     const recent = filteredRecentProjects();
     for (const p of recent) {
       items.push({ path: p.path, name: p.name, icon: '📁', type: 'recent' });
-    }
-    
-    const quick = filteredQuickAccess();
-    for (const f of quick) {
-      items.push({ path: f.path, name: f.name, icon: f.icon, type: 'quickAccess' });
     }
     
     const query = debouncedQuery();
@@ -264,8 +234,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             <For each={allListItems()}>
               {(item, index) => {
                 const showRecentTitle = index() === 0 && item.type === 'recent';
-                const showQuickAccessTitle = item.type === 'quickAccess' && 
-                  index() === allListItems().findIndex(i => i.type === 'quickAccess');
                 const showSearchTitle = item.type === 'searchResult' && 
                   index() === allListItems().findIndex(i => i.type === 'searchResult');
                 
@@ -274,11 +242,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
                     <Show when={showRecentTitle}>
                       <div class="section">
                         <h3 class="section-title">Recent projects</h3>
-                      </div>
-                    </Show>
-                    <Show when={showQuickAccessTitle}>
-                      <div class="section">
-                        <h3 class="section-title">Open project</h3>
                       </div>
                     </Show>
                     <Show when={showSearchTitle}>
