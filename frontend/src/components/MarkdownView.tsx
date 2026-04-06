@@ -75,11 +75,23 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   // 跟踪同名标题的消费进度（每次渲染时重置）
   const usedCounts = new Map<string, number>();
 
+  const extractCodeText = (children: any): string => {
+    if (children == null) return '';
+    if (typeof children === 'string') return children;
+    if (typeof children === 'number') return String(children);
+    if (typeof children === 'function') return extractCodeText(children());
+    if (Array.isArray(children)) return children.map(extractCodeText).join('');
+    if (typeof children === 'object' && children.props?.children) {
+      return extractCodeText(children.props.children);
+    }
+    return '';
+  };
+
   const renderCode = (codeProps: any) => {
     const { class: className, children } = codeProps;
     const language = className?.replace(/language-/, '') || 'text';
 
-    const code = String(children).replace(/\n$/, '');
+    const code = extractCodeText(children).replace(/\n$/, '');
     const highlighted = Prism.highlight(
       code,
       Prism.languages[language] || Prism.languages.text,
