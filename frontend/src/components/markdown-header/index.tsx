@@ -1,9 +1,6 @@
 export { MarkdownHeader } from './MarkdownHeader';
 export type { MarkdownHeaderProps } from './MarkdownHeader';
 
-export { BreadcrumbBar } from './BreadcrumbBar';
-export type { BreadcrumbBarProps } from './BreadcrumbBar';
-
 export { DocumentTitleBar } from './DocumentTitleBar';
 export type { DocumentTitleBarProps } from './DocumentTitleBar';
 
