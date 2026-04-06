@@ -14,18 +14,8 @@ pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
             let depth = stripped.chars().take_while(|&c| c == '#').count() + 1;
             if depth >= 1 && depth <= 6 {
                 let text = stripped.trim_start_matches('#').trim();
-                let clean_text = text
-                    .replace('*', "")
-                    .replace('_', "")
-                    .replace('`', "")
-                    .replace('[', "")
-                    .replace(']', "");
-                let id = text
-                    .to_lowercase()
-                    .chars()
-                    .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
-                    .collect::<String>()
-                    .replace(' ', "-");
+                let clean_text = clean_heading_text(text);
+                let id = generate_heading_id(&clean_text);
                 headings.push(HeadingInfo {
                     id,
                     text: clean_text,
@@ -35,6 +25,59 @@ pub fn extract_headings(markdown: &str) -> Vec<HeadingInfo> {
         }
     }
     headings
+}
+
+fn clean_heading_text(text: &str) -> String {
+    let mut result = text.to_string();
+
+    result = remove_markdown_links(&result);
+
+    result = result.replace('*', "").replace('_', "").replace('`', "");
+
+    result.trim().to_string()
+}
+
+fn remove_markdown_links(text: &str) -> String {
+    let mut result = String::new();
+    let mut chars = text.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let mut link_text = String::new();
+            while let Some(&next) = chars.peek() {
+                if next == ']' {
+                    chars.next();
+                    break;
+                }
+                link_text.push(chars.next().unwrap());
+            }
+
+            if chars.peek() == Some(&'(') {
+                chars.next();
+                while let Some(&next) = chars.peek() {
+                    if next == ')' {
+                        chars.next();
+                        break;
+                    }
+                    chars.next();
+                }
+            }
+            result.push_str(&link_text);
+        } else {
+            result.push(c);
+        }
+    }
+
+    result
+}
+
+fn generate_heading_id(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-' || c.is_alphabetic())
+        .collect::<String>()
+        .replace(' ', "-")
+        .replace("--", "-")
 }
 
 pub fn render_markdown(markdown: &str) -> AppResult<RenderedMarkdown> {
