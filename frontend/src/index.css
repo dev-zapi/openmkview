@@ -269,6 +269,7 @@ body {
   align-items: center;
   flex-shrink: 0;
   overflow: hidden;
+  padding: 4px 0;
 }
 
 /* 项目列表区域 - 可滚动 */
@@ -277,7 +278,7 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding-top: 12px;
+  padding-top: 4px;
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
@@ -285,9 +286,9 @@ body {
 }
 
 .activity-bar-projects button {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 4px;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
   background: transparent;
   border: none;
   color: var(--color-text);
@@ -363,7 +364,7 @@ body {
 
 /* Project initial letter */
 .project-initial {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
@@ -371,8 +372,8 @@ body {
 
 /* 加号按钮 */
 .activity-bar-add {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   margin: 8px 0;
   background: transparent;
   border: none;
@@ -396,7 +397,7 @@ body {
 /* 底部固定区域 */
 .activity-bar-bottom {
   margin-top: auto;
-  padding-bottom: 12px;
+  padding-bottom: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -406,9 +407,9 @@ body {
 }
 
 .activity-bar-bottom button {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 4px;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
   background: transparent;
   border: none;
   color: var(--color-text);
@@ -420,6 +421,10 @@ body {
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+.activity-bar-bottom button:last-child {
+  margin-bottom: 0;
 }
 
 .activity-bar-bottom button::after {
