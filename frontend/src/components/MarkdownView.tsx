@@ -1,4 +1,4 @@
-import { Component, createMemo, createEffect, type JSX } from 'solid-js';
+import { Component, createEffect, type JSX, onMount } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { SolidMarkdown } from 'solid-markdown';
 import Prism from 'prismjs';
@@ -14,8 +14,8 @@ import type { Heading } from '../types';
 
 interface MarkdownViewProps {
   content: string;
-  headings?: Heading[];
   class?: string;
+  onHeadingsExtracted?: (headings: Heading[]) => void;
 }
 
 const extractText = (children: any): string => {
@@ -52,12 +52,41 @@ const generateHeadingId = (text: string): string => {
 };
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
-  let headingIndex = 0;
-  const headingsList = createMemo(() => props.headings || []);
-  
+  let containerRef: HTMLDivElement | undefined;
+
+  const extractHeadingsFromHtml = (): Heading[] => {
+    if (!containerRef) return [];
+    
+    const headingElements = containerRef.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const headings: Heading[] = [];
+    
+    headingElements.forEach((el) => {
+      const level = parseInt(el.tagName.charAt(1));
+      const text = el.textContent || '';
+      const id = el.id || generateHeadingId(text);
+      
+      if (!el.id) {
+        el.id = id;
+      }
+      
+      headings.push({
+        depth: level,
+        text: text.trim(),
+        id,
+      });
+    });
+    
+    return headings;
+  };
+
   createEffect(() => {
-    headingsList();
-    headingIndex = 0;
+    props.content;
+    if (containerRef && props.onHeadingsExtracted) {
+      setTimeout(() => {
+        const headings = extractHeadingsFromHtml();
+        props.onHeadingsExtracted?.(headings);
+      }, 0);
+    }
   });
 
   const extractCodeText = (children: any): string => {
@@ -93,20 +122,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const renderHeading = (level: number) => (headingProps: any) => {
     const tag = `h${level}` as keyof JSX.IntrinsicElements;
     const text = extractText(headingProps.children);
-    const headings = headingsList();
-    
-    let id: string | undefined;
-    
-    const currentIdx = headingIndex;
-    headingIndex++;
-    
-    if (currentIdx < headings.length && headings[currentIdx].depth === level) {
-      id = headings[currentIdx].id;
-    }
-    
-    if (!id) {
-      id = generateHeadingId(text);
-    }
+    const id = generateHeadingId(text);
 
     return (
       <Dynamic component={tag} id={id}>
@@ -116,7 +132,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   };
 
   return (
-    <div class={`markdown-view ${props.class || ''}`}>
+    <div ref={containerRef} class={`markdown-view ${props.class || ''}`}>
       <SolidMarkdown
         children={props.content}
         components={{

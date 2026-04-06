@@ -14,7 +14,7 @@ import { api } from './services/api';
 import { diffStore } from './stores/diffStore';
 import { openProjectStore } from './stores/openProjectStore';
 import { getCurrentRoute, navigateToProject, navigateToFile, navigateToHome, onPopState, replaceToProject, replaceToFile } from './utils/router';
-import type { FileNode, FileContent, Project } from './types';
+import type { FileNode, FileContent, Project, Heading } from './types';
 import type { RecentProject } from './types/openProject';
 import './styles/global.css';
 import './components/ColorPicker.css';
@@ -72,6 +72,7 @@ const App: Component = () => {
   const [activeProject, setActiveProject] = createSignal<Project | null>(null);
   const [fileTree, setFileTree] = createSignal<FileNode[]>([]);
   const [currentFile, setCurrentFile] = createSignal<FileContent | null>(null);
+  const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [activeTab, setActiveTab] = createSignal<'preview' | 'source' | 'diff'>('preview');
   const [activePanel, setActivePanel] = createSignal<'explorer' | 'git' | 'settings'>('explorer');
@@ -293,6 +294,7 @@ const App: Component = () => {
     try {
       const content = await api.getFileContent(path, project.id);
       setCurrentFile(content);
+      setExtractedHeadings([]);
       setActiveTab('preview');
       diffStore.reset();
       if (updateUrl) {
@@ -303,6 +305,10 @@ const App: Component = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleHeadingsExtracted = (headings: Heading[]) => {
+    setExtractedHeadings(headings);
   };
 
   const handleFolderToggle = (path: string, expanded: boolean) => {
@@ -539,7 +545,7 @@ const App: Component = () => {
                 fileSize={currentFile()!.fileSize}
                 activeTab={activeTab()}
                 isOutlineOpen={outlineOpen()}
-                outlineCount={currentFile()!.headings?.length || 0}
+                outlineCount={extractedHeadings().length}
                 isFavorite={isFavorite()}
                 content={currentFile()!.content}
                 onTabChange={(tab) => setActiveTab(tab)}
@@ -566,7 +572,10 @@ const App: Component = () => {
 
                   <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
                     <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
-                      <MarkdownView content={currentFile()!.content} headings={currentFile()!.headings} />
+                      <MarkdownView 
+                        content={currentFile()!.content} 
+                        onHeadingsExtracted={handleHeadingsExtracted} 
+                      />
                     </div>
                   </Show>
 
@@ -602,7 +611,7 @@ const App: Component = () => {
                 </div>
 
                 <OutlinePanel
-                  headings={currentFile()?.headings || []}
+                  headings={extractedHeadings()}
                   isOpen={outlineOpen()}
                   onClose={() => setOutlineOpen(false)}
                 />
@@ -735,7 +744,7 @@ const App: Component = () => {
           }
           outlinePanelContent={
             <OutlinePanel
-              headings={currentFile()?.headings || []}
+              headings={extractedHeadings()}
               isOpen={mobileLayoutStore.rightDrawerOpen}
               onClose={() => mobileLayoutStore.closeRightDrawer()}
             />
@@ -750,7 +759,7 @@ const App: Component = () => {
                 fileSize={currentFile()!.fileSize}
                 activeTab={activeTab()}
                 isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
-                outlineCount={currentFile()!.headings?.length || 0}
+                outlineCount={extractedHeadings().length}
                 isFavorite={isFavorite()}
                 content={currentFile()!.content}
                 onTabChange={(tab) => setActiveTab(tab)}
@@ -776,7 +785,10 @@ const App: Component = () => {
 
             <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
               <div class="markdown-wrapper" style={getMarkdownStyle()}>
-                <MarkdownView content={currentFile()!.content} headings={currentFile()!.headings} />
+                <MarkdownView 
+                  content={currentFile()!.content} 
+                  onHeadingsExtracted={handleHeadingsExtracted} 
+                />
               </div>
             </Show>
 

@@ -13,7 +13,6 @@ export interface Heading {
 
 export interface FileContent {
   content: string;
-  headings: Heading[];
   fileName: string;
   path: string;
   fileSize?: number;
