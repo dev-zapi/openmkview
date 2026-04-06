@@ -49,6 +49,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     recentProjects, 
     isLoadingRecent,
     searchQuery,
+    debouncedQuery,
     searchResults,
     isSearching,
     setSearchQuery,
@@ -91,22 +92,22 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     }
   };
 
-  // 过滤最近项目（限制3个）
+  // 过滤最近项目（限制3个）- 使用防抖后的查询
   const filteredRecentProjects = createMemo(() => {
     const projects = recentProjects();
-    if (!searchQuery()) return projects.slice(0, 3);
+    if (!debouncedQuery()) return projects.slice(0, 3);
     
-    const query = searchQuery().toLowerCase();
+    const query = debouncedQuery().toLowerCase();
     return projects
       .filter((p: RecentProject) => p.name.toLowerCase().includes(query) || p.path.toLowerCase().includes(query))
       .slice(0, 3);
   });
 
-  // 过滤快速访问文件夹
+  // 过滤快速访问文件夹 - 使用防抖后的查询
   const filteredQuickAccess = createMemo(() => {
-    if (!searchQuery()) return quickAccessFolders;
+    if (!debouncedQuery()) return quickAccessFolders;
     
-    const query = searchQuery().toLowerCase();
+    const query = debouncedQuery().toLowerCase();
     return quickAccessFolders.filter(f => 
       f.name.toLowerCase().includes(query) || 
       f.path.toLowerCase().includes(query)
@@ -136,7 +137,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
       items.push({ path: f.path, name: f.name, icon: f.icon, type: 'quickAccess' });
     }
     
-    if (searchQuery() && searchResults().length > 0) {
+    if (debouncedQuery() && searchResults().length > 0) {
       const results = searchResults().slice(0, 5);
       for (const r of results) {
         items.push({ 

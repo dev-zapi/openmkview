@@ -16,7 +16,7 @@ import {
 } from '../../../api/client';
 
 /** 防抖延迟（毫秒） */
-const DEBOUNCE_DELAY = 300;
+const DEBOUNCE_DELAY = 230;
 
 /** 初始状态 */
 const createInitialState = (): OpenProjectState => ({
@@ -33,6 +33,8 @@ export interface UseOpenProjectReturn {
   state: OpenProjectState;
   /** 搜索查询字符串 */
   searchQuery: () => string;
+  /** 防抖后的搜索查询（用于列表渲染） */
+  debouncedQuery: () => string;
   /** 搜索结果 */
   searchResults: () => PathCandidate[];
   /** 是否正在搜索 */
@@ -171,6 +173,7 @@ export function useOpenProject(
   return {
     get state() { return state(); },
     searchQuery,
+    debouncedQuery,
     searchResults,
     isSearching,
     recentProjects,
