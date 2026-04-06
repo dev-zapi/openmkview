@@ -12,6 +12,7 @@ import { MobileLayout, mobileLayoutStore } from './components/mobile';
 import { api } from './services/api';
 import { diffStore } from './stores/diffStore';
 import { openProjectStore } from './stores/openProjectStore';
+import { getCurrentRoute, navigateToProject, navigateToFile, navigateToHome, onPopState, replaceToProject, replaceToFile } from './utils/router';
 import type { FileNode, FileContent, Project } from './types';
 import type { RecentProject } from './types/openProject';
 import './styles/global.css';
@@ -93,17 +94,14 @@ const App: Component = () => {
 
     applyTheme(settings().theme as ThemeMode);
 
-    // Load sidebar width from localStorage
     setSidebarWidth(loadSidebarWidth());
 
-    // Detect mobile viewport
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
 
-    // Adjust sidebar width on window resize
     const handleWindowResize = () => {
       const maxWidth = window.innerWidth * 0.4;
       const currentWidth = sidebarWidth();
@@ -123,13 +121,11 @@ const App: Component = () => {
     };
     mediaQuery.addEventListener('change', handleThemeChange);
     
-    // Sidebar resize handlers
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
         const maxWidth = window.innerWidth * 0.4;
         const newWidth = Math.max(200, Math.min(maxWidth, e.clientX - 52));
         setSidebarWidth(newWidth);
-        // Save to localStorage immediately with the new width value
         localStorage.setItem('filetree-sidebar-width', String(newWidth));
       }
     };
@@ -145,12 +141,41 @@ const App: Component = () => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     
+    const cleanupPopState = onPopState(async (route) => {
+      if (route.projectId) {
+        const project = projects().find(p => p.id === route.projectId);
+        if (project) {
+          await handleSwitchProject(project, false);
+          if (route.filePath) {
+            await handleFileClick(route.filePath, '', false);
+          }
+        }
+      } else {
+        setActiveProject(null);
+        setFileTree([]);
+        setCurrentFile(null);
+        setExpandedFolders(new Set<string>());
+      }
+    });
+
+    const route = getCurrentRoute();
+    if (route.projectId) {
+      const project = projectList.find(p => p.id === route.projectId);
+      if (project) {
+        await handleSwitchProject(project, false);
+        if (route.filePath) {
+          await handleFileClick(route.filePath, '', false);
+        }
+      }
+    }
+    
     onCleanup(() => {
       mediaQuery.removeEventListener('change', handleThemeChange);
       window.removeEventListener('resize', checkMobile);
       window.removeEventListener('resize', handleWindowResize);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      cleanupPopState();
     });
   });
 
@@ -219,7 +244,7 @@ const App: Component = () => {
     }
   };
 
-  const handleSwitchProject = async (project: Project) => {
+  const handleSwitchProject = async (project: Project, updateUrl: boolean = true) => {
     setActiveProject(project);
     setLoading(true);
     try {
@@ -227,6 +252,9 @@ const App: Component = () => {
       setFileTree(tree);
       diffStore.reset();
       setCurrentFile(null);
+      if (updateUrl) {
+        navigateToProject(project.id);
+      }
     } catch (error) {
       console.error('Failed to load file tree:', error);
     } finally {
@@ -245,6 +273,7 @@ const App: Component = () => {
         setFileTree([]);
         setCurrentFile(null);
         setExpandedFolders(new Set<string>());
+        navigateToHome();
         if (updated.length > 0) {
           await handleSwitchProject(updated[0]);
         }
@@ -254,7 +283,7 @@ const App: Component = () => {
     }
   };
 
-  const handleFileClick = async (path: string, _name: string) => {
+  const handleFileClick = async (path: string, _name: string, updateUrl: boolean = true) => {
     const project = activeProject();
     if (!project) return;
 
@@ -264,6 +293,9 @@ const App: Component = () => {
       setCurrentFile(content);
       setActiveTab('preview');
       diffStore.reset();
+      if (updateUrl) {
+        navigateToFile(project.id, path);
+      }
     } catch (error) {
       console.error('Failed to load file:', error);
     } finally {
