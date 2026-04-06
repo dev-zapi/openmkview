@@ -1,4 +1,5 @@
 import { Component, createMemo, type JSX } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 import { SolidMarkdown } from 'solid-markdown';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
@@ -97,7 +98,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
    * 优先从后端 headings 中查找匹配的 id，回退到自行生成。
    */
   const renderHeading = (level: number) => (headingProps: any) => {
-    const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+    const tag = `h${level}` as keyof JSX.IntrinsicElements;
     const text = extractText(headingProps.children);
     const map = headingIdMap();
 
@@ -120,7 +121,11 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       id = generateHeadingId(text);
     }
 
-    return <Tag id={id}>{headingProps.children}</Tag>;
+    return (
+      <Dynamic component={tag} id={id}>
+        {headingProps.children}
+      </Dynamic>
+    );
   };
 
   return (
