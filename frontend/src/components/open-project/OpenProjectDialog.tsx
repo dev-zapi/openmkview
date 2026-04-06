@@ -26,7 +26,6 @@ interface ListableItem {
   name: string;
   icon: string;
   relativePath?: string;
-  type: 'recent' | 'searchResult';
 }
 
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
@@ -78,17 +77,6 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     }
   };
 
-  // 过滤最近项目（限制3个）- 使用防抖后的查询
-  const filteredRecentProjects = createMemo(() => {
-    const projects = recentProjects();
-    if (!debouncedQuery()) return projects.slice(0, 3);
-    
-    const query = debouncedQuery().toLowerCase();
-    return projects
-      .filter((p: RecentProject) => p.name.toLowerCase().includes(query) || p.path.toLowerCase().includes(query))
-      .slice(0, 3);
-  });
-
   const handleInputSubmit = (value: string) => {
     if (selectedIndex() >= 0 && allListItems().length > selectedIndex()) {
       openProjectByPath(allListItems()[selectedIndex()].path);
@@ -101,23 +89,38 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
 
   const allListItems = createMemo<ListableItem[]>(() => {
     const items: ListableItem[] = [];
+    const query = debouncedQuery();
     
-    const recent = filteredRecentProjects();
-    for (const p of recent) {
-      items.push({ path: p.path, name: p.name, icon: '📁', type: 'recent' });
+    // 无搜索时显示最近项目
+    if (!query) {
+      const recent = recentProjects().slice(0, 3);
+      for (const p of recent) {
+        items.push({ path: p.path, name: p.name, icon: '📁' });
+      }
+      return items;
     }
     
-    const query = debouncedQuery();
+    // 有搜索时合并：本地过滤 + API搜索结果
+    const lowerQuery = query.toLowerCase();
+    const filteredRecent = recentProjects()
+      .filter((p: RecentProject) => 
+        p.name.toLowerCase().includes(lowerQuery) || 
+        p.path.toLowerCase().includes(lowerQuery)
+      )
+      .slice(0, 3);
+    
+    for (const p of filteredRecent) {
+      items.push({ path: p.path, name: p.name, icon: '📁' });
+    }
+    
     const results = searchResults();
-    if (query && results.length > 0) {
-      const slicedResults = results.slice(0, 5);
-      for (const r of slicedResults) {
+    if (results.length > 0) {
+      for (const r of results.slice(0, 5)) {
         items.push({ 
           path: r.path, 
           name: r.name, 
           icon: '📁', 
-          relativePath: r.relative_path, 
-          type: 'searchResult' 
+          relativePath: r.relative_path 
         });
       }
     }
@@ -230,43 +233,25 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
               </Show>
             </div>
 
-            {/* All List Items */}
+            {/* List Items */}
             <For each={allListItems()}>
-              {(item, index) => {
-                const showRecentTitle = index() === 0 && item.type === 'recent';
-                const showSearchTitle = item.type === 'searchResult' && 
-                  index() === allListItems().findIndex(i => i.type === 'searchResult');
-                
-                return (
-                  <>
-                    <Show when={showRecentTitle}>
-                      <div class="section">
-                        <h3 class="section-title">Recent projects</h3>
-                      </div>
-                    </Show>
-                    <Show when={showSearchTitle}>
-                      <div class="section">
-                        <h3 class="section-title">Search results</h3>
-                      </div>
-                    </Show>
-                    <div 
-                      class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
-                      onClick={() => openProjectByPath(item.path)}
-                      onKeyDown={handleListItemKeyDown}
-                      tabIndex={0}
-                      role="button"
-                    >
-                      <span class="folder-icon">{item.icon}</span>
-                      <Show when={item.relativePath} fallback={<span class="folder-path">{item.path}</span>}>
-                        <div class="folder-info">
-                          <span class="folder-name">{item.name}</span>
-                          <span class="folder-path-small">{item.relativePath}</span>
-                        </div>
-                      </Show>
+              {(item, index) => (
+                <div 
+                  class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
+                  onClick={() => openProjectByPath(item.path)}
+                  onKeyDown={handleListItemKeyDown}
+                  tabIndex={0}
+                  role="button"
+                >
+                  <span class="folder-icon">{item.icon}</span>
+                  <Show when={item.relativePath} fallback={<span class="folder-path">{item.path}</span>}>
+                    <div class="folder-info">
+                      <span class="folder-name">{item.name}</span>
+                      <span class="folder-path-small">{item.relativePath}</span>
                     </div>
-                  </>
-                );
-              }}
+                  </Show>
+                </div>
+              )}
             </For>
 
             <Show when={isLoadingRecent()}>
