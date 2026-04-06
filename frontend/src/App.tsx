@@ -72,18 +72,14 @@ const App: Component = () => {
   const [activeProject, setActiveProject] = createSignal<Project | null>(null);
   const [fileTree, setFileTree] = createSignal<FileNode[]>([]);
   const [currentFile, setCurrentFile] = createSignal<FileContent | null>(null);
-  const [currentFileRelativePath, setCurrentFileRelativePath] = createSignal<string>('');
   const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [activeTab, setActiveTab] = createSignal<'preview' | 'source' | 'diff'>('preview');
-  const [activePanel, setActivePanel] = createSignal<'explorer' | 'git' | 'settings'>('explorer');
-  const [sidebarVisible, setSidebarVisible] = createSignal(true);
   const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
   const [outlineOpen, setOutlineOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const [settings, setSettings] = createSignal(loadSettings());
   const [systemTheme, setSystemTheme] = createSignal<'light' | 'dark'>(getSystemTheme());
-  const [isFavorite, setIsFavorite] = createSignal(false);
   const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set());
   const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = createSignal(false);
   const [isMobile, setIsMobile] = createSignal(false);
@@ -288,7 +284,7 @@ const App: Component = () => {
     }
   };
 
-  const handleFileClick = async (path: string, relativePath: string, updateUrl: boolean = true) => {
+  const handleFileClick = async (path: string, _relativePath: string, updateUrl: boolean = true) => {
     const project = activeProject();
     if (!project) return;
 
@@ -296,7 +292,6 @@ const App: Component = () => {
     try {
       const content = await api.getFileContent(path, project.id);
       setCurrentFile(content);
-      setCurrentFileRelativePath(relativePath);
       setExtractedHeadings([]);
       setActiveTab('preview');
       diffStore.reset();
@@ -326,29 +321,6 @@ const App: Component = () => {
     });
   };
 
-  const handleNavigate = (path: string) => {
-    if (!path) {
-      // 点击项目名，跳转到根目录，收起所有文件夹
-      setExpandedFolders(new Set<string>());
-      return;
-    }
-    // 点击文件夹路径，展开该文件夹及其父文件夹
-    setExpandedFolders(prev => {
-      const newSet = new Set(prev);
-      // 展开当前文件夹
-      newSet.add(path);
-      
-      // 展开所有父文件夹
-      const segments = path.split('/');
-      let currentPath = '';
-      for (let i = 0; i < segments.length - 1; i++) {
-        currentPath = currentPath ? `${currentPath}/${segments[i]}` : segments[i];
-        newSet.add(currentPath);
-      }
-      return newSet;
-    });
-  };
-
   const handleCloseDiff = () => {
     diffStore.reset();
     setActiveTab('preview');
@@ -366,10 +338,6 @@ const App: Component = () => {
     } else {
       setOutlineOpen(!outlineOpen());
     }
-  };
-
-  const handleToggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible());
   };
 
   const getMarkdownStyle = () => {
@@ -511,7 +479,7 @@ const App: Component = () => {
 
           <Show when={activePanel() === 'explorer'}>
             <aside 
-              class={`sidebar sidebar-enter ${sidebarVisible() ? '' : 'sidebar-hidden'}`} 
+              class="sidebar sidebar-enter" 
               ref={sidebarRef}
               style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
             >
@@ -547,22 +515,14 @@ const App: Component = () => {
               <Show when={currentFile()}>
                 <MarkdownHeader
                   fileName={currentFile()!.fileName}
-                  filePath={currentFileRelativePath()}
-                  projectName={activeProject()?.name || ''}
                   lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
                   fileSize={currentFile()!.fileSize}
                   activeTab={activeTab()}
                   isOutlineOpen={outlineOpen()}
                   outlineCount={extractedHeadings().length}
-                  isFavorite={isFavorite()}
-                  isSidebarVisible={sidebarVisible()}
                   content={currentFile()!.content}
                   onTabChange={(tab) => setActiveTab(tab)}
                   onOutlineToggle={handleMobileOutlineToggle}
-                  onNavigate={handleNavigate}
-                  onFavoriteToggle={() => setIsFavorite(!isFavorite())}
-                  onToggleSidebar={handleToggleSidebar}
-                  onMenuClick={handleMobileMenuClick}
                 />
               </Show>
 
@@ -764,22 +724,14 @@ const App: Component = () => {
             <Show when={currentFile()}>
               <MarkdownHeader
                 fileName={currentFile()!.fileName}
-                filePath={currentFileRelativePath()}
-                projectName={activeProject()?.name || ''}
                 lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
                 fileSize={currentFile()!.fileSize}
                 activeTab={activeTab()}
                 isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
                 outlineCount={extractedHeadings().length}
-                isFavorite={isFavorite()}
-                isSidebarVisible={sidebarVisible()}
                 content={currentFile()!.content}
                 onTabChange={(tab) => setActiveTab(tab)}
                 onOutlineToggle={handleMobileOutlineToggle}
-                onNavigate={handleNavigate}
-                onFavoriteToggle={() => setIsFavorite(!isFavorite())}
-                onToggleSidebar={handleToggleSidebar}
-                onMenuClick={handleMobileMenuClick}
               />
             </Show>
           }

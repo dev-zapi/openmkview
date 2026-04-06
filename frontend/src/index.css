@@ -498,14 +498,7 @@ body {
 
 /* Sidebar width transition animation */
 .sidebar {
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
-}
-
-.sidebar-hidden {
-  width: 0 !important;
-  opacity: 0;
-  border-right: none;
-  pointer-events: none;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Sidebar show/hide animation */
