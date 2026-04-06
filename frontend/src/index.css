@@ -447,7 +447,10 @@ body {
 }
 
 .sidebar-header {
-  padding: 14px 20px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;

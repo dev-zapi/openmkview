@@ -1,13 +1,20 @@
-import { Component } from 'solid-js';
+import { Component, createSignal, Show } from 'solid-js';
 import styles from './styles.module.css';
-import { ViewTabs } from './ViewTabs';
 
 export interface DocumentTitleBarProps {
   fileName: string;
   lastModified?: Date;
   fileSize?: number;
   activeTab: 'preview' | 'source' | 'diff';
+  outlineCount: number;
+  isOutlineOpen: boolean;
+  isFullscreen: boolean;
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
+  onOutlineToggle: () => void;
+  onFullscreenToggle: () => void;
+  onSearchClick: () => void;
+  onCopyClick: () => void;
+  onExportClick: (format: 'pdf' | 'md') => void;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -59,11 +66,18 @@ const getFileIcon = (fileName: string): string => {
 };
 
 export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
+  const [exportMenuOpen, setExportMenuOpen] = createSignal(false);
+
   const formattedSize = () =>
     props.fileSize !== undefined ? formatFileSize(props.fileSize) : '';
 
   const formattedTime = () =>
     props.lastModified ? formatTimeAgo(props.lastModified) : '';
+
+  const handleExport = (format: 'pdf' | 'md') => {
+    props.onExportClick(format);
+    setExportMenuOpen(false);
+  };
 
   return (
     <div class={styles.documentTitleBar}>
@@ -72,14 +86,117 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           <span class={styles.fileIcon}>{getFileIcon(props.fileName)}</span>
           <span class={styles.fileName}>{props.fileName}</span>
         </div>
-        <div class={styles.documentMeta}>
-          {formattedTime() && <span>Modified {formattedTime()}</span>}
-          {formattedTime() && formattedSize() && <span class={styles.metaSeparator}>•</span>}
-          {formattedSize() && <span>{formattedSize()}</span>}
+        <Show when={formattedTime() || formattedSize()}>
+          <div class={styles.documentMeta}>
+            {formattedTime() && <span>{formattedTime()}</span>}
+            {formattedTime() && formattedSize() && <span class={styles.metaSeparator}>•</span>}
+            {formattedSize() && <span>{formattedSize()}</span>}
+          </div>
+        </Show>
+      </div>
+
+      <div class={styles.documentCenter}>
+        <div class={styles.viewTabs}>
+          <button
+            class={`${styles.tabItem} ${props.activeTab === 'preview' ? styles.active : ''}`}
+            onClick={() => props.onTabChange('preview')}
+          >
+            预览
+          </button>
+          <button
+            class={`${styles.tabItem} ${props.activeTab === 'source' ? styles.active : ''}`}
+            onClick={() => props.onTabChange('source')}
+          >
+            源码
+          </button>
+          <button
+            class={`${styles.tabItem} ${props.activeTab === 'diff' ? styles.active : ''}`}
+            onClick={() => props.onTabChange('diff')}
+          >
+            Diff
+          </button>
         </div>
       </div>
+
       <div class={styles.documentRight}>
-        <ViewTabs activeTab={props.activeTab} onTabChange={props.onTabChange} />
+        <button
+          class={styles.toolbarButtonIcon}
+          onClick={props.onSearchClick}
+          title="搜索"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+
+        <button
+          class={styles.toolbarButtonIcon}
+          onClick={props.onCopyClick}
+          title="复制全文"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+
+        <div class={styles.dropdown}>
+          <button
+            class={styles.toolbarButtonIcon}
+            onClick={() => setExportMenuOpen(!exportMenuOpen())}
+            title="导出"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <Show when={exportMenuOpen()}>
+            <div class={styles.dropdownMenu}>
+              <button class={styles.dropdownItem} onClick={() => handleExport('pdf')}>
+                <span class={styles.dropdownIcon}>📄</span>
+                <span>导出为 PDF</span>
+              </button>
+              <button class={styles.dropdownItem} onClick={() => handleExport('md')}>
+                <span class={styles.dropdownIcon}>📝</span>
+                <span>导出为 Markdown</span>
+              </button>
+            </div>
+          </Show>
+        </div>
+
+        <button
+          class={`${styles.toolbarButtonIcon} ${props.isOutlineOpen ? styles.active : ''}`}
+          onClick={props.onOutlineToggle}
+          title="大纲"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="20" y2="18"/>
+          </svg>
+          <Show when={props.outlineCount > 0}>
+            <span class={styles.badge}>{props.outlineCount}</span>
+          </Show>
+        </button>
+
+        <button
+          class={styles.toolbarButtonIcon}
+          onClick={props.onFullscreenToggle}
+          title={props.isFullscreen ? '退出全屏' : '全屏'}
+        >
+          <Show when={props.isFullscreen} fallback={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          }>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+            </svg>
+          </Show>
+        </button>
       </div>
     </div>
   );

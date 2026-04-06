@@ -2,7 +2,6 @@ import { Component, createSignal, onMount, onCleanup } from 'solid-js';
 import styles from './styles.module.css';
 import { BreadcrumbBar } from './BreadcrumbBar';
 import { DocumentTitleBar } from './DocumentTitleBar';
-import { ActionToolbar } from './ActionToolbar';
 import { SearchBox } from './SearchBox';
 
 export interface MarkdownHeaderProps {
@@ -15,12 +14,12 @@ export interface MarkdownHeaderProps {
   isOutlineOpen: boolean;
   outlineCount: number;
   isFavorite?: boolean;
-  content: string;  // 用于复制功能
+  content: string;
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
   onOutlineToggle: () => void;
   onNavigate: (path: string) => void;
   onFavoriteToggle?: () => void;
-  onMenuClick?: () => void;  // Mobile menu button callback
+  onMenuClick?: () => void;
 }
 
 export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
@@ -45,7 +44,6 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const handleQueryChange = (query: string) => {
     setSearchQuery(query);
     if (query.trim()) {
-      // 简单的文本搜索计数
       const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       const matches = props.content.match(regex);
       setSearchResults(matches ? matches.length : 0);
@@ -72,41 +70,29 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
     const timestamp = new Date().toISOString().slice(0, 10);
     const baseName = props.fileName.replace(/\.[^/.]+$/, '');
     
-    // 简单的 Markdown 到 HTML 转换函数（用于 PDF 导出）
     const markdownToHtml = (markdown: string): string => {
       return markdown
-        // 代码块
         .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-        // 行内代码
         .replace(/`([^`]+)`/g, '<code>$1</code>')
-        // 标题
         .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
         .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
         .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
         .replace(/^## (.*$)/gim, '<h2>$1</h2>')
         .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        // 粗体
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.*?)__/g, '<strong>$1</strong>')
-        // 斜体
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/_(.*?)_/g, '<em>$1</em>')
-        // 删除线
         .replace(/~~(.*?)~~/g, '<del>$1</del>')
-        // 链接
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        // 图片
         .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-        // 引用
         .replace(/^\u003e (.*$)/gim, '<blockquote>$1</blockquote>')
-        // 换行
         .replace(/\n/g, '<br />');
     };
     
     switch (format) {
       case 'pdf':
-        // 使用浏览器打印功能导出PDF
         const printWindow = window.open('', '_blank');
         if (printWindow) {
           const htmlBody = markdownToHtml(props.content);
@@ -134,7 +120,6 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         break;
         
       case 'md':
-        // 导出原始 Markdown 文件
         downloadFile(props.content, `${baseName}_${timestamp}.md`, 'text/markdown');
         setToast({ message: 'Markdown 已下载', type: 'success' });
         break;
@@ -164,7 +149,6 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
     setIsFullscreen(!isFullscreen());
   };
 
-  // 监听打开搜索事件
   onMount(() => {
     const handleOpenSearch = () => {
       setIsSearchOpen(true);
@@ -201,12 +185,10 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         lastModified={props.lastModified}
         fileSize={props.fileSize}
         activeTab={props.activeTab}
-        onTabChange={props.onTabChange}
-      />
-      <ActionToolbar
         outlineCount={props.outlineCount}
         isOutlineOpen={props.isOutlineOpen}
         isFullscreen={isFullscreen()}
+        onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         onFullscreenToggle={handleFullscreenToggle}
         onSearchClick={handleSearchClick}

@@ -131,33 +131,36 @@
 }
 
 .documentTitleBar {
-  height: 52px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 0 16px;
   background: var(--color-bg);
+  gap: 16px;
 }
 
 .documentLeft {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
 }
 
 .documentTitle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .fileIcon {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .fileName {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text-h);
   white-space: nowrap;
@@ -171,33 +174,42 @@
   gap: 6px;
   font-size: 12px;
   color: var(--color-text);
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .metaSeparator {
   opacity: 0.5;
 }
 
+.documentCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .documentRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
 }
 
 .viewTabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 
 .tabItem {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text);
   transition: all 0.15s ease;
-  position: relative;
 }
 
 .tabItem:hover {
@@ -210,55 +222,17 @@
   background: var(--color-active-bg);
 }
 
-.tabItem.active::after {
-  content: '';
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 2px;
-  background: var(--color-accent);
-  border-radius: 1px;
-}
-
-.actionToolbar {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
-  gap: 16px;
-}
-
-.toolbarLeft,
-.toolbarCenter,
-.toolbarRight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbarDivider {
-  width: 1px;
-  height: 24px;
-  background: var(--color-border);
-  margin: 0 8px;
-}
-
 .toolbarButton {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
   color: var(--color-text);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   transition: all 0.15s ease;
   position: relative;
 }
@@ -273,6 +247,29 @@
   color: var(--color-text-h);
 }
 
+.toolbarButtonIcon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.toolbarButtonIcon:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.toolbarButtonIcon.active {
+  background: var(--color-active-bg);
+  color: var(--color-text-h);
+}
+
 .badge {
   background: var(--color-accent);
   color: white;
@@ -282,6 +279,20 @@
   border-radius: 10px;
   min-width: 18px;
   text-align: center;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.toolbarLeft,
+.toolbarCenter,
+.toolbarRight {
+  display: none;
+}
+
+.toolbarDivider {
+  display: none;
 }
 
 /* 下拉菜单 */
@@ -431,21 +442,24 @@
     display: none;
   }
 
+  .documentTitleBar {
+    height: 48px;
+  }
+
   .fileName {
-    font-size: 16px;
+    font-size: 14px;
   }
 
-  .actionToolbar {
-    overflow-x: auto;
-    scrollbar-width: none;
+  .documentMeta {
+    font-size: 11px;
   }
 
-  .actionToolbar::-webkit-scrollbar {
-    display: none;
+  .documentRight {
+    gap: 2px;
   }
 
-  .toolbarButton span {
-    display: none;
+  .toolbarButtonIcon {
+    padding: 4px;
   }
 }
 
