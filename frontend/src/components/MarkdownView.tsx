@@ -1,6 +1,7 @@
-import { Component, createEffect, type JSX, onMount } from 'solid-js';
+import { Component, createEffect, type JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { SolidMarkdown } from 'solid-markdown';
+import remarkGfm from 'remark-gfm';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-typescript';
@@ -135,6 +136,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     <div ref={containerRef} class={`markdown-view ${props.class || ''}`}>
       <SolidMarkdown
         children={props.content}
+        remarkPlugins={[remarkGfm]}
         components={{
           code: renderCode,
           h1: renderHeading(1),

@@ -15,6 +15,7 @@
     "@pierre/diffs": "^1.1.0",
     "@pierre/theme": "^0.0.24",
     "prismjs": "^1.30.0",
+    "remark-gfm": "^4.0.1",
     "solid-js": "^1.9.11",
     "solid-markdown": "^2.1.1"
   },
