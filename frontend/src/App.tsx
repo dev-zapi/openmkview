@@ -536,87 +536,89 @@ const App: Component = () => {
           </Show>
 
           <main class="main">
-            <Show when={currentFile()}>
-              <MarkdownHeader
-                fileName={currentFile()!.fileName}
-                filePath={currentFile()!.path}
-                projectName={activeProject()?.name || ''}
-                lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
-                fileSize={currentFile()!.fileSize}
-                activeTab={activeTab()}
-                isOutlineOpen={outlineOpen()}
-                outlineCount={extractedHeadings().length}
-                isFavorite={isFavorite()}
-                content={currentFile()!.content}
-                onTabChange={(tab) => setActiveTab(tab)}
-                onOutlineToggle={handleMobileOutlineToggle}
-                onNavigate={handleNavigate}
-                onFavoriteToggle={() => setIsFavorite(!isFavorite())}
-                onMenuClick={handleMobileMenuClick}
-              />
-            </Show>
-
-            <div class="main-content">
-              <Show when={loading()}>
-                <div class="loading">Loading...</div>
+            <div class="main-left">
+              <Show when={currentFile()}>
+                <MarkdownHeader
+                  fileName={currentFile()!.fileName}
+                  filePath={currentFile()!.path}
+                  projectName={activeProject()?.name || ''}
+                  lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
+                  fileSize={currentFile()!.fileSize}
+                  activeTab={activeTab()}
+                  isOutlineOpen={outlineOpen()}
+                  outlineCount={extractedHeadings().length}
+                  isFavorite={isFavorite()}
+                  content={currentFile()!.content}
+                  onTabChange={(tab) => setActiveTab(tab)}
+                  onOutlineToggle={handleMobileOutlineToggle}
+                  onNavigate={handleNavigate}
+                  onFavoriteToggle={() => setIsFavorite(!isFavorite())}
+                  onMenuClick={handleMobileMenuClick}
+                />
               </Show>
 
-              <div class="content-area">
-                <div class="content-main">
-                  <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
-                    <div class="welcome">
-                      <h1>OpenMKView</h1>
-                      <p>点击 "Open Project" 或左侧 + 按钮开始</p>
-                    </div>
-                  </Show>
+              <div class="main-content">
+                <Show when={loading()}>
+                  <div class="loading">Loading...</div>
+                </Show>
 
-                  <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
-                    <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
-                      <MarkdownView 
-                        content={currentFile()!.content} 
-                        onHeadingsExtracted={handleHeadingsExtracted} 
-                      />
-                    </div>
-                  </Show>
+                <div class="content-area">
+                  <div class="content-main">
+                    <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
+                      <div class="welcome">
+                        <h1>OpenMKView</h1>
+                        <p>点击 "Open Project" 或左侧 + 按钮开始</p>
+                      </div>
+                    </Show>
 
-                  <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
-                    <div class="content-fade-enter">
-                      <DiffSelector
-                        projectId={activeProject()!.id}
-                        filePath={currentFile()!.path}
-                      />
-
-                      <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
-                        <DiffViewer
-                          diffData={diffStore.state.diffData!}
-                          theme={settings().theme}
-                          mode="split"
-                          onClose={handleCloseDiff}
+                    <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
+                      <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
+                        <MarkdownView 
+                          content={currentFile()!.content} 
+                          onHeadingsExtracted={handleHeadingsExtracted} 
                         />
-                      </Show>
+                      </div>
+                    </Show>
 
-                      <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
-                        <div class="diff-empty">
-                          <p>Select versions to compare</p>
-                        </div>
-                      </Show>
-                    </div>
-                  </Show>
+                    <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
+                      <div class="content-fade-enter">
+                        <DiffSelector
+                          projectId={activeProject()!.id}
+                          filePath={currentFile()!.path}
+                        />
 
-                  <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-                    <pre class="source-view content-fade-enter">
-                      <code>{currentFile()!.content}</code>
-                    </pre>
-                  </Show>
+                        <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
+                          <DiffViewer
+                            diffData={diffStore.state.diffData!}
+                            theme={settings().theme}
+                            mode="split"
+                            onClose={handleCloseDiff}
+                          />
+                        </Show>
+
+                        <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
+                          <div class="diff-empty">
+                            <p>Select versions to compare</p>
+                          </div>
+                        </Show>
+                      </div>
+                    </Show>
+
+                    <Show when={!loading() && currentFile() && activeTab() === 'source'}>
+                      <pre class="source-view content-fade-enter">
+                        <code>{currentFile()!.content}</code>
+                      </pre>
+                    </Show>
+                  </div>
                 </div>
-
-                <OutlinePanel
-                  headings={extractedHeadings()}
-                  isOpen={outlineOpen()}
-                  onClose={() => setOutlineOpen(false)}
-                />
               </div>
             </div>
+
+            <OutlinePanel
+              headings={extractedHeadings()}
+              isOpen={outlineOpen()}
+              onClose={() => setOutlineOpen(false)}
+            />
           </main>
 
           <GitPanel

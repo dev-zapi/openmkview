@@ -663,10 +663,16 @@ textarea {
 .main {
   flex: 1;
   display: flex;
-  flex-direction: column;
   min-width: 0;
   background: var(--color-bg);
   animation: fadeIn 0.3s ease;
+}
+
+.main-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .main-header {
@@ -1049,6 +1055,14 @@ textarea {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+.outline-panel-hidden {
+  width: 0;
+  opacity: 0;
+  border-left: none;
 }
 
 .outline-panel-header {
@@ -1321,6 +1335,21 @@ textarea {
   border-radius: 6px;
   margin: 2px 0;
   border-left: 2px solid transparent;
+}
+
+.outline-item-animate {
+  animation: outlineItemFade 0.2s ease forwards;
+}
+
+@keyframes outlineItemFade {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .outline-item:hover {

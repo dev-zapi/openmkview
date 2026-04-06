@@ -60,11 +60,13 @@ describe('OutlinePanel', () => {
     { depth: 3, text: 'Installation', id: 'installation' },
   ];
 
-  it('renders nothing when closed', () => {
+  it('renders hidden panel when closed', () => {
     const { container } = render(() => (
       <OutlinePanel headings={mockHeadings} isOpen={false} onClose={() => {}} />
     ));
-    expect(container.innerHTML).toBe('');
+    const panel = container.querySelector('.outline-panel');
+    expect(panel).toBeTruthy();
+    expect(panel?.classList.contains('outline-panel-hidden')).toBe(true);
   });
 
   it('renders outline panel when open', () => {
