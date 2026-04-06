@@ -940,7 +940,8 @@ textarea {
   margin: 2px 0;
 }
 
-.file-tree .item {
+.file-tree .item,
+.file-tree .tree-item {
   display: flex;
   align-items: center;
   padding: 6px 10px;
@@ -949,14 +950,25 @@ textarea {
   font-size: 13px;
   transition: all 0.15s ease;
   border: 1px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.file-tree .item:hover {
+.file-tree .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree .item:hover,
+.file-tree .tree-item:hover {
   background: var(--color-code-bg);
   border-color: var(--color-border);
 }
 
-.file-tree .item.selected {
+.file-tree .item.selected,
+.file-tree .tree-item.selected {
   background: var(--color-accent-bg);
   border-color: var(--color-accent-border);
   color: var(--color-accent);
