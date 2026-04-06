@@ -11,22 +11,6 @@ pub struct FileTreeNode {
     pub children: Option<Vec<FileTreeNode>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct FileContentResponse {
-    pub content: String,
-    pub headings: Vec<HeadingInfo>,
-    pub file_name: String,
-    pub path: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HeadingInfo {
-    pub id: String,
-    pub text: String,
-    pub depth: i32,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct FileOperationRequest {
     #[allow(dead_code)]

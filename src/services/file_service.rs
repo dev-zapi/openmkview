@@ -1,6 +1,5 @@
 use crate::errors::{AppError, AppResult};
 use crate::models::FileTreeNode;
-use crate::services::render_markdown;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -120,11 +119,6 @@ impl FileService {
         let last_modified = metadata.modified().ok();
 
         Ok((content, file_name, path, file_size, last_modified))
-    }
-
-    pub fn extract_headings(content: &str) -> AppResult<Vec<crate::models::HeadingInfo>> {
-        let rendered = render_markdown(content)?;
-        Ok(rendered.headings)
     }
 
     pub fn create_file(project_path: &Path, file_name: &str) -> AppResult<()> {

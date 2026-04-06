@@ -48,9 +48,7 @@ pub async fn get_file_content(
 
     let (content, file_name, path, file_size, last_modified) =
         FileService::get_file_content(&project_path, &query.path)?;
-    let headings = FileService::extract_headings(&content)?;
 
-    // 将 SystemTime 转换为 ISO 8601 字符串
     let last_modified_str = last_modified.map(|t| {
         let datetime: chrono::DateTime<chrono::Utc> = t.into();
         datetime.to_rfc3339()
@@ -58,7 +56,6 @@ pub async fn get_file_content(
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "content": content,
-        "headings": headings,
         "fileName": file_name,
         "path": path,
         "fileSize": file_size,
