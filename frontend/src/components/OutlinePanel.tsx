@@ -12,37 +12,31 @@ interface OutlinePanelProps {
 const OutlinePanel: Component<OutlinePanelProps> = (props) => {
   const handleClick = (id: string, e: MouseEvent) => {
     e.preventDefault();
-    if (props.onHeadingClick) {
-      props.onHeadingClick(id);
-    } else {
-      const element = document.getElementById(id);
-      if (element) {
-        element.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start',
-          inline: 'nearest'
-        });
-        
-        const contentArea = document.querySelector('.content-main');
-        if (contentArea) {
-          contentArea.scrollTo({
-            top: element.offsetTop - 40,
-            behavior: 'smooth'
-          });
-        }
-        
-        element.style.transition = 'background-color 0.3s ease, transform 0.2s ease';
-        element.style.backgroundColor = 'var(--color-accent-bg, rgba(139, 92, 246, 0.15))';
-        element.style.borderRadius = '4px';
-        element.style.paddingLeft = '8px';
-        element.style.marginLeft = '-8px';
-        
-        setTimeout(() => {
-          element.style.backgroundColor = '';
-          element.style.paddingLeft = '';
-          element.style.marginLeft = '';
-        }, 1200);
-      }
+    
+    const element = document.getElementById(id);
+    const contentArea = document.querySelector('.content-main');
+    
+    if (element && contentArea) {
+      const rect = element.getBoundingClientRect();
+      const containerRect = contentArea.getBoundingClientRect();
+      const scrollTop = contentArea.scrollTop;
+      const offsetTop = rect.top - containerRect.top + scrollTop - 60;
+      
+      contentArea.scrollTo({
+        top: offsetTop,
+        behavior: 'smooth'
+      });
+      
+      element.style.transition = 'background-color 0.3s ease';
+      element.style.backgroundColor = 'var(--color-accent-bg, rgba(139, 92, 246, 0.15))';
+      element.style.borderRadius = '4px';
+      
+      setTimeout(() => {
+        element.style.backgroundColor = '';
+        element.style.borderRadius = '';
+      }, 1200);
+    } else if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 

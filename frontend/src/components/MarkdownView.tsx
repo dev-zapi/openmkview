@@ -1,4 +1,4 @@
-import { Component, createMemo, createSignal, type JSX } from 'solid-js';
+import { Component, createMemo, createEffect, type JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { SolidMarkdown } from 'solid-markdown';
 import Prism from 'prismjs';
@@ -23,8 +23,20 @@ const extractText = (children: any): string => {
   if (typeof children === 'string') return children;
   if (typeof children === 'number') return String(children);
   if (Array.isArray(children)) return children.map(extractText).join('');
-  if (typeof children === 'object' && children.props?.children) {
-    return extractText(children.props.children);
+  if (typeof children === 'function') {
+    try {
+      return extractText(children());
+    } catch {
+      return '';
+    }
+  }
+  if (typeof children === 'object') {
+    if (children.props?.children) {
+      return extractText(children.props.children);
+    }
+    if (children.children) {
+      return extractText(children.children);
+    }
   }
   return '';
 };
@@ -39,29 +51,13 @@ const generateHeadingId = (text: string): string => {
     .replace(/-+/g, '-');
 };
 
-const buildHeadingIdMap = (headings: Heading[]): Map<string, string[]> => {
-  const map = new Map<string, string[]>();
-  for (const h of headings) {
-    const key = `${h.depth}:${h.text}`;
-    const ids = map.get(key) || [];
-    ids.push(h.id);
-    map.set(key, ids);
-  }
-  return map;
-};
-
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
-  const renderedContent = createMemo(() => props.content);
-
-  const headingIdMap = createMemo(() => {
-    return props.headings ? buildHeadingIdMap(props.headings) : new Map();
-  });
-
-  const [usedCounts, setUsedCounts] = createSignal<Map<string, number>>(new Map());
+  let headingIndex = 0;
+  const headingsList = createMemo(() => props.headings || []);
   
-  createMemo(() => {
-    headingIdMap();
-    setUsedCounts(new Map());
+  createEffect(() => {
+    headingsList();
+    headingIndex = 0;
   });
 
   const extractCodeText = (children: any): string => {
@@ -97,23 +93,17 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const renderHeading = (level: number) => (headingProps: any) => {
     const tag = `h${level}` as keyof JSX.IntrinsicElements;
     const text = extractText(headingProps.children);
-    const map = headingIdMap();
-
+    const headings = headingsList();
+    
     let id: string | undefined;
-
-    const key = `${level}:${text}`;
-    const ids = map.get(key);
-    if (ids && ids.length > 0) {
-      const counts = usedCounts();
-      const usedCount = counts.get(key) || 0;
-      if (usedCount < ids.length) {
-        id = ids[usedCount];
-        const newCounts = new Map(counts);
-        newCounts.set(key, usedCount + 1);
-        setUsedCounts(newCounts);
-      }
+    
+    const currentIdx = headingIndex;
+    headingIndex++;
+    
+    if (currentIdx < headings.length && headings[currentIdx].depth === level) {
+      id = headings[currentIdx].id;
     }
-
+    
     if (!id) {
       id = generateHeadingId(text);
     }
@@ -128,7 +118,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   return (
     <div class={`markdown-view ${props.class || ''}`}>
       <SolidMarkdown
-        children={renderedContent()}
+        children={props.content}
         components={{
           code: renderCode,
           h1: renderHeading(1),

@@ -125,6 +125,8 @@ mod tests {
         assert_eq!(headings.len(), 1);
         assert!(headings[0].text.contains("Link"));
         assert!(headings[0].text.contains("Text"));
+        println!("id: {}, text: {}", headings[0].id, headings[0].text);
+        assert_eq!(headings[0].id, "link-text");
     }
 
     #[test]
