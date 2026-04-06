@@ -101,8 +101,9 @@ export function useOpenProject(
   const [searchResultsResource] = createResource(
     () => {
       // 只在对话框打开且有搜索内容时触发
-      if (!isOpen() || !debouncedQuery().trim()) return null;
-      return debouncedQuery().trim();
+      const trimmedQuery = debouncedQuery().trim();
+      if (!isOpen() || !trimmedQuery) return null;
+      return trimmedQuery;
     },
     async (query) => {
       try {

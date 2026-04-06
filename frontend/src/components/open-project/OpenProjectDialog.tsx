@@ -137,9 +137,11 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
       items.push({ path: f.path, name: f.name, icon: f.icon, type: 'quickAccess' });
     }
     
-    if (debouncedQuery() && searchResults().length > 0) {
-      const results = searchResults().slice(0, 5);
-      for (const r of results) {
+    const query = debouncedQuery();
+    const results = searchResults();
+    if (query && results.length > 0) {
+      const slicedResults = results.slice(0, 5);
+      for (const r of slicedResults) {
         items.push({ 
           path: r.path, 
           name: r.name, 
