@@ -13,7 +13,8 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             last_opened_at TEXT NOT NULL DEFAULT (datetime('now')),
             is_open INTEGER NOT NULL DEFAULT 1,
-            color TEXT NULL DEFAULT NULL
+            color TEXT NULL DEFAULT NULL,
+            icon TEXT NULL DEFAULT NULL
         );
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY NOT NULL,
@@ -35,6 +36,23 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
     if !color_column_exists {
         conn.execute(
             "ALTER TABLE projects ADD COLUMN color TEXT NULL DEFAULT NULL",
+            [],
+        )?;
+    }
+
+    // Migration: Add icon column if it doesn't exist
+    let icon_column_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name='icon'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .unwrap_or(0)
+        > 0;
+
+    if !icon_column_exists {
+        conn.execute(
+            "ALTER TABLE projects ADD COLUMN icon TEXT NULL DEFAULT NULL",
             [],
         )?;
     }

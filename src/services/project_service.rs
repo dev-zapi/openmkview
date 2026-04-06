@@ -103,6 +103,20 @@ impl<'a> ProjectService<'a> {
         self.project_repo.update_color(id, color)
     }
 
+    pub fn update_project(
+        &self,
+        id: i64,
+        name: Option<&str>,
+        color: Option<&str>,
+        icon: Option<&str>,
+    ) -> AppResult<bool> {
+        debug!(
+            "[ProjectService] 更新项目信息: id={}, name={:?}, color={:?}, icon={:?}",
+            id, name, color, icon
+        );
+        self.project_repo.update_project(id, name, color, icon)
+    }
+
     fn check_markdown_files(&self, dir: &PathBuf) -> AppResult<bool> {
         let entries = std::fs::read_dir(dir)?;
 

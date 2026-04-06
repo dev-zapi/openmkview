@@ -40,4 +40,13 @@ export const api = {
       body: JSON.stringify({ color }),
     });
   },
+
+  async updateProject(id: number, data: { name?: string; color?: string; icon?: string }): Promise<Project> {
+    const res = await fetch(`/api/projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
 };

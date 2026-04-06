@@ -7,17 +7,13 @@ import GitPanel from './components/GitPanel';
 import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
 import ColorPicker from './components/ColorPicker';
+import ProjectEditDialog from './components/ProjectEditDialog';
 import { MarkdownHeader } from './components/markdown-header';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
-import { api } from './services/api';
-import { diffStore } from './stores/diffStore';
-import { openProjectStore } from './stores/openProjectStore';
-import { getCurrentRoute, navigateToProject, navigateToFile, navigateToHome, onPopState, replaceToProject, replaceToFile } from './utils/router';
-import type { FileNode, FileContent, Project, Heading } from './types';
-import type { RecentProject } from './types/openProject';
 import './styles/global.css';
 import './components/ColorPicker.css';
+import './components/ProjectEditDialog.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -87,6 +83,8 @@ const App: Component = () => {
   const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
   const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
   const [colorPickerPosition, setColorPickerPosition] = createSignal({ x: 0, y: 0 });
+  const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
+  const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
 
   let mediaQuery: MediaQueryList;
   let sidebarRef: HTMLDivElement | undefined;
@@ -396,6 +394,43 @@ const App: Component = () => {
     return project.color ? { background: project.color } : {};
   };
 
+  const handleProjectMenuToggle = (e: MouseEvent) => {
+    e.stopPropagation();
+    setProjectMenuOpen(!projectMenuOpen());
+  };
+
+  const handleProjectEdit = () => {
+    setProjectMenuOpen(false);
+    setProjectEditDialogOpen(true);
+  };
+
+  const handleProjectSave = async (project: Project) => {
+    try {
+      const updatedProject = await api.updateProject(project.id, {
+        name: project.name,
+        color: project.color,
+        icon: project.icon,
+      });
+      
+      setProjects(prev => prev.map(p => 
+        p.id === updatedProject.id ? updatedProject : p
+      ));
+      
+      if (activeProject()?.id === updatedProject.id) {
+        setActiveProject(updatedProject);
+      }
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      alert('Failed to update project');
+    }
+    
+    setProjectEditDialogOpen(false);
+  };
+
+  const getProjectDisplayName = (project: Project) => {
+    return project.icon ? project.icon : project.name.charAt(0).toUpperCase();
+  };
+
   return (
     <>
       {/* Desktop layout */}
@@ -414,7 +449,7 @@ const App: Component = () => {
                     onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
                     style={getColorStyle(p)}
                   >
-                    <span class="project-initial">{p.name.charAt(0).toUpperCase()}</span>
+                    <span class="project-initial">{getProjectDisplayName(p)}</span>
                   </button>
                 )}
               </For>
@@ -484,7 +519,35 @@ const App: Component = () => {
               style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
             >
               <div class="sidebar-header">
-                {activeProject()?.name || 'Explorer'}
+                <Show when={activeProject()}>
+                  <div class="sidebar-header-content">
+                    <span class="sidebar-header-icon" style={activeProject()?.color ? { background: activeProject()?.color } : {}}>
+                      {getProjectDisplayName(activeProject()!)}
+                    </span>
+                    <span class="sidebar-header-name">{activeProject()?.name}</span>
+                    <button class="sidebar-header-menu" onClick={handleProjectMenuToggle}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <circle cx="12" cy="19" r="2"/>
+                      </svg>
+                    </button>
+                    <Show when={projectMenuOpen()}>
+                      <div class="sidebar-header-menu-dropdown">
+                        <button class="menu-item" onClick={handleProjectEdit}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          <span>编辑项目信息</span>
+                        </button>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
+                <Show when={!activeProject()}>
+                  <span>Explorer</span>
+                </Show>
               </div>
               <div class="sidebar-content">
                 <Show when={activeProject()} fallback={
@@ -629,6 +692,16 @@ const App: Component = () => {
         </div>
       </Show>
 
+      {/* Project Edit Dialog */}
+      <Show when={activeProject()}>
+        <ProjectEditDialog
+          project={activeProject()!}
+          isOpen={projectEditDialogOpen()}
+          onClose={() => setProjectEditDialogOpen(false)}
+          onSave={handleProjectSave}
+        />
+      </Show>
+
       {/* Mobile layout */}
       <Show when={isMobile()}>
         <MobileLayout
@@ -643,7 +716,7 @@ const App: Component = () => {
                     onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
                     style={getColorStyle(p)}
                   >
-                    <span class="project-initial">{p.name.charAt(0).toUpperCase()}</span>
+                    <span class="project-initial">{getProjectDisplayName(p)}</span>
                   </button>
                 )}
               </For>

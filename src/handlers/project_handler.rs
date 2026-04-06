@@ -2,7 +2,7 @@ use crate::db::ProjectRepository;
 use crate::errors::AppResult;
 use crate::models::{
     CreateProjectRequest, PathCandidate, PathType, ResolvePathRequest, ResolvePathResponse,
-    UpdateProjectColorRequest,
+    UpdateProjectColorRequest, UpdateProjectRequest,
 };
 use crate::services::ProjectService;
 use crate::AppState;
@@ -351,4 +351,35 @@ pub async fn update_project_color(
         "success": true,
         "message": "项目颜色已更新"
     })))
+}
+
+pub async fn update_project(
+    data: web::Data<AppState>,
+    path: web::Path<i64>,
+    body: web::Json<UpdateProjectRequest>,
+) -> AppResult<HttpResponse> {
+    let id = path.into_inner();
+    debug!(
+        "[project] 更新项目信息: id={}, name={:?}, color={:?}, icon={:?}",
+        id, body.name, body.color, body.icon
+    );
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let service = ProjectService::new(project_repo);
+
+    service.update_project(
+        id,
+        body.name.as_deref(),
+        body.color.as_deref(),
+        body.icon.as_deref(),
+    )?;
+
+    // 返回更新后的项目信息
+    let project_repo = ProjectRepository::new(&conn);
+    let project = project_repo
+        .find_by_id(id)?
+        .ok_or_else(|| crate::errors::AppError::NotFound("项目未找到".into()))?;
+
+    debug!("[project] 项目信息已更新: id={}", id);
+    Ok(HttpResponse::Ok().json(project))
 }
