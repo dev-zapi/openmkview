@@ -21,7 +21,7 @@ export interface PathCandidate {
 /** 解析路径请求 */
 export interface ResolvePathRequest {
   /** 用户输入的路径字符串 */
-  input: string;
+  path: string;
 }
 
 /** 解析路径响应 */

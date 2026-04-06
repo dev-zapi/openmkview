@@ -79,7 +79,7 @@ export async function handleProjectsApi(
   // POST /api/projects/resolve - 解析路径
   if (req.method === 'POST' && pathname === '/api/projects/resolve') {
     const body = await parseBody<ResolvePathRequest>(req);
-    const input = body.input.toLowerCase();
+    const input = body.path.toLowerCase();
 
     // 模拟路径解析
     const candidates = mockRecentProjects

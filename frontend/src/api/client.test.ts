@@ -155,7 +155,7 @@ describe('projectClient API', () => {
     expect(fetch).toHaveBeenCalledWith('/api/projects/resolve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: 'my-input' }),
+      body: JSON.stringify({ path: 'my-input' }),
     });
     expect(result.success).toBe(true);
   });
