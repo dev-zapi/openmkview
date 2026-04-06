@@ -12,7 +12,8 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             name TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             last_opened_at TEXT NOT NULL DEFAULT (datetime('now')),
-            is_open INTEGER NOT NULL DEFAULT 1
+            is_open INTEGER NOT NULL DEFAULT 1,
+            color TEXT NULL DEFAULT NULL
         );
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY NOT NULL,
@@ -20,6 +21,23 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );",
     )?;
+
+    // Migration: Add color column if it doesn't exist
+    let color_column_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name='color'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .unwrap_or(0)
+        > 0;
+
+    if !color_column_exists {
+        conn.execute(
+            "ALTER TABLE projects ADD COLUMN color TEXT NULL DEFAULT NULL",
+            [],
+        )?;
+    }
 
     Ok(conn)
 }

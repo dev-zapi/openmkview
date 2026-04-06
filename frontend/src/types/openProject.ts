@@ -72,16 +72,12 @@ export interface OpenProjectResult {
 
 /** 最近打开的项目 */
 export interface RecentProject {
-  /** 项目唯一标识 */
   id: string;
-  /** 项目名称 */
   name: string;
-  /** 项目路径 */
   path: string;
-  /** 最后打开时间 */
   last_opened_at: string;
-  /** 项目类型或标签 */
   type?: string;
+  color?: string;
 }
 
 /** 获取最近项目响应 */

@@ -6,6 +6,7 @@ import DiffSelector from './components/DiffSelector';
 import GitPanel from './components/GitPanel';
 import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
+import ColorPicker from './components/ColorPicker';
 import { MarkdownHeader } from './components/markdown-header';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
@@ -16,6 +17,7 @@ import { getCurrentRoute, navigateToProject, navigateToFile, navigateToHome, onP
 import type { FileNode, FileContent, Project } from './types';
 import type { RecentProject } from './types/openProject';
 import './styles/global.css';
+import './components/ColorPicker.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -83,6 +85,9 @@ const App: Component = () => {
   const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = createSignal(false);
   const [isMobile, setIsMobile] = createSignal(false);
   const [sidebarWidth, setSidebarWidth] = createSignal(280);
+  const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
+  const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
+  const [colorPickerPosition, setColorPickerPosition] = createSignal({ x: 0, y: 0 });
 
   let mediaQuery: MediaQueryList;
   let sidebarRef: HTMLDivElement | undefined;
@@ -218,23 +223,20 @@ const App: Component = () => {
     setIsOpenProjectDialogOpen(false);
     
     try {
-      // 将 RecentProject 转换为 Project 类型
       const project: Project = {
         id: parseInt(recentProject.id, 10),
         name: recentProject.name,
         path: recentProject.path,
+        color: recentProject.color,
       };
       
-      // 添加到项目列表（如果不存在）
       const existingProject = projects().find(p => p.id === project.id);
       if (!existingProject) {
         setProjects([...projects(), project]);
       }
       
-      // 切换到新项目
       await handleSwitchProject(project);
       
-      // 更新最近项目列表
       openProjectStore.addRecentProject(recentProject);
     } catch (error) {
       console.error('Failed to open project:', error);
@@ -369,6 +371,50 @@ const App: Component = () => {
     return {};
   };
 
+  const handleColorChange = async (color: string) => {
+    const projectId = colorPickerProjectId();
+    if (!projectId) return;
+
+    try {
+      await api.updateProjectColor(projectId, color);
+      setProjects(prev => prev.map(p => 
+        p.id === projectId ? { ...p, color } : p
+      ));
+      
+      if (activeProject()?.id === projectId) {
+        setActiveProject(prev => prev ? { ...prev, color } : null);
+      }
+    } catch (error) {
+      console.error('Failed to update project color:', error);
+    }
+    
+    setColorPickerOpen(false);
+    setColorPickerProjectId(null);
+  };
+
+  const handleColorPickerOpen = (e: MouseEvent, projectId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = rect.right + 8;
+    const y = rect.top;
+    
+    const pickerWidth = 280;
+    const pickerHeight = 300;
+    
+    const adjustedX = x + pickerWidth > window.innerWidth ? rect.left - pickerWidth - 8 : x;
+    const adjustedY = y + pickerHeight > window.innerHeight ? window.innerHeight - pickerHeight - 8 : y;
+    
+    setColorPickerPosition({ x: adjustedX, y: adjustedY });
+    setColorPickerProjectId(projectId);
+    setColorPickerOpen(true);
+  };
+
+  const getColorStyle = (project: Project) => {
+    return project.color ? { background: project.color } : {};
+  };
+
   return (
     <>
       {/* Desktop layout */}
@@ -384,6 +430,8 @@ const App: Component = () => {
                     class={activeProject()?.id === p.id ? 'active' : ''}
                     title={p.name}
                     onClick={() => handleSwitchProject(p)}
+                    onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
+                    style={getColorStyle(p)}
                   >
                     <span class="project-initial">{p.name.charAt(0).toUpperCase()}</span>
                   </button>
@@ -579,6 +627,25 @@ const App: Component = () => {
             onClose={handleCloseOpenProjectDialog}
             onProjectOpened={handleProjectOpened}
           />
+
+          <Show when={colorPickerOpen()}>
+            <div 
+              style={{ 
+                position: 'fixed', 
+                top: `${colorPickerPosition().y}px`, 
+                left: `${colorPickerPosition().x}px` 
+              }}
+            >
+              <ColorPicker
+                currentColor={projects().find(p => p.id === colorPickerProjectId())?.color}
+                onColorChange={handleColorChange}
+                onClose={() => {
+                  setColorPickerOpen(false);
+                  setColorPickerProjectId(null);
+                }}
+              />
+            </div>
+          </Show>
         </div>
       </Show>
 
@@ -593,6 +660,8 @@ const App: Component = () => {
                     class={activeProject()?.id === p.id ? 'active' : ''}
                     title={p.name}
                     onClick={() => handleSwitchProject(p)}
+                    onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
+                    style={getColorStyle(p)}
                   >
                     <span class="project-initial">{p.name.charAt(0).toUpperCase()}</span>
                   </button>

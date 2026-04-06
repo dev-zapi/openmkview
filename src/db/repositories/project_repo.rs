@@ -13,10 +13,10 @@ impl<'a> ProjectRepository<'a> {
 
     pub fn list(&self, open_only: bool) -> AppResult<Vec<Project>> {
         let query = if open_only {
-            "SELECT id, path, name, created_at, last_opened_at, is_open 
+            "SELECT id, path, name, created_at, last_opened_at, is_open, color 
              FROM projects WHERE is_open = 1 ORDER BY last_opened_at DESC"
         } else {
-            "SELECT id, path, name, created_at, last_opened_at, is_open 
+            "SELECT id, path, name, created_at, last_opened_at, is_open, color 
              FROM projects ORDER BY last_opened_at DESC"
         };
 
@@ -29,6 +29,7 @@ impl<'a> ProjectRepository<'a> {
                 created_at: row.get(3)?,
                 last_opened_at: row.get(4)?,
                 is_open: row.get::<_, i32>(5)? != 0,
+                color: row.get(6)?,
             })
         })?;
 
@@ -37,7 +38,7 @@ impl<'a> ProjectRepository<'a> {
 
     pub fn find_by_id(&self, id: i64) -> AppResult<Option<Project>> {
         let project = self.conn.query_row(
-            "SELECT id, path, name, created_at, last_opened_at, is_open FROM projects WHERE id = ?",
+            "SELECT id, path, name, created_at, last_opened_at, is_open, color FROM projects WHERE id = ?",
             [id],
             |row| {
                 Ok(Project {
@@ -47,6 +48,7 @@ impl<'a> ProjectRepository<'a> {
                     created_at: row.get(3)?,
                     last_opened_at: row.get(4)?,
                     is_open: row.get::<_, i32>(5)? != 0,
+                    color: row.get(6)?,
                 })
             },
         );
@@ -60,7 +62,7 @@ impl<'a> ProjectRepository<'a> {
 
     pub fn find_by_path(&self, path: &str) -> AppResult<Option<Project>> {
         let project = self.conn.query_row(
-            "SELECT id, path, name, created_at, last_opened_at, is_open FROM projects WHERE path = ?",
+            "SELECT id, path, name, created_at, last_opened_at, is_open, color FROM projects WHERE path = ?",
             [path],
             |row| {
                 Ok(Project {
@@ -70,6 +72,7 @@ impl<'a> ProjectRepository<'a> {
                     created_at: row.get(3)?,
                     last_opened_at: row.get(4)?,
                     is_open: row.get::<_, i32>(5)? != 0,
+                    color: row.get(6)?,
                 })
             },
         );
@@ -111,7 +114,7 @@ impl<'a> ProjectRepository<'a> {
     /// 获取最近打开的项目（最多 limit 条）
     pub fn get_recent_projects(&self, limit: i64) -> AppResult<Vec<Project>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, path, name, created_at, last_opened_at, is_open 
+            "SELECT id, path, name, created_at, last_opened_at, is_open, color 
              FROM projects 
              ORDER BY last_opened_at DESC 
              LIMIT ?",
@@ -125,9 +128,17 @@ impl<'a> ProjectRepository<'a> {
                 created_at: row.get(3)?,
                 last_opened_at: row.get(4)?,
                 is_open: row.get::<_, i32>(5)? != 0,
+                color: row.get(6)?,
             })
         })?;
 
         Ok(projects.filter_map(|r| r.ok()).collect())
+    }
+
+    pub fn update_color(&self, id: i64, color: &str) -> AppResult<bool> {
+        let rows = self
+            .conn
+            .execute("UPDATE projects SET color = ? WHERE id = ?", (color, id))?;
+        Ok(rows > 0)
     }
 }

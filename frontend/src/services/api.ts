@@ -32,4 +32,12 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  async updateProjectColor(id: number, color: string): Promise<void> {
+    await fetch(`/api/projects/${id}/color`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ color }),
+    });
+  },
 };

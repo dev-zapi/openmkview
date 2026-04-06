@@ -2,6 +2,7 @@ use crate::db::ProjectRepository;
 use crate::errors::AppResult;
 use crate::models::{
     CreateProjectRequest, PathCandidate, PathType, ResolvePathRequest, ResolvePathResponse,
+    UpdateProjectColorRequest,
 };
 use crate::services::ProjectService;
 use crate::AppState;
@@ -275,4 +276,29 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
         path_type,
         candidates,
     }))
+}
+
+pub async fn update_project_color(
+    data: web::Data<AppState>,
+    path: web::Path<i64>,
+    body: web::Json<UpdateProjectColorRequest>,
+) -> AppResult<HttpResponse> {
+    let id = path.into_inner();
+    debug!("[project] 更新项目颜色: id={}, color={}", id, body.color);
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let service = ProjectService::new(project_repo);
+
+    let updated = service.update_project_color(id, &body.color)?;
+
+    if !updated {
+        debug!("[project] 项目未找到: id={}", id);
+        return Ok(HttpResponse::NotFound().body("项目未找到"));
+    }
+
+    debug!("[project] 项目颜色已更新: id={}", id);
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "success": true,
+        "message": "项目颜色已更新"
+    })))
 }

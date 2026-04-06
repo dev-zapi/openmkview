@@ -9,6 +9,6 @@ pub use git_handler::{
 };
 pub use project_handler::{
     create_project, delete_project, get_recent_projects, list_projects, open_project, resolve_path,
-    validate_project,
+    update_project_color, validate_project,
 };
 pub use settings_handler::{get_settings, update_settings};
