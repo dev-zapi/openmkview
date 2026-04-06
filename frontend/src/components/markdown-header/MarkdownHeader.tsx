@@ -14,11 +14,13 @@ export interface MarkdownHeaderProps {
   isOutlineOpen: boolean;
   outlineCount: number;
   isFavorite?: boolean;
+  isSidebarVisible?: boolean;
   content: string;
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
   onOutlineToggle: () => void;
   onNavigate: (path: string) => void;
   onFavoriteToggle?: () => void;
+  onToggleSidebar?: () => void;
   onMenuClick?: () => void;
 }
 
@@ -166,8 +168,10 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         projectName={props.projectName}
         filePath={props.filePath}
         isFavorite={props.isFavorite}
+        isSidebarVisible={props.isSidebarVisible}
         onNavigate={props.onNavigate}
         onFavoriteToggle={props.onFavoriteToggle || (() => {})}
+        onToggleSidebar={props.onToggleSidebar}
         onMenuClick={props.onMenuClick}
       />
       <SearchBox

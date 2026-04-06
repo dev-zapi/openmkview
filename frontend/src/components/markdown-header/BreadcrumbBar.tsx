@@ -5,9 +5,11 @@ export interface BreadcrumbBarProps {
   projectName: string;
   filePath: string;
   isFavorite?: boolean;
+  isSidebarVisible?: boolean;
   onNavigate: (path: string) => void;
   onFavoriteToggle: () => void;
-  onMenuClick?: () => void;  // Mobile menu button callback
+  onToggleSidebar?: () => void;
+  onMenuClick?: () => void;
 }
 
 export const BreadcrumbBar: Component<BreadcrumbBarProps> = (props) => {
@@ -19,10 +21,6 @@ export const BreadcrumbBar: Component<BreadcrumbBarProps> = (props) => {
   const handleSegmentClick = (index: number) => {
     const path = pathSegments().slice(0, index + 1).join('/');
     props.onNavigate(path);
-  };
-
-  const handleProjectClick = () => {
-    props.onNavigate('');
   };
 
   return (
@@ -40,16 +38,20 @@ export const BreadcrumbBar: Component<BreadcrumbBarProps> = (props) => {
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
+        {/* Sidebar toggle button */}
         <button
-          class={styles.backButton}
-          onClick={handleProjectClick}
-          title="返回项目根目录"
+          class={`${styles.sidebarButton} ${props.isSidebarVisible ? '' : styles.sidebarHidden}`}
+          onClick={props.onToggleSidebar}
+          title={props.isSidebarVisible ? '隐藏文件树' : '显示文件树'}
         >
-          🔙
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
         </button>
         <span
           class={styles.projectName}
-          onClick={handleProjectClick}
+          onClick={() => props.onNavigate('')}
           title={props.projectName}
         >
           {props.projectName}

@@ -1,4 +1,5 @@
 export interface FileNode {
+  id: string;
   name: string;
   path: string;
   isFolder: boolean;

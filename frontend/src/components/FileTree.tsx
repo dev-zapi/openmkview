@@ -3,14 +3,14 @@ import type { FileNode } from '../types';
 
 interface FileTreeProps {
   nodes: FileNode[];
-  onFileClick: (path: string, name: string) => void;
+  onFileClick: (path: string, relativePath: string) => void;
   expandedFolders?: Set<string>;
   onFolderToggle?: (path: string, expanded: boolean) => void;
 }
 
 interface TreeNodeProps {
   node: FileNode;
-  onFileClick: (path: string, name: string) => void;
+  onFileClick: (path: string, relativePath: string) => void;
   expandedFolders?: Set<string>;
   onFolderToggle?: (path: string, expanded: boolean) => void;
 }
@@ -23,7 +23,7 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
       const newExpanded = !isExpanded();
       props.onFolderToggle?.(props.node.path, newExpanded);
     } else {
-      props.onFileClick(props.node.path, props.node.name);
+      props.onFileClick(props.node.path, props.node.id);
     }
   };
 

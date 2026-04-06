@@ -7,16 +7,19 @@ import type { FileNode } from '../types';
 describe('FileTree', () => {
   const mockNodes: FileNode[] = [
     {
+      id: 'src',
       name: 'src',
       path: '/project/src',
       isFolder: true,
       children: [
         {
+          id: 'src/index.ts',
           name: 'index.ts',
           path: '/project/src/index.ts',
           isFolder: false,
         },
         {
+          id: 'src/App.tsx',
           name: 'App.tsx',
           path: '/project/src/App.tsx',
           isFolder: false,
@@ -24,6 +27,7 @@ describe('FileTree', () => {
       ],
     },
     {
+      id: 'README.md',
       name: 'README.md',
       path: '/project/README.md',
       isFolder: false,

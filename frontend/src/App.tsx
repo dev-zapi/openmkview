@@ -72,10 +72,12 @@ const App: Component = () => {
   const [activeProject, setActiveProject] = createSignal<Project | null>(null);
   const [fileTree, setFileTree] = createSignal<FileNode[]>([]);
   const [currentFile, setCurrentFile] = createSignal<FileContent | null>(null);
+  const [currentFileRelativePath, setCurrentFileRelativePath] = createSignal<string>('');
   const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [activeTab, setActiveTab] = createSignal<'preview' | 'source' | 'diff'>('preview');
   const [activePanel, setActivePanel] = createSignal<'explorer' | 'git' | 'settings'>('explorer');
+  const [sidebarVisible, setSidebarVisible] = createSignal(true);
   const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
   const [outlineOpen, setOutlineOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
@@ -286,7 +288,7 @@ const App: Component = () => {
     }
   };
 
-  const handleFileClick = async (path: string, _name: string, updateUrl: boolean = true) => {
+  const handleFileClick = async (path: string, relativePath: string, updateUrl: boolean = true) => {
     const project = activeProject();
     if (!project) return;
 
@@ -294,6 +296,7 @@ const App: Component = () => {
     try {
       const content = await api.getFileContent(path, project.id);
       setCurrentFile(content);
+      setCurrentFileRelativePath(relativePath);
       setExtractedHeadings([]);
       setActiveTab('preview');
       diffStore.reset();
@@ -363,6 +366,10 @@ const App: Component = () => {
     } else {
       setOutlineOpen(!outlineOpen());
     }
+  };
+
+  const handleToggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible());
   };
 
   const getMarkdownStyle = () => {
@@ -504,7 +511,7 @@ const App: Component = () => {
 
           <Show when={activePanel() === 'explorer'}>
             <aside 
-              class="sidebar sidebar-enter" 
+              class={`sidebar sidebar-enter ${sidebarVisible() ? '' : 'sidebar-hidden'}`} 
               ref={sidebarRef}
               style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
             >
@@ -540,7 +547,7 @@ const App: Component = () => {
               <Show when={currentFile()}>
                 <MarkdownHeader
                   fileName={currentFile()!.fileName}
-                  filePath={currentFile()!.path}
+                  filePath={currentFileRelativePath()}
                   projectName={activeProject()?.name || ''}
                   lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
                   fileSize={currentFile()!.fileSize}
@@ -548,11 +555,13 @@ const App: Component = () => {
                   isOutlineOpen={outlineOpen()}
                   outlineCount={extractedHeadings().length}
                   isFavorite={isFavorite()}
+                  isSidebarVisible={sidebarVisible()}
                   content={currentFile()!.content}
                   onTabChange={(tab) => setActiveTab(tab)}
                   onOutlineToggle={handleMobileOutlineToggle}
                   onNavigate={handleNavigate}
                   onFavoriteToggle={() => setIsFavorite(!isFavorite())}
+                  onToggleSidebar={handleToggleSidebar}
                   onMenuClick={handleMobileMenuClick}
                 />
               </Show>
@@ -755,7 +764,7 @@ const App: Component = () => {
             <Show when={currentFile()}>
               <MarkdownHeader
                 fileName={currentFile()!.fileName}
-                filePath={currentFile()!.path}
+                filePath={currentFileRelativePath()}
                 projectName={activeProject()?.name || ''}
                 lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
                 fileSize={currentFile()!.fileSize}
@@ -763,11 +772,13 @@ const App: Component = () => {
                 isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
                 outlineCount={extractedHeadings().length}
                 isFavorite={isFavorite()}
+                isSidebarVisible={sidebarVisible()}
                 content={currentFile()!.content}
                 onTabChange={(tab) => setActiveTab(tab)}
                 onOutlineToggle={handleMobileOutlineToggle}
                 onNavigate={handleNavigate}
                 onFavoriteToggle={() => setIsFavorite(!isFavorite())}
+                onToggleSidebar={handleToggleSidebar}
                 onMenuClick={handleMobileMenuClick}
               />
             </Show>
