@@ -1,5 +1,5 @@
-use actix_files::Files;
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_files::{Files, NamedFile};
+use actix_web::{middleware::Logger, web, App, HttpRequest, HttpServer, Result};
 use clap::Parser;
 use std::sync::{Arc, Mutex};
 
@@ -49,6 +49,10 @@ struct Cli {
     /// Number of HTTP worker threads
     #[arg(long, env = "OPENMKVIEW_WORKERS")]
     workers: Option<usize>,
+}
+
+async fn spa_index(_req: HttpRequest) -> Result<NamedFile> {
+    NamedFile::open("./dist/index.html").map_err(actix_web::error::ErrorInternalServerError)
 }
 
 #[actix_web::main]
@@ -105,7 +109,10 @@ async fn main() -> std::io::Result<()> {
             .route("/api/git/file", web::get().to(get_file_at_ref))
             // Static files - serve from dist directory
             .service(Files::new("/assets", "./dist/assets"))
-            .service(Files::new("/", "./dist").index_file("index.html"))
+            // SPA fallback - serve index.html for frontend routes
+            .route("/project/{id}", web::get().to(spa_index))
+            .route("/project/{id}/files/{path:.*}", web::get().to(spa_index))
+            .route("/", web::get().to(spa_index))
     })
     .bind(&bind_addr)?;
 
