@@ -9,7 +9,7 @@ use crate::AppState;
 use actix_web::{web, HttpResponse};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Deserialize)]
@@ -248,10 +248,40 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
 
     let (path_type, candidates) = if path_input.starts_with('/') {
         debug!("[resolve_path] 路径类型: Absolute");
-        (PathType::Absolute, vec![])
+        let (base_path, search_term) = extract_path_and_term(path_input);
+        if let Some(base) = base_path {
+            debug!(
+                "[resolve_path] 绝对路径搜索: base={}, term={}",
+                base.display(),
+                search_term
+            );
+            let search_results = search_with_depth(&base, &search_term, 2);
+            debug!(
+                "[resolve_path] 绝对路径搜索返回 {} 个候选结果",
+                search_results.len()
+            );
+            (PathType::Absolute, search_results)
+        } else {
+            (PathType::Absolute, vec![])
+        }
     } else if path_input.contains('/') {
         debug!("[resolve_path] 路径类型: Relative");
-        (PathType::Relative, vec![])
+        let (base_path, search_term) = extract_path_and_term(path_input);
+        if let Some(base) = base_path {
+            debug!(
+                "[resolve_path] 相对路径搜索: base={}, term={}",
+                base.display(),
+                search_term
+            );
+            let search_results = search_with_depth(&base, &search_term, 2);
+            debug!(
+                "[resolve_path] 相对路径搜索返回 {} 个候选结果",
+                search_results.len()
+            );
+            (PathType::Relative, search_results)
+        } else {
+            (PathType::Relative, vec![])
+        }
     } else {
         let home_path =
             dirs::home_dir().unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"));
@@ -276,6 +306,26 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
         path_type,
         candidates,
     }))
+}
+
+fn extract_path_and_term(input: &str) -> (Option<PathBuf>, String) {
+    let path = Path::new(input);
+
+    if let Some(parent) = path.parent() {
+        if parent.as_os_str().is_empty() {
+            return (None, input.to_string());
+        }
+
+        let term = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+
+        (Some(parent.to_path_buf()), term)
+    } else {
+        (None, input.to_string())
+    }
 }
 
 pub async fn update_project_color(
