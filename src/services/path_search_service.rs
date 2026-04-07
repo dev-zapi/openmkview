@@ -287,7 +287,7 @@ impl PathSearchService {
                     // Case 2: Base directory doesn't exist - perform fuzzy directory search
                     // This handles scenarios like:
                     // - User types `.openclaw/w` but `.openclaw` doesn't exist in current dir
-                    // - System searches all directories named `.openclaw` in the tree
+                    // - System searches all directories named `.openclaw` from multiple roots
                     debug!(
                         "[resolve_path] Base path '{}' does not exist, searching for matching directories",
                         base.display()
@@ -302,33 +302,53 @@ impl PathSearchService {
                         // Edge case: couldn't extract directory name
                         (PathType::Relative, vec![])
                     } else {
-                        // Search current directory tree for directories matching base_name
+                        // Search from multiple roots for directories matching base_name
                         let mut all_candidates = Vec::new();
                         let base_lower = base_name.to_lowercase();
 
-                        // Walk through current directory with depth limit 3
-                        let walker = WalkDir::new(&current_dir)
-                            .max_depth(3)
-                            .into_iter()
-                            .filter_entry(|_| true);
+                        // Helper function to search a directory
+                        let search_dir = |root_dir: &Path, candidates: &mut Vec<PathCandidate>| {
+                            let walker = WalkDir::new(root_dir)
+                                .max_depth(3)
+                                .into_iter()
+                                .filter_entry(|_| true);
 
-                        for entry in walker.filter_map(|e| e.ok()) {
-                            if let Some(file_name) = entry.file_name().to_str() {
-                                let file_name_lower = file_name.to_lowercase();
-                                // EXACT MATCH: directory name must equal base_name
-                                // This distinguishes:
-                                // - `.openclaw/w` → matches only `.openclaw` (not `xxx.openclaw`)
-                                // - `openclaw/w` → matches only `openclaw` (not `xxxopenclaw`)
-                                if file_name_lower == base_lower && entry.path().is_dir() {
-                                    debug!(
-                                        "[resolve_path] Found matching directory: {}",
-                                        entry.path().display()
-                                    );
-                                    // Search within each matching directory for the search term
-                                    let sub_results =
-                                        search_with_depth(entry.path(), &search_term, 2, true);
-                                    all_candidates.extend(sub_results);
+                            for entry in walker.filter_map(|e| e.ok()) {
+                                if let Some(file_name) = entry.file_name().to_str() {
+                                    let file_name_lower = file_name.to_lowercase();
+                                    // EXACT MATCH: directory name must equal base_name
+                                    // This distinguishes:
+                                    // - `.openclaw/w` → matches only `.openclaw` (not `xxx.openclaw`)
+                                    // - `openclaw/w` → matches only `openclaw` (not `xxxopenclaw`)
+                                    if file_name_lower == base_lower && entry.path().is_dir() {
+                                        debug!(
+                                            "[resolve_path] Found matching directory: {}",
+                                            entry.path().display()
+                                        );
+                                        // Search within each matching directory for the search term
+                                        let sub_results =
+                                            search_with_depth(entry.path(), &search_term, 2, true);
+                                        candidates.extend(sub_results);
+                                    }
                                 }
+                            }
+                        };
+
+                        // Search from current directory
+                        debug!(
+                            "[resolve_path] Searching from current directory: {}",
+                            current_dir.display()
+                        );
+                        search_dir(&current_dir, &mut all_candidates);
+
+                        // Also search from home directory (if different from current dir)
+                        if let Some(home_dir) = dirs::home_dir() {
+                            if home_dir != current_dir {
+                                debug!(
+                                    "[resolve_path] Searching from home directory: {}",
+                                    home_dir.display()
+                                );
+                                search_dir(&home_dir, &mut all_candidates);
                             }
                         }
 
