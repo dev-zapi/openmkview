@@ -3,6 +3,7 @@ pub mod errors;
 pub mod handlers;
 pub mod models;
 pub mod services;
+pub mod static_files;
 
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};

@@ -1,5 +1,4 @@
-use actix_files::{Files, NamedFile};
-use actix_web::{middleware::Logger, web, App, HttpRequest, HttpServer, Result};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use clap::Parser;
 use std::sync::{Arc, Mutex};
 
@@ -20,6 +19,7 @@ mod errors;
 mod handlers;
 mod models;
 mod services;
+mod static_files;
 
 use db::init_db;
 use handlers::{
@@ -50,10 +50,6 @@ struct Cli {
     /// Number of HTTP worker threads
     #[arg(long, env = "OPENMKVIEW_WORKERS")]
     workers: Option<usize>,
-}
-
-async fn spa_index(_req: HttpRequest) -> Result<NamedFile> {
-    NamedFile::open("./dist/index.html").map_err(actix_web::error::ErrorInternalServerError)
 }
 
 #[actix_web::main]
@@ -114,12 +110,15 @@ async fn main() -> std::io::Result<()> {
             .route("/api/git/tags", web::get().to(get_tags))
             .route("/api/git/diff", web::post().to(get_file_diff))
             .route("/api/git/file", web::get().to(get_file_at_ref))
-            // Static files - serve from dist directory
-            .service(Files::new("/assets", "./dist/assets"))
-            // SPA fallback - serve index.html for frontend routes
-            .route("/project/{id}", web::get().to(spa_index))
-            .route("/project/{id}/files/{path:.*}", web::get().to(spa_index))
-            .route("/", web::get().to(spa_index))
+            // SPA index (must be before catch-all route)
+            .route("/", web::get().to(static_files::serve_index))
+            // Static assets - serve from embedded files
+            .route(
+                "/assets/{path:.*}",
+                web::get().to(static_files::serve_static),
+            )
+            // Other static files (favicon, icons, etc.) - catch-all route
+            .route("/{path:.*}", web::get().to(static_files::serve_static))
     })
     .bind(&bind_addr)?;
 
