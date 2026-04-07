@@ -1,48 +1,48 @@
 import type { GitCommit, GitDiff, DiffHunk, DiffLine } from '../../types';
 
 /**
- * Mock Git 提交数据
+ * Mock Git commit data
  */
 export const mockCommits: GitCommit[] = [
   {
     hash: 'a1b2c3d4e5f6789012345678901234567890abcd',
     shortHash: 'a1b2c3d',
-    message: 'feat: 添加新的 Markdown 预览功能',
+    message: 'feat: add new Markdown preview feature',
     author: 'John Doe',
     date: new Date().toISOString(),
   },
   {
     hash: 'b2c3d4e5f6789012345678901234567890abcde1',
     shortHash: 'b2c3d4e',
-    message: 'fix: 修复文件树展开问题',
+    message: 'fix: fix file tree expansion issue',
     author: 'Jane Smith',
     date: new Date(Date.now() - 86400000).toISOString(),
   },
   {
     hash: 'c3d4e5f6789012345678901234567890abcdef12',
     shortHash: 'c3d4e5f',
-    message: 'docs: 更新 README 文档',
+    message: 'docs: update README documentation',
     author: 'John Doe',
     date: new Date(Date.now() - 172800000).toISOString(),
   },
   {
     hash: 'd4e5f6789012345678901234567890abcdef1234',
     shortHash: 'd4e5f67',
-    message: 'refactor: 重构组件结构',
+    message: 'refactor: restructure components',
     author: 'Jane Smith',
     date: new Date(Date.now() - 259200000).toISOString(),
   },
   {
     hash: 'e5f6789012345678901234567890abcdef123456',
     shortHash: 'e5f6789',
-    message: 'style: 优化暗色主题样式',
+    message: 'style: optimize dark theme styles',
     author: 'John Doe',
     date: new Date(Date.now() - 345600000).toISOString(),
   },
 ];
 
 /**
- * Mock Git 分支数据
+ * Mock Git branch data
  */
 export const mockBranches: string[] = [
   'main',
@@ -53,7 +53,7 @@ export const mockBranches: string[] = [
 ];
 
 /**
- * Mock Git 标签数据
+ * Mock Git tag data
  */
 export const mockTags: string[] = [
   'v1.0.0',
@@ -63,7 +63,7 @@ export const mockTags: string[] = [
 ];
 
 /**
- * Mock Git 状态数据
+ * Mock Git status data
  */
 export const mockGitStatus = {
   branch: 'main',
@@ -76,7 +76,7 @@ export const mockGitStatus = {
 };
 
 /**
- * 创建 Mock Diff 数据
+ * Create Mock Diff data
  */
 export function createMockDiff(
   oldContent: string,
@@ -87,7 +87,7 @@ export function createMockDiff(
   const oldLines = oldContent.split('\n');
   const newLines = newContent.split('\n');
 
-  // 简单的 diff 算法生成 hunks
+  // Simple diff algorithm to generate hunks
   const hunks: DiffHunk[] = [];
   const lines: DiffLine[] = [];
 
@@ -148,35 +148,35 @@ export function createMockDiff(
 }
 
 /**
- * Mock 文件 Diff 数据
+ * Mock file diff data
  */
 export const mockFileDiffs: Record<string, GitDiff> = {
   '/README.md': createMockDiff(
     `# OpenMKView
 
-一个简单的 Markdown 查看器。
+A simple Markdown viewer.
 
-## 功能
+## Features
 
-- Markdown 预览
-- 文件浏览
+- Markdown preview
+- File browsing
 
-## 安装
+## Installation
 
 npm install
 `,
     `# OpenMKView
 
-一个现代化的 Markdown 查看器和 Git Diff 工具。
+A modern Markdown viewer and Git Diff tool.
 
-## 功能特性
+## Features
 
-- 📝 Markdown 预览
+- 📝 Markdown preview
 - 🔀 Git Diff
-- 📁 项目浏览器
-- 🎨 主题切换
+- 📁 Project browser
+- 🎨 Theme switching
 
-## 快速开始
+## Quick Start
 
 \`\`\`bash
 npm install

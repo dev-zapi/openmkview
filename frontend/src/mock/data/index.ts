@@ -1,5 +1,5 @@
 /**
- * Mock 数据导出
+ * Mock data export
  */
 
 export * from './projects';

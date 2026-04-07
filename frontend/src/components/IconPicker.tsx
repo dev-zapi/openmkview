@@ -24,7 +24,7 @@ const IconPicker: Component<IconPickerProps> = (props) => {
   return (
     <div class="icon-picker">
       <div class="icon-picker-header">
-        <span>选择图标</span>
+        <span>Select Icon</span>
         <button class="icon-picker-close" onClick={props.onClose}>×</button>
       </div>
       

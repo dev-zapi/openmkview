@@ -50,11 +50,11 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const handleCopyClick = async () => {
     try {
       await navigator.clipboard.writeText(props.content);
-      setToast({ message: '已复制到剪贴板', type: 'success' });
+      setToast({ message: 'Copied to clipboard', type: 'success' });
       setTimeout(() => setToast(null), 2000);
     } catch (err) {
-      console.error('复制失败:', err);
-      setToast({ message: '复制失败', type: 'error' });
+      console.error('Failed to copy:', err);
+      setToast({ message: 'Failed to copy', type: 'error' });
       setTimeout(() => setToast(null), 2000);
     }
   };
@@ -109,12 +109,12 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
           printWindow.document.close();
           printWindow.print();
         }
-        setToast({ message: 'PDF 导出中...', type: 'success' });
+        setToast({ message: 'Exporting PDF...', type: 'success' });
         break;
         
       case 'md':
         downloadFile(props.content, `${baseName}_${timestamp}.md`, 'text/markdown');
-        setToast({ message: 'Markdown 已下载', type: 'success' });
+        setToast({ message: 'Markdown downloaded', type: 'success' });
         break;
     }
     

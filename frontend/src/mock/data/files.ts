@@ -4,46 +4,46 @@ export const mockFileContents: Record<string, FileContent> = {
   '/README.md': {
     content: `# OpenMKView
 
-一个现代化的 Markdown 查看器和 Git Diff 工具。
+A modern Markdown viewer and Git Diff tool.
 
-## 功能特性
+## Features
 
-- 📝 **Markdown 预览** - 支持 GitHub 风格的 Markdown 渲染
-- 🔀 **Git Diff** - 可视化的文件差异对比
-- 📁 **项目浏览器** - 树形结构浏览项目文件
-- 🎨 **主题切换** - 支持亮色/暗色主题
+- 📝 **Markdown Preview** - GitHub-flavored Markdown rendering
+- 🔀 **Git Diff** - Visual file difference comparison
+- 📁 **Project Browser** - Tree structure file browsing
+- 🎨 **Theme Switching** - Light/dark theme support
 
-## 快速开始
+## Quick Start
 
 \`\`\`bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 启动开发服务器
+# Start development server
 npm run dev
 
-# 构建生产版本
+# Build for production
 npm run build
 \`\`\`
 
-## 项目结构
+## Project Structure
 
 \`\`\`
 openmkview/
 ├── src/
-│   ├── components/    # UI 组件
-│   ├── services/      # API 服务
-│   ├── stores/        # 状态管理
-│   └── types/         # TypeScript 类型
-├── docs/              # 文档
-└── e2e/               # E2E 测试
+│   ├── components/    # UI components
+│   ├── services/      # API services
+│   ├── stores/        # State management
+│   └── types/         # TypeScript types
+├── docs/              # Documentation
+└── e2e/               # E2E tests
 \`\`\`
 
-## 贡献指南
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-## 许可证
+## License
 
 MIT License
 `,
@@ -53,17 +53,17 @@ MIT License
     lastModified: new Date().toISOString(),
   },
   '/docs/README.md': {
-    content: `# 文档目录
+    content: `# Documentation
 
-这里是项目的文档目录。
+This is the project documentation directory.
 
-## 文档列表
+## Document List
 
-- [更新日志](./CHANGELOG.md) - 查看项目的版本更新历史
+- [Changelog](./CHANGELOG.md) - View project version update history
 
-## 开发文档
+## Development Documentation
 
-详细的开发文档正在编写中...
+Detailed development documentation is being written...
 `,
     fileName: 'README.md',
     path: '/docs/README.md',
@@ -71,20 +71,20 @@ MIT License
     lastModified: new Date(Date.now() - 86400000).toISOString(),
   },
   '/src/pages/index.md': {
-    content: `# 欢迎使用 OpenMKView
+    content: `# Welcome to OpenMKView
 
-这是一个示例 Markdown 文件。
+This is a sample Markdown file.
 
-## 简介
+## Introduction
 
-OpenMKView 是一个强大的 Markdown 查看工具，支持：
+OpenMKView is a powerful Markdown viewing tool that supports:
 
-- 实时预览
-- 代码高亮
-- 表格支持
-- 任务列表
+- Live preview
+- Code highlighting
+- Table support
+- Task lists
 
-### 代码示例
+### Code Example
 
 \`\`\`typescript
 interface User {
@@ -98,22 +98,22 @@ function greet(user: User): string {
 }
 \`\`\`
 
-### 表格示例
+### Table Example
 
-| 功能 | 状态 | 描述 |
+| Feature | Status | Description |
 |------|------|------|
-| Markdown 预览 | ✅ | 已完成 |
-| Git Diff | ✅ | 已完成 |
-| 主题切换 | ✅ | 已完成 |
+| Markdown Preview | ✅ | Completed |
+| Git Diff | ✅ | Completed |
+| Theme Switching | ✅ | Completed |
 
-### 任务列表
+### Task List
 
-- [x] 完成基础功能
-- [x] 添加测试
-- [ ] 优化性能
-- [ ] 添加更多主题
+- [x] Complete basic features
+- [x] Add tests
+- [ ] Optimize performance
+- [ ] Add more themes
 
-> 提示：这是一个引用块示例。
+> Note: This is an example quote block.
 `,
     fileName: 'index.md',
     path: '/src/pages/index.md',
@@ -121,42 +121,42 @@ function greet(user: User): string {
     lastModified: new Date().toISOString(),
   },
   '/src/pages/guide/getting-started.md': {
-    content: `# 快速开始指南
+    content: `# Quick Start Guide
 
-本指南将帮助你快速上手 OpenMKView。
+This guide will help you get started with OpenMKView quickly.
 
-## 安装
+## Installation
 
-### 前置要求
+### Prerequisites
 
 - Node.js 18+
-- npm 或 yarn
+- npm or yarn
 
-### 安装步骤
+### Installation Steps
 
-1. 克隆仓库
+1. Clone the repository
 
 \`\`\`bash
 git clone https://github.com/example/openmkview.git
 cd openmkview
 \`\`\`
 
-2. 安装依赖
+2. Install dependencies
 
 \`\`\`bash
 npm install
 \`\`\`
 
-3. 启动开发服务器
+3. Start development server
 
 \`\`\`bash
 npm run dev
 \`\`\`
 
-## 下一步
+## Next Steps
 
-- 阅读 [高级用法](./advanced.md) 了解更多功能
-- 查看 [API 文档](../api/README.md) 了解接口详情
+- Read [Advanced Usage](./advanced.md) for more features
+- Check [API Documentation](../api/README.md) for interface details
 `,
     fileName: 'getting-started.md',
     path: '/src/pages/guide/getting-started.md',
@@ -176,7 +176,7 @@ export function generateDefaultFileContent(path: string): FileContent {
   let content = '';
 
   if (ext === 'md') {
-    content = `# ${fileName}\n\n这是一个示例 Markdown 文件。\n`;
+    content = `# ${fileName}\n\nThis is a sample Markdown file.\n`;
   } else if (ext === 'ts' || ext === 'tsx') {
     content = `// ${fileName}\n\nexport default {};\n`;
   } else if (ext === 'js' || ext === 'jsx') {

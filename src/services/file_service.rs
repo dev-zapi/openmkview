@@ -115,7 +115,7 @@ impl FileService {
         let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
         let path = resolved.to_str().unwrap().to_string();
 
-        // 获取文件大小和修改时间
+        // Get file size and modification time
         let metadata = std::fs::metadata(&resolved)?;
         let file_size = metadata.len();
         let last_modified = metadata.modified().ok();

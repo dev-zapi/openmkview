@@ -59,7 +59,7 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
   return (
     <div class="color-picker">
       <div class="color-picker-header">
-        <span>选择颜色</span>
+        <span>Select Color</span>
         <button class="color-picker-close" onClick={props.onClose}>×</button>
       </div>
       
@@ -75,7 +75,7 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
       </div>
 
       <div class="color-picker-divider">
-        <span>或自定义</span>
+        <span>or customize</span>
       </div>
 
       <Show when={showCustom()}>
@@ -94,14 +94,14 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
             class="color-picker-input"
           />
           <button class="color-picker-apply" onClick={handleCustomSubmit}>
-            应用
+            Apply
           </button>
         </div>
       </Show>
 
       <Show when={!showCustom()}>
         <button class="color-picker-custom-toggle" onClick={() => setShowCustom(true)}>
-          自定义颜色
+          Custom Color
         </button>
       </Show>
     </div>

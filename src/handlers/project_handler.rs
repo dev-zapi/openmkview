@@ -18,7 +18,7 @@ pub struct ProjectListParams {
     open: Option<bool>,
 }
 
-/// 获取最近打开的项目列表
+/// Get recent projects list
 pub async fn get_recent_projects(data: web::Data<AppState>) -> AppResult<HttpResponse> {
     debug!("[project] Getting recent projects list");
     let conn = data.db.lock().unwrap();
@@ -30,13 +30,13 @@ pub async fn get_recent_projects(data: web::Data<AppState>) -> AppResult<HttpRes
     Ok(HttpResponse::Ok().json(projects))
 }
 
-/// 验证项目路径请求
+/// Validate project path request
 #[derive(Debug, Deserialize)]
 pub struct ValidateProjectRequest {
     pub path: String,
 }
 
-/// 验证项目路径响应
+/// Validate project path response
 #[derive(Debug, Serialize)]
 pub struct ValidateProjectResponse {
     pub valid: bool,
@@ -44,7 +44,7 @@ pub struct ValidateProjectResponse {
     pub reason: Option<String>,
 }
 
-/// 验证项目路径
+/// Validate project path
 pub async fn validate_project(
     data: web::Data<AppState>,
     body: web::Json<ValidateProjectRequest>,
@@ -63,13 +63,13 @@ pub async fn validate_project(
     Ok(HttpResponse::Ok().json(ValidateProjectResponse { valid, reason }))
 }
 
-/// 打开项目请求
+/// Open project request
 #[derive(Debug, Deserialize)]
 pub struct OpenProjectRequest {
     pub path: String,
 }
 
-/// 打开项目响应中的项目信息（适配前端 RecentProject 类型）
+/// Open project response project info (compatible with frontend RecentProject type)
 #[derive(Debug, Serialize)]
 pub struct OpenProjectInfo {
     pub id: String,
@@ -80,7 +80,7 @@ pub struct OpenProjectInfo {
     pub r#type: Option<String>,
 }
 
-/// 打开项目响应
+/// Open project response
 #[derive(Debug, Serialize)]
 pub struct OpenProjectResponse {
     pub success: bool,
@@ -90,7 +90,7 @@ pub struct OpenProjectResponse {
     pub error: Option<String>,
 }
 
-/// 打开项目（如果不存在则创建）
+/// Open project (create if not exists)
 pub async fn open_project(
     data: web::Data<AppState>,
     body: web::Json<OpenProjectRequest>,
@@ -377,7 +377,7 @@ pub async fn update_project(
         body.icon.as_deref(),
     )?;
 
-    // 返回更新后的项目信息
+    // Return updated project info
     let project_repo = ProjectRepository::new(&conn);
     let project = project_repo
         .find_by_id(id)?

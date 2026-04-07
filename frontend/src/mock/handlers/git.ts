@@ -1,5 +1,5 @@
 /**
- * Mock API 处理函数 - Git 相关
+ * Mock API handlers - Git related
  */
 
 import type { Connect } from 'vite';
@@ -8,7 +8,7 @@ import { mockCommits, mockBranches, mockTags, mockGitStatus, mockFileDiffs, crea
 type NextFunction = () => void;
 
 /**
- * 解析 JSON 请求体
+ * Parse JSON request body
  */
 async function parseBody<T>(req: Connect.IncomingMessage): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -28,7 +28,7 @@ async function parseBody<T>(req: Connect.IncomingMessage): Promise<T> {
 }
 
 /**
- * 发送 JSON 响应
+ * Send JSON response
  */
 function sendJson(res: any, data: any, status = 200) {
   res.statusCode = status;
@@ -37,7 +37,7 @@ function sendJson(res: any, data: any, status = 200) {
 }
 
 /**
- * 处理 Git 相关 API
+ * Handle Git-related API
  */
 export async function handleGitApi(
   req: Connect.IncomingMessage,
@@ -48,7 +48,7 @@ export async function handleGitApi(
   const pathname = url.pathname;
   const searchParams = url.searchParams;
 
-  // GET /api/git/commits - 获取提交列表
+  // GET /api/git/commits - Get commit list
   if (req.method === 'GET' && pathname === '/api/git/commits') {
     const projectId = searchParams.get('project_id');
     // filePath parameter is available but not used in mock
@@ -62,7 +62,7 @@ export async function handleGitApi(
     return true;
   }
 
-  // POST /api/git/diff - 获取文件差异
+  // POST /api/git/diff - Get file diff
   if (req.method === 'POST' && pathname === '/api/git/diff') {
     const body = await parseBody<{
       project_id: number;
@@ -71,7 +71,7 @@ export async function handleGitApi(
       new_ref: string;
     }>(req);
 
-    // 返回预定义的 diff 或生成新的
+    // Return predefined diff or generate new one
     const diff =
       mockFileDiffs[body.path] ||
       createMockDiff(
@@ -84,7 +84,7 @@ export async function handleGitApi(
     return true;
   }
 
-  // GET /api/git/file - 获取特定提交的文件内容
+  // GET /api/git/file - Get file content at specific commit
   if (req.method === 'GET' && pathname === '/api/git/file') {
     const projectId = searchParams.get('project_id');
     const filePath = searchParams.get('path');
@@ -99,19 +99,19 @@ export async function handleGitApi(
     return true;
   }
 
-  // GET /api/git/branches - 获取分支列表
+  // GET /api/git/branches - Get branch list
   if (req.method === 'GET' && pathname === '/api/git/branches') {
     sendJson(res, mockBranches);
     return true;
   }
 
-  // GET /api/git/tags - 获取标签列表
+  // GET /api/git/tags - Get tag list
   if (req.method === 'GET' && pathname === '/api/git/tags') {
     sendJson(res, mockTags);
     return true;
   }
 
-  // POST /api/git - Git 操作
+  // POST /api/git - Git operations
   if (req.method === 'POST' && pathname === '/api/git') {
     const body = await parseBody<{ action: string; project_id: number }>(req);
 

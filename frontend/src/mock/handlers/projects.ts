@@ -1,5 +1,5 @@
 /**
- * Mock API 处理函数 - 项目相关
+ * Mock API handlers - Project related
  */
 
 import type { Connect } from 'vite';
@@ -13,7 +13,7 @@ import type {
 type NextFunction = () => void;
 
 /**
- * 解析 JSON 请求体
+ * Parse JSON request body
  */
 async function parseBody<T>(req: Connect.IncomingMessage): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -33,7 +33,7 @@ async function parseBody<T>(req: Connect.IncomingMessage): Promise<T> {
 }
 
 /**
- * 发送 JSON 响应
+ * Send JSON response
  */
 function sendJson(res: any, data: any, status = 200) {
   res.statusCode = status;
@@ -42,7 +42,7 @@ function sendJson(res: any, data: any, status = 200) {
 }
 
 /**
- * 处理项目相关 API
+ * Handle project-related API
  */
 export async function handleProjectsApi(
   req: Connect.IncomingMessage,
@@ -52,13 +52,13 @@ export async function handleProjectsApi(
   const url = new URL(req.url || '', 'http://localhost');
   const pathname = url.pathname;
 
-  // GET /api/projects - 获取项目列表
+  // GET /api/projects - Get project list
   if (req.method === 'GET' && pathname === '/api/projects') {
     sendJson(res, mockProjects);
     return true;
   }
 
-  // POST /api/projects - 创建项目
+  // POST /api/projects - Create project
   if (req.method === 'POST' && pathname === '/api/projects') {
     const body = await parseBody<{ path: string }>(req);
     const newProject = {
@@ -70,18 +70,18 @@ export async function handleProjectsApi(
     return true;
   }
 
-  // DELETE /api/projects/:id - 删除项目
+  // DELETE /api/projects/:id - Delete project
   if (req.method === 'DELETE' && pathname.match(/^\/api\/projects\/\d+$/)) {
     sendJson(res, { success: true });
     return true;
   }
 
-  // POST /api/projects/resolve - 解析路径
+  // POST /api/projects/resolve - Resolve path
   if (req.method === 'POST' && pathname === '/api/projects/resolve') {
     const body = await parseBody<ResolvePathRequest>(req);
     const input = body.path.toLowerCase();
 
-    // 模拟路径解析
+    // Simulate path resolution
     const candidates = mockRecentProjects
       .filter((p) => p.name.toLowerCase().includes(input) || p.path.toLowerCase().includes(input))
       .map((p) => ({
@@ -103,12 +103,12 @@ export async function handleProjectsApi(
     return true;
   }
 
-  // POST /api/projects/validate - 验证路径
+  // POST /api/projects/validate - Validate path
   if (req.method === 'POST' && pathname === '/api/projects/validate') {
     const body = await parseBody<ValidatePathRequest>(req);
     const path = body.path;
 
-    // 模拟验证
+    // Simulate validation
     const valid = path.startsWith('/') || path.startsWith('./') || path.startsWith('../');
     sendJson(res, {
       valid,
@@ -119,12 +119,12 @@ export async function handleProjectsApi(
     return true;
   }
 
-  // POST /api/projects/open - 打开项目
+  // POST /api/projects/open - Open project
   if (req.method === 'POST' && pathname === '/api/projects/open') {
     const body = await parseBody<OpenProjectRequest>(req);
     const path = body.path;
 
-    // 模拟打开项目
+    // Simulate opening project
     const projectName = path.split('/').pop() || 'project';
     sendJson(res, {
       success: true,
@@ -139,7 +139,7 @@ export async function handleProjectsApi(
     return true;
   }
 
-  // GET /api/projects/recent - 获取最近项目
+  // GET /api/projects/recent - Get recent projects
   if (req.method === 'GET' && pathname === '/api/projects/recent') {
     sendJson(res, {
       projects: mockRecentProjects,

@@ -15,13 +15,13 @@ pub enum AppError {
 impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AppError::DatabaseError(msg) => write!(f, "数据库错误：{}", msg),
-            AppError::NotFound(msg) => write!(f, "未找到：{}", msg),
-            AppError::BadRequest(msg) => write!(f, "请求错误：{}", msg),
-            AppError::InternalError(msg) => write!(f, "内部错误：{}", msg),
-            AppError::FileError(msg) => write!(f, "文件错误：{}", msg),
-            AppError::GitError(msg) => write!(f, "Git 错误：{}", msg),
-            AppError::ValidationError(msg) => write!(f, "验证错误：{}", msg),
+            AppError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
+            AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            AppError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
+            AppError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+            AppError::FileError(msg) => write!(f, "File error: {}", msg),
+            AppError::GitError(msg) => write!(f, "Git error: {}", msg),
+            AppError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
         }
     }
 }

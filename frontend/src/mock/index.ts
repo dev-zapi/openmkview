@@ -1,31 +1,31 @@
 /**
- * Mock 服务插件
- * 在开发环境中拦截 API 请求并返回模拟数据
+ * Mock service plugin
+ * Intercepts API requests in development environment and returns mock data
  */
 
 import type { Plugin } from 'vite';
 import { handleProjectsApi, handleFilesApi, handleGitApi } from './handlers';
 
-// 全局配置，由 vite.config.ts 设置
+// Global configuration, set by vite.config.ts
 let mockEnabled = true;
 
 /**
- * 设置 Mock 启用状态
+ * Set Mock enabled status
  */
 export function setMockEnabled(enabled: boolean) {
   mockEnabled = enabled;
 }
 
 /**
- * 创建 Mock 服务插件
+ * Create Mock service plugin
  */
 export function mockServerPlugin(): Plugin {
   return {
     name: 'vite-plugin-mock-server',
-    enforce: 'pre', // 在其他插件之前执行
+    enforce: 'pre', // Execute before other plugins
 
     configResolved(config) {
-      // 在开发模式下默认启用 mock
+      // Enable mock by default in development mode
       mockEnabled = config.env.VITE_MOCK_ENABLED !== 'false' && config.mode === 'development';
 
       if (mockEnabled) {
@@ -40,35 +40,35 @@ export function mockServerPlugin(): Plugin {
         return;
       }
 
-      // 添加中间件
+      // Add middleware
       server.middlewares.use(async (req, res, next) => {
         const url = req.url || '';
 
-        // 只处理 /api 开头的请求
+        // Only handle requests starting with /api
         if (!url.startsWith('/api')) {
           return next();
         }
 
-        // 记录请求
+        // Log request
         console.log(`[Mock Server] ${req.method} ${url}`);
 
         try {
-          // 尝试处理项目 API
+          // Try to handle projects API
           if (await handleProjectsApi(req, res, next)) {
             return;
           }
 
-          // 尝试处理文件 API
+          // Try to handle files API
           if (await handleFilesApi(req, res, next)) {
             return;
           }
 
-          // 尝试处理 Git API
+          // Try to handle Git API
           if (await handleGitApi(req, res, next)) {
             return;
           }
 
-          // 未找到匹配的 API
+          // No matching API found
           console.log(`[Mock Server] 404 - ${req.method} ${url}`);
           res.statusCode = 404;
           res.setHeader('Content-Type', 'application/json');
@@ -84,5 +84,5 @@ export function mockServerPlugin(): Plugin {
   };
 }
 
-// 导出数据供其他模块使用
+// Export data for other modules to use
 export * from './data';

@@ -1,5 +1,5 @@
 /**
- * Mock API 处理函数 - 文件相关
+ * Mock API handlers - File related
  */
 
 import type { Connect } from 'vite';
@@ -8,7 +8,7 @@ import { getMockFileContent, generateDefaultFileContent } from '../data';
 type NextFunction = () => void;
 
 /**
- * 发送 JSON 响应
+ * Send JSON response
  */
 function sendJson(res: any, data: any, status = 200) {
   res.statusCode = status;
@@ -17,7 +17,7 @@ function sendJson(res: any, data: any, status = 200) {
 }
 
 /**
- * 处理文件相关 API
+ * Handle file-related API
  */
 export async function handleFilesApi(
   req: Connect.IncomingMessage,
@@ -28,7 +28,7 @@ export async function handleFilesApi(
   const pathname = url.pathname;
   const searchParams = url.searchParams;
 
-  // GET /api/files/tree - 获取文件树
+  // GET /api/files/tree - Get file tree
   if (req.method === 'GET' && pathname === '/api/files/tree') {
     const projectId = searchParams.get('project_id');
     if (projectId) {
@@ -40,7 +40,7 @@ export async function handleFilesApi(
     return true;
   }
 
-  // GET /api/files/content - 获取文件内容
+  // GET /api/files/content - Get file content
   if (req.method === 'GET' && pathname === '/api/files/content') {
     const path = searchParams.get('path');
     const projectId = searchParams.get('project_id');

@@ -111,32 +111,32 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             </div>
 
             <div class="settings-section">
-              <h4>字体设置</h4>
+              <h4>Font Settings</h4>
 
               <div class="settings-item">
-                <label>界面字体</label>
+                <label>UI Font</label>
                 <input
                   type="text"
                   value={settings().uiFontFamily}
                   onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
-                  placeholder="例如: MiSans, sans-serif"
+                  placeholder="e.g., MiSans, sans-serif"
                 />
                 <div class="font-presets">
-                  <button onClick={() => updateSetting('uiFontFamily', 'MiSans, sans-serif')}>系统默认</button>
+                  <button onClick={() => updateSetting('uiFontFamily', 'MiSans, sans-serif')}>System Default</button>
                   <button onClick={() => updateSetting('uiFontFamily', '"Segoe UI", Roboto, sans-serif')}>Segoe UI</button>
                   <button onClick={() => updateSetting('uiFontFamily', '"Helvetica Neue", Arial, sans-serif')}>Helvetica</button>
-                  <button onClick={() => updateSetting('uiFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>中文黑体</button>
-                  <button onClick={() => updateSetting('uiFontFamily', '"JetBrains Mono", monospace')}>等宽字体</button>
+                  <button onClick={() => updateSetting('uiFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
+                  <button onClick={() => updateSetting('uiFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
                 </div>
               </div>
 
               <div class="settings-item">
-                <label>界面字号</label>
+                <label>UI Font Size</label>
                 <input
                   type="text"
                   value={settings().uiFontSize}
                   onInput={(e) => updateSetting('uiFontSize', e.currentTarget.value)}
-                  placeholder="例如: 14px"
+                  placeholder="e.g., 14px"
                 />
                 <div class="size-presets">
                   <button onClick={() => updateSetting('uiFontSize', '12px')}>12px</button>
@@ -148,28 +148,28 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
               </div>
 
               <div class="settings-item">
-                <label>Markdown 渲染字体</label>
+                <label>Markdown Font</label>
                 <input
                   type="text"
                   value={settings().markdownFontFamily}
                   onInput={(e) => updateSetting('markdownFontFamily', e.currentTarget.value)}
-                  placeholder="例如: Georgia, serif"
+                  placeholder="e.g., Georgia, serif"
                 />
                 <div class="font-presets">
                   <button onClick={() => updateSetting('markdownFontFamily', 'Georgia, "Noto Serif", serif')}>Georgia</button>
-                  <button onClick={() => updateSetting('markdownFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>中文黑体</button>
-                  <button onClick={() => updateSetting('markdownFontFamily', '"Noto Serif SC", "Songti SC", serif')}>中文宋体</button>
-                  <button onClick={() => updateSetting('markdownFontFamily', '"JetBrains Mono", monospace')}>等宽字体</button>
+                  <button onClick={() => updateSetting('markdownFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
+                  <button onClick={() => updateSetting('markdownFontFamily', '"Noto Serif SC", "Songti SC", serif')}>Chinese Serif</button>
+                  <button onClick={() => updateSetting('markdownFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
                 </div>
               </div>
 
               <div class="settings-item">
-                <label>Markdown 字号</label>
+                <label>Markdown Font Size</label>
                 <input
                   type="text"
                   value={settings().markdownFontSize}
                   onInput={(e) => updateSetting('markdownFontSize', e.currentTarget.value)}
-                  placeholder="例如: 16px"
+                  placeholder="e.g., 16px"
                 />
                 <div class="size-presets">
                   <button onClick={() => updateSetting('markdownFontSize', '14px')}>14px</button>

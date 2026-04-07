@@ -1,5 +1,5 @@
 /**
- * Mock API 处理函数导出
+ * Mock API handler exports
  */
 
 export { handleProjectsApi } from './projects';
