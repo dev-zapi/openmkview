@@ -26,8 +26,21 @@ install-service: install
 	@sed 's|{{BINDIR}}|$(BINDIR)|g' contrib/$(NAME).service.in > $(SYSTEMD_USER_DIR)/$(NAME).service
 	@systemctl --user daemon-reload
 	@echo "Installed systemd user service"
+ifdef ENABLE
+	@systemctl --user enable $(NAME)
+	@echo "Service enabled"
+endif
+ifdef START
+	@systemctl --user enable $(NAME) 2>/dev/null || true
+	@systemctl --user start $(NAME)
+	@echo "Service enabled and started"
+endif
+ifndef ENABLE
+ifndef START
 	@echo "Enable with: systemctl --user enable $(NAME)"
 	@echo "Start with: systemctl --user start $(NAME)"
+endif
+endif
 
 uninstall:
 	@rm -f $(BINDIR)/$(NAME)
@@ -64,6 +77,8 @@ help:
 	@echo "  build           Build both frontend and backend (default)"
 	@echo "  install         Install binary to $(BINDIR)"
 	@echo "  install-service Install binary and systemd user service"
+	@echo "                  ENABLE=1 to enable service"
+	@echo "                  START=1 to enable and start service"
 	@echo "  uninstall       Remove binary from $(BINDIR)"
 	@echo "  uninstall-service Remove systemd user service"
 	@echo "  clean           Remove build artifacts"
@@ -74,3 +89,5 @@ help:
 	@echo "Variables:"
 	@echo "  PREFIX=$(PREFIX)"
 	@echo "  BINDIR=$(BINDIR)"
+	@echo "  ENABLE=1         Enable service after install"
+	@echo "  START=1          Enable and start service after install"
