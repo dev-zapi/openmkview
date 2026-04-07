@@ -74,7 +74,7 @@ impl GitService {
         }
     }
 
-    fn parse_status(stdout: &str) -> Vec<GitFileStatus> {
+    pub(crate) fn parse_status(stdout: &str) -> Vec<GitFileStatus> {
         let mut files = Vec::new();
         for line in stdout.lines() {
             if line.len() < 4 {
@@ -300,6 +300,10 @@ impl GitService {
         None
     }
 }
+
+#[cfg(test)]
+#[path = "git_service_test.rs"]
+mod git_service_test;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileDiff {
