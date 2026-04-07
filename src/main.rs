@@ -112,12 +112,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/git/file", web::get().to(get_file_at_ref))
             // SPA index (must be before catch-all route)
             .route("/", web::get().to(static_files::serve_index))
-            // Static assets - serve from embedded files
-            .route(
-                "/assets/{path:.*}",
-                web::get().to(static_files::serve_static),
-            )
-            // Other static files (favicon, icons, etc.) - catch-all route
+            // Static files and SPA fallback (catch-all route)
             .route("/{path:.*}", web::get().to(static_files::serve_static))
     })
     .bind(&bind_addr)?;
