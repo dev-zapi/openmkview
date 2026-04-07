@@ -29,18 +29,7 @@ interface ListableItem {
 }
 
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
-  const { 
-    state, 
-    recentProjects, 
-    isLoadingRecent,
-    searchQuery,
-    debouncedQuery,
-    searchResults,
-    isSearching,
-    setSearchQuery,
-    openProjectByPath,
-    clearError 
-  } = useOpenProject(() => props.isOpen, props.onProjectOpened);
+  const hook = useOpenProject(() => props.isOpen, props.onProjectOpened);
   
   const [isClosing, setIsClosing] = createSignal(false);
   const [selectedIndex, setSelectedIndex] = createSignal(-1);
@@ -57,8 +46,8 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   createEffect(() => {
     if (!props.isOpen) {
       setIsClosing(false);
-      setSearchQuery('');
-      clearError();
+      hook.setSearchQuery('');
+      hook.clearError();
       setSelectedIndex(-1);
     } else {
       setSelectedIndex(-1);
@@ -79,30 +68,28 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
 
   const handleInputSubmit = (value: string) => {
     if (selectedIndex() >= 0 && allListItems().length > selectedIndex()) {
-      openProjectByPath(allListItems()[selectedIndex()].path);
-    } else if (searchResults().length > 0) {
-      openProjectByPath(searchResults()[0].path);
+      hook.openProjectByPath(allListItems()[selectedIndex()].path);
+    } else if (hook.searchResults().length > 0) {
+      hook.openProjectByPath(hook.searchResults()[0].path);
     } else if (value.trim()) {
-      openProjectByPath(value.trim());
+      hook.openProjectByPath(value.trim());
     }
   };
 
-  const allListItems = createMemo<ListableItem[]>(() => {
+const allListItems = createMemo<ListableItem[]>(() => {
     const items: ListableItem[] = [];
-    const query = debouncedQuery();
+    const query = hook.debouncedQuery();
     
-    // 无搜索时显示最近项目
     if (!query) {
-      const recent = recentProjects().slice(0, 3);
+      const recent = hook.recentProjects().slice(0, 3);
       for (const p of recent) {
         items.push({ path: p.path, name: p.name, icon: '📁' });
       }
       return items;
     }
     
-    // 有搜索时合并：本地过滤 + API搜索结果
     const lowerQuery = query.toLowerCase();
-    const filteredRecent = recentProjects()
+    const filteredRecent = hook.recentProjects()
       .filter((p: RecentProject) => 
         p.name.toLowerCase().includes(lowerQuery) || 
         p.path.toLowerCase().includes(lowerQuery)
@@ -113,7 +100,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
       items.push({ path: p.path, name: p.name, icon: '📁' });
     }
     
-    const results = searchResults();
+    const results = hook.searchResults();
     if (results.length > 0) {
       for (const r of results.slice(0, 5)) {
         items.push({ 
@@ -131,7 +118,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
   const handleTab = () => {
     const firstItem = allListItems()[0];
     if (firstItem) {
-      setSearchQuery(firstItem.path);
+      hook.setSearchQuery(firstItem.path);
       setSelectedIndex(0);
     }
   };
@@ -176,7 +163,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (current >= 0 && items[current]) {
-        openProjectByPath(items[current].path);
+        hook.openProjectByPath(items[current].path);
       }
     }
   };
@@ -214,21 +201,21 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             {/* Search Input */}
             <div class="search-section">
               <PathInput
-                value={searchQuery()}
-                onChange={setSearchQuery}
+                value={hook.searchQuery()}
+                onChange={hook.setSearchQuery}
                 onSubmit={handleInputSubmit}
                 onTab={handleTab}
                 onKeyDown={handleInputKeyDown}
                 placeholder="Search folders"
-                disabled={state.isLoading}
-                loading={isSearching()}
+                disabled={hook.state.isLoading}
+                loading={hook.isSearching()}
                 ref={(el) => inputRef = el}
               />
               
               {/* Error Message */}
-              <Show when={state.error}>
+              <Show when={hook.state.error}>
                 <div class="error-message">
-                  {state.error}
+                  {hook.state.error}
                 </div>
               </Show>
             </div>
@@ -238,7 +225,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
               {(item, index) => (
                 <div 
                   class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
-                  onClick={() => openProjectByPath(item.path)}
+                  onClick={() => hook.openProjectByPath(item.path)}
                   onKeyDown={handleListItemKeyDown}
                   tabIndex={0}
                   role="button"
@@ -254,7 +241,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
               )}
             </For>
 
-            <Show when={isLoadingRecent()}>
+            <Show when={hook.isLoadingRecent()}>
               <div class="loading-text">Loading...</div>
             </Show>
           </div>
