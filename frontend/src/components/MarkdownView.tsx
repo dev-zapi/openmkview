@@ -113,10 +113,14 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       language
     );
 
-    return (
-      <pre class={`language-${language}`}>
+    if (className) {
+      return (
         <code class={`language-${language}`} innerHTML={highlighted} />
-      </pre>
+      );
+    }
+
+    return (
+      <code class="inline-code">{children}</code>
     );
   };
 
