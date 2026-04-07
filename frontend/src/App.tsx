@@ -437,6 +437,42 @@ const App: Component = () => {
     return project.icon ? project.icon : project.name.charAt(0).toUpperCase();
   };
 
+  const isFaviconIcon = (icon: string | null | undefined): boolean => {
+    return icon?.startsWith('favicon:') ?? false;
+  };
+
+  const getFaviconPath = (icon: string): string => {
+    return icon.replace('favicon:', '');
+  };
+
+  const renderProjectIcon = (project: Project) => {
+    if (isFaviconIcon(project.icon)) {
+      const faviconPath = getFaviconPath(project.icon!);
+      return (
+        <img 
+          src={`/api/files/content?path=${encodeURIComponent(faviconPath)}&project_id=${project.id}`}
+          alt="favicon"
+          class="project-favicon"
+        />
+      );
+    }
+    return <span class="project-initial">{getProjectDisplayName(project)}</span>;
+  };
+
+  const renderSidebarHeaderIcon = (project: Project) => {
+    if (isFaviconIcon(project.icon)) {
+      const faviconPath = getFaviconPath(project.icon!);
+      return (
+        <img 
+          src={`/api/files/content?path=${encodeURIComponent(faviconPath)}&project_id=${project.id}`}
+          alt="favicon"
+          class="sidebar-header-favicon"
+        />
+      );
+    }
+    return getProjectDisplayName(project);
+  };
+
   return (
     <>
       {/* Desktop layout */}
@@ -455,7 +491,7 @@ const App: Component = () => {
                     onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
                     style={getColorStyle(p)}
                   >
-                    <span class="project-initial">{getProjectDisplayName(p)}</span>
+                    {renderProjectIcon(p)}
                   </button>
                 )}
               </For>
@@ -528,7 +564,7 @@ const App: Component = () => {
                 <Show when={activeProject()}>
                   <div class="sidebar-header-content">
                     <span class="sidebar-header-icon" style={activeProject()?.color ? { background: activeProject()?.color } : {}}>
-                      {getProjectDisplayName(activeProject()!)}
+                      {renderSidebarHeaderIcon(activeProject()!)}
                     </span>
                     <span class="sidebar-header-name">{activeProject()?.name}</span>
                     <button class="sidebar-header-menu" onClick={handleProjectMenuToggle}>
@@ -715,7 +751,7 @@ const App: Component = () => {
                     onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
                     style={getColorStyle(p)}
                   >
-                    <span class="project-initial">{getProjectDisplayName(p)}</span>
+                    {renderProjectIcon(p)}
                   </button>
                 )}
               </For>

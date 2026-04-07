@@ -364,10 +364,22 @@ body {
 
 /* Project initial letter */
 .project-initial {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.project-initial img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.project-favicon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 /* Add button */
@@ -495,10 +507,30 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   background: var(--color-bg);
   color: var(--color-text);
   flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+}
+
+.sidebar-header-icon img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.sidebar-header-icon img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.sidebar-header-favicon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
 }
 
 .sidebar-header-name {
