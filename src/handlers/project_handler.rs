@@ -317,7 +317,7 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
                     for entry in walker.filter_map(|e| e.ok()) {
                         if let Some(file_name) = entry.file_name().to_str() {
                             let file_name_lower = file_name.to_lowercase();
-                            if file_name_lower.contains(&base_lower) && entry.path().is_dir() {
+                            if file_name_lower == base_lower && entry.path().is_dir() {
                                 debug!(
                                     "[resolve_path] Found matching directory: {}",
                                     entry.path().display()
