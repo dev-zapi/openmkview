@@ -456,6 +456,6 @@ mod tests {
     fn test_status_returns_status() {
         let cwd = PathBuf::from(".");
         let status = GitService::status(&cwd);
-        assert!(status.is_repo || !status.is_repo);
+        assert!(status.is_repo);
     }
 }
