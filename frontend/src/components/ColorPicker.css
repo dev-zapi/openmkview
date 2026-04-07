@@ -47,12 +47,12 @@
 .color-picker-presets {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .color-picker-preset {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: 2px solid var(--color-border);
   border-radius: 6px;
   cursor: pointer;
@@ -76,13 +76,13 @@
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .color-picker-divider {
-  margin: 16px 0;
+  margin: 12px 0;
   text-align: center;
   position: relative;
 }
@@ -135,7 +135,7 @@
   padding: 8px 12px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   background: var(--color-bg-subtle);
   color: var(--color-text-h);
   transition: border-color 0.2s, box-shadow 0.2s;

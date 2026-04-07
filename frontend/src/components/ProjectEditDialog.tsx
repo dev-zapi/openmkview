@@ -57,15 +57,15 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
               />
             </div>
 
-            <div class="form-group">
+            <div class="form-group picker-group">
               <label>项目颜色</label>
-              <div class="color-preview-row">
+              <div class="picker-row">
                 <button
-                  class="color-preview-button"
-                  style={{ background: color() || 'var(--bg-secondary)' }}
+                  class="picker-button"
+                  style={{ background: color() || 'var(--color-bg-subtle)' }}
                   onClick={() => setColorPickerOpen(!colorPickerOpen())}
                 >
-                  {color() ? '' : '选择颜色'}
+                  {color() ? '' : '选择'}
                 </button>
                 <Show when={color()}>
                   <button
@@ -76,16 +76,27 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
                   </button>
                 </Show>
               </div>
+              <Show when={colorPickerOpen()}>
+                <div class="picker-popup">
+                  <ColorPicker
+                    currentColor={color()}
+                    onColorChange={handleColorChange}
+                    onClose={() => setColorPickerOpen(false)}
+                  />
+                </div>
+              </Show>
             </div>
 
-            <div class="form-group">
+            <div class="form-group picker-group">
               <label>项目图标</label>
-              <div class="icon-preview-row">
+              <div class="picker-row">
                 <button
-                  class="icon-preview-button"
+                  class="picker-button"
                   onClick={() => setIconPickerOpen(!iconPickerOpen())}
                 >
-                  {icon() || '选择图标'}
+                  <Show when={icon()} fallback={<span class="picker-placeholder">选择</span>}>
+                    <span class="picker-icon">{icon()}</span>
+                  </Show>
                 </button>
                 <Show when={icon()}>
                   <button
@@ -96,6 +107,15 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
                   </button>
                 </Show>
               </div>
+              <Show when={iconPickerOpen()}>
+                <div class="picker-popup">
+                  <IconPicker
+                    currentIcon={icon()}
+                    onIconChange={handleIconChange}
+                    onClose={() => setIconPickerOpen(false)}
+                  />
+                </div>
+              </Show>
             </div>
           </div>
 
@@ -107,26 +127,6 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
               保存
             </button>
           </div>
-
-          <Show when={colorPickerOpen()}>
-            <div class="picker-popup">
-              <ColorPicker
-                currentColor={color()}
-                onColorChange={handleColorChange}
-                onClose={() => setColorPickerOpen(false)}
-              />
-            </div>
-          </Show>
-
-          <Show when={iconPickerOpen()}>
-            <div class="picker-popup">
-              <IconPicker
-                currentIcon={icon()}
-                onIconChange={handleIconChange}
-                onClose={() => setIconPickerOpen(false)}
-              />
-            </div>
-          </Show>
         </div>
       </div>
     </Show>
