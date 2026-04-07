@@ -1,8 +1,5 @@
-import type { FileContent, Heading } from '../../types';
+import type { FileContent } from '../../types';
 
-/**
- * Mock 文件内容数据
- */
 export const mockFileContents: Record<string, FileContent> = {
   '/README.md': {
     content: `# OpenMKView
@@ -50,14 +47,6 @@ openmkview/
 
 MIT License
 `,
-    headings: [
-      { depth: 1, text: 'OpenMKView', id: 'openmkview' },
-      { depth: 2, text: '功能特性', id: '功能特性' },
-      { depth: 2, text: '快速开始', id: '快速开始' },
-      { depth: 2, text: '项目结构', id: '项目结构' },
-      { depth: 2, text: '贡献指南', id: '贡献指南' },
-      { depth: 2, text: '许可证', id: '许可证' },
-    ],
     fileName: 'README.md',
     path: '/README.md',
     fileSize: 1024,
@@ -76,11 +65,6 @@ MIT License
 
 详细的开发文档正在编写中...
 `,
-    headings: [
-      { depth: 1, text: '文档目录', id: '文档目录' },
-      { depth: 2, text: '文档列表', id: '文档列表' },
-      { depth: 2, text: '开发文档', id: '开发文档' },
-    ],
     fileName: 'README.md',
     path: '/docs/README.md',
     fileSize: 256,
@@ -131,13 +115,6 @@ function greet(user: User): string {
 
 > 提示：这是一个引用块示例。
 `,
-    headings: [
-      { depth: 1, text: '欢迎使用 OpenMKView', id: '欢迎使用-openmkview' },
-      { depth: 2, text: '简介', id: '简介' },
-      { depth: 3, text: '代码示例', id: '代码示例' },
-      { depth: 3, text: '表格示例', id: '表格示例' },
-      { depth: 3, text: '任务列表', id: '任务列表' },
-    ],
     fileName: 'index.md',
     path: '/src/pages/index.md',
     fileSize: 512,
@@ -181,13 +158,6 @@ npm run dev
 - 阅读 [高级用法](./advanced.md) 了解更多功能
 - 查看 [API 文档](../api/README.md) 了解接口详情
 `,
-    headings: [
-      { depth: 1, text: '快速开始指南', id: '快速开始指南' },
-      { depth: 2, text: '安装', id: '安装' },
-      { depth: 3, text: '前置要求', id: '前置要求' },
-      { depth: 3, text: '安装步骤', id: '安装步骤' },
-      { depth: 2, text: '下一步', id: '下一步' },
-    ],
     fileName: 'getting-started.md',
     path: '/src/pages/guide/getting-started.md',
     fileSize: 384,
@@ -195,26 +165,18 @@ npm run dev
   },
 };
 
-/**
- * 获取 Mock 文件内容
- */
 export function getMockFileContent(path: string): FileContent | null {
   return mockFileContents[path] || null;
 }
 
-/**
- * 生成默认的 Mock 文件内容
- */
 export function generateDefaultFileContent(path: string): FileContent {
   const fileName = path.split('/').pop() || 'file';
   const ext = fileName.split('.').pop()?.toLowerCase();
 
   let content = '';
-  const headings: Heading[] = [];
 
   if (ext === 'md') {
     content = `# ${fileName}\n\n这是一个示例 Markdown 文件。\n`;
-    headings.push({ depth: 1, text: fileName, id: fileName.toLowerCase() });
   } else if (ext === 'ts' || ext === 'tsx') {
     content = `// ${fileName}\n\nexport default {};\n`;
   } else if (ext === 'js' || ext === 'jsx') {
@@ -227,7 +189,6 @@ export function generateDefaultFileContent(path: string): FileContent {
 
   return {
     content,
-    headings,
     fileName,
     path,
     fileSize: content.length,

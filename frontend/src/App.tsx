@@ -11,6 +11,12 @@ import ProjectEditDialog from './components/ProjectEditDialog';
 import { MarkdownHeader } from './components/markdown-header';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
+import type { Project, FileNode, FileContent, Heading } from './types';
+import type { RecentProject } from './types/openProject';
+import { api } from './services/api';
+import { onPopState, getCurrentRoute, navigateToProject, navigateToHome, navigateToFile } from './utils/router';
+import { openProjectStore } from './stores/openProjectStore';
+import { diffStore } from './stores/diffStore';
 import './styles/global.css';
 import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
@@ -512,7 +518,7 @@ const App: Component = () => {
             </div>
           </aside>
 
-          <Show when={activePanel() === 'explorer'}>
+          <Show when={activeProject()}>
             <aside 
               class="sidebar sidebar-enter" 
               ref={sidebarRef}
@@ -545,21 +551,14 @@ const App: Component = () => {
                     </Show>
                   </div>
                 </Show>
-                <Show when={!activeProject()}>
-                  <span>Explorer</span>
-                </Show>
               </div>
               <div class="sidebar-content">
-                <Show when={activeProject()} fallback={
-                  <p class="empty-state">点击左侧 + 按钮打开项目</p>
-                }>
-                  <FileTree
-                    nodes={fileTree()}
-                    onFileClick={handleFileClick}
-                    expandedFolders={expandedFolders()}
-                    onFolderToggle={handleFolderToggle}
-                  />
-                </Show>
+                <FileTree
+                  nodes={fileTree()}
+                  onFileClick={handleFileClick}
+                  expandedFolders={expandedFolders()}
+                  onFolderToggle={handleFolderToggle}
+                />
               </div>
               {/* Resize handle */}
               <div 
