@@ -70,7 +70,12 @@ export async function openProject(path: string): Promise<OpenProjectResult> {
   
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(errorText || `Failed to open project: ${res.status} ${res.statusText}`);
+    try {
+      const errorData = JSON.parse(errorText);
+      throw new Error(errorData.error || `Failed to open project: ${res.status} ${res.statusText}`);
+    } catch {
+      throw new Error(errorText || `Failed to open project: ${res.status} ${res.statusText}`);
+    }
   }
   
   return res.json();

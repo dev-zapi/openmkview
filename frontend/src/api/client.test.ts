@@ -235,15 +235,40 @@ describe('projectClient API', () => {
   });
 
   it('should throw error on failed request', async () => {
+    const errorResponse = { error: 'Internal Server Error' };
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
+      text: async () => JSON.stringify(errorResponse),
     } as Response);
     
     await expect(resolvePath('test')).rejects.toThrow('Failed to resolve path');
     await expect(validateProjectPath('test')).rejects.toThrow('Failed to validate path');
-    await expect(openProject('test')).rejects.toThrow('Failed to open project');
+    await expect(openProject('test')).rejects.toThrow('Internal Server Error');
     await expect(getRecentProjects()).rejects.toThrow('Failed to get recent projects');
+  });
+
+  it('openProject should extract error message from JSON response', async () => {
+    const errorResponse = { error: '目录不存在' };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => JSON.stringify(errorResponse),
+    } as Response);
+    
+    await expect(openProject('/invalid/path')).rejects.toThrow('目录不存在');
+  });
+
+  it('openProject should handle non-JSON error response', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => 'Bad Request',
+    } as Response);
+    
+    await expect(openProject('/invalid/path')).rejects.toThrow('Bad Request');
   });
 });
