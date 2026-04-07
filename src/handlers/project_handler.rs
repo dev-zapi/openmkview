@@ -261,17 +261,23 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
                 base.display(),
                 search_term
             );
-            let search_results = search_with_depth(&base, &search_term, 2, true);
-            debug!(
-                "[resolve_path] Absolute path search returned {} candidates",
-                search_results.len()
-            );
-            (PathType::Absolute, search_results)
+            if base.exists() {
+                let search_results = search_with_depth(&base, &search_term, 2, true);
+                debug!(
+                    "[resolve_path] Absolute path search returned {} candidates",
+                    search_results.len()
+                );
+                (PathType::Absolute, search_results)
+            } else {
+                debug!("[resolve_path] Absolute base path does not exist: {}", base.display());
+                (PathType::Absolute, vec![])
+            }
         } else {
             (PathType::Absolute, vec![])
         }
     } else if path_input.contains('/') {
         debug!("[resolve_path] Path type: Relative");
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         let (base_path, search_term) = extract_path_and_term(path_input);
         if let Some(base) = base_path {
             debug!(
@@ -279,12 +285,56 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
                 base.display(),
                 search_term
             );
-            let search_results = search_with_depth(&base, &search_term, 2, true);
-            debug!(
-                "[resolve_path] Relative path search returned {} candidates",
-                search_results.len()
-            );
-            (PathType::Relative, search_results)
+            
+            if base.exists() {
+                let search_results = search_with_depth(&base, &search_term, 2, true);
+                debug!(
+                    "[resolve_path] Relative path search returned {} candidates",
+                    search_results.len()
+                );
+                (PathType::Relative, search_results)
+            } else {
+                debug!(
+                    "[resolve_path] Base path '{}' does not exist, searching for matching directories",
+                    base.display()
+                );
+                
+                let base_name = base.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("");
+                
+                if base_name.is_empty() {
+                    (PathType::Relative, vec![])
+                } else {
+                    let mut all_candidates = Vec::new();
+                    let base_lower = base_name.to_lowercase();
+                    
+                    let walker = WalkDir::new(&current_dir)
+                        .max_depth(3)
+                        .into_iter()
+                        .filter_entry(|_| true);
+                    
+                    for entry in walker.filter_map(|e| e.ok()) {
+                        if let Some(file_name) = entry.file_name().to_str() {
+                            let file_name_lower = file_name.to_lowercase();
+                            if file_name_lower.contains(&base_lower) && entry.path().is_dir() {
+                                debug!(
+                                    "[resolve_path] Found matching directory: {}",
+                                    entry.path().display()
+                                );
+                                let sub_results = search_with_depth(entry.path(), &search_term, 2, true);
+                                all_candidates.extend(sub_results);
+                            }
+                        }
+                    }
+                    
+                    debug!(
+                        "[resolve_path] Fuzzy directory search returned {} candidates",
+                        all_candidates.len()
+                    );
+                    (PathType::Relative, all_candidates)
+                }
+            }
         } else {
             (PathType::Relative, vec![])
         }
