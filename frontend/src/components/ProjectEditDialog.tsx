@@ -1,5 +1,6 @@
-import { Component, createSignal, Show, For } from 'solid-js';
+import { Component, createSignal, Show, For, createEffect, onMount } from 'solid-js';
 import type { Project } from '../types';
+import { api } from '../services/api';
 
 interface ProjectEditDialogProps {
   project: Project;
@@ -26,12 +27,30 @@ const PRESET_ICONS = [
   '📊', '📈', '📉', '💳', '💰', '💵', '', '🎁',
 ];
 
+const FAVICON_PREFIX = 'favicon:';
+
+const isFaviconIcon = (icon: string | null | undefined): boolean => {
+  return icon?.startsWith(FAVICON_PREFIX) ?? false;
+};
+
+const getFaviconPath = (icon: string): string => {
+  return icon.replace(FAVICON_PREFIX, '');
+};
+
 const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
   const [name, setName] = createSignal(props.project.name);
   const [color, setColor] = createSignal(props.project.color);
   const [icon, setIcon] = createSignal(props.project.icon);
   const [customColor, setCustomColor] = createSignal('#000000');
   const [showCustomColor, setShowCustomColor] = createSignal(false);
+  const [favicons, setFavicons] = createSignal<string[]>([]);
+  const [searchingFavicons, setSearchingFavicons] = createSignal(false);
+
+  createEffect(() => {
+    setName(props.project.name);
+    setColor(props.project.color);
+    setIcon(props.project.icon);
+  });
 
   const handleSave = () => {
     props.onSave({
@@ -58,8 +77,38 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
     setIcon(selectedIcon);
   };
 
+  const handleFaviconSelect = (faviconPath: string) => {
+    setIcon(`${FAVICON_PREFIX}${faviconPath}`);
+  };
+
+  const handleSearchFavicons = async () => {
+    setSearchingFavicons(true);
+    try {
+      const results = await api.searchFavicons(props.project.id);
+      setFavicons(results);
+    } catch (error) {
+      console.error('Failed to search favicons:', error);
+      setFavicons([]);
+    } finally {
+      setSearchingFavicons(false);
+    }
+  };
+
   const isCustomColor = () => {
     return color() && !PRESET_COLORS.includes(color()!);
+  };
+
+  const renderIconPreview = () => {
+    if (isFaviconIcon(icon())) {
+      return (
+        <img 
+          src={`/api/files/content?path=${encodeURIComponent(getFaviconPath(icon()!))}&project_id=${props.project.id}`}
+          alt="favicon"
+          class="icon-preview-image"
+        />
+      );
+    }
+    return <span class="icon-preview-letter">{icon() || name().charAt(0).toUpperCase() || 'P'}</span>;
   };
 
   return (
@@ -90,9 +139,7 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
                   class="icon-preview-large"
                   style={{ background: color() || 'var(--color-bg-subtle)' }}
                 >
-                  <span class="icon-preview-letter">
-                    {icon() || name().charAt(0).toUpperCase() || 'P'}
-                  </span>
+                  {renderIconPreview()}
                 </div>
                 <div class="icon-picker-inline">
                   <div class="icon-grid">
@@ -109,6 +156,43 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
                     </For>
                   </div>
                 </div>
+              </div>
+              
+              <div class="favicon-search-section">
+                <button 
+                  class="favicon-search-btn"
+                  onClick={handleSearchFavicons}
+                  disabled={searchingFavicons()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.35-4.35"/>
+                  </svg>
+                  {searchingFavicons() ? 'Searching...' : 'Search favicon in project'}
+                </button>
+                
+                <Show when={favicons().length > 0}>
+                  <div class="favicon-results">
+                    <label class="favicon-results-label">Found favicons:</label>
+                    <div class="favicon-grid">
+                      <For each={favicons()}>
+                        {(faviconPath) => (
+                          <button
+                            class={`favicon-item ${icon() === `${FAVICON_PREFIX}${faviconPath}` ? 'active' : ''}`}
+                            onClick={() => handleFaviconSelect(faviconPath)}
+                            title={faviconPath}
+                          >
+                            <img 
+                              src={`/api/files/content?path=${encodeURIComponent(faviconPath)}&project_id=${props.project.id}`}
+                              alt={faviconPath}
+                              class="favicon-thumbnail"
+                            />
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
               </div>
             </div>
 

@@ -13,6 +13,11 @@ export const api = {
     return res.json();
   },
 
+  async searchFavicons(projectId: number): Promise<string[]> {
+    const res = await fetch(`/api/files/favicons?project_id=${projectId}`);
+    return res.json();
+  },
+
   async getProjects(): Promise<Project[]> {
     const res = await fetch('/api/projects');
     return res.json();

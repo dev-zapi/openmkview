@@ -160,6 +160,42 @@ impl FileService {
         std::fs::remove_file(&file_path)?;
         Ok(())
     }
+
+    pub fn search_favicons(project_path: &Path) -> AppResult<Vec<String>> {
+        let mut favicons = Vec::new();
+
+        for entry in walkdir::WalkDir::new(project_path)
+            .into_iter()
+            .filter_entry(|e| {
+                let name = e.file_name().to_string_lossy();
+                name != "node_modules"
+                    && name != ".git"
+                    && name != "dist"
+                    && name != "build"
+                    && name != "target"
+            })
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path.is_file() {
+                let file_name = path.file_name().unwrap().to_string_lossy();
+                let name_lower = file_name.to_lowercase();
+                if name_lower == "favicon.ico"
+                    || name_lower == "favicon.png"
+                    || name_lower == "favicon.svg"
+                    || name_lower == "favicon.jpg"
+                    || name_lower == "favicon.jpeg"
+                    || name_lower == "favicon.webp"
+                {
+                    if let Ok(rel) = path.strip_prefix(project_path) {
+                        favicons.push(rel.to_path_buf().to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(favicons)
+    }
 }
 
 #[cfg(test)]

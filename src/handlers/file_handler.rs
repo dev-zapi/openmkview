@@ -20,6 +20,12 @@ pub struct FileContentParams {
     pub project_id: i64,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct FaviconSearchParams {
+    pub project_id: i64,
+}
+
 pub async fn get_file_tree(
     data: web::Data<AppState>,
     query: web::Query<FileTreeParams>,
@@ -126,6 +132,20 @@ pub async fn delete_file(
 
     FileService::delete_file(&project_path, file_path)?;
     Ok(HttpResponse::Ok().body("Deleted successfully"))
+}
+
+pub async fn search_favicons(
+    data: web::Data<AppState>,
+    query: web::Query<FaviconSearchParams>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(query.project_id)?;
+    let favicons = FileService::search_favicons(&project_path)?;
+
+    Ok(HttpResponse::Ok().json(favicons))
 }
 
 #[allow(dead_code)]

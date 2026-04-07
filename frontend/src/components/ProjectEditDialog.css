@@ -320,3 +320,88 @@
 .dialog-button.save:hover {
   background: var(--color-accent-hover);
 }
+
+.icon-preview-image {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.favicon-search-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.favicon-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-h);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.favicon-search-btn:hover:not(:disabled) {
+  background: var(--color-code-bg);
+  border-color: var(--color-accent);
+}
+
+.favicon-search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.favicon-results {
+  margin-top: 12px;
+}
+
+.favicon-results-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.favicon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.favicon-item {
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: var(--color-bg-subtle);
+}
+
+.favicon-item:hover {
+  transform: scale(1.05);
+  background: var(--color-code-bg);
+  border-color: var(--color-border-strong);
+}
+
+.favicon-item.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+}
+
+.favicon-thumbnail {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
