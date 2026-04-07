@@ -196,12 +196,18 @@ fn is_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<PathCandidate> {
+fn search_with_depth(
+    base_path: &Path,
+    target: &str,
+    max_depth: i32,
+    include_hidden: bool,
+) -> Vec<PathCandidate> {
     debug!(
-        "[path_search] Searching path: target={}, base={}, max_depth={}",
+        "[path_search] Searching path: target={}, base={}, max_depth={}, include_hidden={}",
         target,
         base_path.display(),
-        max_depth
+        max_depth,
+        include_hidden
     );
     let mut candidates = Vec::new();
     let target_lower = target.to_lowercase();
@@ -209,7 +215,7 @@ fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<Path
     let walker = WalkDir::new(base_path)
         .max_depth(max_depth as usize)
         .into_iter()
-        .filter_entry(|e| !is_hidden(e));
+        .filter_entry(|e| include_hidden || !is_hidden(e));
 
     for entry in walker.filter_map(|e| e.ok()) {
         if let Some(file_name) = entry.file_name().to_str() {
@@ -255,7 +261,7 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
                 base.display(),
                 search_term
             );
-            let search_results = search_with_depth(&base, &search_term, 2);
+            let search_results = search_with_depth(&base, &search_term, 2, true);
             debug!(
                 "[resolve_path] Absolute path search returned {} candidates",
                 search_results.len()
@@ -273,7 +279,7 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
                 base.display(),
                 search_term
             );
-            let search_results = search_with_depth(&base, &search_term, 2);
+            let search_results = search_with_depth(&base, &search_term, 2, true);
             debug!(
                 "[resolve_path] Relative path search returned {} candidates",
                 search_results.len()
@@ -289,7 +295,7 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
             "[resolve_path] Path type: Fuzzy, search directory: {}",
             home_path.display()
         );
-        let search_results = search_with_depth(&home_path, path_input, 2);
+        let search_results = search_with_depth(&home_path, path_input, 2, false);
         debug!(
             "[resolve_path] Fuzzy search returned {} candidates",
             search_results.len()
