@@ -142,14 +142,31 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
     setIsFullscreen(!isFullscreen());
   };
 
-  onMount(() => {
-    const handleOpenSearch = () => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Ctrl+F 或 Cmd+F 打开搜索
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
       setIsSearchOpen(true);
-    };
-    document.addEventListener('openSearch', handleOpenSearch);
-    
+    }
+    // ESC 关闭搜索
+    if (e.key === 'Escape' && isSearchOpen()) {
+      e.preventDefault();
+      handleCloseSearch();
+    }
+    // Enter 查找下一个
+    if (e.key === 'Enter' && isSearchOpen()) {
+      if (e.shiftKey) {
+        setCurrentResult((prev) => Math.max(prev - 1, 1));
+      } else {
+        setCurrentResult((prev) => Math.min(prev + 1, searchResults()));
+      }
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener('keydown', handleKeyDown);
     onCleanup(() => {
-      document.removeEventListener('openSearch', handleOpenSearch);
+      document.removeEventListener('keydown', handleKeyDown);
     });
   });
 

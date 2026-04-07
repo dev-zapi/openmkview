@@ -1,4 +1,4 @@
-import { Component, createEffect, onMount, onCleanup } from 'solid-js';
+import { Component, createEffect } from 'solid-js';
 import styles from './styles.module.css';
 
 export interface SearchBoxProps {
@@ -14,39 +14,6 @@ export interface SearchBoxProps {
 
 export const SearchBox: Component<SearchBoxProps> = (props) => {
   let inputRef: HTMLInputElement | undefined;
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    // Ctrl+F 或 Cmd+F 打开搜索
-    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault();
-      if (!props.isOpen) {
-        // 通知父组件打开搜索
-        const event = new CustomEvent('openSearch');
-        document.dispatchEvent(event);
-      }
-    }
-    // ESC 关闭搜索
-    if (e.key === 'Escape' && props.isOpen) {
-      e.preventDefault();
-      props.onClose();
-    }
-    // Enter 查找下一个
-    if (e.key === 'Enter' && props.isOpen) {
-      if (e.shiftKey) {
-        props.onPrevResult();
-      } else {
-        props.onNextResult();
-      }
-    }
-  };
-
-  onMount(() => {
-    document.addEventListener('keydown', handleKeyDown);
-  });
-
-  onCleanup(() => {
-    document.removeEventListener('keydown', handleKeyDown);
-  });
 
   createEffect(() => {
     if (props.isOpen && inputRef) {
