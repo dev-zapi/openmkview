@@ -25,11 +25,11 @@ impl<'a> ProjectService<'a> {
         );
         let resolved_path = PathBuf::from(&req.path)
             .canonicalize()
-            .map_err(|_| AppError::BadRequest("Directory does not exist".into()))?;
+            .map_err(|_| AppError::BadRequest("目录不存在".into()))?;
         debug!("[ProjectService] Resolved path: {:?}", resolved_path);
 
         if !resolved_path.is_dir() {
-            return Err(AppError::BadRequest("Path is not a directory".into()));
+            return Err(AppError::BadRequest("路径不是目录".into()));
         }
 
         let path_str = resolved_path.to_str().unwrap().to_string();
@@ -83,12 +83,12 @@ impl<'a> ProjectService<'a> {
 
         if !path_buf.exists() {
             debug!("[ProjectService] Path does not exist: {}", path);
-            return Ok((false, Some("Path does not exist".to_string())));
+            return Ok((false, Some("目录不存在".to_string())));
         }
 
         if !path_buf.is_dir() {
             debug!("[ProjectService] Path is not a directory: {}", path);
-            return Ok((false, Some("Path is not a directory".to_string())));
+            return Ok((false, Some("路径不是目录".to_string())));
         }
 
         let has_markdown = self.check_markdown_files(&path_buf)?;
@@ -99,7 +99,7 @@ impl<'a> ProjectService<'a> {
             );
             return Ok((
                 false,
-                Some("No Markdown files (.md or .mdx) found in directory".to_string()),
+                Some("目录中没有找到 Markdown 文件（.md 或 .mdx）".to_string()),
             ));
         }
 
