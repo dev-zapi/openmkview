@@ -76,10 +76,10 @@ pub async fn create_file(
     let file_name = body
         .name
         .as_ref()
-        .ok_or_else(|| AppError::BadRequest("文件名是必需的".into()))?;
+        .ok_or_else(|| AppError::BadRequest("File name is required".into()))?;
 
     FileService::create_file(&project_path, file_name)?;
-    Ok(HttpResponse::Ok().body("文件创建成功"))
+    Ok(HttpResponse::Ok().body("File created successfully"))
 }
 
 pub async fn rename_file(
@@ -95,15 +95,15 @@ pub async fn rename_file(
     let old_path = body
         .path
         .as_ref()
-        .ok_or_else(|| AppError::BadRequest("文件路径是必需的".into()))?;
+        .ok_or_else(|| AppError::BadRequest("File path is required".into()))?;
 
     let new_name = body
         .new_name
         .as_ref()
-        .ok_or_else(|| AppError::BadRequest("新文件名是必需的".into()))?;
+        .ok_or_else(|| AppError::BadRequest("New file name is required".into()))?;
 
     FileService::rename_file(&project_path, old_path, new_name)?;
-    Ok(HttpResponse::Ok().body("重命名成功"))
+    Ok(HttpResponse::Ok().body("Renamed successfully"))
 }
 
 pub async fn delete_file(
@@ -116,16 +116,16 @@ pub async fn delete_file(
 
     let project_id = body["project_id"]
         .as_i64()
-        .ok_or_else(|| AppError::BadRequest("project_id 是必需的".into()))?;
+        .ok_or_else(|| AppError::BadRequest("project_id is required".into()))?;
 
     let project_path = project_service.get_project_path(project_id)?;
 
     let file_path = body["path"]
         .as_str()
-        .ok_or_else(|| AppError::BadRequest("文件路径是必需的".into()))?;
+        .ok_or_else(|| AppError::BadRequest("File path is required".into()))?;
 
     FileService::delete_file(&project_path, file_path)?;
-    Ok(HttpResponse::Ok().body("删除成功"))
+    Ok(HttpResponse::Ok().body("Deleted successfully"))
 }
 
 #[allow(dead_code)]

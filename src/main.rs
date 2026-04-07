@@ -65,22 +65,22 @@ async fn main() -> std::io::Result<()> {
         std::path::PathBuf::from(path)
     } else {
         let data_dir = dirs::data_local_dir()
-            .unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"))
+            .unwrap_or_else(|| std::env::current_dir().expect("Cannot get current directory"))
             .join("openmkview");
-        std::fs::create_dir_all(&data_dir).expect("无法创建数据目录");
+        std::fs::create_dir_all(&data_dir).expect("Cannot create data directory");
         data_dir.join("openmkview.db")
     };
 
-    let conn = init_db(&db_path).expect("数据库初始化失败");
+    let conn = init_db(&db_path).expect("Database initialization failed");
 
-    log::info!("数据库初始化完成：{:?}", db_path);
+    log::info!("Database initialization complete: {:?}", db_path);
 
     let app_state = web::Data::new(AppState {
         db: Arc::new(Mutex::new(conn)),
     });
 
     let bind_addr = format!("{}:{}", cli.host, cli.port);
-    log::info!("服务器启动于 http://{}", bind_addr);
+    log::info!("Server started at http://{}", bind_addr);
 
     let mut server = HttpServer::new(move || {
         App::new()
@@ -122,7 +122,7 @@ async fn main() -> std::io::Result<()> {
     .bind(&bind_addr)?;
 
     if let Some(workers) = cli.workers {
-        log::info!("使用 {} 个工作线程", workers);
+        log::info!("Using {} worker threads", workers);
         server = server.workers(workers);
     }
 

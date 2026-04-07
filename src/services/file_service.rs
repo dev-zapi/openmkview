@@ -90,14 +90,14 @@ impl FileService {
         let file_path = PathBuf::from(file_path);
         let resolved = file_path
             .canonicalize()
-            .map_err(|_| AppError::NotFound("文件不存在".into()))?;
+            .map_err(|_| AppError::NotFound("File does not exist".into()))?;
 
         let project_resolved = project_path
             .canonicalize()
-            .map_err(|_| AppError::FileError("项目路径无效".into()))?;
+            .map_err(|_| AppError::FileError("Invalid project path".into()))?;
 
         if !resolved.starts_with(&project_resolved) {
-            return Err(AppError::ValidationError("访问被拒绝".into()));
+            return Err(AppError::ValidationError("Access denied".into()));
         }
 
         let ext = resolved
@@ -106,7 +106,9 @@ impl FileService {
             .map(|e| e.to_lowercase());
 
         if ext != Some("md".to_string()) && ext != Some("mdx".to_string()) {
-            return Err(AppError::BadRequest("只支持 Markdown 文件".into()));
+            return Err(AppError::BadRequest(
+                "Only Markdown files are supported".into(),
+            ));
         }
 
         let content = std::fs::read_to_string(&resolved)?;
@@ -125,7 +127,7 @@ impl FileService {
         let file_path = project_path.join(file_name);
 
         if file_path.exists() {
-            return Err(AppError::BadRequest("文件已存在".into()));
+            return Err(AppError::BadRequest("File already exists".into()));
         }
 
         std::fs::write(&file_path, "")?;
@@ -137,11 +139,11 @@ impl FileService {
         let new_path = old_path.parent().unwrap().join(new_name);
 
         if !old_path.exists() {
-            return Err(AppError::NotFound("文件不存在".into()));
+            return Err(AppError::NotFound("File does not exist".into()));
         }
 
         if new_path.exists() {
-            return Err(AppError::BadRequest("目标文件已存在".into()));
+            return Err(AppError::BadRequest("Target file already exists".into()));
         }
 
         std::fs::rename(&old_path, &new_path)?;
@@ -152,7 +154,7 @@ impl FileService {
         let file_path = project_path.join(file_path);
 
         if !file_path.exists() {
-            return Err(AppError::NotFound("文件不存在".into()));
+            return Err(AppError::NotFound("File does not exist".into()));
         }
 
         std::fs::remove_file(&file_path)?;

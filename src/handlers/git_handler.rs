@@ -51,7 +51,7 @@ pub async fn execute_git(
         "show" => handle_show(&project_path, &body),
         "file-at-head" => handle_file_at_head(&project_path, &body.file_path),
         "exec" => handle_exec(&project_path, &body.command),
-        _ => Ok(HttpResponse::BadRequest().body(format!("未知操作：{}", body.action))),
+        _ => Ok(HttpResponse::BadRequest().body(format!("Unknown operation: {}", body.action))),
     }
 }
 
@@ -81,7 +81,7 @@ fn handle_commit(cwd: &PathBuf, message: &Option<String>) -> AppResult<HttpRespo
     let msg = message
         .as_ref()
         .filter(|m| !m.is_empty())
-        .ok_or_else(|| AppError::BadRequest("提交信息是必需的".into()))?;
+        .ok_or_else(|| AppError::BadRequest("Commit message is required".into()))?;
 
     GitService::run_git(cwd, &["commit", "-m", msg]).map_err(|e| AppError::GitError(e))?;
 
@@ -136,7 +136,7 @@ fn handle_show(cwd: &PathBuf, body: &GitRequest) -> AppResult<HttpResponse> {
             let content = GitService::show(cwd, hash)?;
             Ok(HttpResponse::Ok().json(serde_json::json!({ "diff": content })))
         }
-        None => Ok(HttpResponse::BadRequest().body("提交哈希是必需的")),
+        None => Ok(HttpResponse::BadRequest().body("Commit hash is required")),
     }
 }
 
@@ -147,7 +147,7 @@ fn handle_file_at_head(cwd: &PathBuf, file_path: &Option<String>) -> AppResult<H
             let content = GitService::file_at_head(cwd, path).unwrap_or_default();
             Ok(HttpResponse::Ok().json(serde_json::json!({ "content": content })))
         }
-        None => Ok(HttpResponse::BadRequest().body("文件路径是必需的")),
+        None => Ok(HttpResponse::BadRequest().body("File path is required")),
     }
 }
 
@@ -158,7 +158,7 @@ fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpRespons
             let args: Vec<&str> = cmd.split_whitespace().collect();
 
             if args.is_empty() {
-                return Ok(HttpResponse::BadRequest().body("命令不能为空"));
+                return Ok(HttpResponse::BadRequest().body("Command cannot be empty"));
             }
 
             let (stdout, stderr) =
@@ -168,7 +168,7 @@ fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpRespons
                 "output": format!("{}{}", stdout, stderr)
             })))
         }
-        _ => Ok(HttpResponse::BadRequest().body("命令是必需的")),
+        _ => Ok(HttpResponse::BadRequest().body("Command is required")),
     }
 }
 

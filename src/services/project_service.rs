@@ -14,19 +14,22 @@ impl<'a> ProjectService<'a> {
     }
 
     pub fn list_projects(&self, open_only: bool) -> AppResult<Vec<Project>> {
-        debug!("[ProjectService] 列出项目, open_only={}", open_only);
+        debug!("[ProjectService] Listing projects, open_only={}", open_only);
         self.project_repo.list(open_only)
     }
 
     pub fn create_or_open_project(&self, req: &CreateProjectRequest) -> AppResult<Project> {
-        debug!("[ProjectService] 创建或打开项目: path={}", req.path);
+        debug!(
+            "[ProjectService] Creating or opening project: path={}",
+            req.path
+        );
         let resolved_path = PathBuf::from(&req.path)
             .canonicalize()
-            .map_err(|_| AppError::BadRequest("目录不存在".into()))?;
-        debug!("[ProjectService] 解析后路径: {:?}", resolved_path);
+            .map_err(|_| AppError::BadRequest("Directory does not exist".into()))?;
+        debug!("[ProjectService] Resolved path: {:?}", resolved_path);
 
         if !resolved_path.is_dir() {
-            return Err(AppError::BadRequest("路径不是目录".into()));
+            return Err(AppError::BadRequest("Path is not a directory".into()));
         }
 
         let path_str = resolved_path.to_str().unwrap().to_string();
@@ -36,70 +39,79 @@ impl<'a> ProjectService<'a> {
             .to_str()
             .unwrap()
             .to_string();
-        debug!("[ProjectService] 项目名称: {}, 路径: {}", name, path_str);
+        debug!(
+            "[ProjectService] Project name: {}, path: {}",
+            name, path_str
+        );
 
         if let Some(existing) = self.project_repo.find_by_path(&path_str)? {
             debug!(
-                "[ProjectService] 项目已存在, 更新打开状态: id={}",
+                "[ProjectService] Project already exists, updating open status: id={}",
                 existing.id
             );
             self.project_repo.update_open_status(existing.id, true)?;
             return self
                 .project_repo
                 .find_by_id(existing.id)
-                .and_then(|p| p.ok_or_else(|| AppError::NotFound("项目未找到".into())));
+                .and_then(|p| p.ok_or_else(|| AppError::NotFound("Project not found".into())));
         }
 
-        debug!("[ProjectService] 创建新项目");
+        debug!("[ProjectService] Creating new project");
         self.project_repo.create(&path_str, &name)
     }
 
     pub fn close_project(&self, id: i64) -> AppResult<bool> {
-        debug!("[ProjectService] 关闭项目: id={}", id);
+        debug!("[ProjectService] Closing project: id={}", id);
         self.project_repo.update_open_status(id, false)
     }
 
     pub fn get_project_path(&self, id: i64) -> AppResult<PathBuf> {
-        debug!("[ProjectService] 获取项目路径: id={}", id);
+        debug!("[ProjectService] Getting project path: id={}", id);
         let path = self.project_repo.get_path(id)?;
-        debug!("[ProjectService] 项目路径: {:?}", path);
+        debug!("[ProjectService] Project path: {:?}", path);
         Ok(PathBuf::from(path))
     }
 
     pub fn get_recent_projects(&self, limit: i64) -> AppResult<Vec<Project>> {
-        debug!("[ProjectService] 获取最近项目, limit={}", limit);
+        debug!("[ProjectService] Getting recent projects, limit={}", limit);
         self.project_repo.get_recent_projects(limit)
     }
 
     pub fn validate_project_path(&self, path: &str) -> AppResult<(bool, Option<String>)> {
-        debug!("[ProjectService] 验证项目路径: {}", path);
+        debug!("[ProjectService] Validating project path: {}", path);
         let path_buf = PathBuf::from(path);
 
         if !path_buf.exists() {
-            debug!("[ProjectService] 路径不存在: {}", path);
-            return Ok((false, Some("路径不存在".to_string())));
+            debug!("[ProjectService] Path does not exist: {}", path);
+            return Ok((false, Some("Path does not exist".to_string())));
         }
 
         if !path_buf.is_dir() {
-            debug!("[ProjectService] 路径不是目录: {}", path);
-            return Ok((false, Some("路径不是目录".to_string())));
+            debug!("[ProjectService] Path is not a directory: {}", path);
+            return Ok((false, Some("Path is not a directory".to_string())));
         }
 
         let has_markdown = self.check_markdown_files(&path_buf)?;
         if !has_markdown {
-            debug!("[ProjectService] 目录中未找到 Markdown 文件: {}", path);
+            debug!(
+                "[ProjectService] No Markdown files found in directory: {}",
+                path
+            );
             return Ok((
                 false,
-                Some("目录中未找到 Markdown 文件(.md 或 .mdx)".to_string()),
+                Some("No Markdown files (.md or .mdx) found in directory".to_string()),
             ));
         }
 
-        debug!("[ProjectService] 路径验证通过: {}", path);
+        debug!("[ProjectService] Path validation passed: {}", path);
         Ok((true, None))
     }
 
     pub fn update_project_color(&self, id: i64, color: &str) -> AppResult<bool> {
-        debug!("[ProjectService] 更新项目颜色: id={}, color={}", id, color);
+        debug!(
+            "[ProjectService] Updating project color: id={}, color={}",
+            id, color
+        );
         self.project_repo.update_color(id, color)
     }
 
@@ -111,7 +123,7 @@ impl<'a> ProjectService<'a> {
         icon: Option<&str>,
     ) -> AppResult<bool> {
         debug!(
-            "[ProjectService] 更新项目信息: id={}, name={:?}, color={:?}, icon={:?}",
+            "[ProjectService] Updating project info: id={}, name={:?}, color={:?}, icon={:?}",
             id, name, color, icon
         );
         self.project_repo.update_project(id, name, color, icon)

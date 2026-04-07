@@ -94,8 +94,9 @@ impl<'a> ProjectRepository<'a> {
         )?;
 
         let id = self.conn.last_insert_rowid();
-        self.find_by_id(id)
-            .and_then(|p| p.ok_or_else(|| AppError::InternalError("创建项目后无法找到".into())))
+        self.find_by_id(id).and_then(|p| {
+            p.ok_or_else(|| AppError::InternalError("Cannot find project after creation".into()))
+        })
     }
 
     pub fn update_open_status(&self, id: i64, is_open: bool) -> AppResult<bool> {
@@ -114,7 +115,7 @@ impl<'a> ProjectRepository<'a> {
             .map_err(|e| e.into())
     }
 
-    /// 获取最近打开的项目（最多 limit 条）
+    /// Get recently opened projects (max limit items)
     pub fn get_recent_projects(&self, limit: i64) -> AppResult<Vec<Project>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, path, name, created_at, last_opened_at, is_open, color, icon 

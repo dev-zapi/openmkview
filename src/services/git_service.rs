@@ -42,7 +42,7 @@ impl GitService {
             .args(args)
             .current_dir(cwd)
             .output()
-            .map_err(|e| format!("Git 执行失败：{}", e))?;
+            .map_err(|e| format!("Git execution failed: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -449,7 +449,7 @@ mod tests {
         let cwd = PathBuf::from("/nonexistent/directory/path");
         let result = GitService::run_git(&cwd, &["status"]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Git 执行失败"));
+        assert!(result.unwrap_err().contains("Git execution failed"));
     }
 
     #[test]

@@ -20,13 +20,13 @@ pub struct ProjectListParams {
 
 /// 获取最近打开的项目列表
 pub async fn get_recent_projects(data: web::Data<AppState>) -> AppResult<HttpResponse> {
-    debug!("[project] 获取最近打开的项目列表");
+    debug!("[project] Getting recent projects list");
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let projects = service.get_recent_projects(10)?;
-    debug!("[project] 获取到 {} 个最近项目", projects.len());
+    debug!("[project] Found {} recent projects", projects.len());
     Ok(HttpResponse::Ok().json(projects))
 }
 
@@ -49,14 +49,14 @@ pub async fn validate_project(
     data: web::Data<AppState>,
     body: web::Json<ValidateProjectRequest>,
 ) -> AppResult<HttpResponse> {
-    debug!("[project] 验证项目路径: {}", body.path);
+    debug!("[project] Validating project path: {}", body.path);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let (valid, reason) = service.validate_project_path(&body.path)?;
     debug!(
-        "[project] 路径验证结果: valid={}, reason={:?}",
+        "[project] Path validation result: valid={}, reason={:?}",
         valid, reason
     );
 
@@ -95,7 +95,7 @@ pub async fn open_project(
     data: web::Data<AppState>,
     body: web::Json<OpenProjectRequest>,
 ) -> AppResult<HttpResponse> {
-    debug!("[project] 打开项目路径: {}", body.path);
+    debug!("[project] Opening project path: {}", body.path);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
@@ -106,7 +106,7 @@ pub async fn open_project(
 
     let project = service.create_or_open_project(&create_req)?;
     debug!(
-        "[project] 项目打开成功: id={}, name={}, path={}",
+        "[project] Project opened successfully: id={}, name={}, path={}",
         project.id, project.name, project.path
     );
 
@@ -130,13 +130,13 @@ pub async fn list_projects(
     query: web::Query<ProjectListParams>,
 ) -> AppResult<HttpResponse> {
     let open_only = query.open.unwrap_or(false);
-    debug!("[project] 列出项目列表, open_only={}", open_only);
+    debug!("[project] Listing projects, open_only={}", open_only);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let projects = service.list_projects(open_only)?;
-    debug!("[project] 获取到 {} 个项目", projects.len());
+    debug!("[project] Found {} projects", projects.len());
     Ok(HttpResponse::Ok().json(projects))
 }
 
@@ -144,14 +144,14 @@ pub async fn create_project(
     data: web::Data<AppState>,
     body: web::Json<CreateProjectRequest>,
 ) -> AppResult<HttpResponse> {
-    debug!("[project] 创建项目: path={}", body.path);
+    debug!("[project] Creating project: path={}", body.path);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
 
     let project = service.create_or_open_project(&body)?;
     debug!(
-        "[project] 项目创建成功: id={}, name={}",
+        "[project] Project created successfully: id={}, name={}",
         project.id, project.name
     );
 
@@ -169,7 +169,7 @@ pub async fn delete_project(
     path: web::Path<i64>,
 ) -> AppResult<HttpResponse> {
     let id = path.into_inner();
-    debug!("[project] 关闭项目: id={}", id);
+    debug!("[project] Closing project: id={}", id);
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
@@ -177,14 +177,14 @@ pub async fn delete_project(
     let updated = service.close_project(id)?;
 
     if !updated {
-        debug!("[project] 项目未找到: id={}", id);
-        return Ok(HttpResponse::NotFound().body("项目未找到"));
+        debug!("[project] Project not found: id={}", id);
+        return Ok(HttpResponse::NotFound().body("Project not found"));
     }
 
-    debug!("[project] 项目已关闭: id={}", id);
+    debug!("[project] Project closed: id={}", id);
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "success": true,
-        "message": "项目已关闭"
+        "message": "Project closed"
     })))
 }
 
@@ -198,7 +198,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
 
 fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<PathCandidate> {
     debug!(
-        "[path_search] 搜索路径: target={}, base={}, max_depth={}",
+        "[path_search] Searching path: target={}, base={}, max_depth={}",
         target,
         base_path.display(),
         max_depth
@@ -236,7 +236,7 @@ fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<Path
     }
 
     debug!(
-        "[path_search] 搜索完成: 找到 {} 个候选结果",
+        "[path_search] Search complete: found {} candidates",
         candidates.len()
     );
     candidates
@@ -244,20 +244,20 @@ fn search_with_depth(base_path: &Path, target: &str, max_depth: i32) -> Vec<Path
 
 pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<HttpResponse> {
     let path_input = &body.path;
-    debug!("[resolve_path] 解析路径输入: {}", path_input);
+    debug!("[resolve_path] Parsing path input: {}", path_input);
 
     let (path_type, candidates) = if path_input.starts_with('/') {
-        debug!("[resolve_path] 路径类型: Absolute");
+        debug!("[resolve_path] Path type: Absolute");
         let (base_path, search_term) = extract_path_and_term(path_input);
         if let Some(base) = base_path {
             debug!(
-                "[resolve_path] 绝对路径搜索: base={}, term={}",
+                "[resolve_path] Absolute path search: base={}, term={}",
                 base.display(),
                 search_term
             );
             let search_results = search_with_depth(&base, &search_term, 2);
             debug!(
-                "[resolve_path] 绝对路径搜索返回 {} 个候选结果",
+                "[resolve_path] Absolute path search returned {} candidates",
                 search_results.len()
             );
             (PathType::Absolute, search_results)
@@ -265,17 +265,17 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
             (PathType::Absolute, vec![])
         }
     } else if path_input.contains('/') {
-        debug!("[resolve_path] 路径类型: Relative");
+        debug!("[resolve_path] Path type: Relative");
         let (base_path, search_term) = extract_path_and_term(path_input);
         if let Some(base) = base_path {
             debug!(
-                "[resolve_path] 相对路径搜索: base={}, term={}",
+                "[resolve_path] Relative path search: base={}, term={}",
                 base.display(),
                 search_term
             );
             let search_results = search_with_depth(&base, &search_term, 2);
             debug!(
-                "[resolve_path] 相对路径搜索返回 {} 个候选结果",
+                "[resolve_path] Relative path search returned {} candidates",
                 search_results.len()
             );
             (PathType::Relative, search_results)
@@ -283,22 +283,22 @@ pub async fn resolve_path(body: web::Json<ResolvePathRequest>) -> AppResult<Http
             (PathType::Relative, vec![])
         }
     } else {
-        let home_path =
-            dirs::home_dir().unwrap_or_else(|| std::env::current_dir().expect("无法获取当前目录"));
+        let home_path = dirs::home_dir()
+            .unwrap_or_else(|| std::env::current_dir().expect("Cannot get current directory"));
         debug!(
-            "[resolve_path] 路径类型: Fuzzy, 搜索目录: {}",
+            "[resolve_path] Path type: Fuzzy, search directory: {}",
             home_path.display()
         );
         let search_results = search_with_depth(&home_path, path_input, 2);
         debug!(
-            "[resolve_path] Fuzzy 搜索返回 {} 个候选结果",
+            "[resolve_path] Fuzzy search returned {} candidates",
             search_results.len()
         );
         (PathType::Fuzzy, search_results)
     };
 
     debug!(
-        "[resolve_path] 解析完成: path_type={:?}, candidates_count={}",
+        "[resolve_path] Parse complete: path_type={:?}, candidates_count={}",
         path_type,
         candidates.len()
     );
@@ -334,7 +334,10 @@ pub async fn update_project_color(
     body: web::Json<UpdateProjectColorRequest>,
 ) -> AppResult<HttpResponse> {
     let id = path.into_inner();
-    debug!("[project] 更新项目颜色: id={}, color={}", id, body.color);
+    debug!(
+        "[project] Updating project color: id={}, color={}",
+        id, body.color
+    );
     let conn = data.db.lock().unwrap();
     let project_repo = ProjectRepository::new(&conn);
     let service = ProjectService::new(project_repo);
@@ -342,14 +345,14 @@ pub async fn update_project_color(
     let updated = service.update_project_color(id, &body.color)?;
 
     if !updated {
-        debug!("[project] 项目未找到: id={}", id);
-        return Ok(HttpResponse::NotFound().body("项目未找到"));
+        debug!("[project] Project not found: id={}", id);
+        return Ok(HttpResponse::NotFound().body("Project not found"));
     }
 
-    debug!("[project] 项目颜色已更新: id={}", id);
+    debug!("[project] Project color updated: id={}", id);
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "success": true,
-        "message": "项目颜色已更新"
+        "message": "Project color updated"
     })))
 }
 
@@ -360,7 +363,7 @@ pub async fn update_project(
 ) -> AppResult<HttpResponse> {
     let id = path.into_inner();
     debug!(
-        "[project] 更新项目信息: id={}, name={:?}, color={:?}, icon={:?}",
+        "[project] Updating project info: id={}, name={:?}, color={:?}, icon={:?}",
         id, body.name, body.color, body.icon
     );
     let conn = data.db.lock().unwrap();
@@ -378,8 +381,8 @@ pub async fn update_project(
     let project_repo = ProjectRepository::new(&conn);
     let project = project_repo
         .find_by_id(id)?
-        .ok_or_else(|| crate::errors::AppError::NotFound("项目未找到".into()))?;
+        .ok_or_else(|| crate::errors::AppError::NotFound("Project not found".into()))?;
 
-    debug!("[project] 项目信息已更新: id={}", id);
+    debug!("[project] Project info updated: id={}", id);
     Ok(HttpResponse::Ok().json(project))
 }
