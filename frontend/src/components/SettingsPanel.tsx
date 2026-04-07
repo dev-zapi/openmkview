@@ -3,6 +3,7 @@ import { Component, createSignal, createEffect, Show } from 'solid-js';
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave?: () => void;
 }
 
 interface Settings {
@@ -58,6 +59,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     setTimeout(() => setSaved(false), 2000);
 
     applyTheme(settings().theme);
+    props.onSave?.();
   };
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {

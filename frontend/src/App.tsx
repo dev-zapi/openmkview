@@ -210,6 +210,10 @@ const App: Component = () => {
     setSettings(prev => ({ ...prev, theme: nextTheme }));
   };
 
+  const handleSettingsSave = () => {
+    setSettings(loadSettings());
+  };
+
   // 打开项目对话框
   const handleOpenProject = () => {
     setIsOpenProjectDialogOpen(true);
@@ -697,6 +701,7 @@ const App: Component = () => {
           <SettingsPanel
             isOpen={settingsOpen()}
             onClose={() => setSettingsOpen(false)}
+            onSave={handleSettingsSave}
           />
 
           {/* 打开项目对话框 */}
