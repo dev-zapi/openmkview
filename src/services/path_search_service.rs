@@ -16,7 +16,7 @@
 //!    - Two scenarios:
 //!      a) Base directory exists (e.g., `src/main` where `src` exists) → direct search
 //!      b) Base directory doesn't exist (e.g., `.openclaw/w` where `.openclaw` doesn't exist)
-//!         → search all directories with matching name from current directory tree
+//!         - search all directories with matching name from current directory tree
 //!
 //! 3. **Fuzzy Search** (no `/`)
 //!    - Search from home directory with pattern matching
@@ -65,7 +65,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
 /// * `relative_path` - Path relative to base directory
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// // Search for "main" in "src" directory, depth 2, including hidden files
 /// search_with_depth(Path::new("src"), "main", 2, true)
 /// // Returns: files like main.rs, main.c, etc. within src/ and src/subdirs/
@@ -142,7 +142,7 @@ fn search_with_depth(
 /// * Second element: Search term (last component of the path)
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// extract_path_and_term("/home/user/src/main")
 /// // Returns: (Some(PathBuf::from("/home/user/src")), "main")
 ///
@@ -152,11 +152,20 @@ fn search_with_depth(
 /// extract_path_and_term(".openclaw/w")
 /// // Returns: (Some(PathBuf::from(".openclaw")), "w")
 ///
+/// extract_path_and_term(".openclaw/")
+/// // Returns: (Some(PathBuf::from(".openclaw")), "")  // Empty search term for trailing slash
+///
 /// extract_path_and_term("filename")
 /// // Returns: (None, "filename")  // No parent directory
 /// ```
 fn extract_path_and_term(input: &str) -> (Option<PathBuf>, String) {
-    let path = Path::new(input);
+    let trimmed = input.trim_end_matches('/');
+    let path = Path::new(trimmed);
+
+    // If input ends with '/', treat it as directory search (empty search term)
+    if input.ends_with('/') && !trimmed.is_empty() {
+        return (Some(PathBuf::from(trimmed)), String::new());
+    }
 
     if let Some(parent) = path.parent() {
         // Edge case: path like "filename" has empty parent
@@ -218,7 +227,7 @@ impl PathSearchService {
     /// * `candidates` - List of matching files/directories
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// // Absolute path with existing directory
     /// resolve_path("/home/user/projects/src/main")
     /// // Returns candidates from /home/user/projects/src matching "main"
@@ -230,6 +239,10 @@ impl PathSearchService {
     /// // Relative path with non-existing base (fuzzy directory search)
     /// resolve_path(".openclaw/w")
     /// // Searches all directories named .openclaw, returns files matching "w"
+    ///
+    /// // Directory search with trailing slash
+    /// resolve_path(".openclaw/")
+    /// // Returns all items in .openclaw directory (empty search term matches all)
     ///
     /// // Fuzzy search
     /// resolve_path("myproject")
@@ -451,6 +464,35 @@ mod tests {
         let (base, term) = extract_path_and_term("src/projects/myapp/main");
         assert_eq!(base, Some(PathBuf::from("src/projects/myapp")));
         assert_eq!(term, "main");
+    }
+
+    #[test]
+    fn test_extract_path_trailing_slash_relative() {
+        // Path ending with "/" should treat directory as base with empty search term
+        let (base, term) = extract_path_and_term(".openclaw/");
+        assert_eq!(base, Some(PathBuf::from(".openclaw")));
+        assert_eq!(term, "");
+    }
+
+    #[test]
+    fn test_extract_path_trailing_slash_absolute() {
+        let (base, term) = extract_path_and_term("/home/user/projects/");
+        assert_eq!(base, Some(PathBuf::from("/home/user/projects")));
+        assert_eq!(term, "");
+    }
+
+    #[test]
+    fn test_extract_path_trailing_slash_nested() {
+        let (base, term) = extract_path_and_term("src/components/");
+        assert_eq!(base, Some(PathBuf::from("src/components")));
+        assert_eq!(term, "");
+    }
+
+    #[test]
+    fn test_extract_path_trailing_slash_with_dot() {
+        let (base, term) = extract_path_and_term("./.openclaw/");
+        assert_eq!(base, Some(PathBuf::from("./.openclaw")));
+        assert_eq!(term, "");
     }
 
     // ==================== search_with_depth tests ====================

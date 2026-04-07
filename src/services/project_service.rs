@@ -167,10 +167,8 @@ impl<'a> ProjectService<'a> {
                         return Ok(true);
                     }
                 }
-            } else if path.is_dir() {
-                if self.check_markdown_files(&path)? {
-                    return Ok(true);
-                }
+            } else if path.is_dir() && self.check_markdown_files(&path)? {
+                return Ok(true);
             }
         }
 

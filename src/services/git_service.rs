@@ -110,7 +110,7 @@ impl GitService {
                 &limit.to_string(),
             ],
         )
-        .map_err(|e| AppError::GitError(e))?;
+        .map_err(AppError::GitError)?;
 
         let entries = stdout
             .lines()
@@ -147,13 +147,12 @@ impl GitService {
             args.push(path);
         }
 
-        let (stdout, _) = Self::run_git(cwd, &args).map_err(|e| AppError::GitError(e))?;
+        let (stdout, _) = Self::run_git(cwd, &args).map_err(AppError::GitError)?;
         Ok(stdout)
     }
 
     pub fn show(cwd: &PathBuf, commit_hash: &str) -> AppResult<String> {
-        let (stdout, _) =
-            Self::run_git(cwd, &["show", commit_hash]).map_err(|e| AppError::GitError(e))?;
+        let (stdout, _) = Self::run_git(cwd, &["show", commit_hash]).map_err(AppError::GitError)?;
         Ok(stdout)
     }
 
@@ -164,8 +163,7 @@ impl GitService {
     }
 
     pub fn branches(cwd: &PathBuf) -> AppResult<Vec<String>> {
-        let (stdout, _) =
-            Self::run_git(cwd, &["branch", "-a"]).map_err(|e| AppError::GitError(e))?;
+        let (stdout, _) = Self::run_git(cwd, &["branch", "-a"]).map_err(AppError::GitError)?;
 
         let branches: Vec<String> = stdout
             .lines()
@@ -183,7 +181,7 @@ impl GitService {
     }
 
     pub fn tags(cwd: &PathBuf) -> AppResult<Vec<String>> {
-        let (stdout, _) = Self::run_git(cwd, &["tag", "-l"]).map_err(|e| AppError::GitError(e))?;
+        let (stdout, _) = Self::run_git(cwd, &["tag", "-l"]).map_err(AppError::GitError)?;
 
         let tags: Vec<String> = stdout
             .lines()
@@ -210,7 +208,7 @@ impl GitService {
         let new_content = Self::file_at_ref(cwd, file_path, new_ref).unwrap_or_default();
 
         let diff_output = Self::run_git(cwd, &["diff", old_ref, new_ref, "--", file_path])
-            .map_err(|e| AppError::GitError(e))?
+            .map_err(AppError::GitError)?
             .0;
 
         let hunks = Self::parse_diff_hunks(&diff_output);
@@ -292,9 +290,9 @@ impl GitService {
             let old_parts: Vec<&str> = old_part.split(',').collect();
             let new_parts: Vec<&str> = new_part.split(',').collect();
 
-            let old_start = old_parts.get(0)?.parse().ok()?;
+            let old_start = old_parts.first()?.parse().ok()?;
             let old_lines = old_parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1);
-            let new_start = new_parts.get(0)?.parse().ok()?;
+            let new_start = new_parts.first()?.parse().ok()?;
             let new_lines = new_parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1);
 
             return Some((old_start, old_lines, new_start, new_lines));

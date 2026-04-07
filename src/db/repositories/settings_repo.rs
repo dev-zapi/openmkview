@@ -1,7 +1,6 @@
 use crate::errors::AppResult;
 use crate::models::SystemSettings;
 use rusqlite::Connection;
-use serde_json;
 
 pub struct SettingsRepository<'a> {
     conn: &'a Connection,

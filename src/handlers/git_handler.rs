@@ -72,7 +72,7 @@ fn handle_add(cwd: &PathBuf, files: &Option<Vec<String>>) -> AppResult<HttpRespo
         args.push(".");
     }
 
-    GitService::run_git(cwd, &args).map_err(|e| AppError::GitError(e))?;
+    GitService::run_git(cwd, &args).map_err(AppError::GitError)?;
     handle_status(cwd)
 }
 
@@ -83,14 +83,14 @@ fn handle_commit(cwd: &PathBuf, message: &Option<String>) -> AppResult<HttpRespo
         .filter(|m| !m.is_empty())
         .ok_or_else(|| AppError::BadRequest("Commit message is required".into()))?;
 
-    GitService::run_git(cwd, &["commit", "-m", msg]).map_err(|e| AppError::GitError(e))?;
+    GitService::run_git(cwd, &["commit", "-m", msg]).map_err(AppError::GitError)?;
 
     handle_status(cwd)
 }
 
 #[allow(dead_code)]
 fn handle_command(cwd: &PathBuf, args: &[&str]) -> AppResult<HttpResponse> {
-    GitService::run_git(cwd, args).map_err(|e| AppError::GitError(e))?;
+    GitService::run_git(cwd, args).map_err(AppError::GitError)?;
 
     let status = GitService::status(cwd);
     Ok(HttpResponse::Ok().json(status))
@@ -104,7 +104,7 @@ fn handle_pull(cwd: &PathBuf, rebase: bool) -> AppResult<HttpResponse> {
         vec!["pull"]
     };
 
-    let (stdout, stderr) = GitService::run_git(cwd, &args).map_err(|e| AppError::GitError(e))?;
+    let (stdout, stderr) = GitService::run_git(cwd, &args).map_err(AppError::GitError)?;
 
     let status = GitService::status(cwd);
     Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -161,8 +161,7 @@ fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpRespons
                 return Ok(HttpResponse::BadRequest().body("Command cannot be empty"));
             }
 
-            let (stdout, stderr) =
-                GitService::run_git(cwd, &args).map_err(|e| AppError::GitError(e))?;
+            let (stdout, stderr) = GitService::run_git(cwd, &args).map_err(AppError::GitError)?;
 
             Ok(HttpResponse::Ok().json(serde_json::json!({
                 "output": format!("{}{}", stdout, stderr)
