@@ -138,6 +138,32 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+/* Folder List Container - Scrollable */
+.folder-list-container {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.folder-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.folder-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.folder-list-container::-webkit-scrollbar-thumb {
+  background-color: var(--color-border, #2a2a2a);
+  border-radius: 3px;
+}
+
+.folder-list-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-hover-bg, #3a3a3a);
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -170,7 +196,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
