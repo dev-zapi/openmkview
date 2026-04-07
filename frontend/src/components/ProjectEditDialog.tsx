@@ -30,6 +30,8 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
   const [name, setName] = createSignal(props.project.name);
   const [color, setColor] = createSignal(props.project.color);
   const [icon, setIcon] = createSignal(props.project.icon);
+  const [customColor, setCustomColor] = createSignal('#000000');
+  const [showCustomColor, setShowCustomColor] = createSignal(false);
 
   const handleSave = () => {
     props.onSave({
@@ -43,10 +45,21 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
 
   const handleColorSelect = (selectedColor: string) => {
     setColor(selectedColor);
+    setShowCustomColor(false);
+  };
+
+  const handleCustomColorChange = (e: Event) => {
+    const target = e.currentTarget as HTMLInputElement;
+    setCustomColor(target.value);
+    setColor(target.value);
   };
 
   const handleIconSelect = (selectedIcon: string) => {
     setIcon(selectedIcon);
+  };
+
+  const isCustomColor = () => {
+    return color() && !PRESET_COLORS.includes(color()!);
   };
 
   return (
@@ -115,7 +128,34 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
                     </button>
                   )}
                 </For>
+                <button
+                  class={`color-swatch custom-color ${isCustomColor() ? 'active' : ''}`}
+                  style={{ background: isCustomColor() ? color() : 'var(--color-bg-subtle)' }}
+                  onClick={() => setShowCustomColor(!showCustomColor())}
+                  title="Custom color"
+                >
+                  <Show when={!isCustomColor()} fallback={<span class="color-check">✓</span>}>
+                    <span class="custom-color-icon">+</span>
+                  </Show>
+                </button>
               </div>
+              <Show when={showCustomColor()}>
+                <div class="custom-color-input-container">
+                  <input
+                    type="color"
+                    value={color() || customColor()}
+                    onInput={handleCustomColorChange}
+                    class="color-input-native"
+                  />
+                  <input
+                    type="text"
+                    value={color() || ''}
+                    onInput={(e) => setColor(e.currentTarget.value)}
+                    class="color-input-text"
+                    placeholder="#000000"
+                  />
+                </div>
+              </Show>
             </div>
           </div>
 
