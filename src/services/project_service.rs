@@ -31,8 +31,8 @@ impl<'a> ProjectService<'a> {
                 let absolute_path = if path.is_absolute() {
                     path
                 } else {
-                    std::env::current_dir()
-                        .map_err(|e| AppError::InternalError(format!("无法获取当前目录: {}", e)))?
+                    dirs::home_dir()
+                        .ok_or_else(|| AppError::InternalError("无法获取用户主目录".to_string()))?
                         .join(&path)
                 };
 

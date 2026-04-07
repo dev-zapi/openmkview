@@ -2,7 +2,7 @@
 //!
 //! This service handles intelligent path resolution for user input, supporting three types of searches:
 //! - **Absolute paths**: `/home/user/projects/myapp/src` - exact path resolution
-//! - **Relative paths**: `src/main`, `.hidden/config` - relative to current directory or fuzzy directory search
+//! - **Relative paths**: `src/main`, `.hidden/config` - relative to home directory or fuzzy directory search
 //! - **Fuzzy search**: `myproject` - search from home directory with pattern matching
 //!
 //! ## Path Resolution Logic
@@ -16,7 +16,7 @@
 //!    - Two scenarios:
 //!      a) Base directory exists (e.g., `src/main` where `src` exists) → direct search
 //!      b) Base directory doesn't exist (e.g., `.openclaw/w` where `.openclaw` doesn't exist)
-//!         - search all directories with matching name from current directory tree
+//!         - search all directories with matching name from home directory tree
 //!
 //! 3. **Fuzzy Search** (no `/`)
 //!    - Search from home directory with pattern matching
@@ -38,7 +38,7 @@ use walkdir::{DirEntry, WalkDir};
 /// # Returns
 /// * `true` if the entry name starts with `.`
 /// * `false` otherwise (or if name cannot be converted to string)
-fn is_hidden(entry: &DirEntry) -> bool {
+pub(crate) fn is_hidden(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
@@ -70,7 +70,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
 /// search_with_depth(Path::new("src"), "main", 2, true)
 /// // Returns: files like main.rs, main.c, etc. within src/ and src/subdirs/
 /// ```
-fn search_with_depth(
+pub(crate) fn search_with_depth(
     base_path: &Path,
     target: &str,
     max_depth: i32,
@@ -158,7 +158,7 @@ fn search_with_depth(
 /// extract_path_and_term("filename")
 /// // Returns: (None, "filename")  // No parent directory
 /// ```
-fn extract_path_and_term(input: &str) -> (Option<PathBuf>, String) {
+pub(crate) fn extract_path_and_term(input: &str) -> (Option<PathBuf>, String) {
     let trimmed = input.trim_end_matches('/');
     let path = Path::new(trimmed);
 
@@ -207,7 +207,7 @@ impl PathSearchService {
     /// Input contains `/` but doesn't start with `/` (e.g., `src/main`, `.hidden/file`)
     /// - **If base exists**: Direct search within base directory
     /// - **If base doesn't exist**: Fuzzy directory search
-    ///   - Search current directory tree for directories matching the base name
+    ///   - Search home directory tree for directories matching the base name
     ///   - For each matching directory, search within it
     ///   - Uses exact match for directory name (not substring)
     ///   - Example: `.openclaw/w` searches all directories named `.openclaw`
@@ -296,9 +296,7 @@ impl PathSearchService {
                 if base_name.is_empty() {
                     (PathType::Relative, vec![])
                 } else {
-                    let home_dir = dirs::home_dir().unwrap_or_else(|| {
-                        std::env::current_dir().expect("Cannot get current directory")
-                    });
+                    let home_dir = dirs::home_dir().expect("Cannot get home directory");
 
                     debug!(
                         "[resolve_path] Searching from home directory: {}",
@@ -340,8 +338,7 @@ impl PathSearchService {
         } else {
             // Case: No `/` in input - fuzzy search from home directory
             // This handles simple search patterns like "myproject", "work", etc.
-            let home_path = dirs::home_dir()
-                .unwrap_or_else(|| std::env::current_dir().expect("Cannot get current directory"));
+            let home_path = dirs::home_dir().expect("Cannot get home directory");
             debug!(
                 "[resolve_path] Path type: Fuzzy, search directory: {}",
                 home_path.display()
