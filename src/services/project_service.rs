@@ -23,9 +23,33 @@ impl<'a> ProjectService<'a> {
             "[ProjectService] Creating or opening project: path={}",
             req.path
         );
-        let resolved_path = PathBuf::from(&req.path)
-            .canonicalize()
-            .map_err(|_| AppError::BadRequest("目录不存在".into()))?;
+
+        let path = PathBuf::from(&req.path);
+        let resolved_path = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => {
+                let absolute_path = if path.is_absolute() {
+                    path
+                } else {
+                    std::env::current_dir()
+                        .map_err(|e| AppError::InternalError(format!("无法获取当前目录: {}", e)))?
+                        .join(&path)
+                };
+
+                if !absolute_path.exists() {
+                    return Err(AppError::BadRequest(format!(
+                        "目录不存在: {}",
+                        absolute_path.display()
+                    )));
+                }
+
+                absolute_path.canonicalize().map_err(|e| {
+                    debug!("[ProjectService] Failed to canonicalize path: {}", e);
+                    AppError::BadRequest("无法解析目录路径".into())
+                })?
+            }
+        };
+
         debug!("[ProjectService] Resolved path: {:?}", resolved_path);
 
         if !resolved_path.is_dir() {
