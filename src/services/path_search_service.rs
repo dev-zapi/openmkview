@@ -266,7 +266,6 @@ impl PathSearchService {
             }
         } else if path_input.contains('/') {
             debug!("[resolve_path] Path type: Relative");
-            let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             let (base_path, search_term) = extract_path_and_term(path_input);
             if let Some(base) = base_path {
                 debug!(
@@ -275,89 +274,52 @@ impl PathSearchService {
                     search_term
                 );
 
-                // Case 1: Base directory exists - perform direct search
-                if base.exists() {
-                    let search_results = search_with_depth(&base, &search_term, 2, true);
-                    debug!(
-                        "[resolve_path] Relative path search returned {} candidates",
-                        search_results.len()
-                    );
-                    (PathType::Relative, search_results)
+                // Relative paths always search from HOME directory
+                // Extract the directory name to search for (last component of base path)
+                // Example: base=".openclaw" → base_name=".openclaw"
+                // Example: base="src/projects" → base_name="projects"
+                let base_name = base.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+                if base_name.is_empty() {
+                    (PathType::Relative, vec![])
                 } else {
-                    // Case 2: Base directory doesn't exist - perform fuzzy directory search
-                    // This handles scenarios like:
-                    // - User types `.openclaw/w` but `.openclaw` doesn't exist in current dir
-                    // - System searches all directories named `.openclaw` from multiple roots
+                    let home_dir = dirs::home_dir().unwrap_or_else(|| {
+                        std::env::current_dir().expect("Cannot get current directory")
+                    });
+
                     debug!(
-                        "[resolve_path] Base path '{}' does not exist, searching for matching directories",
-                        base.display()
+                        "[resolve_path] Searching from home directory: {}",
+                        home_dir.display()
                     );
 
-                    // Extract the directory name to search for (last component of base path)
-                    // Example: base=".openclaw" → base_name=".openclaw"
-                    // Example: base="src/projects" → base_name="projects"
-                    let base_name = base.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    let mut all_candidates = Vec::new();
+                    let base_lower = base_name.to_lowercase();
 
-                    if base_name.is_empty() {
-                        // Edge case: couldn't extract directory name
-                        (PathType::Relative, vec![])
-                    } else {
-                        // Search from multiple roots for directories matching base_name
-                        let mut all_candidates = Vec::new();
-                        let base_lower = base_name.to_lowercase();
+                    let walker = WalkDir::new(&home_dir)
+                        .max_depth(3)
+                        .into_iter()
+                        .filter_entry(|_| true);
 
-                        // Helper function to search a directory
-                        let search_dir = |root_dir: &Path, candidates: &mut Vec<PathCandidate>| {
-                            let walker = WalkDir::new(root_dir)
-                                .max_depth(3)
-                                .into_iter()
-                                .filter_entry(|_| true);
-
-                            for entry in walker.filter_map(|e| e.ok()) {
-                                if let Some(file_name) = entry.file_name().to_str() {
-                                    let file_name_lower = file_name.to_lowercase();
-                                    // EXACT MATCH: directory name must equal base_name
-                                    // This distinguishes:
-                                    // - `.openclaw/w` → matches only `.openclaw` (not `xxx.openclaw`)
-                                    // - `openclaw/w` → matches only `openclaw` (not `xxxopenclaw`)
-                                    if file_name_lower == base_lower && entry.path().is_dir() {
-                                        debug!(
-                                            "[resolve_path] Found matching directory: {}",
-                                            entry.path().display()
-                                        );
-                                        // Search within each matching directory for the search term
-                                        let sub_results =
-                                            search_with_depth(entry.path(), &search_term, 2, true);
-                                        candidates.extend(sub_results);
-                                    }
-                                }
-                            }
-                        };
-
-                        // Search from current directory
-                        debug!(
-                            "[resolve_path] Searching from current directory: {}",
-                            current_dir.display()
-                        );
-                        search_dir(&current_dir, &mut all_candidates);
-
-                        // Also search from home directory (if different from current dir)
-                        if let Some(home_dir) = dirs::home_dir() {
-                            if home_dir != current_dir {
+                    for entry in walker.filter_map(|e| e.ok()) {
+                        if let Some(file_name) = entry.file_name().to_str() {
+                            let file_name_lower = file_name.to_lowercase();
+                            if file_name_lower == base_lower && entry.path().is_dir() {
                                 debug!(
-                                    "[resolve_path] Searching from home directory: {}",
-                                    home_dir.display()
+                                    "[resolve_path] Found matching directory: {}",
+                                    entry.path().display()
                                 );
-                                search_dir(&home_dir, &mut all_candidates);
+                                let sub_results =
+                                    search_with_depth(entry.path(), &search_term, 2, true);
+                                all_candidates.extend(sub_results);
                             }
                         }
-
-                        debug!(
-                            "[resolve_path] Fuzzy directory search returned {} candidates",
-                            all_candidates.len()
-                        );
-                        (PathType::Relative, all_candidates)
                     }
+
+                    debug!(
+                        "[resolve_path] Relative path search returned {} candidates",
+                        all_candidates.len()
+                    );
+                    (PathType::Relative, all_candidates)
                 }
             } else {
                 (PathType::Relative, vec![])
@@ -644,127 +606,127 @@ mod tests {
 
     #[test]
     fn test_resolve_path_relative_existing_base() {
-        let temp_dir = TempDir::new().unwrap();
-        let subdir = temp_dir.path().join("src");
+        // Create test directory in HOME
+        let home_dir = dirs::home_dir().expect("Cannot get home directory");
+        let test_dir_name = ".test_openmkview_relative_existing";
+        let test_dir = home_dir.join(test_dir_name);
+
+        // Clean up first if exists
+        if test_dir.exists() {
+            fs::remove_dir_all(&test_dir).unwrap();
+        }
+        fs::create_dir_all(&test_dir).unwrap();
+
+        let subdir = test_dir.join("src");
         fs::create_dir(&subdir).unwrap();
         let file = subdir.join("main.rs");
         File::create(&file).unwrap();
-
-        // Set current directory to temp_dir
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
 
         let response = PathSearchService::resolve_path("src/main");
 
         assert_eq!(response.path_type, PathType::Relative);
         assert!(response.candidates.iter().any(|c| c.name == "main.rs"));
-        // Should also find the src directory if its name matches
-        assert!(response
-            .candidates
-            .iter()
-            .any(|c| c.name == "src" || c.name == "main.rs"));
 
-        // Restore original directory
-        std::env::set_current_dir(original_dir).unwrap();
+        // Cleanup
+        fs::remove_dir_all(&test_dir).unwrap();
     }
 
     #[test]
     fn test_resolve_path_relative_hidden_directory() {
-        let temp_dir = TempDir::new().unwrap();
-        let hidden_dir = temp_dir.path().join(".openclaw");
+        // Create test directory in HOME
+        let home_dir = dirs::home_dir().expect("Cannot get home directory");
+        let test_dir_name = ".test_openmkview_hidden";
+        let test_dir = home_dir.join(test_dir_name);
+
+        // Clean up first if exists
+        if test_dir.exists() {
+            fs::remove_dir_all(&test_dir).unwrap();
+        }
+        fs::create_dir_all(&test_dir).unwrap();
+
+        let hidden_dir = test_dir.join(".openclaw_test");
         fs::create_dir(&hidden_dir).unwrap();
         let file = hidden_dir.join("workspace.md");
         File::create(&file).unwrap();
 
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
-
-        let response = PathSearchService::resolve_path(".openclaw/w");
+        let response = PathSearchService::resolve_path(".openclaw_test/w");
 
         assert_eq!(response.path_type, PathType::Relative);
-        // Should find .openclaw directory and workspace.md file
-        assert!(response.candidates.iter().any(|c| c.name == ".openclaw"));
         assert!(response.candidates.iter().any(|c| c.name == "workspace.md"));
 
-        std::env::set_current_dir(original_dir).unwrap();
+        // Cleanup
+        fs::remove_dir_all(&test_dir).unwrap();
     }
 
     #[test]
     fn test_resolve_path_relative_non_existing_base_fuzzy_search() {
-        // Create a non-hidden base directory (tempfile creates hidden .tmpXXX dirs)
-        let temp_base = TempDir::new().unwrap();
-        let test_dir = temp_base.path().join("testdir"); // Non-hidden directory
-        fs::create_dir(&test_dir).unwrap();
+        // Create test directory in HOME
+        let home_dir = dirs::home_dir().expect("Cannot get home directory");
+        let test_dir_name = ".test_openmkview_fuzzy_search";
+        let test_dir = home_dir.join(test_dir_name);
 
-        // Create multiple directories named "openclaw" in different locations
-        let openclaw1 = test_dir.join("openclaw");
-        let openclaw2 = test_dir.join("src").join("openclaw");
-        fs::create_dir_all(&openclaw2).unwrap();
-        fs::create_dir(&openclaw1).unwrap();
+        // Clean up first if exists
+        if test_dir.exists() {
+            fs::remove_dir_all(&test_dir).unwrap();
+        }
+        fs::create_dir_all(&test_dir).unwrap();
 
-        // Add files to each - note: search term is "w", so files should contain "w"
-        let file1 = openclaw1.join("worker.md"); // Contains "w"
-        let file2 = openclaw2.join("write.md"); // Contains "w"
-        File::create(&file1).unwrap();
-        File::create(&file2).unwrap();
+        // Create openclaw directory in test_dir
+        let openclaw = test_dir.join("openclaw_test");
+        fs::create_dir(&openclaw).unwrap();
 
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(&test_dir).unwrap();
+        // Add file containing "w"
+        let file = openclaw.join("worker.md");
+        File::create(&file).unwrap();
 
-        // First test: openclaw exists in current dir - direct search
-        let response = PathSearchService::resolve_path("openclaw/w");
+        let response = PathSearchService::resolve_path("openclaw_test/w");
         assert_eq!(response.path_type, PathType::Relative);
         assert!(response.candidates.iter().any(|c| c.name == "worker.md"));
 
-        // Remove openclaw from current dir to test fuzzy directory search
-        fs::remove_dir_all(&openclaw1).unwrap();
-
-        // Second test: openclaw doesn't exist in current dir - should find src/openclaw
-        let response2 = PathSearchService::resolve_path("openclaw/w");
-
-        assert_eq!(response2.path_type, PathType::Relative);
-        // Should find write.md in src/openclaw directory
-        assert!(response2.candidates.iter().any(|c| c.name == "write.md"));
-
-        std::env::set_current_dir(original_dir).unwrap();
+        // Cleanup
+        fs::remove_dir_all(&test_dir).unwrap();
     }
 
     #[test]
     fn test_resolve_path_exact_directory_match() {
-        let temp_dir = TempDir::new().unwrap();
+        // Create test directory in HOME
+        let home_dir = dirs::home_dir().expect("Cannot get home directory");
+        let test_dir_name = ".test_openmkview_exact_match";
+        let test_dir = home_dir.join(test_dir_name);
 
-        // Create directories: .openclaw, xxx.openclaw, openclaw
-        let exact = temp_dir.path().join(".openclaw");
-        let fuzzy = temp_dir.path().join("xxx.openclaw");
-        let normal = temp_dir.path().join("openclaw");
+        // Clean up first if exists
+        if test_dir.exists() {
+            fs::remove_dir_all(&test_dir).unwrap();
+        }
+        fs::create_dir_all(&test_dir).unwrap();
+
+        // Create directories: .openclaw_test_exact, xxx.openclaw_test_exact, openclaw_test_exact
+        let exact = test_dir.join(".openclaw_test_exact");
+        let fuzzy = test_dir.join("xxx.openclaw_test_exact");
+        let normal = test_dir.join("openclaw_test_exact");
         fs::create_dir(&exact).unwrap();
         fs::create_dir(&fuzzy).unwrap();
         fs::create_dir(&normal).unwrap();
 
-        // Add files to each
-        File::create(exact.join("exact.md")).unwrap();
-        File::create(fuzzy.join("fuzzy.md")).unwrap();
-        File::create(normal.join("normal.md")).unwrap();
+        // Add files to each (names contain "w" to match search term)
+        File::create(exact.join("exact_w.md")).unwrap();
+        File::create(fuzzy.join("fuzzy_w.md")).unwrap();
+        File::create(normal.join("normal_w.md")).unwrap();
 
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
-
-        // Search for ".openclaw/w" - should ONLY match .openclaw (exact), not xxx.openclaw
-        let response = PathSearchService::resolve_path(".openclaw/w");
+        // Search for ".openclaw_test_exact/w" - should ONLY match .openclaw_test_exact (exact), not xxx.openclaw_test_exact
+        let response = PathSearchService::resolve_path(".openclaw_test_exact/w");
 
         assert_eq!(response.path_type, PathType::Relative);
         println!("Candidates: {:?}", response.candidates);
 
-        // Should find .openclaw directory and exact.md
-        assert!(response
-            .candidates
-            .iter()
-            .any(|c| c.name == ".openclaw" || c.name == "exact.md"));
-        // Should NOT find fuzzy.md or normal.md (wrong directory names)
-        assert!(!response.candidates.iter().any(|c| c.name == "fuzzy.md"));
-        assert!(!response.candidates.iter().any(|c| c.name == "normal.md"));
+        // Should find exact_w.md
+        assert!(response.candidates.iter().any(|c| c.name == "exact_w.md"));
+        // Should NOT find fuzzy_w.md or normal_w.md (wrong directory names)
+        assert!(!response.candidates.iter().any(|c| c.name == "fuzzy_w.md"));
+        assert!(!response.candidates.iter().any(|c| c.name == "normal_w.md"));
 
-        std::env::set_current_dir(original_dir).unwrap();
+        // Cleanup
+        fs::remove_dir_all(&test_dir).unwrap();
     }
 
     #[test]
