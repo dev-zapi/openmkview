@@ -1,6 +1,4 @@
-import { Component, createSignal, Show } from 'solid-js';
-import ColorPicker from './ColorPicker';
-import IconPicker from './IconPicker';
+import { Component, createSignal, Show, For } from 'solid-js';
 import type { Project } from '../types';
 
 interface ProjectEditDialogProps {
@@ -10,12 +8,28 @@ interface ProjectEditDialogProps {
   onSave: (project: Project) => void;
 }
 
+const PRESET_COLORS = [
+  '#9333ea', // purple
+  '#00897b', // teal
+  '#e65100', // orange
+  '#7b1fa2', // deep purple
+  '#1976d2', // blue
+  '#388e3c', // green
+  '#c2185b', // pink
+  '#5d4037', // brown
+];
+
+const PRESET_ICONS = [
+  '📁', '📂', '📄', '📝', '️', '📑', '📚', '',
+  '💼', '🎯', '⭐', '🌟', '💡', '🔥', '🚀', '💻',
+  '🎨', '🎬', '🎵', '', '📱', '⚙️', '🔧', '🔨',
+  '📊', '📈', '📉', '💳', '💰', '💵', '', '🎁',
+];
+
 const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
   const [name, setName] = createSignal(props.project.name);
   const [color, setColor] = createSignal(props.project.color);
   const [icon, setIcon] = createSignal(props.project.icon);
-  const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
-  const [iconPickerOpen, setIconPickerOpen] = createSignal(false);
 
   const handleSave = () => {
     props.onSave({
@@ -27,14 +41,12 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
     props.onClose();
   };
 
-  const handleColorChange = (newColor: string) => {
-    setColor(newColor);
-    setColorPickerOpen(false);
+  const handleColorSelect = (selectedColor: string) => {
+    setColor(selectedColor);
   };
 
-  const handleIconChange = (newIcon: string) => {
-    setIcon(newIcon);
-    setIconPickerOpen(false);
+  const handleIconSelect = (selectedIcon: string) => {
+    setIcon(selectedIcon);
   };
 
   return (
@@ -42,89 +54,77 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
       <div class="dialog-overlay" onClick={props.onClose}>
         <div class="dialog-content" onClick={(e) => e.stopPropagation()}>
           <div class="dialog-header">
-            <h3>编辑项目</h3>
+            <h3>Edit project</h3>
             <button class="dialog-close" onClick={props.onClose}>×</button>
           </div>
 
           <div class="dialog-body">
             <div class="form-group">
-              <label>项目名称</label>
+              <label>Name</label>
               <input
                 type="text"
                 value={name()}
                 onInput={(e) => setName(e.currentTarget.value)}
                 class="form-input"
+                placeholder="Project name"
               />
             </div>
 
-            <div class="form-group picker-group">
-              <label>项目颜色</label>
-              <div class="picker-row">
-                <button
-                  class="picker-button"
+            <div class="form-group">
+              <label>Icon</label>
+              <div class="icon-preview-container">
+                <div 
+                  class="icon-preview-large"
                   style={{ background: color() || 'var(--color-bg-subtle)' }}
-                  onClick={() => setColorPickerOpen(!colorPickerOpen())}
                 >
-                  {color() ? '' : '选择'}
-                </button>
-                <Show when={color()}>
-                  <button
-                    class="clear-button"
-                    onClick={() => setColor(undefined)}
-                  >
-                    清除
-                  </button>
-                </Show>
-              </div>
-              <Show when={colorPickerOpen()}>
-                <div class="picker-popup">
-                  <ColorPicker
-                    currentColor={color()}
-                    onColorChange={handleColorChange}
-                    onClose={() => setColorPickerOpen(false)}
-                  />
+                  <span class="icon-preview-letter">
+                    {icon() || name().charAt(0).toUpperCase() || 'P'}
+                  </span>
                 </div>
-              </Show>
+                <div class="icon-picker-inline">
+                  <div class="icon-grid">
+                    <For each={PRESET_ICONS}>
+                      {(iconItem) => (
+                        <button
+                          class={`icon-grid-item ${icon() === iconItem ? 'active' : ''}`}
+                          onClick={() => handleIconSelect(iconItem)}
+                          title={iconItem}
+                        >
+                          {iconItem}
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="form-group picker-group">
-              <label>项目图标</label>
-              <div class="picker-row">
-                <button
-                  class="picker-button"
-                  onClick={() => setIconPickerOpen(!iconPickerOpen())}
-                >
-                  <Show when={icon()} fallback={<span class="picker-placeholder">选择</span>}>
-                    <span class="picker-icon">{icon()}</span>
-                  </Show>
-                </button>
-                <Show when={icon()}>
-                  <button
-                    class="clear-button"
-                    onClick={() => setIcon(undefined)}
-                  >
-                    清除
-                  </button>
-                </Show>
+            <div class="form-group">
+              <label>Color</label>
+              <div class="color-picker-inline">
+                <For each={PRESET_COLORS}>
+                  {(colorItem) => (
+                    <button
+                      class={`color-swatch ${color() === colorItem ? 'active' : ''}`}
+                      style={{ background: colorItem }}
+                      onClick={() => handleColorSelect(colorItem)}
+                    >
+                      <Show when={color() === colorItem}>
+                        <span class="color-check">✓</span>
+                      </Show>
+                    </button>
+                  )}
+                </For>
               </div>
-              <Show when={iconPickerOpen()}>
-                <div class="picker-popup">
-                  <IconPicker
-                    currentIcon={icon()}
-                    onIconChange={handleIconChange}
-                    onClose={() => setIconPickerOpen(false)}
-                  />
-                </div>
-              </Show>
             </div>
           </div>
 
           <div class="dialog-footer">
             <button class="dialog-button cancel" onClick={props.onClose}>
-              取消
+              Cancel
             </button>
             <button class="dialog-button save" onClick={handleSave}>
-              保存
+              Save
             </button>
           </div>
         </div>
