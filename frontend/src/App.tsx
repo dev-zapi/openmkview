@@ -92,9 +92,9 @@ const App: Component = () => {
   const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
   const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
 
+  const [isDragging, setIsDragging] = createSignal(false);
   let mediaQuery: MediaQueryList;
   let sidebarRef: HTMLDivElement | undefined;
-  let isDragging = false;
 
   onMount(async () => {
     const projectList = await api.getProjects();
@@ -130,7 +130,7 @@ const App: Component = () => {
     mediaQuery.addEventListener('change', handleThemeChange);
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
+      if (isDragging()) {
         const maxWidth = window.innerWidth * 0.4;
         const newWidth = Math.max(200, Math.min(maxWidth, e.clientX - 52));
         setSidebarWidth(newWidth);
@@ -139,8 +139,8 @@ const App: Component = () => {
     };
 
     const handleMouseUp = () => {
-      if (isDragging) {
-        isDragging = false;
+      if (isDragging()) {
+        setIsDragging(false);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
       }
@@ -522,7 +522,7 @@ const App: Component = () => {
             <aside 
               class="sidebar sidebar-enter" 
               ref={sidebarRef}
-              style={{ width: `${sidebarWidth()}px`, transition: isDragging ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              style={{ width: `${sidebarWidth()}px`, transition: isDragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
             >
               <div class="sidebar-header">
                 <Show when={activeProject()}>
@@ -545,7 +545,7 @@ const App: Component = () => {
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                           </svg>
-                          <span>编辑项目信息</span>
+                          <span>Edit Project Info</span>
                         </button>
                       </div>
                     </Show>
@@ -564,7 +564,7 @@ const App: Component = () => {
               <div 
                 class="sidebar-resize-handle"
                 onMouseDown={() => {
-                  isDragging = true;
+                  setIsDragging(true);
                   document.body.style.cursor = 'col-resize';
                   document.body.style.userSelect = 'none';
                 }}
@@ -598,7 +598,7 @@ const App: Component = () => {
                     <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
                       <div class="welcome">
                         <h1>OpenMKView</h1>
-                        <p>点击 "Open Project" 或左侧 + 按钮开始</p>
+<p>Click "Open Project" or the + button on the left to start</p>
                       </div>
                     </Show>
 
@@ -775,7 +775,7 @@ const App: Component = () => {
           }
           sidebarContent={
             <Show when={activeProject()} fallback={
-              <p class="empty-state">点击左侧 + 按钮打开项目</p>
+              <p class="empty-state">Click the + button on the left to open a project</p>
             }>
               <FileTree
                 nodes={fileTree()}
@@ -816,7 +816,7 @@ const App: Component = () => {
             <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
               <div class="welcome">
                 <h1>OpenMKView</h1>
-                <p>点击 "Open Project" 或左侧 + 按钮开始</p>
+                <p>Click "Open Project" or the + button on the left to start</p>
               </div>
             </Show>
 

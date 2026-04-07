@@ -272,7 +272,7 @@ body {
   padding: 4px 0;
 }
 
-/* 项目列表区域 - 可滚动 */
+/* Project list area - scrollable */
 .activity-bar-projects {
   display: flex;
   flex-direction: column;
@@ -370,7 +370,7 @@ body {
   text-transform: uppercase;
 }
 
-/* 加号按钮 */
+/* Add button */
 .activity-bar-add {
   width: 40px;
   height: 40px;
@@ -394,7 +394,7 @@ body {
   transform: scale(1.05);
 }
 
-/* 底部固定区域 */
+/* Bottom fixed area */
 .activity-bar-bottom {
   margin-top: auto;
   padding-bottom: 4px;
@@ -467,7 +467,7 @@ body {
 }
 
 .sidebar-header {
-  height: 36px;
+  height: 40px;
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -532,7 +532,7 @@ body {
 
 .sidebar-header-menu-dropdown {
   position: absolute;
-  top: 36px;
+  top: 40px;
   right: 12px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
