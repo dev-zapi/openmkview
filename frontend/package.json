@@ -15,17 +15,17 @@
   "dependencies": {
     "@pierre/diffs": "^1.1.0",
     "@pierre/theme": "^0.0.24",
-    "prismjs": "^1.30.0",
-    "remark-gfm": "^4.0.1",
-    "solid-js": "^1.9.11",
-    "solid-markdown": "^2.1.1"
+    "@shikijs/transformers": "^1.0.0",
+    "marked": "^15.0.0",
+    "marked-shiki": "^1.2.1",
+    "shiki": "^1.0.0",
+    "solid-js": "^1.9.11"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@solidjs/testing-library": "^0.8.10",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^24.12.0",
-    "@types/prismjs": "^1.26.6",
     "jsdom": "^29.0.0",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",

@@ -1,52 +1,20 @@
-import { Component, createEffect, type JSX } from 'solid-js';
-import { Dynamic } from 'solid-js/web';
-import { SolidMarkdown } from 'solid-markdown';
-import remarkGfm from 'remark-gfm';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-markdown';
+import { Component, createSignal, createEffect, onCleanup, Show } from 'solid-js';
+import { Marked } from 'marked';
+import { highlightCode, getHighlighter } from '../services/shikiService';
 import type { Heading } from '../types';
 
 interface MarkdownViewProps {
   content: string;
   class?: string;
+  theme?: 'light' | 'dark';
   onHeadingsExtracted?: (headings: Heading[]) => void;
 }
-
-const extractText = (children: any): string => {
-  if (children == null) return '';
-  if (typeof children === 'string') return children;
-  if (typeof children === 'number') return String(children);
-  if (Array.isArray(children)) return children.map(extractText).join('');
-  if (typeof children === 'function') {
-    try {
-      return extractText(children());
-    } catch {
-      return '';
-    }
-  }
-  if (typeof children === 'object') {
-    if (children.props?.children) {
-      return extractText(children.props.children);
-    }
-    if (children.children) {
-      return extractText(children.children);
-    }
-  }
-  return '';
-};
 
 const generateHeadingId = (text: string): string => {
   return text
     .toLowerCase()
     .split('')
-    .filter(c => /[\p{L}\p{N}\s-]/u.test(c))
+    .filter((c) => /[\p{L}\p{N}\s-]/u.test(c))
     .join('')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
@@ -54,105 +22,154 @@ const generateHeadingId = (text: string): string => {
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
+  const [renderedHtml, setRenderedHtml] = createSignal<string>('');
+  const [isRendering, setIsRendering] = createSignal(false);
 
   const extractHeadingsFromHtml = (): Heading[] => {
     if (!containerRef) return [];
-    
+
     const headingElements = containerRef.querySelectorAll('h1, h2, h3, h4, h5, h6');
     const headings: Heading[] = [];
-    
+
     headingElements.forEach((el) => {
       const level = parseInt(el.tagName.charAt(1));
       const text = el.textContent || '';
       const id = el.id || generateHeadingId(text);
-      
+
       if (!el.id) {
         el.id = id;
       }
-      
+
       headings.push({
         depth: level,
         text: text.trim(),
         id,
       });
     });
-    
+
     return headings;
+  };
+
+  const renderMarkdown = async () => {
+    const content = props.content;
+    if (!content) {
+      setRenderedHtml('');
+      return;
+    }
+
+    setIsRendering(true);
+
+    try {
+      await getHighlighter();
+
+      const marked = new Marked({
+        gfm: true,
+        breaks: true,
+      });
+
+      marked.use({
+        async: true,
+        renderer: {
+          heading({ tokens, depth }) {
+            const text = this.parser.parseInline(tokens);
+            const id = generateHeadingId(text);
+            return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+          },
+          code({ text, lang }) {
+            const language = lang || 'text';
+            return `<pre class="shiki-code-block" data-lang="${language}"><code class="language-${language}">${escapeHtml(text)}</code></pre>`;
+          },
+        },
+      });
+
+      let html = await marked.parse(content) as string;
+
+      const codeBlockRegex = /<pre class="shiki-code-block" data-lang="([^"]*)"><code class="language-[^"]*">([\s\S]*?)<\/code><\/pre>/g;
+      const codeBlocks: { lang: string; code: string }[] = [];
+
+      let matchResult;
+      while ((matchResult = codeBlockRegex.exec(html)) !== null) {
+        codeBlocks.push({
+          lang: matchResult[1],
+          code: unescapeHtml(matchResult[2]),
+        });
+      }
+
+      const highlightPromises = codeBlocks.map(async (block) => {
+        try {
+          const result = await highlightCode({
+            code: block.code,
+            lang: block.lang,
+            theme: props.theme,
+          });
+          return result.html;
+        } catch {
+          return `<pre><code class="language-${block.lang}">${escapeHtml(block.code)}</code></pre>`;
+        }
+      });
+
+      const highlightedBlocks = await Promise.all(highlightPromises);
+
+      let index = 0;
+      html = html.replace(/<pre class="shiki-code-block"[^>]*><code[^>]*>[\s\S]*?<\/code><\/pre>/g, () => {
+        return highlightedBlocks[index++] || '';
+      });
+
+      setRenderedHtml(html);
+
+      setTimeout(() => {
+        if (containerRef && props.onHeadingsExtracted) {
+          const headings = extractHeadingsFromHtml();
+          props.onHeadingsExtracted?.(headings);
+        }
+      }, 0);
+    } catch (error) {
+      console.error('Failed to render markdown:', error);
+      setRenderedHtml(`<div class="error">Failed to render markdown</div>`);
+    } finally {
+      setIsRendering(false);
+    }
   };
 
   createEffect(() => {
     props.content;
-    if (containerRef && props.onHeadingsExtracted) {
-      setTimeout(() => {
-        const headings = extractHeadingsFromHtml();
-        props.onHeadingsExtracted?.(headings);
-      }, 0);
-    }
+    props.theme;
+    renderMarkdown();
   });
 
-  const extractCodeText = (children: any): string => {
-    if (children == null) return '';
-    if (typeof children === 'string') return children;
-    if (typeof children === 'number') return String(children);
-    if (typeof children === 'function') return extractCodeText(children());
-    if (Array.isArray(children)) return children.map(extractCodeText).join('');
-    if (typeof children === 'object' && children.props?.children) {
-      return extractCodeText(children.props.children);
-    }
-    return '';
-  };
-
-  const renderCode = (codeProps: any) => {
-    const { class: className, children } = codeProps;
-    const language = className?.replace(/language-/, '') || 'text';
-
-    const code = extractCodeText(children).replace(/\n$/, '');
-    const highlighted = Prism.highlight(
-      code,
-      Prism.languages[language] || Prism.languages.text,
-      language
-    );
-
-    if (className) {
-      return (
-        <code class={`language-${language}`} innerHTML={highlighted} />
-      );
-    }
-
-    return (
-      <code class="inline-code">{children}</code>
-    );
-  };
-
-  const renderHeading = (level: number) => (headingProps: any) => {
-    const tag = `h${level}` as keyof JSX.IntrinsicElements;
-    const text = extractText(headingProps.children);
-    const id = generateHeadingId(text);
-
-    return (
-      <Dynamic component={tag} id={id}>
-        {headingProps.children}
-      </Dynamic>
-    );
-  };
+  onCleanup(() => {});
 
   return (
-    <div ref={containerRef} class={`markdown-view ${props.class || ''}`}>
-      <SolidMarkdown
-        children={props.content}
-        remarkPlugins={[remarkGfm]}
-        components={{
-          code: renderCode,
-          h1: renderHeading(1),
-          h2: renderHeading(2),
-          h3: renderHeading(3),
-          h4: renderHeading(4),
-          h5: renderHeading(5),
-          h6: renderHeading(6),
-        }}
-      />
+    <div
+      ref={containerRef}
+      class={`markdown-view ${props.class || ''} ${isRendering() ? 'rendering' : ''}`}
+    >
+      <Show when={isRendering()}>
+        <div class="markdown-loading-overlay">
+          <div class="markdown-loading-spinner"></div>
+        </div>
+      </Show>
+      <div class="markdown-content" innerHTML={renderedHtml()} />
     </div>
   );
 };
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function unescapeHtml(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'");
+}
 
 export default MarkdownView;

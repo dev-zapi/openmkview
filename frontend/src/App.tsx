@@ -1,6 +1,7 @@
 import { Component, createSignal, onMount, Show, createEffect, For, onCleanup } from 'solid-js';
 import FileTree from './components/FileTree';
 import MarkdownView from './components/MarkdownView';
+import SourceView from './components/SourceView';
 import DiffViewer from './components/DiffViewer';
 import DiffSelector from './components/DiffSelector';
 import GitPanel from './components/GitPanel';
@@ -17,6 +18,7 @@ import { api } from './services/api';
 import { onPopState, getCurrentRoute, navigateToProject, navigateToHome, navigateToFile } from './utils/router';
 import { openProjectStore } from './stores/openProjectStore';
 import { diffStore } from './stores/diffStore';
+import { initWorker } from './services/shikiWorkerClient';
 import './styles/global.css';
 import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
@@ -25,6 +27,10 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
 const getSystemTheme = (): 'light' | 'dark' => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const getEffectiveTheme = (theme: ThemeMode): 'light' | 'dark' => {
+  return theme === 'system' ? getSystemTheme() : theme;
 };
 
   const loadSettings = () => {
@@ -97,6 +103,8 @@ const App: Component = () => {
   let sidebarRef: HTMLDivElement | undefined;
 
   onMount(async () => {
+    initWorker().catch(err => console.warn('Failed to init Shiki worker:', err));
+    
     const projectList = await api.getProjects();
     setProjects(projectList);
 
@@ -667,6 +675,7 @@ const App: Component = () => {
                       <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
                         <MarkdownView 
                           content={currentFile()!.content} 
+                          theme={getEffectiveTheme(settings().theme as ThemeMode)}
                           onHeadingsExtracted={handleHeadingsExtracted} 
                         />
                       </div>
@@ -697,9 +706,13 @@ const App: Component = () => {
                     </Show>
 
                     <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-                      <pre class="source-view content-fade-enter">
-                        <code>{currentFile()!.content}</code>
-                      </pre>
+                      <div class="source-view content-fade-enter">
+                        <SourceView 
+                          content={currentFile()!.content}
+                          fileName={currentFile()!.fileName}
+                          theme={getEffectiveTheme(settings().theme as ThemeMode)}
+                        />
+                      </div>
                     </Show>
                   </div>
                 </div>
@@ -832,7 +845,8 @@ const App: Component = () => {
             <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
               <div class="markdown-wrapper" style={getMarkdownStyle()}>
                 <MarkdownView 
-                  content={currentFile()!.content} 
+                  content={currentFile()!.content}
+                  theme={getEffectiveTheme(settings().theme as ThemeMode)} 
                   onHeadingsExtracted={handleHeadingsExtracted} 
                 />
               </div>
@@ -861,9 +875,13 @@ const App: Component = () => {
             </Show>
 
             <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-              <pre class="source-view">
-                <code>{currentFile()!.content}</code>
-              </pre>
+              <div class="source-view">
+                <SourceView 
+                  content={currentFile()!.content}
+                  fileName={currentFile()!.fileName}
+                  theme={getEffectiveTheme(settings().theme as ThemeMode)}
+                />
+              </div>
             </Show>
           </div>
         </MobileLayout>

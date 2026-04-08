@@ -408,6 +408,168 @@
   color: var(--color-text);
 }
 
+/* Shiki Code Block Styles */
+.shiki {
+  background: var(--color-code-bg) !important;
+  padding: 16px !important;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.shiki code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-view .shiki {
+  margin-bottom: 1em;
+  border: 1px solid var(--color-border);
+}
+
+/* Source View Styles */
+.source-view-wrapper {
+  background: var(--color-code-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.source-highlighted {
+  overflow: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.source-highlighted pre {
+  margin: 0;
+  padding: 16px;
+  background: transparent !important;
+}
+
+.source-highlighted code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.source-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--color-text);
+}
+
+.source-error {
+  padding: 12px 16px;
+  background: var(--color-error);
+  color: white;
+  font-size: 12px;
+}
+
+/* Markdown Loading & Rendering States */
+.markdown-view.rendering {
+  position: relative;
+}
+
+.markdown-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.dark-theme .markdown-loading-overlay {
+  background: rgba(26, 26, 26, 0.8);
+}
+
+.markdown-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.markdown-content {
+  min-height: 100px;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Diff Viewer Enhanced Styles */
+.diff-container {
+  flex: 1;
+  overflow: auto;
+  min-height: 300px;
+}
+
+.diff-loading-active {
+  opacity: 0.5;
+}
+
+.diff-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--color-text);
+}
+
+.diff-error {
+  padding: 12px 16px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+}
+
+.diff-fallback-note {
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
+.diff-fallback {
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.diff-file-info {
+  font-size: 12px;
+  color: var(--color-text);
+  margin-left: 8px;
+}
+
+/* Inline Code Styles */
+.inline-code {
+  background: var(--color-code-bg);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
 /* Mobile-specific styles for global components */
 @media (max-width: 768px) {
   .markdown-view pre {
