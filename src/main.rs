@@ -33,11 +33,7 @@ use openmkview::AppState;
 
 /// OpenMKView - Markdown file previewer
 #[derive(Parser, Debug)]
-#[command(
-    name = "openmkview",
-    version,
-    about = "A Markdown file previewer with web UI"
-)]
+#[command(name = "openmkview", about = "A Markdown file previewer with web UI")]
 struct Cli {
     /// Host address to bind
     #[arg(long, env = "OPENMKVIEW_HOST", default_value = "0.0.0.0")]
@@ -50,6 +46,10 @@ struct Cli {
     /// Number of HTTP worker threads
     #[arg(long, env = "OPENMKVIEW_WORKERS")]
     workers: Option<usize>,
+
+    /// Print version information
+    #[arg(short, long)]
+    version: bool,
 }
 
 #[actix_web::main]
@@ -57,6 +57,16 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("debug"));
 
     let cli = Cli::parse();
+
+    if cli.version {
+        let version = env!("CARGO_PKG_VERSION");
+        let build_time = env!("BUILD_TIME");
+        let git_hash = env!("GIT_SHORT_HASH");
+        println!("openmkview {}", version);
+        println!("Build Time: {}", build_time);
+        println!("Git Commit: {}", git_hash);
+        return Ok(());
+    }
 
     let db_path = if let Ok(path) = std::env::var("OPENMKVIEW_DB_PATH") {
         std::path::PathBuf::from(path)
