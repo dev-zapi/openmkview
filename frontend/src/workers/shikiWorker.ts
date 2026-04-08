@@ -1,32 +1,31 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import githubLight from 'shiki/themes/github-light.mjs';
+import githubDark from 'shiki/themes/github-dark.mjs';
+import javascript from 'shiki/langs/javascript.mjs';
+import typescript from 'shiki/langs/typescript.mjs';
+import rust from 'shiki/langs/rust.mjs';
+import python from 'shiki/langs/python.mjs';
+import bash from 'shiki/langs/bash.mjs';
+import json from 'shiki/langs/json.mjs';
+import css from 'shiki/langs/css.mjs';
+import markdown from 'shiki/langs/markdown.mjs';
+import html from 'shiki/langs/html.mjs';
+import yaml from 'shiki/langs/yaml.mjs';
+import toml from 'shiki/langs/toml.mjs';
+import sql from 'shiki/langs/sql.mjs';
+import go from 'shiki/langs/go.mjs';
+import java from 'shiki/langs/java.mjs';
+import c from 'shiki/langs/c.mjs';
+import cpp from 'shiki/langs/cpp.mjs';
+import jsx from 'shiki/langs/jsx.mjs';
+import tsx from 'shiki/langs/tsx.mjs';
+import vue from 'shiki/langs/vue.mjs';
+import svelte from 'shiki/langs/svelte.mjs';
+import dockerfile from 'shiki/langs/dockerfile.mjs';
+import diff from 'shiki/langs/diff.mjs';
 
 const LIGHT_THEME = 'github-light';
 const DARK_THEME = 'github-dark';
-
-const COMMON_LANGS = [
-  'javascript',
-  'typescript',
-  'rust',
-  'python',
-  'bash',
-  'json',
-  'css',
-  'markdown',
-  'html',
-  'yaml',
-  'toml',
-  'sql',
-  'go',
-  'java',
-  'c',
-  'cpp',
-  'jsx',
-  'tsx',
-  'vue',
-  'svelte',
-  'dockerfile',
-  'diff',
-];
 
 interface HighlightRequest {
   id: number;
@@ -65,33 +64,30 @@ async function initHighlighter(): Promise<void> {
   const engine = await createOnigurumaEngine(onigWasm);
 
   highlighter = await createHighlighterCore({
-    themes: [
-      import('shiki/themes/github-light.mjs'),
-      import('shiki/themes/github-dark.mjs'),
-    ],
+    themes: [githubLight, githubDark],
     langs: [
-      import('@shikijs/langs/javascript'),
-      import('@shikijs/langs/typescript'),
-      import('@shikijs/langs/rust'),
-      import('@shikijs/langs/python'),
-      import('@shikijs/langs/bash'),
-      import('@shikijs/langs/json'),
-      import('@shikijs/langs/css'),
-      import('@shikijs/langs/markdown'),
-      import('@shikijs/langs/html'),
-      import('@shikijs/langs/yaml'),
-      import('@shikijs/langs/toml'),
-      import('@shikijs/langs/sql'),
-      import('@shikijs/langs/go'),
-      import('@shikijs/langs/java'),
-      import('@shikijs/langs/c'),
-      import('@shikijs/langs/cpp'),
-      import('@shikijs/langs/jsx'),
-      import('@shikijs/langs/tsx'),
-      import('@shikijs/langs/vue'),
-      import('@shikijs/langs/svelte'),
-      import('@shikijs/langs/dockerfile'),
-      import('@shikijs/langs/diff'),
+      javascript,
+      typescript,
+      rust,
+      python,
+      bash,
+      json,
+      css,
+      markdown,
+      html,
+      yaml,
+      toml,
+      sql,
+      go,
+      java,
+      c,
+      cpp,
+      jsx,
+      tsx,
+      vue,
+      svelte,
+      dockerfile,
+      diff,
     ],
     engine,
   });
