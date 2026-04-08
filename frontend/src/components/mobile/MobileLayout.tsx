@@ -1,4 +1,4 @@
-import { Component, JSX, Show } from 'solid-js';
+import { Component, JSX, Show, createSignal } from 'solid-js';
 import { MobileDrawer } from './MobileDrawer';
 import { mobileLayoutStore } from '../../stores/mobileLayoutStore';
 import styles from './MobileLayout.module.css';
@@ -15,9 +15,28 @@ interface MobileLayoutProps {
   onSettingsClick?: () => void;
   onThemeToggle?: () => void;
   currentTheme?: ThemeMode;
+  onProjectEdit?: () => void;
+  onProjectColorChange?: () => void;
 }
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
+  const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
+
+  const handleProjectMenuToggle = (e: MouseEvent) => {
+    e.stopPropagation();
+    setProjectMenuOpen(!projectMenuOpen());
+  };
+
+  const handleProjectEdit = () => {
+    setProjectMenuOpen(false);
+    props.onProjectEdit?.();
+  };
+
+  const handleProjectColorChange = () => {
+    setProjectMenuOpen(false);
+    props.onProjectColorChange?.();
+  };
+
   return (
     <div class={styles.mobileContainer}>
       {/* Mobile top bar */}
@@ -39,6 +58,44 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
           <span class={styles.topBarProjectName}>
             {props.activeProjectName || 'OpenMKView'}
           </span>
+          <Show when={props.activeProjectName && (props.onProjectEdit || props.onProjectColorChange)}>
+            <button
+              class={styles.projectMenuButton}
+              onClick={handleProjectMenuToggle}
+              aria-label="Project menu"
+              aria-expanded={projectMenuOpen()}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2"/>
+                <circle cx="12" cy="12" r="2"/>
+                <circle cx="12" cy="19" r="2"/>
+              </svg>
+            </button>
+            <Show when={projectMenuOpen()}>
+              <div class={styles.projectMenuDropdown}>
+                <Show when={props.onProjectEdit}>
+                  <button class={styles.projectMenuItem} onClick={handleProjectEdit}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    <span>Edit Project</span>
+                  </button>
+                </Show>
+                <Show when={props.onProjectColorChange}>
+                  <button class={styles.projectMenuItem} onClick={handleProjectColorChange}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="13.5" cy="6.5" r="2.5"/>
+                      <circle cx="19" cy="13" r="2.5"/>
+                      <circle cx="13.5" cy="19.5" r="2.5"/>
+                      <circle cx="6" cy="13" r="2.5"/>
+                    </svg>
+                    <span>Change Color</span>
+                  </button>
+                </Show>
+              </div>
+            </Show>
+          </Show>
         </div>
         <div class={styles.topBarActions}>
           <button
@@ -128,7 +185,6 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         onClose={mobileLayoutStore.closeRightDrawer}
         position="right"
         width="80%"
-        disableOverlayClose={true}
       >
         <div class={styles.rightDrawerContent}>
           <Show when={props.outlinePanelContent}>

@@ -7,6 +7,7 @@ interface OutlinePanelProps {
   onClose: () => void;
   onHeadingClick?: (id: string) => void;
   preventAutoClose?: boolean;
+  showCloseButton?: boolean;
 }
 
 const OutlinePanel: Component<OutlinePanelProps> = (props) => {
@@ -38,6 +39,10 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
     } else if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    if (!props.preventAutoClose) {
+      props.onClose();
+    }
   };
 
   const getIndentStyle = (depth: number) => {
@@ -67,6 +72,18 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
           </svg>
           Outline
         </h3>
+        <Show when={props.showCloseButton}>
+          <button
+            class="outline-close-btn"
+            onClick={props.onClose}
+            aria-label="Close outline"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </Show>
       </div>
 
       <div class="outline-panel-content">

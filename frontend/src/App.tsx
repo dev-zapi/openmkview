@@ -723,6 +723,17 @@ const App: Component = () => {
           onSettingsClick={() => setSettingsOpen(true)}
           onThemeToggle={toggleTheme}
           currentTheme={settings().theme as ThemeMode}
+          onProjectEdit={handleProjectEdit}
+          onProjectColorChange={() => {
+            if (activeProject()) {
+              const mockEvent = {
+                currentTarget: document.querySelector('.projectMenuButton'),
+                preventDefault: () => {},
+                stopPropagation: () => {},
+              } as any;
+              handleColorPickerOpen(mockEvent, activeProject()!.id);
+            }
+          }}
           activityBarContent={
             <>
               <For each={projects()}>
@@ -731,7 +742,6 @@ const App: Component = () => {
                     class={activeProject()?.id === p.id ? 'active' : ''}
                     title={p.name}
                     onClick={() => handleMobileProjectSwitch(p)}
-                    onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
                     style={getColorStyle(p)}
                   >
                     {renderProjectIcon(p)}
@@ -772,6 +782,7 @@ const App: Component = () => {
               headings={extractedHeadings()}
               isOpen={mobileLayoutStore.rightDrawerOpen}
               onClose={() => mobileLayoutStore.closeRightDrawer()}
+              showCloseButton={true}
             />
           }
           headerContent={

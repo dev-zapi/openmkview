@@ -1189,6 +1189,7 @@ textarea {
   height: 40px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg-subtle);
@@ -1204,6 +1205,25 @@ textarea {
   align-items: center;
   gap: 8px;
   margin: 0;
+}
+
+.outline-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.outline-close-btn:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
 }
 
 /* Font Presets */
