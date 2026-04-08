@@ -316,23 +316,65 @@
   }
 
   .documentTitleBar {
-    height: 48px;
+    height: 44px;
+    padding: 0 8px;
+    gap: 4px;
   }
 
   .fileName {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .documentMeta {
-    font-size: 11px;
+    display: none;
+  }
+
+  .documentCenter {
+    display: flex;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .viewTabs {
+    gap: 1px;
+  }
+
+  .tabItem {
+    padding: 4px 10px;
+    font-size: 12px;
   }
 
   .documentRight {
-    gap: 2px;
+    gap: 1px;
   }
 
   .toolbarButtonIcon {
-    padding: 4px;
+    padding: 6px;
+    width: 32px;
+    height: 32px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .toolbarButtonIcon:active {
+    background: var(--color-active-bg);
+  }
+
+  /* Hide fullscreen button on mobile */
+  .toolbarButtonIcon:last-child {
+    display: none;
+  }
+
+  .dropdownMenu {
+    right: 0;
+    left: auto;
+  }
+
+  .searchBox {
+    padding: 8px;
+  }
+
+  .searchInputWrapper {
+    padding: 2px 6px;
   }
 }
 

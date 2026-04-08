@@ -1539,6 +1539,11 @@ textarea {
 
 /* Mobile Layout Styles */
 @media (max-width: 768px) {
+  /* Ensure root doesn't force horizontal layout on mobile */
+  #root {
+    display: block;
+  }
+
   /* Hide desktop sidebar on mobile */
   .sidebar {
     display: none;
@@ -1572,8 +1577,9 @@ textarea {
   }
 
   /* Optimize file tree for mobile */
-  .file-tree .item {
-    padding: 8px 12px;
+  .file-tree .item,
+  .file-tree .tree-item {
+    padding: 10px 12px;
     font-size: 14px;
   }
 
@@ -1586,11 +1592,12 @@ textarea {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding: 16px;
   }
 
   /* Welcome screen adjustments */
   .welcome {
-    padding: 40px 16px;
+    padding: 60px 20px;
   }
 
   .welcome h1 {
@@ -1604,6 +1611,131 @@ textarea {
   /* Markdown wrapper on mobile */
   .markdown-wrapper {
     padding: 0;
+  }
+
+  /* Source view on mobile */
+  .source-view {
+    font-size: 12px;
+    padding: 12px;
+    border-radius: 6px;
+  }
+
+  /* Diff selector on mobile - vertical stack */
+  .diff-selector {
+    padding: 12px;
+  }
+
+  .selector-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .selector-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .selector-group select {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .compare-arrow {
+    text-align: center;
+    transform: rotate(90deg);
+    font-size: 16px;
+  }
+
+  .compare-btn {
+    width: 100%;
+  }
+
+  /* Settings panel mobile */
+  .settings-panel {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+
+  .settings-panel-header {
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0));
+  }
+
+  .settings-panel-content {
+    padding: 16px;
+  }
+
+  .settings-panel-footer {
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0));
+  }
+
+  .font-presets,
+  .size-presets {
+    gap: 6px;
+  }
+
+  .font-presets button,
+  .size-presets button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* Outline panel on mobile */
+  .outline-panel {
+    width: 100%;
+    border-left: none;
+  }
+
+  .outline-item {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  /* Git panel on mobile - full width */
+  .git-panel {
+    width: 100%;
+  }
+
+  /* Scrollbar - thinner on mobile */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: none;
+    border-radius: 2px;
+  }
+
+  /* Mobile project name in left drawer */
+  .mobile-project-name {
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Open project dialog mobile */
+  .open-project-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+
+  /* Disable hover effects on touch devices */
+  .activity-bar-projects button:hover,
+  .activity-bar-bottom button:hover,
+  .activity-bar-add:hover {
+    transform: none;
   }
 }
 
