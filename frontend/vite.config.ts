@@ -12,9 +12,20 @@ export default defineConfig(({ mode }) => {
     plugins: [
       solid(),
       tailwindcss(),
-      // 在开发模式下启用 mock 服务
       mockServerPlugin(),
     ],
+    resolve: {
+      dedupe: [
+        'shiki',
+        '@shikijs/core',
+        '@shikijs/engine-oniguruma',
+        '@shikijs/engine-javascript',
+        '@shikijs/langs',
+        '@shikijs/themes',
+        '@shikijs/types',
+        '@shikijs/transformers',
+      ],
+    },
     optimizeDeps: {
       include: ['debug', 'extend'],
     },
@@ -35,6 +46,7 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       outDir: '../dist',
       emptyOutDir: true,
+      chunkSizeWarningLimit: 1500,
     },
   };
 });

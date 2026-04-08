@@ -55,21 +55,45 @@ let highlighter: HighlighterCore | null = null;
 async function initHighlighter(): Promise<void> {
   if (highlighter) return;
 
-  const { loadWasm } = await import('shiki/engine/oniguruma');
+  const { createOnigurumaEngine } = await import('shiki/engine/oniguruma');
   
   const onigWasm = await import(
     /* @vite-ignore */
     'shiki/onig.wasm?init'
   ).then((m) => m.default);
   
-  await loadWasm(onigWasm);
+  const engine = await createOnigurumaEngine(onigWasm);
 
   highlighter = await createHighlighterCore({
     themes: [
       import('shiki/themes/github-light.mjs'),
       import('shiki/themes/github-dark.mjs'),
     ],
-    langs: COMMON_LANGS.map((lang) => import(`shiki/langs/${lang}.mjs`)),
+    langs: [
+      import('@shikijs/langs/javascript'),
+      import('@shikijs/langs/typescript'),
+      import('@shikijs/langs/rust'),
+      import('@shikijs/langs/python'),
+      import('@shikijs/langs/bash'),
+      import('@shikijs/langs/json'),
+      import('@shikijs/langs/css'),
+      import('@shikijs/langs/markdown'),
+      import('@shikijs/langs/html'),
+      import('@shikijs/langs/yaml'),
+      import('@shikijs/langs/toml'),
+      import('@shikijs/langs/sql'),
+      import('@shikijs/langs/go'),
+      import('@shikijs/langs/java'),
+      import('@shikijs/langs/c'),
+      import('@shikijs/langs/cpp'),
+      import('@shikijs/langs/jsx'),
+      import('@shikijs/langs/tsx'),
+      import('@shikijs/langs/vue'),
+      import('@shikijs/langs/svelte'),
+      import('@shikijs/langs/dockerfile'),
+      import('@shikijs/langs/diff'),
+    ],
+    engine,
   });
 
   self.postMessage({ type: 'initialized' } as InitResponse);
