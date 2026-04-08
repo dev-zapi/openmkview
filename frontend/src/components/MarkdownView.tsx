@@ -1,7 +1,9 @@
-import { Component, createSignal, createEffect, onCleanup, Show } from 'solid-js';
+import { Component, createSignal, createEffect, createMemo, onCleanup, Show } from 'solid-js';
 import { Marked } from 'marked';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import type { Heading } from '../types';
+import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
+import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
   content: string;
@@ -24,6 +26,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
   const [renderedHtml, setRenderedHtml] = createSignal<string>('');
   const [isRendering, setIsRendering] = createSignal(false);
+
+  const parsed = createMemo(() => parseFrontmatter(props.content));
+  const frontmatterData = () => parsed().data;
+  const markdownBody = () => parsed().content;
 
   const extractHeadingsFromHtml = (): Heading[] => {
     if (!containerRef) return [];
@@ -51,7 +57,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   };
 
   const renderMarkdown = async () => {
-    const content = props.content;
+    const content = markdownBody();
     if (!content) {
       setRenderedHtml('');
       return;
@@ -149,6 +155,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           <div class="markdown-loading-spinner"></div>
         </div>
       </Show>
+      {hasFrontmatter(frontmatterData()) && (
+        <FrontmatterPanel data={frontmatterData()} />
+      )}
       <div class="markdown-content" innerHTML={renderedHtml()} />
     </div>
   );
