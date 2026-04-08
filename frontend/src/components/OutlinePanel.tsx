@@ -6,7 +6,6 @@ interface OutlinePanelProps {
   isOpen: boolean;
   onClose: () => void;
   onHeadingClick?: (id: string) => void;
-  preventAutoClose?: boolean;
   showCloseButton?: boolean;
 }
 
@@ -40,9 +39,7 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    if (!props.preventAutoClose) {
-      props.onClose();
-    }
+    props.onHeadingClick?.(id);
   };
 
   const getIndentStyle = (depth: number) => {

@@ -783,6 +783,7 @@ const App: Component = () => {
               isOpen={mobileLayoutStore.rightDrawerOpen}
               onClose={() => mobileLayoutStore.closeRightDrawer()}
               showCloseButton={true}
+              onHeadingClick={() => mobileLayoutStore.closeRightDrawer()}
             />
           }
           headerContent={
