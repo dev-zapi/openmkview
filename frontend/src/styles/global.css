@@ -407,3 +407,62 @@
   font-size: 11px;
   color: var(--color-text);
 }
+
+/* Mobile-specific styles for global components */
+@media (max-width: 768px) {
+  .markdown-view pre {
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .markdown-view table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .markdown-view th,
+  .markdown-view td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .markdown-view h1 {
+    font-size: 1.6em;
+  }
+
+  .markdown-view h2 {
+    font-size: 1.3em;
+  }
+
+  .markdown-view h3 {
+    font-size: 1.1em;
+  }
+
+  .diff-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .toolbar-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .git-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .git-commit-input {
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .git-actions {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+}

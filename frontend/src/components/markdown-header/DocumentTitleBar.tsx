@@ -183,7 +183,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         </button>
 
         <button
-          class={styles.toolbarButtonIcon}
+          class={`${styles.toolbarButtonIcon} ${styles.fullscreenButton}`}
           onClick={props.onFullscreenToggle}
           title={props.isFullscreen ? '退出全屏' : '全屏'}
         >

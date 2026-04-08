@@ -102,7 +102,7 @@ const allListItems = createMemo<ListableItem[]>(() => {
     
     const results = hook.searchResults();
     if (results.length > 0) {
-      for (const r of results.slice(0, 5)) {
+      for (const r of results) {
         items.push({ 
           path: r.path, 
           name: r.name, 
@@ -220,30 +220,32 @@ const allListItems = createMemo<ListableItem[]>(() => {
               </Show>
             </div>
 
-            {/* List Items */}
-            <For each={allListItems()}>
-              {(item, index) => (
-                <div 
-                  class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
-                  onClick={() => hook.openProjectByPath(item.path)}
-                  onKeyDown={handleListItemKeyDown}
-                  tabIndex={0}
-                  role="button"
-                >
-                  <span class="folder-icon">{item.icon}</span>
-                  <Show when={item.relativePath} fallback={<span class="folder-path">{item.path}</span>}>
-                    <div class="folder-info">
-                      <span class="folder-name">{item.name}</span>
-                      <span class="folder-path-small">{item.relativePath}</span>
-                    </div>
-                  </Show>
-                </div>
-              )}
-            </For>
+            {/* List Items Container - Scrollable */}
+            <div class="folder-list-container">
+              <For each={allListItems()}>
+                {(item, index) => (
+                  <div 
+                    class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
+                    onClick={() => hook.openProjectByPath(item.path)}
+                    onKeyDown={handleListItemKeyDown}
+                    tabIndex={0}
+                    role="button"
+                  >
+                    <span class="folder-icon">{item.icon}</span>
+                    <Show when={item.relativePath} fallback={<span class="folder-path">{item.path}</span>}>
+                      <div class="folder-info">
+                        <span class="folder-name">{item.name}</span>
+                        <span class="folder-path-small">{item.relativePath}</span>
+                      </div>
+                    </Show>
+                  </div>
+                )}
+              </For>
 
-            <Show when={hook.isLoadingRecent()}>
-              <div class="loading-text">Loading...</div>
-            </Show>
+              <Show when={hook.isLoadingRecent()}>
+                <div class="loading-text">Loading...</div>
+              </Show>
+            </div>
           </div>
         </div>
       </div>
