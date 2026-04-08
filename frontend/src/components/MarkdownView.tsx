@@ -1,4 +1,4 @@
-import { Component, createEffect, type JSX } from 'solid-js';
+import { Component, createEffect, createMemo, type JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { SolidMarkdown } from 'solid-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +12,8 @@ import 'prismjs/components/prism-json';
 import 'prismjs/components/prism-css';
 import 'prismjs/components/prism-markdown';
 import type { Heading } from '../types';
+import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
+import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
   content: string;
@@ -54,6 +56,10 @@ const generateHeadingId = (text: string): string => {
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
+
+  const parsed = createMemo(() => parseFrontmatter(props.content));
+  const frontmatterData = () => parsed().data;
+  const markdownBody = () => parsed().content;
 
   const extractHeadingsFromHtml = (): Heading[] => {
     if (!containerRef) return [];
@@ -138,8 +144,11 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   return (
     <div ref={containerRef} class={`markdown-view ${props.class || ''}`}>
+      {hasFrontmatter(frontmatterData()) && (
+        <FrontmatterPanel data={frontmatterData()} />
+      )}
       <SolidMarkdown
-        children={props.content}
+        children={markdownBody()}
         remarkPlugins={[remarkGfm]}
         components={{
           code: renderCode,
