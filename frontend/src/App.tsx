@@ -334,12 +334,6 @@ const App: Component = () => {
     setActiveTab('preview');
   };
 
-  const handleMobileMenuClick = () => {
-    if (isMobile()) {
-      mobileLayoutStore.toggleLeftDrawer();
-    }
-  };
-
   const handleMobileOutlineToggle = () => {
     if (isMobile()) {
       mobileLayoutStore.toggleRightDrawer();
@@ -726,7 +720,6 @@ const App: Component = () => {
       <Show when={isMobile()}>
         <MobileLayout
           activeProjectName={activeProject()?.name}
-          onMenuClick={handleMobileMenuClick}
           onSettingsClick={() => setSettingsOpen(true)}
           onThemeToggle={toggleTheme}
           currentTheme={settings().theme as ThemeMode}

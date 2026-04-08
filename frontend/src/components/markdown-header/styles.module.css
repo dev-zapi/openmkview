@@ -143,6 +143,10 @@
   color: var(--color-text-h);
 }
 
+.fullscreenButton {
+  /* Visible by default on desktop, hidden on mobile via @media */
+}
+
 .badge {
   background: var(--color-accent);
   color: var(--color-button-text);
@@ -360,7 +364,7 @@
   }
 
   /* Hide fullscreen button on mobile */
-  .toolbarButtonIcon:last-child {
+  .fullscreenButton {
     display: none;
   }
 

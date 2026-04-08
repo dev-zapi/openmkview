@@ -1687,6 +1687,12 @@ textarea {
     font-size: 13px;
   }
 
+  /* Prevent iOS zoom on input focus */
+  .settings-item select,
+  .settings-item input {
+    font-size: 16px;
+  }
+
   /* Outline panel on mobile */
   .outline-panel {
     width: 100%;
@@ -1720,15 +1726,6 @@ textarea {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  /* Open project dialog mobile */
-  .open-project-dialog {
-    width: 100vw;
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
-    border: none;
   }
 
   /* Disable hover effects on touch devices */
