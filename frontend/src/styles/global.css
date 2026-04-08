@@ -155,6 +155,10 @@
   transition: background 0.15s ease;
 }
 
+.frontmatter-header--collapsed {
+  border-bottom: none;
+}
+
 .frontmatter-header:hover {
   background: var(--color-bg-tertiary);
 }
@@ -194,13 +198,19 @@
 .frontmatter-table {
   width: 100%;
   border-collapse: collapse;
+  margin-bottom: 0;
 }
 
 .frontmatter-table tr:not(:last-child) {
   border-bottom: 1px solid var(--color-border);
 }
 
+.frontmatter-table tr:nth-child(2n) {
+  background: transparent;
+}
+
 .frontmatter-table td {
+  border: none;
   padding: 8px 14px;
   vertical-align: top;
   line-height: 1.5;
@@ -559,5 +569,14 @@
   .git-actions {
     padding: 8px 12px;
     flex-wrap: wrap;
+  }
+
+  .frontmatter-key {
+    width: 100px;
+  }
+
+  .frontmatter-table td {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }

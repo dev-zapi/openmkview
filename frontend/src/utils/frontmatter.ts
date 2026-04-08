@@ -10,7 +10,7 @@ export interface FrontmatterResult {
   content: string;
 }
 
-const FRONTMATTER_REGEX = /^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/;
+const FRONTMATTER_REGEX = /^---\s*\n([\s\S]*?)\n?---\s*(?:\n|$)/;
 
 /**
  * Parse YAML frontmatter from the beginning of a markdown string.
@@ -42,8 +42,9 @@ export function parseFrontmatter(raw: string): FrontmatterResult {
 
     // Strip surrounding quotes
     if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+       (value.startsWith("'") && value.endsWith("'")))
     ) {
       value = value.slice(1, -1);
     }

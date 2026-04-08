@@ -1,4 +1,4 @@
-import { Component, For, Show, createSignal } from 'solid-js';
+import { Component, For, Show, createSignal, createMemo } from 'solid-js';
 
 interface FrontmatterPanelProps {
   data: Record<string, string>;
@@ -7,14 +7,16 @@ interface FrontmatterPanelProps {
 const FrontmatterPanel: Component<FrontmatterPanelProps> = (props) => {
   const [collapsed, setCollapsed] = createSignal(false);
 
-  const entries = () => Object.entries(props.data);
+  const entries = createMemo(() => Object.entries(props.data));
 
   return (
     <Show when={entries().length > 0}>
       <div class="frontmatter-panel">
         <button
           class="frontmatter-header"
+          classList={{ 'frontmatter-header--collapsed': collapsed() }}
           onClick={() => setCollapsed(!collapsed())}
+          aria-expanded={!collapsed()}
         >
           <svg
             class="frontmatter-chevron"
