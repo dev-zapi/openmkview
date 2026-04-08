@@ -274,7 +274,7 @@ const App: Component = () => {
   const handleCloseProject = async (e: Event, projectId: number) => {
     e.stopPropagation();
     try {
-      await api.deleteProject(projectId);
+      await api.closeProject(projectId);
       const updated = projects().filter(p => p.id !== projectId);
       setProjects(updated);
       if (activeProject()?.id === projectId) {
@@ -412,6 +412,14 @@ const App: Component = () => {
   const handleProjectEdit = () => {
     setProjectMenuOpen(false);
     setProjectEditDialogOpen(true);
+  };
+
+  const handleProjectClose = () => {
+    setProjectMenuOpen(false);
+    const project = activeProject();
+    if (project) {
+      handleCloseProject(new Event('click'), project.id);
+    }
   };
 
   const handleProjectSave = async (project: Project) => {
@@ -586,6 +594,13 @@ const App: Component = () => {
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                           </svg>
                           <span>Edit Project Info</span>
+                        </button>
+                        <button class="menu-item" onClick={handleProjectClose}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                          <span>Close Project</span>
                         </button>
                       </div>
                     </Show>

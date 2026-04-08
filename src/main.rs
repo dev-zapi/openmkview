@@ -23,7 +23,7 @@ mod static_files;
 
 use db::init_db;
 use handlers::{
-    create_file, create_project, delete_file, delete_project, execute_git, get_branches,
+    close_project, create_file, create_project, delete_file, execute_git, get_branches,
     get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
     get_recent_projects, get_settings, get_tags, list_projects, open_project, rename_file,
     resolve_path, search_favicons, update_project, update_project_color, update_settings,
@@ -89,7 +89,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/projects/recent", web::get().to(get_recent_projects))
             .route("/api/projects/validate", web::post().to(validate_project))
             .route("/api/projects/open", web::post().to(open_project))
-            .route("/api/projects/{id}", web::delete().to(delete_project))
+            .route("/api/projects/{id}/close", web::post().to(close_project))
             .route("/api/projects/{id}", web::put().to(update_project))
             .route(
                 "/api/projects/{id}/color",

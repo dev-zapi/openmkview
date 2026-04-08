@@ -161,7 +161,7 @@ pub async fn create_project(
     Ok(status.json(project))
 }
 
-pub async fn delete_project(
+pub async fn close_project(
     data: web::Data<AppState>,
     path: web::Path<i64>,
 ) -> AppResult<HttpResponse> {

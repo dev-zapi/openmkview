@@ -10,7 +10,7 @@ pub use git_handler::{
     execute_git, get_branches, get_commits, get_file_at_ref, get_file_diff, get_tags,
 };
 pub use project_handler::{
-    create_project, delete_project, get_recent_projects, list_projects, open_project, resolve_path,
+    close_project, create_project, get_recent_projects, list_projects, open_project, resolve_path,
     update_project, update_project_color, validate_project,
 };
 pub use settings_handler::{get_settings, update_settings};

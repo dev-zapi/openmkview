@@ -32,9 +32,9 @@ export const api = {
     return res.json();
   },
 
-  async deleteProject(id: number): Promise<void> {
-    await fetch(`/api/projects/${id}`, {
-      method: 'DELETE',
+  async closeProject(id: number): Promise<void> {
+    await fetch(`/api/projects/${id}/close`, {
+      method: 'POST',
     });
   },
 
