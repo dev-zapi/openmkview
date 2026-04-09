@@ -2,32 +2,14 @@
 
 ## Auto Commit Rule
 
-**After every code modification, automatically commit the changes:**
+**After every code modification, automatically commit:**
 
-1. Check if the working directory is a git repository:
-   ```bash
-   git rev-parse --git-dir > /dev/null 2>&1
-   ```
-
-2. If it is a git repo, automatically stage and commit:
-   ```bash
-   git add .
-   git commit -m "<descriptive message>"
-   ```
-
-3. Commit message format:
-   - Use **English**
-   - Follow Conventional Commits: `<type>: <description>`
+1. Run `cargo fmt && cargo clippy && cargo test` (Rust code)
+2. `git add . && git commit -m "<type>: <description>"`
    - Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
-   - Keep first line under 50 characters
+   - Use English, keep under 50 chars
 
-4. Before committing:
-   - Run `cargo fmt` (for Rust code)
-   - Run `cargo clippy` (for Rust code)
-   - Run `cargo test` (for Rust code)
-   - Ensure no `.unwrap()` in committed code
-
-5. Do NOT commit if:
-   - There are no changes
-   - The user explicitly tells you NOT to commit
-   - The repository contains secrets or sensitive files
+**Do NOT commit if:**
+- No changes
+- User says not to
+- Contains secrets
