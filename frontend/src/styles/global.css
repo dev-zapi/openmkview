@@ -318,7 +318,7 @@
 .compare-btn {
   padding: 8px 20px;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-button-text);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -538,9 +538,9 @@
 
 /* Source View Styles */
 .source-view-wrapper {
-  background: var(--color-code-bg);
-  border-radius: 8px;
-  overflow: hidden;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .source-highlighted {
