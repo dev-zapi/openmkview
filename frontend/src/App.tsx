@@ -682,7 +682,7 @@ const App: Component = () => {
                     </Show>
 
                     <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
-                      <div class="content-fade-enter">
+                      <div class="diff-tab-content content-fade-enter">
                         <DiffSelector
                           projectId={activeProject()!.id}
                           filePath={currentFile()!.path}

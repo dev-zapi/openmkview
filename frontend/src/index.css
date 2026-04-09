@@ -993,9 +993,9 @@ textarea {
 
 /* Source View */
 .source-view {
-  background: var(--color-code-bg);
+  background: transparent;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 0;
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: 14px;
