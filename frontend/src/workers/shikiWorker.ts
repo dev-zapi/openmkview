@@ -32,12 +32,13 @@ async function initHighlighter(): Promise<void> {
 
   const { createOnigurumaEngine } = await import('shiki/engine/oniguruma');
   
-  const onigWasm = await import(
+  const onigWasmUrl = await import(
     /* @vite-ignore */
-    'shiki/onig.wasm?init'
+    'shiki/onig.wasm?url'
   ).then((m) => m.default);
   
-  const engine = await createOnigurumaEngine(onigWasm);
+  const wasmResponse = await fetch(onigWasmUrl);
+  const engine = await createOnigurumaEngine(wasmResponse.arrayBuffer());
 
   highlighter = await createHighlighterCore({
     themes: [
