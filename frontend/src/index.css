@@ -899,7 +899,7 @@ textarea {
 .content-main {
   flex: 1;
   overflow-y: auto;
-  padding: 32px;
+  padding: 16px;
   transition: padding 0.3s ease;
 }
 
