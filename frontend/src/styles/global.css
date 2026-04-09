@@ -234,8 +234,7 @@
 
 /* Diff Viewer Styles */
 .diff-tab-content {
-  margin: -32px;
-  padding: 0;
+  margin: -8px;
   height: 100%;
   display: flex;
   flex-direction: column;
