@@ -2,6 +2,7 @@ mod file_handler;
 mod git_handler;
 mod project_handler;
 mod settings_handler;
+mod theme_handler;
 
 pub use file_handler::{
     create_file, delete_file, get_file_content, get_file_tree, rename_file, search_favicons,
@@ -14,3 +15,6 @@ pub use project_handler::{
     update_project, update_project_color, validate_project,
 };
 pub use settings_handler::{get_settings, update_settings};
+pub use theme_handler::{
+    delete_custom_theme, get_theme_css_content, install_custom_theme, list_themes,
+};

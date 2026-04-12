@@ -99,6 +99,98 @@
   --color-button-text: #ffffff;
 }
 
+/* ===== Builtin Light Themes ===== */
+
+/* Light Warm - Cozy amber/warm tones */
+.light-theme.light-warm {
+  --color-text: #4a3a2a;
+  --color-text-h: #2a1a0a;
+  --color-bg: #f9f3e8;
+  --color-bg-subtle: #f0e8d8;
+  --color-bg-tertiary: #e8dcc8;
+  --color-border: #d4c4a8;
+  --color-border-strong: #c4b498;
+  --color-code-bg: #f5ecd5;
+  --color-hover-bg: rgba(180, 140, 80, 0.08);
+  --color-active-bg: rgba(180, 140, 80, 0.12);
+  --color-accent: #8b5a2b;
+  --color-accent-hover: #6b4520;
+  --color-accent-bg: rgba(139, 90, 43, 0.08);
+  --color-accent-border: rgba(139, 90, 43, 0.2);
+  --color-social-bg: rgba(180, 140, 80, 0.03);
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-button-text: #ffffff;
+}
+
+/* Light Cool - Blue-gray tones */
+.light-theme.light-cool {
+  --color-text: #3a4a5a;
+  --color-text-h: #1a2a3a;
+  --color-bg: #f0f4f8;
+  --color-bg-subtle: #e4eaf0;
+  --color-bg-tertiary: #d8e4ec;
+  --color-border: #c8d4e0;
+  --color-border-strong: #a8b8c8;
+  --color-code-bg: #e8f0f8;
+  --color-hover-bg: rgba(60, 120, 180, 0.08);
+  --color-active-bg: rgba(60, 120, 180, 0.12);
+  --color-accent: #2a5a8a;
+  --color-accent-hover: #1a4a7a;
+  --color-accent-bg: rgba(42, 90, 138, 0.08);
+  --color-accent-border: rgba(42, 90, 138, 0.2);
+  --color-social-bg: rgba(60, 120, 180, 0.03);
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-button-text: #ffffff;
+}
+
+/* ===== Builtin Dark Themes ===== */
+
+/* Dark Blue - GitHub-style deep blue */
+.dark-theme.dark-blue {
+  --color-text: #8b949e;
+  --color-text-h: #c9d1d9;
+  --color-bg: #0d1117;
+  --color-bg-subtle: #161b22;
+  --color-bg-tertiary: #21262d;
+  --color-border: #30363d;
+  --color-border-strong: #484f58;
+  --color-code-bg: #161b22;
+  --color-hover-bg: rgba(88, 166, 255, 0.08);
+  --color-active-bg: rgba(88, 166, 255, 0.12);
+  --color-accent: #58a6ff;
+  --color-accent-hover: #79b8ff;
+  --color-accent-bg: rgba(88, 166, 255, 0.08);
+  --color-accent-border: rgba(88, 166, 255, 0.2);
+  --color-social-bg: rgba(88, 166, 255, 0.03);
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-button-text: #0d1117;
+}
+
+/* Dark Purple - Purple tinted */
+.dark-theme.dark-purple {
+  --color-text: #9b8ec4;
+  --color-text-h: #d4c4f4;
+  --color-bg: #1a1625;
+  --color-bg-subtle: #241f31;
+  --color-bg-tertiary: #2d283f;
+  --color-border: #3d3852;
+  --color-border-strong: #4d4862;
+  --color-code-bg: #241f31;
+  --color-hover-bg: rgba(170, 130, 255, 0.08);
+  --color-active-bg: rgba(170, 130, 255, 0.12);
+  --color-accent: #aa82ff;
+  --color-accent-hover: #bb93ff;
+  --color-accent-bg: rgba(170, 130, 255, 0.08);
+  --color-accent-border: rgba(170, 130, 255, 0.2);
+  --color-social-bg: rgba(170, 130, 255, 0.03);
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-button-text: #1a1625;
+}
+
 /* Base styles */
 * {
   margin: 0;

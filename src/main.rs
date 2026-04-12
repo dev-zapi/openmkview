@@ -23,11 +23,11 @@ mod static_files;
 
 use db::init_db;
 use handlers::{
-    close_project, create_file, create_project, delete_file, execute_git, get_branches,
-    get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
-    get_recent_projects, get_settings, get_tags, list_projects, open_project, rename_file,
-    resolve_path, search_favicons, update_project, update_project_color, update_settings,
-    validate_project,
+    close_project, create_file, create_project, delete_custom_theme, delete_file, execute_git,
+    get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
+    get_recent_projects, get_settings, get_tags, get_theme_css_content, install_custom_theme,
+    list_projects, list_themes, open_project, rename_file, resolve_path, search_favicons,
+    update_project, update_project_color, update_settings, validate_project,
 };
 use openmkview::AppState;
 
@@ -114,6 +114,10 @@ async fn main() -> std::io::Result<()> {
             .route("/api/files", web::delete().to(delete_file))
             .route("/api/settings", web::get().to(get_settings))
             .route("/api/settings", web::put().to(update_settings))
+            .route("/api/themes", web::get().to(list_themes))
+            .route("/api/themes/install", web::post().to(install_custom_theme))
+            .route("/api/themes/{id}/css", web::get().to(get_theme_css_content))
+            .route("/api/themes/{id}", web::delete().to(delete_custom_theme))
             .route("/api/git", web::post().to(execute_git))
             .route("/api/git/commits", web::get().to(get_commits))
             .route("/api/git/branches", web::get().to(get_branches))

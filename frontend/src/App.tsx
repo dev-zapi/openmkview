@@ -24,13 +24,35 @@ import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
 
 type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeType = 'light' | 'dark';
 
-const getSystemTheme = (): 'light' | 'dark' => {
+interface Theme {
+  id: string;
+  name: string;
+  type: ThemeType;
+  builtin: boolean;
+}
+
+interface Settings {
+  markdownWidth: 'full' | 'fixed';
+  fixedWidth: string;
+  themeMode: ThemeMode;
+  lightTheme: string;
+  darkTheme: string;
+  uiFontFamily: string;
+  markdownFontFamily: string;
+  uiFontSize: string;
+  markdownFontSize: string;
+}
+
+export type { ThemeMode, ThemeType, Theme, Settings };
+
+const getSystemTheme = (): ThemeType => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-const getEffectiveTheme = (theme: ThemeMode): 'light' | 'dark' => {
-  return theme === 'system' ? getSystemTheme() : theme;
+const getEffectiveThemeType = (mode: ThemeMode): ThemeType => {
+  return mode === 'system' ? getSystemTheme() : mode;
 };
 
   const loadSettings = () => {
@@ -45,7 +67,9 @@ const getEffectiveTheme = (theme: ThemeMode): 'light' | 'dark' => {
   return {
     markdownWidth: 'full',
     fixedWidth: '900px',
-    theme: 'system' as ThemeMode,
+    themeMode: 'system' as ThemeMode,
+    lightTheme: 'light-default',
+    darkTheme: 'dark-default',
     uiFontFamily: 'MiSans, sans-serif',
     markdownFontFamily: 'Georgia, "Noto Serif", serif',
     uiFontSize: '14px',
@@ -69,10 +93,12 @@ const loadSidebarWidth = () => {
   return 280;
 };
 
-const applyTheme = (theme: ThemeMode) => {
-  const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+const applyTheme = (settings: { themeMode: ThemeMode; lightTheme: string; darkTheme: string }) => {
+  const effectiveType = getEffectiveThemeType(settings.themeMode);
+  const themeId = effectiveType === 'light' ? settings.lightTheme : settings.darkTheme;
+  
   document.body.classList.remove('light-theme', 'dark-theme');
-  document.body.classList.add(`${effectiveTheme}-theme`);
+  document.body.classList.add(`${effectiveType}-theme`, themeId);
 };
 
 const App: Component = () => {
@@ -108,7 +134,11 @@ const App: Component = () => {
     const projectList = await api.getProjects();
     setProjects(projectList);
 
-    applyTheme(settings().theme as ThemeMode);
+    applyTheme({
+      themeMode: settings().themeMode,
+      lightTheme: settings().lightTheme,
+      darkTheme: settings().darkTheme,
+    });
 
     setSidebarWidth(loadSidebarWidth());
 
@@ -131,8 +161,12 @@ const App: Component = () => {
     mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleThemeChange = (e: MediaQueryListEvent) => {
       setSystemTheme(e.matches ? 'dark' : 'light');
-      if (settings().theme === 'system') {
-        applyTheme('system');
+      if ((settings().themeMode as ThemeMode) === 'system') {
+        applyTheme({
+          themeMode: 'system',
+          lightTheme: settings().lightTheme,
+          darkTheme: settings().darkTheme,
+        });
       }
     };
     mediaQuery.addEventListener('change', handleThemeChange);
@@ -196,7 +230,11 @@ const App: Component = () => {
   });
 
   createEffect(() => {
-    applyTheme(settings().theme as ThemeMode);
+    applyTheme({
+      themeMode: settings().themeMode as ThemeMode,
+      lightTheme: settings().lightTheme,
+      darkTheme: settings().darkTheme,
+    });
   });
 
   // Apply font settings
@@ -211,11 +249,11 @@ const App: Component = () => {
   });
 
   const toggleTheme = () => {
-    const currentTheme = settings().theme;
-    const themes: ThemeMode[] = ['light', 'dark', 'system'];
-    const currentIndex = themes.indexOf(currentTheme);
-    const nextTheme = themes[(currentIndex + 1) % themes.length];
-    setSettings(prev => ({ ...prev, theme: nextTheme }));
+    const currentMode = settings().themeMode as ThemeMode;
+    const modes: ThemeMode[] = ['light', 'dark', 'system'];
+    const currentIndex = modes.indexOf(currentMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setSettings(prev => ({ ...prev, themeMode: nextMode }));
   };
 
   const handleSettingsSave = () => {
@@ -538,11 +576,11 @@ const App: Component = () => {
             {/* 底部固定区域 */}
             <div class="activity-bar-bottom">
               <button
-                class={settings().theme === 'dark' ? 'active' : ''}
-                title={`Theme: ${settings().theme} (click to toggle)`}
+                class={(settings().themeMode as ThemeMode) === 'dark' ? 'active' : ''}
+                title={`Theme: ${settings().themeMode} (click to toggle)`}
                 onClick={toggleTheme}
               >
-                <Show when={settings().theme === 'light'}>
+                <Show when={(settings().themeMode as ThemeMode) === 'light'}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="5"/>
                     <line x1="12" y1="1" x2="12" y2="3"/>
@@ -555,12 +593,12 @@ const App: Component = () => {
                     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                   </svg>
                 </Show>
-                <Show when={settings().theme === 'dark'}>
+                <Show when={(settings().themeMode as ThemeMode) === 'dark'}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                   </svg>
                 </Show>
-                <Show when={settings().theme === 'system'}>
+                <Show when={(settings().themeMode as ThemeMode) === 'system'}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                     <line x1="8" y1="21" x2="16" y2="21"/>
@@ -675,7 +713,7 @@ const App: Component = () => {
                       <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
                         <MarkdownView 
                           content={currentFile()!.content} 
-                          theme={getEffectiveTheme(settings().theme as ThemeMode)}
+                          theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
                           onHeadingsExtracted={handleHeadingsExtracted} 
                         />
                       </div>
@@ -691,7 +729,7 @@ const App: Component = () => {
                         <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
                           <DiffViewer
                             diffData={diffStore.state.diffData!}
-                            theme={settings().theme}
+theme={settings().themeMode}
                             mode="split"
                             onClose={handleCloseDiff}
                           />
@@ -710,7 +748,7 @@ const App: Component = () => {
                         <SourceView 
                           content={currentFile()!.content}
                           fileName={currentFile()!.fileName}
-                          theme={getEffectiveTheme(settings().theme as ThemeMode)}
+                          theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
                         />
                       </div>
                     </Show>
@@ -750,7 +788,7 @@ const App: Component = () => {
           activeProjectName={activeProject()?.name}
           onSettingsClick={() => setSettingsOpen(true)}
           onThemeToggle={toggleTheme}
-          currentTheme={settings().theme as ThemeMode}
+          currentTheme={settings().themeMode as ThemeMode}
           onProjectEdit={handleProjectEdit}
           onProjectColorChange={() => {
             if (activeProject()) {
@@ -846,7 +884,7 @@ const App: Component = () => {
               <div class="markdown-wrapper" style={getMarkdownStyle()}>
                 <MarkdownView 
                   content={currentFile()!.content}
-                  theme={getEffectiveTheme(settings().theme as ThemeMode)} 
+                  theme={getEffectiveThemeType(settings().themeMode as ThemeMode)} 
                   onHeadingsExtracted={handleHeadingsExtracted} 
                 />
               </div>
@@ -861,7 +899,7 @@ const App: Component = () => {
               <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
                 <DiffViewer
                   diffData={diffStore.state.diffData!}
-                  theme={settings().theme}
+                  theme={settings().themeMode}
                   mode="unified"
                   onClose={handleCloseDiff}
                 />
@@ -879,7 +917,7 @@ const App: Component = () => {
                 <SourceView 
                   content={currentFile()!.content}
                   fileName={currentFile()!.fileName}
-                  theme={getEffectiveTheme(settings().theme as ThemeMode)}
+                  theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
                 />
               </div>
             </Show>
