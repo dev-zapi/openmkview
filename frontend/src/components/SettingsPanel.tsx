@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, Show, onMount, For } from 'solid-js';
+import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
 import type { ThemeMode, ThemeType, Theme, Settings } from '../App';
 
 interface SettingsPanelProps {
@@ -6,6 +6,18 @@ interface SettingsPanelProps {
   onClose: () => void;
   onSave?: () => void;
 }
+
+interface SettingsCategory {
+  id: string;
+  label: string;
+}
+
+const categories: SettingsCategory[] = [
+  { id: 'settings-themes', label: 'Themes' },
+  { id: 'settings-markdown', label: 'Markdown' },
+  { id: 'settings-trash', label: 'Trash' },
+  { id: 'settings-fonts', label: 'Fonts' },
+];
 
 const defaultSettings: Settings = {
   markdownWidth: 'full',
@@ -43,6 +55,58 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [themes, setThemes] = createSignal<Theme[]>([]);
   const [installing, setInstalling] = createSignal(false);
   const [installError, setInstallError] = createSignal<string | null>(null);
+  const [activeCategory, setActiveCategory] = createSignal('settings-themes');
+  let observer: IntersectionObserver | null = null;
+  let contentRef: HTMLDivElement | undefined;
+
+  const scrollToCategory = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveCategory(id);
+    }
+  };
+
+  const initObserver = () => {
+    if (!contentRef) return;
+    
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveCategory(entry.target.id);
+          }
+        }
+      },
+      {
+        root: contentRef,
+        threshold: 0.3,
+        rootMargin: '0px 0px -60% 0px',
+      }
+    );
+
+    categories.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (el) observer?.observe(el);
+    });
+  };
+
+  onMount(() => {
+    loadThemes();
+  });
+
+  createEffect(() => {
+    if (props.isOpen) {
+      setTimeout(initObserver, 100);
+    } else {
+      observer?.disconnect();
+      observer = null;
+    }
+  });
+
+  onCleanup(() => {
+    observer?.disconnect();
+  });
 
   const loadThemes = async () => {
     try {
@@ -53,10 +117,6 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       console.error('Failed to load themes:', e);
     }
   };
-
-  onMount(() => {
-    loadThemes();
-  });
 
   createEffect(() => {
     const savedSettings = localStorage.getItem('openmkview-settings');
@@ -138,190 +198,207 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             </button>
           </div>
 
-          <div class="settings-panel-content">
-            <div class="settings-section">
-              <h4>Themes</h4>
+          <div class="settings-panel-body">
+            <nav class="settings-nav">
+              <ul>
+                <For each={categories}>
+                  {(cat) => (
+                    <li
+                      class={activeCategory() === cat.id ? 'active' : ''}
+                      onClick={() => scrollToCategory(cat.id)}
+                    >
+                      {cat.label}
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </nav>
 
-              <div class="settings-item">
-                <label>Theme Mode</label>
-                <select
-                  value={settings().themeMode}
-                  onChange={(e) => updateSetting('themeMode', e.currentTarget.value as ThemeMode)}
-                >
-                  <option value="system">Follow System</option>
-                  <option value="light">Always Light</option>
-                  <option value="dark">Always Dark</option>
-                </select>
-              </div>
+            <div class="settings-panel-content" ref={contentRef}>
+              <div class="settings-section" id="settings-themes">
+                <h4>Themes</h4>
 
-              <div class="settings-item">
-                <label>Light Theme</label>
-                <select
-                  value={settings().lightTheme}
-                  onChange={(e) => updateSetting('lightTheme', e.currentTarget.value)}
-                >
-                  <For each={lightThemes()}>
-                    {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
-                  </For>
-                </select>
-              </div>
-
-              <div class="settings-item">
-                <label>Dark Theme</label>
-                <select
-                  value={settings().darkTheme}
-                  onChange={(e) => updateSetting('darkTheme', e.currentTarget.value)}
-                >
-                  <For each={darkThemes()}>
-                    {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
-                  </For>
-                </select>
-              </div>
-
-              <div class="settings-item">
-                <label>Install Custom Theme</label>
-                <input
-                  type="file"
-                  accept=".theme.css"
-                  onChange={handleThemeInstall}
-                  disabled={installing()}
-                />
-                <Show when={installing()}>
-                  <p style="margin-top: 8px; color: var(--color-text); font-size: 12px;">Installing...</p>
-                </Show>
-                <Show when={installError()}>
-                  <p style="margin-top: 8px; color: var(--color-error); font-size: 12px;">{installError()}</p>
-                </Show>
-                <p style="margin-top: 8px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
-                  Theme files should have .theme.css extension with @name and @type metadata comments.
-                </p>
-              </div>
-            </div>
-
-            <div class="settings-section">
-              <h4>Markdown</h4>
-
-              <div class="settings-item">
-                <label>Content Width</label>
-                <select
-                  value={settings().markdownWidth}
-                  onChange={(e) => updateSetting('markdownWidth', e.currentTarget.value as any)}
-                >
-                  <option value="full">Full Width</option>
-                  <option value="fixed">Fixed Width</option>
-                </select>
-              </div>
-
-              <Show when={settings().markdownWidth === 'fixed'}>
                 <div class="settings-item">
-                  <label>Fixed Width Value</label>
+                  <label>Theme Mode</label>
+                  <select
+                    value={settings().themeMode}
+                    onChange={(e) => updateSetting('themeMode', e.currentTarget.value as ThemeMode)}
+                  >
+                    <option value="system">Follow System</option>
+                    <option value="light">Always Light</option>
+                    <option value="dark">Always Dark</option>
+                  </select>
+                </div>
+
+                <div class="settings-item">
+                  <label>Light Theme</label>
+                  <select
+                    value={settings().lightTheme}
+                    onChange={(e) => updateSetting('lightTheme', e.currentTarget.value)}
+                  >
+                    <For each={lightThemes()}>
+                      {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
+                    </For>
+                  </select>
+                </div>
+
+                <div class="settings-item">
+                  <label>Dark Theme</label>
+                  <select
+                    value={settings().darkTheme}
+                    onChange={(e) => updateSetting('darkTheme', e.currentTarget.value)}
+                  >
+                    <For each={darkThemes()}>
+                      {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
+                    </For>
+                  </select>
+                </div>
+
+                <div class="settings-item">
+                  <label>Install Custom Theme</label>
+                  <input
+                    type="file"
+                    accept=".theme.css"
+                    onChange={handleThemeInstall}
+                    disabled={installing()}
+                  />
+                  <Show when={installing()}>
+                    <p style="margin-top: 8px; color: var(--color-text); font-size: 12px;">Installing...</p>
+                  </Show>
+                  <Show when={installError()}>
+                    <p style="margin-top: 8px; color: var(--color-error); font-size: 12px;">{installError()}</p>
+                  </Show>
+                  <p style="margin-top: 8px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Theme files should have .theme.css extension with @name and @type metadata comments.
+                  </p>
+                </div>
+              </div>
+
+              <div class="settings-section" id="settings-markdown">
+                <h4>Markdown</h4>
+
+                <div class="settings-item">
+                  <label>Content Width</label>
+                  <select
+                    value={settings().markdownWidth}
+                    onChange={(e) => updateSetting('markdownWidth', e.currentTarget.value as any)}
+                  >
+                    <option value="full">Full Width</option>
+                    <option value="fixed">Fixed Width</option>
+                  </select>
+                </div>
+
+                <Show when={settings().markdownWidth === 'fixed'}>
+                  <div class="settings-item">
+                    <label>Fixed Width Value</label>
+                    <input
+                      type="text"
+                      value={settings().fixedWidth}
+                      onInput={(e) => updateSetting('fixedWidth', e.currentTarget.value)}
+                      placeholder="e.g., 900px, 70%"
+                    />
+                  </div>
+                </Show>
+              </div>
+
+              <div class="settings-section" id="settings-trash">
+                <h4>Trash Settings</h4>
+
+                <div class="settings-item">
+                  <label>Auto-delete after (days)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={settings().trashExpireDays}
+                    onInput={(e) => updateSetting('trashExpireDays', parseInt(e.currentTarget.value) || 30)}
+                  />
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Items in trash older than this will be automatically deleted on app startup.
+                  </p>
+                </div>
+
+                <div class="settings-item">
+                  <label>Protected Paths (cannot be deleted)</label>
+                  <textarea
+                    value={settings().protectedPaths.join('\n')}
+                    onInput={(e) => updateSetting('protectedPaths', e.currentTarget.value.split('\n').filter(p => p.trim()))}
+                    placeholder=".git\n.github\nnode_modules"
+                    rows={5}
+                  />
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Files/folders matching these paths cannot be moved to trash.
+                  </p>
+                </div>
+              </div>
+
+              <div class="settings-section" id="settings-fonts">
+                <h4>Font Settings</h4>
+
+                <div class="settings-item">
+                  <label>UI Font</label>
                   <input
                     type="text"
-                    value={settings().fixedWidth}
-                    onInput={(e) => updateSetting('fixedWidth', e.currentTarget.value)}
-                    placeholder="e.g., 900px, 70%"
+                    value={settings().uiFontFamily}
+                    onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
+                    placeholder="e.g., MiSans, sans-serif"
                   />
+                  <div class="font-presets">
+                    <button onClick={() => updateSetting('uiFontFamily', 'MiSans, sans-serif')}>System Default</button>
+                    <button onClick={() => updateSetting('uiFontFamily', '"Segoe UI", Roboto, sans-serif')}>Segoe UI</button>
+                    <button onClick={() => updateSetting('uiFontFamily', '"Helvetica Neue", Arial, sans-serif')}>Helvetica</button>
+                    <button onClick={() => updateSetting('uiFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
+                    <button onClick={() => updateSetting('uiFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
+                  </div>
                 </div>
-              </Show>
-            </div>
 
-            <div class="settings-section">
-              <h4>Trash Settings</h4>
-
-              <div class="settings-item">
-                <label>Auto-delete after (days)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={settings().trashExpireDays}
-                  onInput={(e) => updateSetting('trashExpireDays', parseInt(e.currentTarget.value) || 30)}
-                />
-                <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
-                  Items in trash older than this will be automatically deleted on app startup.
-                </p>
-              </div>
-
-              <div class="settings-item">
-                <label>Protected Paths (cannot be deleted)</label>
-                <textarea
-                  value={settings().protectedPaths.join('\n')}
-                  onInput={(e) => updateSetting('protectedPaths', e.currentTarget.value.split('\n').filter(p => p.trim()))}
-                  placeholder=".git\n.github\nnode_modules"
-                  rows={5}
-                />
-                <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
-                  Files/folders matching these paths cannot be moved to trash.
-                </p>
-              </div>
-            </div>
-
-            <div class="settings-section">
-              <h4>Font Settings</h4>
-
-              <div class="settings-item">
-                <label>UI Font</label>
-                <input
-                  type="text"
-                  value={settings().uiFontFamily}
-                  onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
-                  placeholder="e.g., MiSans, sans-serif"
-                />
-                <div class="font-presets">
-                  <button onClick={() => updateSetting('uiFontFamily', 'MiSans, sans-serif')}>System Default</button>
-                  <button onClick={() => updateSetting('uiFontFamily', '"Segoe UI", Roboto, sans-serif')}>Segoe UI</button>
-                  <button onClick={() => updateSetting('uiFontFamily', '"Helvetica Neue", Arial, sans-serif')}>Helvetica</button>
-                  <button onClick={() => updateSetting('uiFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
-                  <button onClick={() => updateSetting('uiFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
+                <div class="settings-item">
+                  <label>UI Font Size</label>
+                  <input
+                    type="text"
+                    value={settings().uiFontSize}
+                    onInput={(e) => updateSetting('uiFontSize', e.currentTarget.value)}
+                    placeholder="e.g., 14px"
+                  />
+                  <div class="size-presets">
+                    <button onClick={() => updateSetting('uiFontSize', '12px')}>12px</button>
+                    <button onClick={() => updateSetting('uiFontSize', '14px')}>14px</button>
+                    <button onClick={() => updateSetting('uiFontSize', '16px')}>16px</button>
+                    <button onClick={() => updateSetting('uiFontSize', '18px')}>18px</button>
+                    <button onClick={() => updateSetting('uiFontSize', '20px')}>20px</button>
+                  </div>
                 </div>
-              </div>
 
-              <div class="settings-item">
-                <label>UI Font Size</label>
-                <input
-                  type="text"
-                  value={settings().uiFontSize}
-                  onInput={(e) => updateSetting('uiFontSize', e.currentTarget.value)}
-                  placeholder="e.g., 14px"
-                />
-                <div class="size-presets">
-                  <button onClick={() => updateSetting('uiFontSize', '12px')}>12px</button>
-                  <button onClick={() => updateSetting('uiFontSize', '14px')}>14px</button>
-                  <button onClick={() => updateSetting('uiFontSize', '16px')}>16px</button>
-                  <button onClick={() => updateSetting('uiFontSize', '18px')}>18px</button>
-                  <button onClick={() => updateSetting('uiFontSize', '20px')}>20px</button>
+                <div class="settings-item">
+                  <label>Markdown Font</label>
+                  <input
+                    type="text"
+                    value={settings().markdownFontFamily}
+                    onInput={(e) => updateSetting('markdownFontFamily', e.currentTarget.value)}
+                    placeholder="e.g., Georgia, serif"
+                  />
+                  <div class="font-presets">
+                    <button onClick={() => updateSetting('markdownFontFamily', 'Georgia, "Noto Serif", serif')}>Georgia</button>
+                    <button onClick={() => updateSetting('markdownFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
+                    <button onClick={() => updateSetting('markdownFontFamily', '"Noto Serif SC", "Songti SC", serif')}>Chinese Serif</button>
+                    <button onClick={() => updateSetting('markdownFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
+                  </div>
                 </div>
-              </div>
 
-              <div class="settings-item">
-                <label>Markdown Font</label>
-                <input
-                  type="text"
-                  value={settings().markdownFontFamily}
-                  onInput={(e) => updateSetting('markdownFontFamily', e.currentTarget.value)}
-                  placeholder="e.g., Georgia, serif"
-                />
-                <div class="font-presets">
-                  <button onClick={() => updateSetting('markdownFontFamily', 'Georgia, "Noto Serif", serif')}>Georgia</button>
-                  <button onClick={() => updateSetting('markdownFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
-                  <button onClick={() => updateSetting('markdownFontFamily', '"Noto Serif SC", "Songti SC", serif')}>Chinese Serif</button>
-                  <button onClick={() => updateSetting('markdownFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
-                </div>
-              </div>
-
-              <div class="settings-item">
-                <label>Markdown Font Size</label>
-                <input
-                  type="text"
-                  value={settings().markdownFontSize}
-                  onInput={(e) => updateSetting('markdownFontSize', e.currentTarget.value)}
-                  placeholder="e.g., 16px"
-                />
-                <div class="size-presets">
-                  <button onClick={() => updateSetting('markdownFontSize', '14px')}>14px</button>
-                  <button onClick={() => updateSetting('markdownFontSize', '16px')}>16px</button>
-                  <button onClick={() => updateSetting('markdownFontSize', '18px')}>18px</button>
-                  <button onClick={() => updateSetting('markdownFontSize', '20px')}>20px</button>
+                <div class="settings-item">
+                  <label>Markdown Font Size</label>
+                  <input
+                    type="text"
+                    value={settings().markdownFontSize}
+                    onInput={(e) => updateSetting('markdownFontSize', e.currentTarget.value)}
+                    placeholder="e.g., 16px"
+                  />
+                  <div class="size-presets">
+                    <button onClick={() => updateSetting('markdownFontSize', '14px')}>14px</button>
+                    <button onClick={() => updateSetting('markdownFontSize', '16px')}>16px</button>
+                    <button onClick={() => updateSetting('markdownFontSize', '18px')}>18px</button>
+                    <button onClick={() => updateSetting('markdownFontSize', '20px')}>20px</button>
+                  </div>
                 </div>
               </div>
             </div>
