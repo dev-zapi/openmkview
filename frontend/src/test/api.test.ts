@@ -90,4 +90,137 @@ describe('api service', () => {
       );
     });
   });
+
+  describe('Trash API', () => {
+    describe('moveToTrash', () => {
+      it('moves file to trash', async () => {
+        const mockTrashItem = {
+          id: '1234567890_test.md',
+          originalName: 'test.md',
+          originalPath: 'docs/test.md',
+          deletedAt: '2024-01-15T10:30:00Z',
+          isFolder: false,
+          size: 100,
+        };
+
+        (global.fetch as any).mockResolvedValueOnce({
+          json: async () => mockTrashItem,
+        });
+
+        const { api } = await import('../services/api');
+        const result = await api.moveToTrash('docs/test.md', 1, false);
+        expect(result).toEqual(mockTrashItem);
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/trash/move',
+          expect.objectContaining({
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: 1, path: 'docs/test.md', is_folder: false }),
+          })
+        );
+      });
+    });
+
+    describe('restoreFromTrash', () => {
+      it('restores file from trash', async () => {
+        (global.fetch as any).mockResolvedValueOnce({ ok: true });
+
+        const { api } = await import('../services/api');
+        await api.restoreFromTrash('1234567890_test.md', 1);
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/trash/restore',
+          expect.objectContaining({
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: 1, trash_item_id: '1234567890_test.md' }),
+          })
+        );
+      });
+    });
+
+    describe('deleteFromTrash', () => {
+      it('permanently deletes from trash', async () => {
+        (global.fetch as any).mockResolvedValueOnce({ ok: true });
+
+        const { api } = await import('../services/api');
+        await api.deleteFromTrash('1234567890_test.md', 1);
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/trash/item',
+          expect.objectContaining({
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: 1, trash_item_id: '1234567890_test.md' }),
+          })
+        );
+      });
+    });
+
+    describe('clearTrash', () => {
+      it('clears all trash items', async () => {
+        (global.fetch as any).mockResolvedValueOnce({ ok: true });
+
+        const { api } = await import('../services/api');
+        await api.clearTrash(1);
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/trash/clear',
+          expect.objectContaining({
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: 1 }),
+          })
+        );
+      });
+    });
+
+    describe('listTrash', () => {
+      it('returns list of trash items', async () => {
+        const mockTrashItems = [
+          {
+            id: '1234567890_test.md',
+            originalName: 'test.md',
+            originalPath: 'docs/test.md',
+            deletedAt: '2024-01-15T10:30:00Z',
+            isFolder: false,
+            size: 100,
+          },
+          {
+            id: '1234567891_old-folder',
+            originalName: 'old-folder',
+            originalPath: 'docs/old-folder',
+            deletedAt: '2024-01-01T10:00:00Z',
+            isFolder: true,
+            size: 5000,
+          },
+        ];
+
+        (global.fetch as any).mockResolvedValueOnce({
+          json: async () => mockTrashItems,
+        });
+
+        const { api } = await import('../services/api');
+        const result = await api.listTrash(1);
+        expect(result).toEqual(mockTrashItems);
+        expect(global.fetch).toHaveBeenCalledWith('/api/trash/list?project_id=1');
+      });
+    });
+
+    describe('getTrashStats', () => {
+      it('returns trash statistics', async () => {
+        const mockStats = {
+          totalItems: 5,
+          totalSize: 1200000,
+          oldestItemAge: 15,
+        };
+
+        (global.fetch as any).mockResolvedValueOnce({
+          json: async () => mockStats,
+        });
+
+        const { api } = await import('../services/api');
+        const result = await api.getTrashStats(1);
+        expect(result).toEqual(mockStats);
+        expect(global.fetch).toHaveBeenCalledWith('/api/trash/stats?project_id=1');
+      });
+    });
+  });
 });

@@ -44,6 +44,8 @@ interface Settings {
   markdownFontFamily: string;
   uiFontSize: string;
   markdownFontSize: string;
+  protectedPaths: string[];
+  trashExpireDays: number;
 }
 
 export type { ThemeMode, ThemeType, Theme, Settings };

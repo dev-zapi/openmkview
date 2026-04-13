@@ -113,7 +113,8 @@ describe('SettingsPanel', () => {
   it('renders all settings sections', () => {
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
     expect(screen.getByText('Markdown')).toBeTruthy();
-    expect(screen.getByText('Appearance')).toBeTruthy();
+    expect(screen.getByText('Themes')).toBeTruthy();
+    expect(screen.getByText('Trash Settings')).toBeTruthy();
   });
 
   it('calls onClose when close button clicked', () => {

@@ -5,10 +5,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 fn get_trash_dir() -> PathBuf {
-    dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("openmkview")
-        .join("trash")
+    #[cfg(test)]
+    {
+        std::env::temp_dir().join("openmkview_test_trash")
+    }
+    #[cfg(not(test))]
+    {
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("openmkview")
+            .join("trash")
+    }
 }
 
 fn get_project_trash_dir(project_id: i64) -> PathBuf {
@@ -254,3 +261,7 @@ impl TrashService {
         false
     }
 }
+
+#[cfg(test)]
+#[path = "trash_service_test.rs"]
+mod trash_service_test;

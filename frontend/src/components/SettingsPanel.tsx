@@ -17,6 +17,8 @@ const defaultSettings: Settings = {
   markdownFontFamily: 'Georgia, "Noto Serif", serif',
   uiFontSize: '14px',
   markdownFontSize: '16px',
+  protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
+  trashExpireDays: 30,
 };
 
 const getSystemTheme = (): ThemeType => {
@@ -221,6 +223,37 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   />
                 </div>
               </Show>
+            </div>
+
+            <div class="settings-section">
+              <h4>Trash Settings</h4>
+
+              <div class="settings-item">
+                <label>Auto-delete after (days)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={settings().trashExpireDays}
+                  onInput={(e) => updateSetting('trashExpireDays', parseInt(e.currentTarget.value) || 30)}
+                />
+                <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                  Items in trash older than this will be automatically deleted on app startup.
+                </p>
+              </div>
+
+              <div class="settings-item">
+                <label>Protected Paths (cannot be deleted)</label>
+                <textarea
+                  value={settings().protectedPaths.join('\n')}
+                  onInput={(e) => updateSetting('protectedPaths', e.currentTarget.value.split('\n').filter(p => p.trim()))}
+                  placeholder=".git\n.github\nnode_modules"
+                  rows={5}
+                />
+                <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                  Files/folders matching these paths cannot be moved to trash.
+                </p>
+              </div>
             </div>
 
             <div class="settings-section">
