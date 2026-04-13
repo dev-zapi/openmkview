@@ -14,34 +14,12 @@ const FileTreeMenu: Component<FileTreeMenuProps> = (props) => {
   let menuContainer: HTMLDivElement | null = null;
   let handleClickOutside: ((e: MouseEvent) => void) | null = null;
 
-  const isDarkTheme = () => document.documentElement.getAttribute('data-theme') === 'dark';
-
-  const getThemeStyles = () => {
-    if (isDarkTheme()) {
-      return {
-        bg: '#1e1e1e',
-        border: '#3c3c3c',
-        text: '#cccccc',
-        textDelete: '#f87171',
-        hover: '#2d2d2d',
-      };
-    }
-    return {
-      bg: '#ffffff',
-      border: '#d0d0d0',
-      text: '#4a4a4a',
-      textDelete: '#ef4444',
-      hover: '#f5f5f5',
-    };
-  };
-
   const createButton = (
     text: string,
     iconSvg: string,
     onClick: () => void,
     isDelete = false
   ): HTMLButtonElement => {
-    const styles = getThemeStyles();
     const btn = document.createElement('button');
     btn.style.cssText = `
       display: flex;
@@ -53,13 +31,13 @@ const FileTreeMenu: Component<FileTreeMenuProps> = (props) => {
       background: transparent;
       cursor: pointer;
       font-size: 13px;
-      color: ${isDelete ? styles.textDelete : styles.text};
+      color: ${isDelete ? 'var(--color-error)' : 'var(--color-text)'};
       text-align: left;
       transition: background 0.15s;
     `;
     btn.innerHTML = `${iconSvg}<span>${text}</span>`;
     btn.onmouseenter = () => {
-      btn.style.background = getThemeStyles().hover;
+      btn.style.background = 'var(--color-hover-bg)';
     };
     btn.onmouseleave = () => {
       btn.style.background = 'transparent';
@@ -72,14 +50,13 @@ const FileTreeMenu: Component<FileTreeMenuProps> = (props) => {
   };
 
   onMount(() => {
-    const styles = getThemeStyles();
     menuContainer = document.createElement('div');
     menuContainer.style.cssText = `
       position: fixed;
       top: ${props.position.top}px;
       left: ${props.position.left}px;
-      background: ${styles.bg};
-      border: 1px solid ${styles.border};
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
       border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 10000;
