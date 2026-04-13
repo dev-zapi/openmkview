@@ -58,3 +58,18 @@ export interface Project {
   color?: string;
   icon?: string;
 }
+
+export interface TrashItem {
+  id: string;
+  originalName: string;
+  originalPath: string;
+  deletedAt: string;
+  isFolder: boolean;
+  size: number;
+}
+
+export interface TrashStats {
+  totalItems: number;
+  totalSize: number;
+  oldestItemAge: number;
+}

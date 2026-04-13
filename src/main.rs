@@ -21,15 +21,17 @@ mod models;
 mod services;
 mod static_files;
 
-use db::init_db;
+use db::{init_db, ProjectRepository, SettingsRepository};
 use handlers::{
-    close_project, create_file, create_project, delete_custom_theme, delete_file, execute_git,
-    get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
-    get_recent_projects, get_settings, get_tags, get_theme_css_content, install_custom_theme,
-    list_projects, list_themes, open_project, rename_file, resolve_path, search_favicons,
-    update_project, update_project_color, update_settings, validate_project,
+    clear_trash, close_project, create_file, create_project, delete_custom_theme, delete_file,
+    delete_from_trash, execute_git, get_branches, get_commits, get_file_at_ref, get_file_content,
+    get_file_diff, get_file_tree, get_recent_projects, get_settings, get_tags,
+    get_theme_css_content, get_trash_stats, install_custom_theme, list_projects, list_themes,
+    list_trash, move_to_trash, open_project, rename_file, resolve_path, restore_from_trash,
+    search_favicons, update_project, update_project_color, update_settings, validate_project,
 };
 use openmkview::AppState;
+use services::TrashService;
 
 /// OpenMKView - Markdown file previewer
 #[derive(Parser, Debug)]
@@ -82,6 +84,23 @@ async fn main() -> std::io::Result<()> {
 
     log::info!("Database initialization complete: {:?}", db_path);
 
+    let settings_repo = SettingsRepository::new(&conn);
+    let settings = settings_repo
+        .get_system_settings()
+        .expect("Failed to get settings");
+
+    let project_repo = ProjectRepository::new(&conn);
+    let projects = project_repo.list(false).expect("Failed to list projects");
+    let project_ids: Vec<i64> = projects.iter().map(|p| p.id).collect();
+
+    if let Ok(count) =
+        TrashService::cleanup_all_expired_trash(settings.trash_expire_days, &project_ids)
+    {
+        if count > 0 {
+            log::info!("Cleaned {} expired trash items", count);
+        }
+    }
+
     let app_state = web::Data::new(AppState {
         db: Arc::new(Mutex::new(conn)),
     });
@@ -124,6 +143,12 @@ async fn main() -> std::io::Result<()> {
             .route("/api/git/tags", web::get().to(get_tags))
             .route("/api/git/diff", web::post().to(get_file_diff))
             .route("/api/git/file", web::get().to(get_file_at_ref))
+            .route("/api/trash/move", web::post().to(move_to_trash))
+            .route("/api/trash/restore", web::post().to(restore_from_trash))
+            .route("/api/trash/item", web::delete().to(delete_from_trash))
+            .route("/api/trash/clear", web::delete().to(clear_trash))
+            .route("/api/trash/list", web::get().to(list_trash))
+            .route("/api/trash/stats", web::get().to(get_trash_stats))
             // SPA index (must be before catch-all route)
             .route("/", web::get().to(static_files::serve_index))
             // Static files and SPA fallback (catch-all route)

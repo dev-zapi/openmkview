@@ -9,6 +9,7 @@ import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
 import ColorPicker from './components/ColorPicker';
 import ProjectEditDialog from './components/ProjectEditDialog';
+import TrashDialog from './components/TrashDialog';
 import { MarkdownHeader } from './components/markdown-header';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
@@ -123,6 +124,7 @@ const App: Component = () => {
   const [colorPickerPosition, setColorPickerPosition] = createSignal({ x: 0, y: 0 });
   const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
   const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
+  const [trashDialogOpen, setTrashDialogOpen] = createSignal(false);
 
   const [isDragging, setIsDragging] = createSignal(false);
   let mediaQuery: MediaQueryList;
@@ -375,6 +377,72 @@ const App: Component = () => {
     });
   };
 
+  const handleDelete = async (node: FileNode) => {
+    const project = activeProject();
+    if (!project) return;
+
+    const defaultProtectedPaths = ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'];
+    const nodeName = node.name.toLowerCase();
+    const isProtected = defaultProtectedPaths.some(p => nodeName.includes(p.toLowerCase()) || node.path.toLowerCase().includes(p.toLowerCase()));
+    
+    if (isProtected) {
+      alert(`Cannot delete protected path: ${node.name}`);
+      return;
+    }
+
+    const confirmed = confirm(`Move "${node.name}" to trash?`);
+    if (!confirmed) return;
+
+    try {
+      await api.moveToTrash(node.path, project.id, node.isFolder);
+      
+      const tree = await api.getFileTree(project.id);
+      setFileTree(tree);
+      
+      if (currentFile()?.path === node.path) {
+        setCurrentFile(null);
+      }
+    } catch (error) {
+      console.error('Failed to move to trash:', error);
+      alert('Failed to move to trash');
+    }
+  };
+
+  const handleCopyPath = async (node: FileNode) => {
+    const project = activeProject();
+    if (!project) return;
+    
+    const fullPath = `${project.path}/${node.path}`;
+    
+    try {
+      await navigator.clipboard.writeText(fullPath);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = fullPath;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+  };
+
+  const handleRename = (node: FileNode) => {
+    const newName = prompt('Enter new name:', node.name);
+    if (!newName || newName === node.name) return;
+    
+    alert('Rename functionality will be implemented in future version');
+  };
+
+  const handleTrashRestore = async () => {
+    const project = activeProject();
+    if (!project) return;
+    
+    const tree = await api.getFileTree(project.id);
+    setFileTree(tree);
+  };
+
   const handleCloseDiff = () => {
     diffStore.reset();
     setActiveTab('preview');
@@ -606,6 +674,17 @@ const App: Component = () => {
                   </svg>
                 </Show>
               </button>
+              <Show when={activeProject()}>
+                <button
+                  title="Trash"
+                  onClick={() => setTrashDialogOpen(true)}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </Show>
               <button
                 title="Settings"
                 onClick={() => setSettingsOpen(true)}
@@ -665,6 +744,9 @@ const App: Component = () => {
                   onFileClick={handleFileClick}
                   expandedFolders={expandedFolders()}
                   onFolderToggle={handleFolderToggle}
+                  onDelete={handleDelete}
+                  onCopyPath={handleCopyPath}
+                  onRename={handleRename}
                 />
               </div>
               {/* Resize handle */}
@@ -840,6 +922,9 @@ theme={settings().themeMode}
                 onFileClick={handleMobileFileClick}
                 expandedFolders={expandedFolders()}
                 onFolderToggle={handleFolderToggle}
+                onDelete={handleDelete}
+                onCopyPath={handleCopyPath}
+                onRename={handleRename}
               />
             </Show>
           }
@@ -956,6 +1041,15 @@ theme={settings().themeMode}
             }}
           />
         </div>
+      </Show>
+
+      <Show when={activeProject()}>
+        <TrashDialog
+          isOpen={trashDialogOpen()}
+          projectId={activeProject()!.id}
+          onClose={() => setTrashDialogOpen(false)}
+          onRestore={handleTrashRestore}
+        />
       </Show>
     </>
   );

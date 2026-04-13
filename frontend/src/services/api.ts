@@ -1,4 +1,4 @@
-import type { FileNode, FileContent, Project } from '../types';
+import type { FileNode, FileContent, Project, TrashItem, TrashStats } from '../types';
 
 export const api = {
   async getFileTree(projectId: number): Promise<FileNode[]> {
@@ -52,6 +52,49 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    return res.json();
+  },
+
+  async moveToTrash(path: string, projectId: number, isFolder: boolean): Promise<TrashItem> {
+    const res = await fetch('/api/trash/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, path, is_folder: isFolder }),
+    });
+    return res.json();
+  },
+
+  async restoreFromTrash(trashItemId: string, projectId: number): Promise<void> {
+    await fetch('/api/trash/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, trash_item_id: trashItemId }),
+    });
+  },
+
+  async deleteFromTrash(trashItemId: string, projectId: number): Promise<void> {
+    await fetch('/api/trash/item', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, trash_item_id: trashItemId }),
+    });
+  },
+
+  async clearTrash(projectId: number): Promise<void> {
+    await fetch('/api/trash/clear', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId }),
+    });
+  },
+
+  async listTrash(projectId: number): Promise<TrashItem[]> {
+    const res = await fetch(`/api/trash/list?project_id=${projectId}`);
+    return res.json();
+  },
+
+  async getTrashStats(projectId: number): Promise<TrashStats> {
+    const res = await fetch(`/api/trash/stats?project_id=${projectId}`);
     return res.json();
   },
 };

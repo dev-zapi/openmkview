@@ -1,5 +1,22 @@
 use serde::{Deserialize, Serialize};
 
+fn default_protected_paths() -> Vec<String> {
+    vec![
+        ".git".to_string(),
+        ".github".to_string(),
+        ".svn".to_string(),
+        ".hg".to_string(),
+        "node_modules".to_string(),
+        "target".to_string(),
+        "dist".to_string(),
+        "build".to_string(),
+    ]
+}
+
+fn default_trash_expire_days() -> u32 {
+    30
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SystemSettings {
     #[serde(rename = "markdownWidth", default)]
@@ -10,6 +27,10 @@ pub struct SystemSettings {
     pub markdown_font: FontSetting,
     #[serde(rename = "tableWidth", default)]
     pub table_width: TableWidthMode,
+    #[serde(rename = "protectedPaths", default = "default_protected_paths")]
+    pub protected_paths: Vec<String>,
+    #[serde(rename = "trashExpireDays", default = "default_trash_expire_days")]
+    pub trash_expire_days: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

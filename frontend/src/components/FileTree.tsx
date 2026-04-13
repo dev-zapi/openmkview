@@ -1,11 +1,15 @@
-import { Component, For, Show, createEffect } from 'solid-js';
+import { Component, For, Show, createSignal } from 'solid-js';
 import type { FileNode } from '../types';
+import FileTreeMenu from './FileTreeMenu';
 
 interface FileTreeProps {
   nodes: FileNode[];
   onFileClick: (path: string, relativePath: string) => void;
   expandedFolders?: Set<string>;
   onFolderToggle?: (path: string, expanded: boolean) => void;
+  onDelete?: (node: FileNode) => void;
+  onRename?: (node: FileNode) => void;
+  onCopyPath?: (node: FileNode) => void;
 }
 
 interface TreeNodeProps {
@@ -13,10 +17,14 @@ interface TreeNodeProps {
   onFileClick: (path: string, relativePath: string) => void;
   expandedFolders?: Set<string>;
   onFolderToggle?: (path: string, expanded: boolean) => void;
+  onDelete?: (node: FileNode) => void;
+  onRename?: (node: FileNode) => void;
+  onCopyPath?: (node: FileNode) => void;
 }
 
 const TreeNode: Component<TreeNodeProps> = (props) => {
   const isExpanded = () => props.expandedFolders?.has(props.node.path) || false;
+  const [menuOpen, setMenuOpen] = createSignal(false);
 
   const handleClick = () => {
     if (props.node.isFolder) {
@@ -27,16 +35,49 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
     }
   };
 
+  const handleMenuToggle = (e: MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(!menuOpen());
+  };
+
   return (
     <li>
       <div
         class={`tree-item ${props.node.isFolder ? 'folder' : 'file'}`}
-        onClick={handleClick}
       >
-        <span class={`icon ${props.node.isFolder ? (isExpanded() ? 'folder-icon expanded' : 'folder-icon') : ''}`}>
-          {props.node.isFolder ? (isExpanded() ? '📂' : '📁') : '📄'}
-        </span>
-        <span class="name">{props.node.name}</span>
+        <div class="tree-item-content" onClick={handleClick}>
+          <span class={`icon ${props.node.isFolder ? (isExpanded() ? 'folder-icon expanded' : 'folder-icon') : ''}`}>
+            {props.node.isFolder ? (isExpanded() ? '📂' : '📁') : '📄'}
+          </span>
+          <span class="name">{props.node.name}</span>
+        </div>
+        <div class="tree-item-menu">
+          <button class="menu-button" onClick={handleMenuToggle}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="2"/>
+              <circle cx="12" cy="12" r="2"/>
+              <circle cx="12" cy="19" r="2"/>
+            </svg>
+          </button>
+          <Show when={menuOpen()}>
+            <FileTreeMenu
+              node={props.node}
+              onDelete={() => {
+                props.onDelete?.(props.node);
+                setMenuOpen(false);
+              }}
+              onRename={() => {
+                props.onRename?.(props.node);
+                setMenuOpen(false);
+              }}
+              onCopyPath={() => {
+                props.onCopyPath?.(props.node);
+                setMenuOpen(false);
+              }}
+              onClose={() => setMenuOpen(false)}
+            />
+          </Show>
+        </div>
       </div>
       <Show when={props.node.isFolder && isExpanded() && props.node.children}>
         <ul class="folder-children">
@@ -47,6 +88,9 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
                 onFileClick={props.onFileClick}
                 expandedFolders={props.expandedFolders}
                 onFolderToggle={props.onFolderToggle}
+                onDelete={props.onDelete}
+                onRename={props.onRename}
+                onCopyPath={props.onCopyPath}
               />
             )}
           </For>
@@ -67,6 +111,9 @@ const FileTree: Component<FileTreeProps> = (props) => {
               onFileClick={props.onFileClick}
               expandedFolders={props.expandedFolders}
               onFolderToggle={props.onFolderToggle}
+              onDelete={props.onDelete}
+              onRename={props.onRename}
+              onCopyPath={props.onCopyPath}
             />
           )}
         </For>
