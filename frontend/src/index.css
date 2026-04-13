@@ -1151,14 +1151,14 @@ textarea {
 }
 
 .file-tree li {
-  margin: 2px 0;
+  margin: 1px 0;
 }
 
 .file-tree .item,
 .file-tree .tree-item {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 4px 8px;
   cursor: pointer;
   border-radius: 6px;
   font-size: 13px;
@@ -1189,7 +1189,7 @@ textarea {
 }
 
 .file-tree .folder-children {
-  padding-left: 16px;
+  padding-left: 12px;
   overflow: hidden;
 }
 
