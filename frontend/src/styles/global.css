@@ -762,6 +762,7 @@
   align-items: center;
   gap: 8px;
   flex: 1;
+  min-width: 0;
   cursor: pointer;
 }
 
@@ -769,6 +770,7 @@
   position: relative;
   opacity: 0;
   transition: opacity 0.2s;
+  flex-shrink: 0;
 }
 
 .tree-item:hover .tree-item-menu {
