@@ -42,3 +42,8 @@ MD-RENDER-MIGRATION*.md
 frontend/playwright-report/
 frontend/test-results/
 test-results/
+
+# Additional ignored directories
+plan/
+.opencode/
+.playwright-cli/
