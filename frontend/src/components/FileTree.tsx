@@ -25,6 +25,8 @@ interface TreeNodeProps {
 const TreeNode: Component<TreeNodeProps> = (props) => {
   const isExpanded = () => props.expandedFolders?.has(props.node.path) || false;
   const [menuOpen, setMenuOpen] = createSignal(false);
+  const [menuPosition, setMenuPosition] = createSignal({ top: 0, left: 0 });
+  let menuButtonRef: HTMLButtonElement | undefined;
 
   const handleClick = () => {
     if (props.node.isFolder) {
@@ -37,6 +39,17 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
 
   const handleMenuToggle = (e: MouseEvent) => {
     e.stopPropagation();
+    if (!menuOpen() && menuButtonRef) {
+      const rect = menuButtonRef.getBoundingClientRect();
+      const menuWidth = 160;
+      // Position menu with its right edge aligned to button right, but ensure it doesn't go off-screen
+      let left = rect.right - menuWidth;
+      if (left < 10) left = 10; // Minimum left margin
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: left
+      });
+    }
     setMenuOpen(!menuOpen());
   };
 
@@ -52,7 +65,11 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
           <span class="name">{props.node.name}</span>
         </div>
         <div class="tree-item-menu">
-          <button class="menu-button" onClick={handleMenuToggle}>
+          <button 
+            class="menu-button" 
+            onClick={handleMenuToggle}
+            ref={menuButtonRef}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="2"/>
               <circle cx="12" cy="12" r="2"/>
@@ -62,6 +79,7 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
           <Show when={menuOpen()}>
             <FileTreeMenu
               node={props.node}
+              position={menuPosition()}
               onDelete={() => {
                 props.onDelete?.(props.node);
                 setMenuOpen(false);
