@@ -752,6 +752,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
+  contain: layout;
 }
 
 /* Buttons */
