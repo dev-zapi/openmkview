@@ -36,7 +36,7 @@ pub async fn get_file_tree(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let files = collect_markdown_files(&project_path);
+    let files = collect_project_files(&project_path);
     let tree = FileService::build_tree(&files, &project_path);
 
     Ok(HttpResponse::Ok().json(tree))
@@ -148,8 +148,29 @@ pub async fn search_favicons(
     Ok(HttpResponse::Ok().json(favicons))
 }
 
+pub async fn serve_project_file(
+    data: web::Data<AppState>,
+    query: web::Query<FileContentParams>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(query.project_id)?;
+
+    let (content, mime_type, file_name) = FileService::get_raw_file(&project_path, &query.path)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type(mime_type)
+        .insert_header((
+            "Content-Disposition",
+            format!("inline; filename=\"{}\"", file_name),
+        ))
+        .body(content))
+}
+
 #[allow(dead_code)]
-fn collect_markdown_files(root_path: &PathBuf) -> Vec<PathBuf> {
+fn collect_project_files(root_path: &PathBuf) -> Vec<PathBuf> {
     let mut files = Vec::new();
 
     for entry in walkdir::WalkDir::new(root_path)
@@ -163,7 +184,18 @@ fn collect_markdown_files(root_path: &PathBuf) -> Vec<PathBuf> {
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
-                if ext == "md" || ext == "mdx" {
+                let ext_lower = ext.to_string_lossy().to_lowercase();
+                if ext_lower == "md"
+                    || ext_lower == "mdx"
+                    || ext_lower == "png"
+                    || ext_lower == "jpg"
+                    || ext_lower == "jpeg"
+                    || ext_lower == "gif"
+                    || ext_lower == "svg"
+                    || ext_lower == "webp"
+                    || ext_lower == "bmp"
+                    || ext_lower == "ico"
+                {
                     if let Ok(rel) = path.strip_prefix(root_path) {
                         files.push(rel.to_path_buf());
                     }

@@ -9,6 +9,7 @@ export interface DocumentTitleBarProps {
   outlineCount: number;
   isOutlineOpen: boolean;
   isFullscreen: boolean;
+  fileType?: 'markdown' | 'image';
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
@@ -96,26 +97,28 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
       </div>
 
       <div class={styles.documentCenter}>
-        <div class={styles.viewTabs}>
-          <button
-            class={`${styles.tabItem} ${props.activeTab === 'preview' ? styles.active : ''}`}
-            onClick={() => props.onTabChange('preview')}
-          >
-            预览
-          </button>
-          <button
-            class={`${styles.tabItem} ${props.activeTab === 'source' ? styles.active : ''}`}
-            onClick={() => props.onTabChange('source')}
-          >
-            源码
-          </button>
-          <button
-            class={`${styles.tabItem} ${props.activeTab === 'diff' ? styles.active : ''}`}
-            onClick={() => props.onTabChange('diff')}
-          >
-            Diff
-          </button>
-        </div>
+        <Show when={props.fileType !== 'image'}>
+          <div class={styles.viewTabs}>
+            <button
+              class={`${styles.tabItem} ${props.activeTab === 'preview' ? styles.active : ''}`}
+              onClick={() => props.onTabChange('preview')}
+            >
+              预览
+            </button>
+            <button
+              class={`${styles.tabItem} ${props.activeTab === 'source' ? styles.active : ''}`}
+              onClick={() => props.onTabChange('source')}
+            >
+              源码
+            </button>
+            <button
+              class={`${styles.tabItem} ${props.activeTab === 'diff' ? styles.active : ''}`}
+              onClick={() => props.onTabChange('diff')}
+            >
+              Diff
+            </button>
+          </div>
+        </Show>
       </div>
 
       <div class={styles.documentRight}>

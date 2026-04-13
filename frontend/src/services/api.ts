@@ -97,4 +97,8 @@ export const api = {
     const res = await fetch(`/api/trash/stats?project_id=${projectId}`);
     return res.json();
   },
+
+  getFileRawUrl(path: string, projectId: number): string {
+    return `/api/files/raw?path=${encodeURIComponent(path)}&project_id=${projectId}`;
+  },
 };

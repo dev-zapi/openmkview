@@ -5,7 +5,69 @@ use std::path::{Path, PathBuf};
 
 pub struct FileService;
 
+const MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
+
+const ALLOWED_IMAGE_EXTENSIONS: &[&str] =
+    &["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"];
+
 impl FileService {
+    pub fn is_allowed_file_type(ext: &str) -> bool {
+        let ext_lower = ext.to_lowercase();
+        ALLOWED_IMAGE_EXTENSIONS.contains(&ext_lower.as_str())
+    }
+
+    pub fn get_mime_type(ext: &str) -> &'static str {
+        match ext.to_lowercase().as_str() {
+            "png" => "image/png",
+            "jpg" | "jpeg" => "image/jpeg",
+            "gif" => "image/gif",
+            "svg" => "image/svg+xml",
+            "webp" => "image/webp",
+            "bmp" => "image/bmp",
+            "ico" => "image/x-icon",
+            _ => "application/octet-stream",
+        }
+    }
+
+    pub fn get_raw_file(
+        project_path: &Path,
+        file_path: &str,
+    ) -> AppResult<(Vec<u8>, String, String)> {
+        let file_path = PathBuf::from(file_path);
+        let resolved = file_path
+            .canonicalize()
+            .map_err(|_| AppError::NotFound("File does not exist".into()))?;
+
+        let project_resolved = project_path
+            .canonicalize()
+            .map_err(|_| AppError::FileError("Invalid project path".into()))?;
+
+        if !resolved.starts_with(&project_resolved) {
+            return Err(AppError::ValidationError("Access denied".into()));
+        }
+
+        let ext = resolved
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase());
+
+        let ext_str = ext.as_deref().unwrap_or("");
+
+        if !Self::is_allowed_file_type(ext_str) {
+            return Err(AppError::BadRequest("File type not allowed".into()));
+        }
+
+        let metadata = std::fs::metadata(&resolved)?;
+        if metadata.len() > MAX_FILE_SIZE {
+            return Err(AppError::BadRequest("File too large (max 50MB)".into()));
+        }
+
+        let content = std::fs::read(&resolved)?;
+        let mime_type = Self::get_mime_type(ext_str).to_string();
+        let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
+
+        Ok((content, mime_type, file_name))
+    }
     pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
         fn build_node(
             files: &[&PathBuf],
@@ -32,12 +94,27 @@ impl FileService {
                 if is_file {
                     for file in &group_files {
                         let full_path = root_path.join(file);
+                        let file_type = file
+                            .extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.to_lowercase());
+                        let node_type = file_type.as_deref().and_then(|ext| {
+                            if ext == "md" || ext == "mdx" {
+                                Some("markdown".to_string())
+                            } else if FileService::is_allowed_file_type(ext) {
+                                Some("image".to_string())
+                            } else {
+                                None
+                            }
+                        });
+
                         nodes.push(FileTreeNode {
                             id: file.to_str().unwrap().to_string(),
                             name: name.clone(),
                             path: full_path.to_str().unwrap().to_string(),
                             is_folder: false,
                             children: None,
+                            file_type: node_type,
                         });
                     }
                 } else {
@@ -53,6 +130,7 @@ impl FileService {
                         path: root_path.join(&child_prefix).to_str().unwrap().to_string(),
                         is_folder: true,
                         children: Some(children),
+                        file_type: None,
                     });
                 }
             }

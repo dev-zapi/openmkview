@@ -11,6 +11,7 @@ export interface MarkdownHeaderProps {
   isOutlineOpen: boolean;
   outlineCount: number;
   content: string;
+  fileType?: 'markdown' | 'image';
   onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
   onOutlineToggle: () => void;
 }
@@ -190,6 +191,7 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         outlineCount={props.outlineCount}
         isOutlineOpen={props.isOutlineOpen}
         isFullscreen={isFullscreen()}
+        fileType={props.fileType}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         onFullscreenToggle={handleFullscreenToggle}

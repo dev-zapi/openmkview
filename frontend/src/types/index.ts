@@ -4,6 +4,7 @@ export interface FileNode {
   path: string;
   isFolder: boolean;
   children?: FileNode[];
+  fileType?: 'markdown' | 'image';
 }
 
 export interface Heading {

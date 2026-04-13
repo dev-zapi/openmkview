@@ -9,6 +9,8 @@ pub struct FileTreeNode {
     pub is_folder: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<FileTreeNode>>,
+    #[serde(rename = "fileType", skip_serializing_if = "Option::is_none")]
+    pub file_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

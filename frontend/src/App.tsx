@@ -10,6 +10,7 @@ import SettingsPanel from './components/SettingsPanel';
 import ColorPicker from './components/ColorPicker';
 import ProjectEditDialog from './components/ProjectEditDialog';
 import TrashDialog from './components/TrashDialog';
+import ImagePreview from './components/ImagePreview';
 import { MarkdownHeader } from './components/markdown-header';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
@@ -127,6 +128,9 @@ const App: Component = () => {
   const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
   const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
   const [trashDialogOpen, setTrashDialogOpen] = createSignal(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = createSignal<string | null>(null);
+  const [imageFileName, setImageFileName] = createSignal<string>('');
+  const [currentFileType, setCurrentFileType] = createSignal<'markdown' | 'image'>('markdown');
 
   const [isDragging, setIsDragging] = createSignal(false);
   let mediaQuery: MediaQueryList;
@@ -346,10 +350,29 @@ const App: Component = () => {
     const project = activeProject();
     if (!project) return;
 
+    const node = findNodeByPath(fileTree(), path);
+    const fileType = node?.fileType;
+
+    if (fileType === 'image') {
+      setCurrentFileType('image');
+      setImagePreviewUrl(api.getFileRawUrl(path, project.id));
+      setImageFileName(node?.name || '');
+      setCurrentFile(null);
+      setExtractedHeadings([]);
+      setActiveTab('preview');
+      diffStore.reset();
+      if (updateUrl) {
+        navigateToFile(project.id, path);
+      }
+      return;
+    }
+
+    setCurrentFileType('markdown');
     setLoading(true);
     try {
       const content = await api.getFileContent(path, project.id);
       setCurrentFile(content);
+      setImagePreviewUrl(null);
       setExtractedHeadings([]);
       setActiveTab('preview');
       diffStore.reset();
@@ -361,6 +384,17 @@ const App: Component = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const findNodeByPath = (nodes: FileNode[], path: string): FileNode | null => {
+    for (const node of nodes) {
+      if (node.path === path) return node;
+      if (node.children) {
+        const found = findNodeByPath(node.children, path);
+        if (found) return found;
+      }
+    }
+    return null;
   };
 
   const handleHeadingsExtracted = (headings: Heading[]) => {
@@ -774,6 +808,20 @@ const App: Component = () => {
                   isOutlineOpen={outlineOpen()}
                   outlineCount={extractedHeadings().length}
                   content={currentFile()!.content}
+                  fileType={currentFileType()}
+                  onTabChange={(tab) => setActiveTab(tab)}
+                  onOutlineToggle={handleMobileOutlineToggle}
+                />
+              </Show>
+
+              <Show when={imagePreviewUrl() && currentFileType() === 'image'}>
+                <MarkdownHeader
+                  fileName={imageFileName()}
+                  activeTab={activeTab()}
+                  isOutlineOpen={outlineOpen()}
+                  outlineCount={0}
+                  content=""
+                  fileType="image"
                   onTabChange={(tab) => setActiveTab(tab)}
                   onOutlineToggle={handleMobileOutlineToggle}
                 />
@@ -793,12 +841,23 @@ const App: Component = () => {
                       </div>
                     </Show>
 
-                    <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
+                    <Show when={!loading() && currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
                       <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
                         <MarkdownView 
                           content={currentFile()!.content} 
                           theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                          onHeadingsExtracted={handleHeadingsExtracted} 
+                          onHeadingsExtracted={handleHeadingsExtracted}
+                          currentFilePath={currentFile()!.path}
+                          projectId={activeProject()?.id}
+                        />
+                      </div>
+                    </Show>
+
+                    <Show when={!loading() && imagePreviewUrl() && currentFileType() === 'image'}>
+                      <div class="content-fade-enter">
+                        <ImagePreview 
+                          src={imagePreviewUrl()!}
+                          fileName={imageFileName()}
                         />
                       </div>
                     </Show>
@@ -940,19 +999,34 @@ theme={settings().themeMode}
             />
           }
           headerContent={
-            <Show when={currentFile()}>
-              <MarkdownHeader
-                fileName={currentFile()!.fileName}
-                lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
-                fileSize={currentFile()!.fileSize}
-                activeTab={activeTab()}
-                isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
-                outlineCount={extractedHeadings().length}
-                content={currentFile()!.content}
-                onTabChange={(tab) => setActiveTab(tab)}
-                onOutlineToggle={handleMobileOutlineToggle}
-              />
-            </Show>
+            <>
+              <Show when={currentFile()}>
+                <MarkdownHeader
+                  fileName={currentFile()!.fileName}
+                  lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
+                  fileSize={currentFile()!.fileSize}
+                  activeTab={activeTab()}
+                  isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
+                  outlineCount={extractedHeadings().length}
+                  content={currentFile()!.content}
+                  fileType={currentFileType()}
+                  onTabChange={(tab) => setActiveTab(tab)}
+                  onOutlineToggle={handleMobileOutlineToggle}
+                />
+              </Show>
+              <Show when={imagePreviewUrl() && currentFileType() === 'image'}>
+                <MarkdownHeader
+                  fileName={imageFileName()}
+                  activeTab={activeTab()}
+                  isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
+                  outlineCount={0}
+                  content=""
+                  fileType="image"
+                  onTabChange={(tab) => setActiveTab(tab)}
+                  onOutlineToggle={handleMobileOutlineToggle}
+                />
+              </Show>
+            </>
           }
         >
           <div class="mobile-main-content">
@@ -967,14 +1041,23 @@ theme={settings().themeMode}
               </div>
             </Show>
 
-            <Show when={!loading() && currentFile() && activeTab() === 'preview'}>
+            <Show when={!loading() && currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
               <div class="markdown-wrapper" style={getMarkdownStyle()}>
                 <MarkdownView 
                   content={currentFile()!.content}
                   theme={getEffectiveThemeType(settings().themeMode as ThemeMode)} 
-                  onHeadingsExtracted={handleHeadingsExtracted} 
+                  onHeadingsExtracted={handleHeadingsExtracted}
+                  currentFilePath={currentFile()!.path}
+                  projectId={activeProject()?.id}
                 />
               </div>
+            </Show>
+
+            <Show when={!loading() && imagePreviewUrl() && currentFileType() === 'image'}>
+              <ImagePreview 
+                src={imagePreviewUrl()!}
+                fileName={imageFileName()}
+              />
             </Show>
 
             <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>

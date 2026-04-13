@@ -125,7 +125,7 @@ fn test_search_with_depth_basic() {
 
     let candidates = search_with_depth(temp_dir.path(), "main", 1, true);
 
-    assert!(candidates.len() >= 1);
+    assert!(!candidates.is_empty());
     assert!(candidates.iter().any(|c| c.name == "main.rs"));
     let main_candidate = candidates.iter().find(|c| c.name == "main.rs");
     assert!(main_candidate.is_some());
@@ -161,7 +161,7 @@ fn test_search_with_depth_case_insensitive() {
 
     let candidates = search_with_depth(temp_dir.path(), "main", 1, true);
 
-    assert!(candidates.len() >= 1);
+    assert!(!candidates.is_empty());
     assert!(candidates.iter().any(|c| c.name == "Main.rs"));
 }
 
@@ -194,7 +194,7 @@ fn test_search_with_depth_hidden_files_included() {
 
     let candidates = search_with_depth(&normal_dir, "hidden", 1, true);
 
-    assert!(candidates.len() >= 1);
+    assert!(!candidates.is_empty());
     assert!(candidates.iter().any(|c| c.name == ".hidden.txt"));
 }
 
@@ -223,7 +223,7 @@ fn test_search_with_depth_relative_path() {
 
     let candidates = search_with_depth(temp_dir.path(), "test_file", 1, true);
 
-    assert!(candidates.len() >= 1);
+    assert!(!candidates.is_empty());
     let test_candidate = candidates.iter().find(|c| c.name == "test_file.txt");
     assert!(test_candidate.is_some());
     assert_eq!(test_candidate.unwrap().relative_path, "test_file.txt");

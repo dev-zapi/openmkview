@@ -149,3 +149,175 @@ fn test_delete_file_not_found() {
     let result = FileService::delete_file(temp_dir.path(), "nonexistent.md");
     assert!(result.is_err());
 }
+
+#[test]
+fn test_is_allowed_file_type_png() {
+    assert!(FileService::is_allowed_file_type("png"));
+    assert!(FileService::is_allowed_file_type("PNG"));
+}
+
+#[test]
+fn test_is_allowed_file_type_jpg() {
+    assert!(FileService::is_allowed_file_type("jpg"));
+    assert!(FileService::is_allowed_file_type("jpeg"));
+    assert!(FileService::is_allowed_file_type("JPG"));
+}
+
+#[test]
+fn test_is_allowed_file_type_gif() {
+    assert!(FileService::is_allowed_file_type("gif"));
+}
+
+#[test]
+fn test_is_allowed_file_type_svg() {
+    assert!(FileService::is_allowed_file_type("svg"));
+}
+
+#[test]
+fn test_is_allowed_file_type_webp() {
+    assert!(FileService::is_allowed_file_type("webp"));
+}
+
+#[test]
+fn test_is_allowed_file_type_not_allowed() {
+    assert!(!FileService::is_allowed_file_type("txt"));
+    assert!(!FileService::is_allowed_file_type("pdf"));
+    assert!(!FileService::is_allowed_file_type("exe"));
+}
+
+#[test]
+fn test_get_mime_type_png() {
+    assert_eq!(FileService::get_mime_type("png"), "image/png");
+}
+
+#[test]
+fn test_get_mime_type_jpg() {
+    assert_eq!(FileService::get_mime_type("jpg"), "image/jpeg");
+    assert_eq!(FileService::get_mime_type("jpeg"), "image/jpeg");
+}
+
+#[test]
+fn test_get_mime_type_gif() {
+    assert_eq!(FileService::get_mime_type("gif"), "image/gif");
+}
+
+#[test]
+fn test_get_mime_type_svg() {
+    assert_eq!(FileService::get_mime_type("svg"), "image/svg+xml");
+}
+
+#[test]
+fn test_get_mime_type_webp() {
+    assert_eq!(FileService::get_mime_type("webp"), "image/webp");
+}
+
+#[test]
+fn test_get_mime_type_unknown() {
+    assert_eq!(
+        FileService::get_mime_type("unknown"),
+        "application/octet-stream"
+    );
+}
+
+#[test]
+fn test_get_raw_file_png() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.png");
+    let png_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    fs::write(&file_path, &png_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, png_data);
+    assert_eq!(mime_type, "image/png");
+    assert_eq!(file_name, "test.png");
+}
+
+#[test]
+fn test_get_raw_file_jpg() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.jpg");
+    let jpg_data = vec![0xFF, 0xD8, 0xFF, 0xE0];
+    fs::write(&file_path, &jpg_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, jpg_data);
+    assert_eq!(mime_type, "image/jpeg");
+    assert_eq!(file_name, "test.jpg");
+}
+
+#[test]
+fn test_get_raw_file_svg() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.svg");
+    let svg_data = "<svg></svg>".as_bytes().to_vec();
+    fs::write(&file_path, &svg_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, svg_data);
+    assert_eq!(mime_type, "image/svg+xml");
+    assert_eq!(file_name, "test.svg");
+}
+
+#[test]
+fn test_get_raw_file_not_allowed() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.txt");
+    fs::write(&file_path, "text content").unwrap();
+
+    let result = FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap());
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_get_raw_file_path_traversal() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let outside_file = temp_dir.path().parent().unwrap().join("outside.png");
+    fs::write(&outside_file, vec![0x89, 0x50]).unwrap();
+
+    let result = FileService::get_raw_file(temp_dir.path(), outside_file.to_str().unwrap());
+    assert!(result.is_err());
+
+    fs::remove_file(&outside_file).ok();
+}
+
+#[test]
+fn test_build_tree_with_image_files() {
+    let files = vec![
+        PathBuf::from("test.md"),
+        PathBuf::from("image.png"),
+        PathBuf::from("photo.jpg"),
+    ];
+    let root = Path::new("/tmp");
+    let tree = FileService::build_tree(&files, root);
+
+    assert_eq!(tree.len(), 3);
+
+    let md_node = tree.iter().find(|n| n.name == "test.md");
+    assert!(md_node.is_some());
+    assert_eq!(md_node.unwrap().file_type, Some("markdown".to_string()));
+
+    let png_node = tree.iter().find(|n| n.name == "image.png");
+    assert!(png_node.is_some());
+    assert_eq!(png_node.unwrap().file_type, Some("image".to_string()));
+
+    let jpg_node = tree.iter().find(|n| n.name == "photo.jpg");
+    assert!(jpg_node.is_some());
+    assert_eq!(jpg_node.unwrap().file_type, Some("image".to_string()));
+}
+
+#[test]
+fn test_build_tree_folder_no_file_type() {
+    let files = vec![PathBuf::from("folder/file.md")];
+    let root = Path::new("/tmp");
+    let tree = FileService::build_tree(&files, root);
+
+    assert_eq!(tree.len(), 1);
+    assert!(tree[0].is_folder);
+    assert_eq!(tree[0].file_type, None);
+}

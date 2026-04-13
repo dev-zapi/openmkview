@@ -10,6 +10,8 @@ interface MarkdownViewProps {
   class?: string;
   theme?: 'light' | 'dark';
   onHeadingsExtracted?: (headings: Heading[]) => void;
+  currentFilePath?: string;
+  projectId?: number;
 }
 
 const generateHeadingId = (text: string): string => {
@@ -21,6 +23,27 @@ const generateHeadingId = (text: string): string => {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 };
+
+const resolveImagePath = (currentFilePath: string, imageHref: string): string => {
+    const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'));
+    const normalizedHref = imageHref.replace(/^\.\//, '');
+    
+    if (normalizedHref.startsWith('../')) {
+      const parts = currentDir.split('/');
+      const hrefParts = normalizedHref.split('/');
+      
+      for (const part of hrefParts) {
+        if (part === '..') {
+          parts.pop();
+        } else if (part !== '.') {
+          parts.push(part);
+        }
+      }
+      return parts.join('/');
+    }
+    
+    return currentDir ? `${currentDir}/${normalizedHref}` : normalizedHref;
+  };
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
@@ -84,6 +107,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           code({ text, lang }) {
             const language = lang || 'text';
             return `<pre class="shiki-code-block" data-lang="${language}"><code class="language-${language}">${escapeHtml(text)}</code></pre>`;
+          },
+          image({ href, title, text }) {
+            let imageUrl = href || '';
+            
+            if (href && !href.startsWith('http') && !href.startsWith('data:') && !href.startsWith('//')) {
+              if (props.currentFilePath && props.projectId) {
+                const absolutePath = resolveImagePath(props.currentFilePath, href);
+                imageUrl = `/api/files/raw?path=${encodeURIComponent(absolutePath)}&project_id=${props.projectId}`;
+              }
+            }
+            
+            const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+            const altText = text || '';
+            return `<img src="${imageUrl}" alt="${escapeHtml(altText)}"${titleAttr} />`;
           },
         },
       });

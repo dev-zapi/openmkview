@@ -22,6 +22,12 @@ interface TreeNodeProps {
   onCopyPath?: (node: FileNode) => void;
 }
 
+const getFileIcon = (node: FileNode): string => {
+  if (node.isFolder) return '📁';
+  if (node.fileType === 'image') return '🖼️';
+  return '📄';
+};
+
 const TreeNode: Component<TreeNodeProps> = (props) => {
   const isExpanded = () => props.expandedFolders?.has(props.node.path) || false;
   const [menuOpen, setMenuOpen] = createSignal(false);
@@ -42,9 +48,8 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
     if (!menuOpen() && menuButtonRef) {
       const rect = menuButtonRef.getBoundingClientRect();
       const menuWidth = 160;
-      // Position menu with its right edge aligned to button right, but ensure it doesn't go off-screen
       let left = rect.right - menuWidth;
-      if (left < 10) left = 10; // Minimum left margin
+      if (left < 10) left = 10;
       setMenuPosition({
         top: rect.bottom + 4,
         left: left
@@ -53,14 +58,21 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
     setMenuOpen(!menuOpen());
   };
 
+  const getIconDisplay = () => {
+    if (props.node.isFolder) {
+      return isExpanded() ? '📂' : '📁';
+    }
+    return getFileIcon(props.node);
+  };
+
   return (
     <li>
       <div
-        class={`tree-item ${props.node.isFolder ? 'folder' : 'file'}`}
+        class={`tree-item ${props.node.isFolder ? 'folder' : 'file'} ${props.node.fileType === 'image' ? 'image-file' : ''}`}
       >
         <div class="tree-item-content" onClick={handleClick}>
           <span class={`icon ${props.node.isFolder ? (isExpanded() ? 'folder-icon expanded' : 'folder-icon') : ''}`}>
-            {props.node.isFolder ? (isExpanded() ? '📂' : '📁') : '📄'}
+            {getIconDisplay()}
           </span>
           <span class="name">{props.node.name}</span>
         </div>
