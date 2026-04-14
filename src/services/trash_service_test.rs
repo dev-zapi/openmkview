@@ -406,8 +406,14 @@ fn test_validate_trash_item_id_rejects_path_chars() {
 }
 
 #[test]
-fn test_validate_trash_item_id_accepts_valid() {
+fn test_validate_trash_item_id_rejects_non_uuid() {
     let result = validate_trash_item_id("1234567890_file.md");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_validate_trash_item_id_accepts_valid_uuid() {
+    let result = validate_trash_item_id("550e8400-e29b-41d4-a716-446655440000");
     assert!(result.is_ok());
 }
 
@@ -431,5 +437,35 @@ fn test_move_to_trash_rejects_path_traversal() {
 
     fs::remove_dir_all(&project_dir).unwrap_or_default();
     fs::remove_dir_all(&outside_dir).unwrap_or_default();
+    cleanup_test_trash_dir(project_id);
+}
+
+#[test]
+fn test_same_file_consecutive_delete_no_conflict() {
+    let base_dir = get_test_base_dir();
+    let project_dir = base_dir.join("test_project_9002");
+    fs::create_dir_all(&project_dir).unwrap();
+
+    let project_id = 9002i64;
+    setup_test_trash_dir(project_id);
+
+    fs::write(project_dir.join("test.md"), "first content").unwrap();
+    let result1 = TrashService::move_to_trash(&project_dir, "test.md", false, project_id);
+    assert!(result1.is_ok());
+    let id1 = result1.unwrap().id;
+
+    fs::write(project_dir.join("test.md"), "second content").unwrap();
+    let result2 = TrashService::move_to_trash(&project_dir, "test.md", false, project_id);
+    assert!(result2.is_ok());
+    let id2 = result2.unwrap().id;
+
+    assert_ne!(id1, id2);
+
+    let items = TrashService::list_trash(project_id).unwrap();
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().any(|i| i.id == id1));
+    assert!(items.iter().any(|i| i.id == id2));
+
+    fs::remove_dir_all(&project_dir).unwrap_or_default();
     cleanup_test_trash_dir(project_id);
 }

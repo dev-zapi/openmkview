@@ -3,6 +3,7 @@ use crate::models::{TrashItem, TrashMetadata, TrashStats};
 use chrono::{DateTime, Utc};
 use std::fs;
 use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 fn validate_relative_path(input: &str) -> AppResult<PathBuf> {
     let path = PathBuf::from(input);
@@ -24,6 +25,9 @@ fn validate_trash_item_id(id: &str) -> AppResult<()> {
     }
     if id.contains('/') || id.contains('\\') || id.contains("..") {
         return Err(AppError::BadRequest("Trash ID 格式非法".into()));
+    }
+    if Uuid::parse_str(id).is_err() {
+        return Err(AppError::BadRequest("Trash ID 必须为有效的 UUID".into()));
     }
     Ok(())
 }
@@ -103,15 +107,14 @@ impl TrashService {
         fs::create_dir_all(&files_dir)?;
         fs::create_dir_all(&metadata_dir)?;
 
-        let timestamp = Utc::now().timestamp();
+        let trash_id = Uuid::new_v4().to_string();
         let original_name = validated_path
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
-        let trash_name = format!("{}_{}", timestamp, original_name);
 
         let source = project_path.join(&validated_path);
-        let dest = files_dir.join(&trash_name);
+        let dest = files_dir.join(&trash_id);
 
         validate_path_within_base(&source, project_path)?;
 
@@ -136,11 +139,11 @@ impl TrashService {
             size,
         };
 
-        let meta_path = metadata_dir.join(format!("{}.meta", trash_name));
+        let meta_path = metadata_dir.join(format!("{}.meta", trash_id));
         fs::write(&meta_path, serde_json::to_string(&metadata)?)?;
 
         Ok(TrashItem {
-            id: trash_name,
+            id: trash_id,
             original_name: original_name.to_string(),
             original_path: validated_path.to_string_lossy().to_string(),
             deleted_at,
