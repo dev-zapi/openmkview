@@ -469,3 +469,36 @@ fn test_same_file_consecutive_delete_no_conflict() {
     fs::remove_dir_all(&project_dir).unwrap_or_default();
     cleanup_test_trash_dir(project_id);
 }
+
+#[test]
+fn test_restore_conflict_target_exists() {
+    let base_dir = get_test_base_dir();
+    let project_dir = base_dir.join("test_project_9003");
+    fs::create_dir_all(&project_dir).unwrap();
+
+    let project_id = 9003i64;
+    setup_test_trash_dir(project_id);
+
+    fs::write(project_dir.join("conflict.md"), "original content").unwrap();
+    let move_result = TrashService::move_to_trash(&project_dir, "conflict.md", false, project_id);
+    assert!(move_result.is_ok());
+    let trash_id = move_result.unwrap().id;
+
+    fs::write(project_dir.join("conflict.md"), "new content").unwrap();
+
+    let restore_result = TrashService::restore_from_trash(&project_dir, &trash_id, project_id);
+    assert!(restore_result.is_err());
+
+    let err = restore_result.unwrap_err();
+    assert!(matches!(err, AppError::BadRequest(_)));
+
+    assert!(project_dir.join("conflict.md").exists());
+    let content = fs::read_to_string(project_dir.join("conflict.md")).unwrap();
+    assert_eq!(content, "new content");
+
+    let items = TrashService::list_trash(project_id).unwrap();
+    assert!(items.iter().any(|i| i.id == trash_id));
+
+    fs::remove_dir_all(&project_dir).unwrap_or_default();
+    cleanup_test_trash_dir(project_id);
+}

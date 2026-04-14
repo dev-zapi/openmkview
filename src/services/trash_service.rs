@@ -203,6 +203,13 @@ impl TrashService {
 
         validate_path_within_base(&dest, project_path)?;
 
+        if dest.exists() {
+            return Err(AppError::BadRequest(format!(
+                "目标路径已存在: {}",
+                metadata.original_path
+            )));
+        }
+
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)?;
         }
