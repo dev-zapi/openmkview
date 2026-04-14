@@ -90,6 +90,27 @@ fn get_size(path: &PathBuf) -> AppResult<u64> {
     }
 }
 
+fn cross_device_move(source: &Path, dest: &Path) -> AppResult<()> {
+    if fs::rename(source, dest).is_ok() {
+        return Ok(());
+    }
+
+    if source.is_dir() {
+        fs::create_dir_all(dest)?;
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let entry_path = entry.path();
+            let dest_path = dest.join(entry.file_name());
+            cross_device_move(&entry_path, &dest_path)?;
+        }
+        fs::remove_dir_all(source)?;
+    } else {
+        fs::copy(source, dest)?;
+        fs::remove_file(source)?;
+    }
+    Ok(())
+}
+
 pub struct TrashService;
 
 impl TrashService {
@@ -125,7 +146,7 @@ impl TrashService {
             )));
         }
 
-        fs::rename(&source, &dest)?;
+        cross_device_move(&source, &dest)?;
 
         let size = get_size(&dest)?;
         let deleted_at = Utc::now().to_rfc3339();
@@ -186,7 +207,7 @@ impl TrashService {
             fs::create_dir_all(parent)?;
         }
 
-        fs::rename(&source, &dest)?;
+        cross_device_move(&source, &dest)?;
         fs::remove_file(&meta_path)?;
 
         Ok(())
