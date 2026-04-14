@@ -1,28 +1,29 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashMoveRequest {
     pub project_id: i64,
     pub path: String,
-    #[serde(rename = "isFolder")]
     pub is_folder: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashRestoreRequest {
     pub project_id: i64,
-    #[serde(rename = "trashItemId")]
     pub trash_item_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashDeleteRequest {
     pub project_id: i64,
-    #[serde(rename = "trashItemId")]
     pub trash_item_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrashClearRequest {
     pub project_id: i64,
 }

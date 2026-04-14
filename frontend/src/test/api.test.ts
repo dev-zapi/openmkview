@@ -115,7 +115,7 @@ describe('api service', () => {
           expect.objectContaining({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project_id: 1, path: 'docs/test.md', is_folder: false }),
+            body: JSON.stringify({ projectId: 1, path: 'docs/test.md', isFolder: false }),
           })
         );
       });
@@ -132,7 +132,7 @@ describe('api service', () => {
           expect.objectContaining({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project_id: 1, trash_item_id: '1234567890_test.md' }),
+            body: JSON.stringify({ projectId: 1, trashItemId: '1234567890_test.md' }),
           })
         );
       });
@@ -149,7 +149,7 @@ describe('api service', () => {
           expect.objectContaining({
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project_id: 1, trash_item_id: '1234567890_test.md' }),
+            body: JSON.stringify({ projectId: 1, trashItemId: '1234567890_test.md' }),
           })
         );
       });
@@ -166,7 +166,7 @@ describe('api service', () => {
           expect.objectContaining({
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project_id: 1 }),
+            body: JSON.stringify({ projectId: 1 }),
           })
         );
       });

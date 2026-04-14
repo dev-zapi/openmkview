@@ -72,7 +72,7 @@ export const api = {
     const res = await fetch('/api/trash/move', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, path, is_folder: isFolder }),
+      body: JSON.stringify({ projectId, path, isFolder }),
     });
     return res.json();
   },
@@ -81,7 +81,7 @@ export const api = {
     await fetch('/api/trash/restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, trash_item_id: trashItemId }),
+      body: JSON.stringify({ projectId, trashItemId }),
     });
   },
 
@@ -89,7 +89,7 @@ export const api = {
     await fetch('/api/trash/item', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, trash_item_id: trashItemId }),
+      body: JSON.stringify({ projectId, trashItemId }),
     });
   },
 
@@ -97,7 +97,7 @@ export const api = {
     await fetch('/api/trash/clear', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId }),
+      body: JSON.stringify({ projectId }),
     });
   },
 
