@@ -361,3 +361,75 @@ fn test_cleanup_all_expired_trash_multiple_projects() {
     cleanup_test_trash_dir(project_id1);
     cleanup_test_trash_dir(project_id2);
 }
+
+#[test]
+fn test_validate_relative_path_rejects_absolute() {
+    let result = validate_relative_path("/etc/passwd");
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(matches!(err, AppError::BadRequest(_)));
+}
+
+#[test]
+fn test_validate_relative_path_rejects_parent_dir() {
+    let result = validate_relative_path("../outside.md");
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(matches!(err, AppError::BadRequest(_)));
+
+    let result = validate_relative_path("src/../outside.md");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_validate_relative_path_accepts_valid() {
+    let result = validate_relative_path("docs/readme.md");
+    assert!(result.is_ok());
+    let path = result.unwrap();
+    assert_eq!(path.to_string_lossy(), "docs/readme.md");
+}
+
+#[test]
+fn test_validate_trash_item_id_rejects_empty() {
+    let result = validate_trash_item_id("");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_validate_trash_item_id_rejects_path_chars() {
+    let result = validate_trash_item_id("test/item");
+    assert!(result.is_err());
+    let result = validate_trash_item_id("test\\item");
+    assert!(result.is_err());
+    let result = validate_trash_item_id("../escape");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_validate_trash_item_id_accepts_valid() {
+    let result = validate_trash_item_id("1234567890_file.md");
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_move_to_trash_rejects_path_traversal() {
+    let base_dir = get_test_base_dir();
+    let project_dir = base_dir.join("test_project_9001");
+    fs::create_dir_all(&project_dir).unwrap();
+
+    let outside_dir = base_dir.join("outside_dir");
+    fs::create_dir_all(&outside_dir).unwrap();
+    fs::write(outside_dir.join("secret.md"), "secret").unwrap();
+
+    let project_id = 9001i64;
+    setup_test_trash_dir(project_id);
+
+    let result =
+        TrashService::move_to_trash(&project_dir, "../outside_dir/secret.md", false, project_id);
+    assert!(result.is_err());
+    assert!(outside_dir.join("secret.md").exists());
+
+    fs::remove_dir_all(&project_dir).unwrap_or_default();
+    fs::remove_dir_all(&outside_dir).unwrap_or_default();
+    cleanup_test_trash_dir(project_id);
+}
