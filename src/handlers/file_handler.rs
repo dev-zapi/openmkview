@@ -160,13 +160,29 @@ pub async fn serve_project_file(
 
     let (content, mime_type, file_name) = FileService::get_raw_file(&project_path, &query.path)?;
 
-    Ok(HttpResponse::Ok()
-        .content_type(mime_type)
-        .insert_header((
+    let mut builder = HttpResponse::Ok();
+    builder
+        .content_type(mime_type.clone())
+        .insert_header(("X-Content-Type-Options", "nosniff"));
+
+    if mime_type == "image/svg+xml" {
+        builder
+            .insert_header((
+                "Content-Security-Policy",
+                "default-src 'none'; style-src 'unsafe-inline'",
+            ))
+            .insert_header((
+                "Content-Disposition",
+                format!("inline; filename=\"{}\"", file_name),
+            ));
+    } else {
+        builder.insert_header((
             "Content-Disposition",
             format!("inline; filename=\"{}\"", file_name),
-        ))
-        .body(content))
+        ));
+    }
+
+    Ok(builder.body(content))
 }
 
 pub async fn save_file_content(

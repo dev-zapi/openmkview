@@ -1,4 +1,4 @@
-import { Component, createSignal, Show, onMount } from 'solid-js';
+import { Component, createSignal, Show, onMount, onCleanup } from 'solid-js';
 
 interface ImagePreviewProps {
   src: string;
@@ -40,8 +40,26 @@ const ImagePreview: Component<ImagePreviewProps> = (props) => {
     setScale(Math.max(scale() - 25, 25));
   };
 
+  let imageContentRef: HTMLDivElement | undefined;
+
   const handleFitWindow = () => {
-    setScale(100);
+    const imgWidth = imageWidth();
+    const imgHeight = imageHeight();
+    
+    if (imgWidth === 0 || imgHeight === 0 || !imageContentRef) {
+      setScale(100);
+      return;
+    }
+    
+    const containerRect = imageContentRef.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+    
+    const scaleX = (containerWidth / imgWidth) * 100;
+    const scaleY = (containerHeight / imgHeight) * 100;
+    
+    const fitScale = Math.min(scaleX, scaleY, 100);
+    setScale(Math.round(fitScale));
   };
 
   const handleFullscreen = () => {
@@ -60,14 +78,21 @@ const ImagePreview: Component<ImagePreviewProps> = (props) => {
     link.click();
   };
 
+  let handleKeyDownRef: ((e: KeyboardEvent) => void) | null = null;
+
   onMount(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    handleKeyDownRef = (e: KeyboardEvent) => {
       if (isFullscreen() && e.key === 'Escape') {
         handleExitFullscreen();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDownRef);
+  });
+
+  onCleanup(() => {
+    if (handleKeyDownRef) {
+      window.removeEventListener('keydown', handleKeyDownRef);
+    }
   });
 
   return (
@@ -154,14 +179,14 @@ const ImagePreview: Component<ImagePreviewProps> = (props) => {
             </button>
           </div>
         </div>
-        <div class="image-content">
+        <div class="image-content" ref={imageContentRef}>
           <Show when={loading()}>
-            <div class="image-loading">
+            <div class="image-loading-overlay">
               <div class="spinner"></div>
             </div>
           </Show>
           <Show when={error()}>
-            <div class="image-error">
+            <div class="image-error-overlay">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="15" y1="9" x2="9" y2="15"/>
@@ -170,15 +195,16 @@ const ImagePreview: Component<ImagePreviewProps> = (props) => {
               <p>Failed to load image</p>
             </div>
           </Show>
-          <Show when={!loading() && !error()}>
-            <img
-              src={props.src}
-              alt={props.fileName}
-              onLoad={handleLoad}
-              onError={handleError}
-              style={{ transform: `scale(${scale() / 100})` }}
-            />
-          </Show>
+          <img
+            src={props.src}
+            alt={props.fileName}
+            onLoad={handleLoad}
+            onError={handleError}
+            style={{
+              transform: `scale(${scale() / 100})`,
+              visibility: error() ? 'hidden' : 'visible',
+            }}
+          />
         </div>
       </div>
     </Show>

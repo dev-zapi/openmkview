@@ -207,8 +207,64 @@ fn test_get_mime_type_svg() {
 }
 
 #[test]
-fn test_get_mime_type_webp() {
-    assert_eq!(FileService::get_mime_type("webp"), "image/webp");
+fn test_get_mime_type_bmp() {
+    assert_eq!(FileService::get_mime_type("bmp"), "image/bmp");
+}
+
+#[test]
+fn test_get_mime_type_ico() {
+    assert_eq!(FileService::get_mime_type("ico"), "image/x-icon");
+}
+
+#[test]
+fn test_is_allowed_file_type_bmp() {
+    assert!(FileService::is_allowed_file_type("bmp"));
+    assert!(FileService::is_allowed_file_type("ico"));
+}
+
+#[test]
+fn test_get_raw_file_bmp() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.bmp");
+    let bmp_data = vec![0x42, 0x4D, 0x00, 0x00, 0x00, 0x00];
+    fs::write(&file_path, &bmp_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, bmp_data);
+    assert_eq!(mime_type, "image/bmp");
+    assert_eq!(file_name, "test.bmp");
+}
+
+#[test]
+fn test_get_raw_file_ico() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.ico");
+    let ico_data = vec![0x00, 0x00, 0x01, 0x00, 0x01, 0x00];
+    fs::write(&file_path, &ico_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, ico_data);
+    assert_eq!(mime_type, "image/x-icon");
+    assert_eq!(file_name, "test.ico");
+}
+
+#[test]
+fn test_get_raw_file_webp() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.webp");
+    let webp_data = vec![0x52, 0x49, 0x46, 0x46];
+    fs::write(&file_path, &webp_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, webp_data);
+    assert_eq!(mime_type, "image/webp");
+    assert_eq!(file_name, "test.webp");
 }
 
 #[test]
@@ -395,4 +451,66 @@ fn test_save_file_content_empty_content() {
     let content = fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "");
     assert_eq!(file_size, 0);
+}
+
+#[test]
+fn test_get_raw_file_large_file_rejected() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("large.png");
+    let mut large_data = vec![0x89, 0x50, 0x4E, 0x47];
+    large_data.resize(51 * 1024 * 1024 + 4, 0);
+    fs::write(&file_path, &large_data).unwrap();
+
+    let result = FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap());
+    assert!(result.is_err());
+
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(err_msg.contains("too large") || err_msg.contains("50MB"));
+}
+
+#[test]
+fn test_get_raw_file_max_size_allowed() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("max.png");
+    let mut max_data = vec![0x89, 0x50, 0x4E, 0x47];
+    max_data.resize(50 * 1024 * 1024 - 4, 0);
+    fs::write(&file_path, &max_data).unwrap();
+
+    let result = FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap());
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_get_raw_file_svg_path_with_special_chars() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sub_dir = temp_dir.path().join("folder with spaces");
+    fs::create_dir_all(&sub_dir).unwrap();
+    let file_path = sub_dir.join("test.svg");
+    let svg_data = "<svg></svg>".as_bytes().to_vec();
+    fs::write(&file_path, &svg_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, svg_data);
+    assert_eq!(mime_type, "image/svg+xml");
+    assert_eq!(file_name, "test.svg");
+}
+
+#[test]
+fn test_get_raw_file_deep_nested_svg() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let deep_path = temp_dir.path().join("a/b/c/d");
+    fs::create_dir_all(&deep_path).unwrap();
+    let file_path = deep_path.join("nested.svg");
+    let svg_data = "<svg></svg>".as_bytes().to_vec();
+    fs::write(&file_path, &svg_data).unwrap();
+
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+
+    assert_eq!(content, svg_data);
+    assert_eq!(mime_type, "image/svg+xml");
+    assert_eq!(file_name, "nested.svg");
 }

@@ -667,7 +667,7 @@ const App: Component = () => {
       const faviconPath = getFaviconPath(project.icon!);
       return (
         <img 
-          src={`/api/files/content?path=${encodeURIComponent(faviconPath)}&project_id=${project.id}`}
+          src={api.getFileRawUrl(faviconPath, project.id)}
           alt="favicon"
           class="project-favicon"
         />
@@ -681,7 +681,7 @@ const App: Component = () => {
       const faviconPath = getFaviconPath(project.icon!);
       return (
         <img 
-          src={`/api/files/content?path=${encodeURIComponent(faviconPath)}&project_id=${project.id}`}
+          src={api.getFileRawUrl(faviconPath, project.id)}
           alt="favicon"
           class="sidebar-header-favicon"
         />
@@ -886,7 +886,7 @@ const App: Component = () => {
 
                 <div class="content-area">
                   <div class="content-main">
-                    <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
+                    <Show when={!loading() && !currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
                       <div class="welcome">
                         <h1>OpenMKView</h1>
 <p>Click "Open Project" or the + button on the left to start</p>
@@ -1102,7 +1102,7 @@ theme={settings().themeMode}
               <div class="loading">Loading...</div>
             </Show>
 
-            <Show when={!loading() && !currentFile() && activeTab() === 'preview'}>
+            <Show when={!loading() && !currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
               <div class="welcome">
                 <h1>OpenMKView</h1>
                 <p>Tap the menu button to browse files</p>
