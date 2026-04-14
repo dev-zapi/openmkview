@@ -239,6 +239,14 @@ fn test_is_protected_path_git() {
         "src/.git",
         &protected_paths
     ));
+    assert!(!TrashService::is_protected_path(
+        "my.gitignore.md",
+        &protected_paths
+    ));
+    assert!(!TrashService::is_protected_path(
+        "git-notes.md",
+        &protected_paths
+    ));
 }
 
 #[test]
@@ -250,6 +258,14 @@ fn test_is_protected_path_node_modules() {
     ));
     assert!(TrashService::is_protected_path(
         "node_modules/package",
+        &protected_paths
+    ));
+    assert!(!TrashService::is_protected_path(
+        "node_modules_backup",
+        &protected_paths
+    ));
+    assert!(!TrashService::is_protected_path(
+        "my_node_modules.md",
         &protected_paths
     ));
 }

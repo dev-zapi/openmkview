@@ -346,9 +346,15 @@ impl TrashService {
     }
 
     pub fn is_protected_path(path: &str, protected_paths: &[String]) -> bool {
-        let path_lower = path.to_lowercase();
+        let path_segments: Vec<String> = path
+            .split('/')
+            .chain(path.split('\\'))
+            .map(|s| s.to_lowercase())
+            .collect();
+
         for protected in protected_paths {
-            if path_lower.contains(&protected.to_lowercase()) {
+            let protected_lower = protected.to_lowercase();
+            if path_segments.iter().any(|seg| seg == &protected_lower) {
                 return true;
             }
         }

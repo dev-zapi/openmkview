@@ -464,9 +464,11 @@ const App: Component = () => {
     const project = activeProject();
     if (!project) return;
 
-    const defaultProtectedPaths = ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'];
-    const nodeName = node.name.toLowerCase();
-    const isProtected = defaultProtectedPaths.some(p => nodeName.includes(p.toLowerCase()) || node.path.toLowerCase().includes(p.toLowerCase()));
+    const protectedPaths = settings().protectedPaths || [];
+    const pathSegments = node.path.toLowerCase().split(/[/\\]/);
+    const isProtected = protectedPaths.some(p => 
+      pathSegments.includes(p.toLowerCase()) || node.name.toLowerCase() === p.toLowerCase()
+    );
     
     if (isProtected) {
       alert(`Cannot delete protected path: ${node.name}`);
