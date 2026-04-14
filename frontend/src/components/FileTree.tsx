@@ -81,6 +81,8 @@ const TreeNode: Component<TreeNodeProps> = (props) => {
             class="menu-button" 
             onClick={handleMenuToggle}
             ref={menuButtonRef}
+            aria-label="Open file actions menu"
+            title="File actions"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="2"/>
