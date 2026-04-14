@@ -95,7 +95,7 @@ describe('api service', () => {
     describe('moveToTrash', () => {
       it('moves file to trash', async () => {
         const mockTrashItem = {
-          id: '1234567890_test.md',
+          id: '550e8400-e29b-41d4-a716-446655440000',
           originalName: 'test.md',
           originalPath: 'docs/test.md',
           deletedAt: '2024-01-15T10:30:00Z',
@@ -104,6 +104,7 @@ describe('api service', () => {
         };
 
         (global.fetch as any).mockResolvedValueOnce({
+          ok: true,
           json: async () => mockTrashItem,
         });
 
@@ -119,6 +120,17 @@ describe('api service', () => {
           })
         );
       });
+
+      it('throws error on non-2xx response', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: '路径非法' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.moveToTrash('../escape.md', 1, false)).rejects.toThrow('路径非法');
+      });
     });
 
     describe('restoreFromTrash', () => {
@@ -126,15 +138,26 @@ describe('api service', () => {
         (global.fetch as any).mockResolvedValueOnce({ ok: true });
 
         const { api } = await import('../services/api');
-        await api.restoreFromTrash('1234567890_test.md', 1);
+        await api.restoreFromTrash('550e8400-e29b-41d4-a716-446655440000', 1);
         expect(global.fetch).toHaveBeenCalledWith(
           '/api/trash/restore',
           expect.objectContaining({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectId: 1, trashItemId: '1234567890_test.md' }),
+            body: JSON.stringify({ projectId: 1, trashItemId: '550e8400-e29b-41d4-a716-446655440000' }),
           })
         );
+      });
+
+      it('throws error on restore failure', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: '目标路径已存在' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.restoreFromTrash('550e8400-e29b-41d4-a716-446655440000', 1)).rejects.toThrow('目标路径已存在');
       });
     });
 
@@ -143,15 +166,26 @@ describe('api service', () => {
         (global.fetch as any).mockResolvedValueOnce({ ok: true });
 
         const { api } = await import('../services/api');
-        await api.deleteFromTrash('1234567890_test.md', 1);
+        await api.deleteFromTrash('550e8400-e29b-41d4-a716-446655440000', 1);
         expect(global.fetch).toHaveBeenCalledWith(
           '/api/trash/item',
           expect.objectContaining({
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ projectId: 1, trashItemId: '1234567890_test.md' }),
+            body: JSON.stringify({ projectId: 1, trashItemId: '550e8400-e29b-41d4-a716-446655440000' }),
           })
         );
+      });
+
+      it('throws error on delete failure', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: '回收站项目不存在' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.deleteFromTrash('invalid-id', 1)).rejects.toThrow('回收站项目不存在');
       });
     });
 
@@ -170,13 +204,24 @@ describe('api service', () => {
           })
         );
       });
+
+      it('throws error on clear failure', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: 'Internal server error' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.clearTrash(1)).rejects.toThrow();
+      });
     });
 
     describe('listTrash', () => {
       it('returns list of trash items', async () => {
         const mockTrashItems = [
           {
-            id: '1234567890_test.md',
+            id: '550e8400-e29b-41d4-a716-446655440000',
             originalName: 'test.md',
             originalPath: 'docs/test.md',
             deletedAt: '2024-01-15T10:30:00Z',
@@ -184,7 +229,7 @@ describe('api service', () => {
             size: 100,
           },
           {
-            id: '1234567891_old-folder',
+            id: '550e8400-e29b-41d4-a716-446655440001',
             originalName: 'old-folder',
             originalPath: 'docs/old-folder',
             deletedAt: '2024-01-01T10:00:00Z',
@@ -194,6 +239,7 @@ describe('api service', () => {
         ];
 
         (global.fetch as any).mockResolvedValueOnce({
+          ok: true,
           json: async () => mockTrashItems,
         });
 
@@ -201,6 +247,17 @@ describe('api service', () => {
         const result = await api.listTrash(1);
         expect(result).toEqual(mockTrashItems);
         expect(global.fetch).toHaveBeenCalledWith('/api/trash/list?project_id=1');
+      });
+
+      it('throws error on list failure', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: 'Project not found' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.listTrash(999)).rejects.toThrow('Project not found');
       });
     });
 
@@ -213,6 +270,7 @@ describe('api service', () => {
         };
 
         (global.fetch as any).mockResolvedValueOnce({
+          ok: true,
           json: async () => mockStats,
         });
 
@@ -220,6 +278,17 @@ describe('api service', () => {
         const result = await api.getTrashStats(1);
         expect(result).toEqual(mockStats);
         expect(global.fetch).toHaveBeenCalledWith('/api/trash/stats?project_id=1');
+      });
+
+      it('throws error on stats failure', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: 'Project not found' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.getTrashStats(999)).rejects.toThrow('Project not found');
       });
     });
   });
