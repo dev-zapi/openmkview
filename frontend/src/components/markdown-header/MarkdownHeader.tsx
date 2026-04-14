@@ -1,19 +1,23 @@
-import { Component, createSignal, onMount, onCleanup } from 'solid-js';
+import { Component, createSignal, onMount, onCleanup, Show } from 'solid-js';
 import styles from './styles.module.css';
 import { DocumentTitleBar } from './DocumentTitleBar';
 import { SearchBox } from './SearchBox';
+import type { TabType } from './ViewTabs';
 
 export interface MarkdownHeaderProps {
   fileName: string;
   lastModified?: Date;
   fileSize?: number;
-  activeTab: 'preview' | 'source' | 'diff';
+  activeTab: TabType;
   isOutlineOpen: boolean;
   outlineCount: number;
   content: string;
   fileType?: 'markdown' | 'image';
-  onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
+  onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  isDirty?: boolean;
+  onSave?: () => void;
+  saving?: boolean;
 }
 
 export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
@@ -198,6 +202,9 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         onSearchClick={handleSearchClick}
         onCopyClick={handleCopyClick}
         onExportClick={handleExportClick}
+        isDirty={props.isDirty}
+        onSave={props.onSave}
+        saving={props.saving}
       />
       {toast() && (
         <div class={`${styles.toast} ${styles[toast()!.type]}`}>

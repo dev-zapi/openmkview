@@ -1,21 +1,25 @@
 import { Component, createSignal, Show } from 'solid-js';
 import styles from './styles.module.css';
+import type { TabType } from './ViewTabs';
 
 export interface DocumentTitleBarProps {
   fileName: string;
   lastModified?: Date;
   fileSize?: number;
-  activeTab: 'preview' | 'source' | 'diff';
+  activeTab: TabType;
   outlineCount: number;
   isOutlineOpen: boolean;
   isFullscreen: boolean;
   fileType?: 'markdown' | 'image';
-  onTabChange: (tab: 'preview' | 'source' | 'diff') => void;
+  onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
   onCopyClick: () => void;
   onExportClick: (format: 'pdf' | 'md') => void;
+  isDirty?: boolean;
+  onSave?: () => void;
+  saving?: boolean;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -103,13 +107,22 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
               class={`${styles.tabItem} ${props.activeTab === 'preview' ? styles.active : ''}`}
               onClick={() => props.onTabChange('preview')}
             >
-              预览
+              Preview
             </button>
             <button
               class={`${styles.tabItem} ${props.activeTab === 'source' ? styles.active : ''}`}
               onClick={() => props.onTabChange('source')}
             >
-              源码
+              Source
+            </button>
+            <button
+              class={`${styles.tabItem} ${props.activeTab === 'edit' ? styles.active : ''}`}
+              onClick={() => props.onTabChange('edit')}
+            >
+              Edit
+              <Show when={props.isDirty}>
+                <span class={styles.dirtyIndicator}>*</span>
+              </Show>
             </button>
             <button
               class={`${styles.tabItem} ${props.activeTab === 'diff' ? styles.active : ''}`}
@@ -122,6 +135,27 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
       </div>
 
       <div class={styles.documentRight}>
+        <Show when={props.activeTab === 'edit' && props.onSave}>
+          <button
+            class={`${styles.toolbarButtonIcon} ${styles.saveButton}`}
+            onClick={props.onSave}
+            disabled={!props.isDirty || props.saving}
+            title="Save (Ctrl+S)"
+          >
+            <Show when={props.saving} fallback={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            }>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class={styles.spinning}>
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </Show>
+          </button>
+        </Show>
         <button
           class={styles.toolbarButtonIcon}
           onClick={props.onSearchClick}

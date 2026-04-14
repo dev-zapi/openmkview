@@ -1,4 +1,4 @@
-import type { FileNode, FileContent, Project, TrashItem, TrashStats } from '../types';
+import type { FileNode, FileContent, Project, TrashItem, TrashStats, FileSaveResponse } from '../types';
 
 export const api = {
   async getFileTree(projectId: number): Promise<FileNode[]> {
@@ -10,6 +10,19 @@ export const api = {
     const res = await fetch(
       `/api/files/content?path=${encodeURIComponent(path)}&project_id=${projectId}`
     );
+    return res.json();
+  },
+
+  async saveFileContent(path: string, content: string, projectId: number): Promise<FileSaveResponse> {
+    const res = await fetch('/api/files/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: projectId,
+        path,
+        content,
+      }),
+    });
     return res.json();
   },
 

@@ -6,6 +6,7 @@ export type { DocumentTitleBarProps } from './DocumentTitleBar';
 
 export { ViewTabs } from './ViewTabs';
 export type { ViewTabsProps } from './ViewTabs';
+export type { TabType } from './ViewTabs';
 
 export { ActionToolbar } from './ActionToolbar';
 export type { ActionToolbarProps } from './ActionToolbar';

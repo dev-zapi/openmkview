@@ -95,6 +95,43 @@
   background: var(--color-active-bg);
 }
 
+.dirtyIndicator {
+  color: var(--color-warning, #f59e0b);
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.saveButton {
+  background: var(--color-accent, #3b82f6);
+  color: white;
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-right: 4px;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--color-accent-hover, #2563eb);
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .toolbarButton {
   background: none;
   border: none;

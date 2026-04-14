@@ -11,7 +11,9 @@ import ColorPicker from './components/ColorPicker';
 import ProjectEditDialog from './components/ProjectEditDialog';
 import TrashDialog from './components/TrashDialog';
 import ImagePreview from './components/ImagePreview';
+import CodeMirrorEditor from './components/CodeMirrorEditor';
 import { MarkdownHeader } from './components/markdown-header';
+import type { TabType } from './components/markdown-header/ViewTabs';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
 import type { Project, FileNode, FileContent, Heading } from './types';
@@ -112,7 +114,7 @@ const App: Component = () => {
   const [currentFile, setCurrentFile] = createSignal<FileContent | null>(null);
   const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
   const [loading, setLoading] = createSignal(false);
-  const [activeTab, setActiveTab] = createSignal<'preview' | 'source' | 'diff'>('preview');
+  const [activeTab, setActiveTab] = createSignal<TabType>('preview');
   const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
   const [outlineOpen, setOutlineOpen] = createSignal(false);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
@@ -131,6 +133,10 @@ const App: Component = () => {
   const [imagePreviewUrl, setImagePreviewUrl] = createSignal<string | null>(null);
   const [imageFileName, setImageFileName] = createSignal<string>('');
   const [currentFileType, setCurrentFileType] = createSignal<'markdown' | 'image'>('markdown');
+  const [editContent, setEditContent] = createSignal<string>('');
+  const [originalContent, setOriginalContent] = createSignal<string>('');
+  const [isDirty, setIsDirty] = createSignal<boolean>(false);
+  const [saving, setSaving] = createSignal<boolean>(false);
 
   const [isDragging, setIsDragging] = createSignal(false);
   let mediaQuery: MediaQueryList;
@@ -360,6 +366,9 @@ const App: Component = () => {
       setCurrentFile(null);
       setExtractedHeadings([]);
       setActiveTab('preview');
+      setIsDirty(false);
+      setEditContent('');
+      setOriginalContent('');
       diffStore.reset();
       if (updateUrl) {
         navigateToFile(project.id, path);
@@ -375,6 +384,9 @@ const App: Component = () => {
       setImagePreviewUrl(null);
       setExtractedHeadings([]);
       setActiveTab('preview');
+      setEditContent(content.content);
+      setOriginalContent(content.content);
+      setIsDirty(false);
       diffStore.reset();
       if (updateUrl) {
         navigateToFile(project.id, path);
@@ -399,6 +411,41 @@ const App: Component = () => {
 
   const handleHeadingsExtracted = (headings: Heading[]) => {
     setExtractedHeadings(headings);
+  };
+
+  const handleContentChange = (newContent: string) => {
+    setEditContent(newContent);
+    setIsDirty(newContent !== originalContent());
+  };
+
+  const handleSave = async () => {
+    const project = activeProject();
+    const file = currentFile();
+    if (!project || !file || !isDirty()) return;
+
+    setSaving(true);
+    try {
+      const response = await api.saveFileContent(file.path, editContent(), project.id);
+      if (response.success) {
+        setIsDirty(false);
+        setOriginalContent(editContent());
+        const updatedFile = await api.getFileContent(file.path, project.id);
+        setCurrentFile(updatedFile);
+      }
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      alert('Failed to save file');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    if (isDirty() && activeTab() === 'edit' && tab !== 'edit') {
+      const confirmed = confirm('You have unsaved changes. Do you want to continue?');
+      if (!confirmed) return;
+    }
+    setActiveTab(tab);
   };
 
   const handleFolderToggle = (path: string, expanded: boolean) => {
@@ -809,8 +856,11 @@ const App: Component = () => {
                   outlineCount={extractedHeadings().length}
                   content={currentFile()!.content}
                   fileType={currentFileType()}
-                  onTabChange={(tab) => setActiveTab(tab)}
+                  onTabChange={handleTabChange}
                   onOutlineToggle={handleMobileOutlineToggle}
+                  isDirty={isDirty()}
+                  onSave={handleSave}
+                  saving={saving()}
                 />
               </Show>
 
@@ -892,6 +942,19 @@ theme={settings().themeMode}
                           content={currentFile()!.content}
                           fileName={currentFile()!.fileName}
                           theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
+                        />
+                      </div>
+                    </Show>
+
+                    <Show when={!loading() && currentFile() && activeTab() === 'edit'}>
+                      <div class="edit-view content-fade-enter">
+                        <CodeMirrorEditor
+                          content={editContent()}
+                          fileName={currentFile()!.fileName}
+                          theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
+                          onContentChange={handleContentChange}
+                          onSave={handleSave}
+                          isDirty={isDirty()}
                         />
                       </div>
                     </Show>
@@ -1010,8 +1073,11 @@ theme={settings().themeMode}
                   outlineCount={extractedHeadings().length}
                   content={currentFile()!.content}
                   fileType={currentFileType()}
-                  onTabChange={(tab) => setActiveTab(tab)}
+                  onTabChange={handleTabChange}
                   onOutlineToggle={handleMobileOutlineToggle}
+                  isDirty={isDirty()}
+                  onSave={handleSave}
+                  saving={saving()}
                 />
               </Show>
               <Show when={imagePreviewUrl() && currentFileType() === 'image'}>
@@ -1088,6 +1154,19 @@ theme={settings().themeMode}
                   content={currentFile()!.content}
                   fileName={currentFile()!.fileName}
                   theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
+                />
+              </div>
+            </Show>
+
+            <Show when={!loading() && currentFile() && activeTab() === 'edit'}>
+              <div class="edit-view">
+                <CodeMirrorEditor
+                  content={editContent()}
+                  fileName={currentFile()!.fileName}
+                  theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
+                  onContentChange={handleContentChange}
+                  onSave={handleSave}
+                  isDirty={isDirty()}
                 />
               </div>
             </Show>

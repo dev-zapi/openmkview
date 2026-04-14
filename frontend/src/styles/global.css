@@ -580,6 +580,14 @@
   font-size: 12px;
 }
 
+/* Edit View Styles */
+.edit-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
 /* Markdown Loading & Rendering States */
 .markdown-view.rendering {
   position: relative;

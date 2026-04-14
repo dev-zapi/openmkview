@@ -21,6 +21,18 @@ export interface FileContent {
   lastModified?: string;
 }
 
+export interface FileSaveRequest {
+  project_id: number;
+  path: string;
+  content: string;
+}
+
+export interface FileSaveResponse {
+  success: boolean;
+  fileSize: number;
+  lastModified: string;
+}
+
 export interface GitCommit {
   hash: string;
   shortHash: string;
