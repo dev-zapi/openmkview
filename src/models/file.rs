@@ -25,3 +25,19 @@ pub struct FileOperationRequest {
     #[serde(default)]
     pub new_name: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct FileSaveRequest {
+    pub project_id: i64,
+    pub path: String,
+    pub content: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FileSaveResponse {
+    pub success: bool,
+    #[serde(rename = "fileSize")]
+    pub file_size: u64,
+    #[serde(rename = "lastModified")]
+    pub last_modified: String,
+}

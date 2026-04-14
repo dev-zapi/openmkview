@@ -28,8 +28,8 @@ use handlers::{
     get_file_diff, get_file_tree, get_recent_projects, get_settings, get_tags,
     get_theme_css_content, get_trash_stats, install_custom_theme, list_projects, list_themes,
     list_trash, move_to_trash, open_project, rename_file, resolve_path, restore_from_trash,
-    search_favicons, serve_project_file, update_project, update_project_color, update_settings,
-    validate_project,
+    save_file_content, search_favicons, serve_project_file, update_project, update_project_color,
+    update_settings, validate_project,
 };
 use openmkview::AppState;
 use services::TrashService;
@@ -128,6 +128,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/projects/resolve", web::post().to(resolve_path))
             .route("/api/files/tree", web::get().to(get_file_tree))
             .route("/api/files/content", web::get().to(get_file_content))
+            .route("/api/files/content", web::put().to(save_file_content))
             .route("/api/files/raw", web::get().to(serve_project_file))
             .route("/api/files/favicons", web::get().to(search_favicons))
             .route("/api/files", web::post().to(create_file))

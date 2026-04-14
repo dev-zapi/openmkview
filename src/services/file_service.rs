@@ -274,6 +274,46 @@ impl FileService {
 
         Ok(favicons)
     }
+
+    pub fn save_file_content(
+        project_path: &Path,
+        file_path: &str,
+        content: &str,
+    ) -> AppResult<(u64, std::time::SystemTime)> {
+        let file_path = PathBuf::from(file_path);
+        let resolved = file_path
+            .canonicalize()
+            .map_err(|_| AppError::NotFound("File does not exist".into()))?;
+
+        let project_resolved = project_path
+            .canonicalize()
+            .map_err(|_| AppError::FileError("Invalid project path".into()))?;
+
+        if !resolved.starts_with(&project_resolved) {
+            return Err(AppError::ValidationError(
+                "Access denied: path outside project".into(),
+            ));
+        }
+
+        let ext = resolved
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase());
+
+        if ext != Some("md".to_string()) && ext != Some("mdx".to_string()) {
+            return Err(AppError::BadRequest(
+                "Only Markdown files (.md/.mdx) can be edited".into(),
+            ));
+        }
+
+        std::fs::write(&resolved, content)?;
+
+        let metadata = std::fs::metadata(&resolved)?;
+        let file_size = metadata.len();
+        let last_modified = metadata.modified()?;
+
+        Ok((file_size, last_modified))
+    }
 }
 
 #[cfg(test)]

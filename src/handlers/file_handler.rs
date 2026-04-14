@@ -1,6 +1,6 @@
 use crate::db::ProjectRepository;
 use crate::errors::{AppError, AppResult};
-use crate::models::FileOperationRequest;
+use crate::models::{FileOperationRequest, FileSaveRequest, FileSaveResponse};
 use crate::services::{FileService, ProjectService};
 use crate::AppState;
 use actix_web::{web, HttpResponse};
@@ -167,6 +167,28 @@ pub async fn serve_project_file(
             format!("inline; filename=\"{}\"", file_name),
         ))
         .body(content))
+}
+
+pub async fn save_file_content(
+    data: web::Data<AppState>,
+    body: web::Json<FileSaveRequest>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(body.project_id)?;
+
+    let (file_size, last_modified) =
+        FileService::save_file_content(&project_path, &body.path, &body.content)?;
+
+    let last_modified_str: chrono::DateTime<chrono::Utc> = last_modified.into();
+
+    Ok(HttpResponse::Ok().json(FileSaveResponse {
+        success: true,
+        file_size,
+        last_modified: last_modified_str.to_rfc3339(),
+    }))
 }
 
 #[allow(dead_code)]

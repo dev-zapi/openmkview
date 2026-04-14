@@ -321,3 +321,78 @@ fn test_build_tree_folder_no_file_type() {
     assert!(tree[0].is_folder);
     assert_eq!(tree[0].file_type, None);
 }
+
+#[test]
+fn test_save_file_content_success() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Original").unwrap();
+
+    let (file_size, _last_modified) =
+        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "# Updated")
+            .unwrap();
+
+    let content = fs::read_to_string(&file_path).unwrap();
+    assert_eq!(content, "# Updated");
+    assert_eq!(file_size, 9);
+}
+
+#[test]
+fn test_save_file_content_mdx() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.mdx");
+    fs::write(&file_path, "# Original").unwrap();
+
+    let result =
+        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "# Updated");
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_save_file_content_not_markdown() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.txt");
+    fs::write(&file_path, "Original").unwrap();
+
+    let result =
+        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "Updated");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_save_file_content_path_traversal() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Test").unwrap();
+
+    let outside_file = temp_dir.path().parent().unwrap().join("outside.md");
+    fs::write(&outside_file, "# Outside").unwrap();
+
+    let result =
+        FileService::save_file_content(temp_dir.path(), outside_file.to_str().unwrap(), "# Evil");
+    assert!(result.is_err());
+
+    fs::remove_file(&outside_file).ok();
+}
+
+#[test]
+fn test_save_file_content_not_found() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let result =
+        FileService::save_file_content(temp_dir.path(), "/nonexistent/file.md", "# Content");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_save_file_content_empty_content() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("empty.md");
+    fs::write(&file_path, "# Original").unwrap();
+
+    let (file_size, _) =
+        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "").unwrap();
+
+    let content = fs::read_to_string(&file_path).unwrap();
+    assert_eq!(content, "");
+    assert_eq!(file_size, 0);
+}
