@@ -20,7 +20,7 @@ export const api = {
     return res.json();
   },
 
-  async saveFileContent(path: string, content: string, projectId: number): Promise<FileSaveResponse> {
+  async saveFileContent(path: string, content: string, projectId: number, expectedModifiedAt?: string): Promise<FileSaveResponse> {
     const res = await fetch('/api/files/content', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -28,8 +28,13 @@ export const api = {
         project_id: projectId,
         path,
         content,
+        expectedModifiedAt,
       }),
     });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errorData.error || `Save failed with status ${res.status}`);
+    }
     return res.json();
   },
 

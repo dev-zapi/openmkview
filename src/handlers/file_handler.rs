@@ -195,8 +195,13 @@ pub async fn save_file_content(
 
     let project_path = project_service.get_project_path(body.project_id)?;
 
-    let (file_size, last_modified) =
-        FileService::save_file_content(&project_path, &body.path, &body.content)?;
+    let expected_modified = body.expected_modified_at.as_deref();
+    let (file_size, last_modified) = FileService::save_file_content(
+        &project_path,
+        &body.path,
+        &body.content,
+        expected_modified,
+    )?;
 
     let last_modified_str: chrono::DateTime<chrono::Utc> = last_modified.into();
 

@@ -384,9 +384,13 @@ fn test_save_file_content_success() {
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Original").unwrap();
 
-    let (file_size, _last_modified) =
-        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "# Updated")
-            .unwrap();
+    let (file_size, _last_modified) = FileService::save_file_content(
+        temp_dir.path(),
+        file_path.to_str().unwrap(),
+        "# Updated",
+        None,
+    )
+    .unwrap();
 
     let content = fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "# Updated");
@@ -399,8 +403,12 @@ fn test_save_file_content_mdx() {
     let file_path = temp_dir.path().join("test.mdx");
     fs::write(&file_path, "# Original").unwrap();
 
-    let result =
-        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "# Updated");
+    let result = FileService::save_file_content(
+        temp_dir.path(),
+        file_path.to_str().unwrap(),
+        "# Updated",
+        None,
+    );
     assert!(result.is_ok());
 }
 
@@ -410,8 +418,12 @@ fn test_save_file_content_not_markdown() {
     let file_path = temp_dir.path().join("test.txt");
     fs::write(&file_path, "Original").unwrap();
 
-    let result =
-        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "Updated");
+    let result = FileService::save_file_content(
+        temp_dir.path(),
+        file_path.to_str().unwrap(),
+        "Updated",
+        None,
+    );
     assert!(result.is_err());
 }
 
@@ -424,8 +436,12 @@ fn test_save_file_content_path_traversal() {
     let outside_file = temp_dir.path().parent().unwrap().join("outside.md");
     fs::write(&outside_file, "# Outside").unwrap();
 
-    let result =
-        FileService::save_file_content(temp_dir.path(), outside_file.to_str().unwrap(), "# Evil");
+    let result = FileService::save_file_content(
+        temp_dir.path(),
+        outside_file.to_str().unwrap(),
+        "# Evil",
+        None,
+    );
     assert!(result.is_err());
 
     fs::remove_file(&outside_file).ok();
@@ -435,7 +451,7 @@ fn test_save_file_content_path_traversal() {
 fn test_save_file_content_not_found() {
     let temp_dir = tempfile::tempdir().unwrap();
     let result =
-        FileService::save_file_content(temp_dir.path(), "/nonexistent/file.md", "# Content");
+        FileService::save_file_content(temp_dir.path(), "/nonexistent/file.md", "# Content", None);
     assert!(result.is_err());
 }
 
@@ -446,7 +462,8 @@ fn test_save_file_content_empty_content() {
     fs::write(&file_path, "# Original").unwrap();
 
     let (file_size, _) =
-        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "").unwrap();
+        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "", None)
+            .unwrap();
 
     let content = fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "");

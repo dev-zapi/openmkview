@@ -279,6 +279,7 @@ impl FileService {
         project_path: &Path,
         file_path: &str,
         content: &str,
+        expected_modified_at: Option<&str>,
     ) -> AppResult<(u64, std::time::SystemTime)> {
         let file_path = PathBuf::from(file_path);
         let resolved = file_path
@@ -306,7 +307,36 @@ impl FileService {
             ));
         }
 
-        std::fs::write(&resolved, content)?;
+        // Optimistic concurrency check: verify file hasn't been modified externally
+        if let Some(expected) = expected_modified_at {
+            let current_metadata = std::fs::metadata(&resolved)?;
+            let current_modified = current_metadata.modified()?;
+            let current_modified_str: chrono::DateTime<chrono::Utc> = current_modified.into();
+
+            // Parse expected timestamp and compare
+            if let Ok(expected_time) = chrono::DateTime::parse_from_rfc3339(expected) {
+                let expected_utc = expected_time.with_timezone(&chrono::Utc);
+                // Allow small tolerance (1 second) for clock differences
+                let diff = current_modified_str.signed_duration_since(expected_utc);
+                if diff.num_seconds().abs() > 1 {
+                    return Err(AppError::Conflict(
+                        "File has been modified externally. Please reload and try again.".into(),
+                    ));
+                }
+            }
+        }
+
+        // Atomic write: write to temp file first, then rename
+        let temp_path = resolved.with_extension(format!(
+            "{}.tmp",
+            resolved.extension().unwrap_or_default().to_string_lossy()
+        ));
+
+        // Write to temporary file
+        std::fs::write(&temp_path, content)?;
+
+        // Rename temp file to target (atomic on same filesystem)
+        std::fs::rename(&temp_path, &resolved)?;
 
         let metadata = std::fs::metadata(&resolved)?;
         let file_size = metadata.len();

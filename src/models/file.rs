@@ -31,6 +31,11 @@ pub struct FileSaveRequest {
     pub project_id: i64,
     pub path: String,
     pub content: String,
+    /// Optional timestamp for optimistic concurrency check
+    /// If provided, the save will fail with Conflict if the file has been modified
+    /// after this timestamp
+    #[serde(rename = "expectedModifiedAt")]
+    pub expected_modified_at: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

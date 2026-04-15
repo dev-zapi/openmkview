@@ -466,7 +466,9 @@ const App: Component = () => {
 
     setSaving(true);
     try {
-      const response = await api.saveFileContent(file.path, editContent(), project.id);
+      // Pass expectedModifiedAt for optimistic concurrency check
+      const expectedModifiedAt = file.lastModified;
+      const response = await api.saveFileContent(file.path, editContent(), project.id, expectedModifiedAt);
       if (response.success) {
         setIsDirty(false);
         setOriginalContent(editContent());
@@ -475,7 +477,14 @@ const App: Component = () => {
       }
     } catch (error) {
       console.error('Failed to save file:', error);
-      alert('Failed to save file');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save file';
+
+      // Check for conflict error
+      if (errorMessage.includes('Conflict') || errorMessage.includes('modified externally')) {
+        alert('This file has been modified externally. Please reload the file to see the latest version, then make your changes again.');
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setSaving(false);
     }

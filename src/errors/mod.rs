@@ -11,6 +11,7 @@ pub enum AppError {
     FileError(String),
     GitError(String),
     ValidationError(String),
+    Conflict(String),
 }
 
 #[derive(Serialize)]
@@ -28,6 +29,7 @@ impl fmt::Display for AppError {
             AppError::FileError(msg) => write!(f, "File error: {}", msg),
             AppError::GitError(msg) => write!(f, "Git error: {}", msg),
             AppError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
+            AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
         }
     }
 }
@@ -43,6 +45,7 @@ impl ResponseError for AppError {
             AppError::NotFound(_) => HttpResponse::NotFound().json(error_response),
             AppError::BadRequest(_) => HttpResponse::BadRequest().json(error_response),
             AppError::ValidationError(_) => HttpResponse::BadRequest().json(error_response),
+            AppError::Conflict(_) => HttpResponse::Conflict().json(error_response),
             AppError::FileError(_) => HttpResponse::InternalServerError().json(error_response),
             AppError::GitError(_) => HttpResponse::InternalServerError().json(error_response),
             AppError::DatabaseError(_) => HttpResponse::InternalServerError().json(error_response),

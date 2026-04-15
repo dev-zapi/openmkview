@@ -25,6 +25,7 @@ export interface FileSaveRequest {
   project_id: number;
   path: string;
   content: string;
+  expectedModifiedAt?: string;
 }
 
 export interface FileSaveResponse {
