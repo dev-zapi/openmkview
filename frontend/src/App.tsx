@@ -1,19 +1,14 @@
 import { Component, createSignal, onMount, Show, createEffect, For, onCleanup } from 'solid-js';
 import FileTree from './components/FileTree';
-import MarkdownView from './components/MarkdownView';
-import SourceView from './components/SourceView';
-import DiffViewer from './components/DiffViewer';
-import DiffSelector from './components/DiffSelector';
 import GitPanel from './components/GitPanel';
 import OutlinePanel from './components/OutlinePanel';
 import SettingsPanel from './components/SettingsPanel';
 import ColorPicker from './components/ColorPicker';
 import ProjectEditDialog from './components/ProjectEditDialog';
 import TrashDialog from './components/TrashDialog';
-import ImagePreview from './components/ImagePreview';
-import CodeMirrorEditor from './components/CodeMirrorEditor';
 import SidebarHeader from './components/SidebarHeader';
 import { MarkdownHeader } from './components/markdown-header';
+import { FileContentView } from './components/FileContentView';
 import type { TabType } from './components/markdown-header/ViewTabs';
 import { OpenProjectDialog } from './components/open-project';
 import { MobileLayout, mobileLayoutStore } from './components/mobile';
@@ -914,80 +909,27 @@ const App: Component = () => {
 
                 <div class="content-area">
                   <div class="content-main">
-                    <Show when={!loading() && !currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
-                      <div class="welcome">
-                        <h1>OpenMKView</h1>
-<p>Click "Open Project" or the + button on the left to start</p>
-                      </div>
-                    </Show>
-
-                    <Show when={!loading() && currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
-                      <div class="markdown-wrapper content-fade-enter" style={getMarkdownStyle()}>
-                        <MarkdownView 
-                          content={currentFile()!.content} 
-                          theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                          onHeadingsExtracted={handleHeadingsExtracted}
-                          currentFilePath={currentFile()!.path}
-                          projectId={activeProject()?.id}
-                        />
-                      </div>
-                    </Show>
-
-                    <Show when={!loading() && imagePreviewUrl() && currentFileType() === 'image'}>
-                      <div class="content-fade-enter">
-                        <ImagePreview 
-                          src={imagePreviewUrl()!}
-                          fileName={imageFileName()}
-                        />
-                      </div>
-                    </Show>
-
-                    <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
-                      <div class="content-fade-enter">
-                        <DiffSelector
-                          projectId={activeProject()!.id}
-                          filePath={currentFile()!.path}
-                        />
-
-                        <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
-                          <DiffViewer
-                            diffData={diffStore.state.diffData!}
-theme={settings().themeMode}
-                            mode="split"
-                            onClose={handleCloseDiff}
-                          />
-                        </Show>
-
-                        <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
-                          <div class="diff-empty">
-                            <p>Select versions to compare</p>
-                          </div>
-                        </Show>
-                      </div>
-                    </Show>
-
-                    <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-                      <div class="source-view content-fade-enter">
-                        <SourceView 
-                          content={currentFile()!.content}
-                          fileName={currentFile()!.fileName}
-                          theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                        />
-                      </div>
-                    </Show>
-
-                    <Show when={!loading() && currentFile() && activeTab() === 'edit'}>
-                      <div class="edit-view content-fade-enter">
-                        <CodeMirrorEditor
-                          content={editContent()}
-                          fileName={currentFile()!.fileName}
-                          theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                          onContentChange={handleContentChange}
-                          onSave={handleSave}
-                          isDirty={isDirty()}
-                        />
-                      </div>
-                    </Show>
+                    <FileContentView
+                      loading={loading()}
+                      currentFile={currentFile()}
+                      currentFileType={currentFileType()}
+                      activeTab={activeTab()}
+                      activeProjectId={activeProject()?.id}
+                      imagePreviewUrl={imagePreviewUrl()}
+                      imageFileName={imageFileName()}
+                      editContent={editContent()}
+                      isDirty={isDirty()}
+                      settings={settings()}
+                      theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
+                      markdownStyle={getMarkdownStyle()}
+                      diffMode="split"
+                      welcomeMessage="Click \"Open Project\" or the + button on the left to start"
+                      applyFadeClass={true}
+                      onHeadingsExtracted={handleHeadingsExtracted}
+                      onContentChange={handleContentChange}
+                      onSave={handleSave}
+                      onCloseDiff={handleCloseDiff}
+                    />
                   </div>
                 </div>
               </div>
@@ -1126,80 +1068,27 @@ theme={settings().themeMode}
           }
         >
           <div class="mobile-main-content">
-            <Show when={loading()}>
-              <div class="loading">Loading...</div>
-            </Show>
-
-            <Show when={!loading() && !currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
-              <div class="welcome">
-                <h1>OpenMKView</h1>
-                <p>Tap the menu button to browse files</p>
-              </div>
-            </Show>
-
-            <Show when={!loading() && currentFile() && activeTab() === 'preview' && currentFileType() === 'markdown'}>
-              <div class="markdown-wrapper" style={getMarkdownStyle()}>
-                <MarkdownView 
-                  content={currentFile()!.content}
-                  theme={getEffectiveThemeType(settings().themeMode as ThemeMode)} 
-                  onHeadingsExtracted={handleHeadingsExtracted}
-                  currentFilePath={currentFile()!.path}
-                  projectId={activeProject()?.id}
-                />
-              </div>
-            </Show>
-
-            <Show when={!loading() && imagePreviewUrl() && currentFileType() === 'image'}>
-              <ImagePreview 
-                src={imagePreviewUrl()!}
-                fileName={imageFileName()}
-              />
-            </Show>
-
-            <Show when={!loading() && activeTab() === 'diff' && activeProject() && currentFile()}>
-              <DiffSelector
-                projectId={activeProject()!.id}
-                filePath={currentFile()!.path}
-              />
-
-              <Show when={diffStore.state.isDiffMode && diffStore.state.diffData}>
-                <DiffViewer
-                  diffData={diffStore.state.diffData!}
-                  theme={settings().themeMode}
-                  mode="unified"
-                  onClose={handleCloseDiff}
-                />
-              </Show>
-
-              <Show when={!diffStore.state.isDiffMode && !diffStore.state.diffData}>
-                <div class="diff-empty">
-                  <p>Select versions to compare</p>
-                </div>
-              </Show>
-            </Show>
-
-            <Show when={!loading() && currentFile() && activeTab() === 'source'}>
-              <div class="source-view">
-                <SourceView 
-                  content={currentFile()!.content}
-                  fileName={currentFile()!.fileName}
-                  theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                />
-              </div>
-            </Show>
-
-            <Show when={!loading() && currentFile() && activeTab() === 'edit'}>
-              <div class="edit-view">
-                <CodeMirrorEditor
-                  content={editContent()}
-                  fileName={currentFile()!.fileName}
-                  theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                  onContentChange={handleContentChange}
-                  onSave={handleSave}
-                  isDirty={isDirty()}
-                />
-              </div>
-            </Show>
+            <FileContentView
+              loading={loading()}
+              currentFile={currentFile()}
+              currentFileType={currentFileType()}
+              activeTab={activeTab()}
+              activeProjectId={activeProject()?.id}
+              imagePreviewUrl={imagePreviewUrl()}
+              imageFileName={imageFileName()}
+              editContent={editContent()}
+              isDirty={isDirty()}
+              settings={settings()}
+              theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
+              markdownStyle={getMarkdownStyle()}
+              diffMode="unified"
+              welcomeMessage="Tap the menu button to browse files"
+              applyFadeClass={false}
+              onHeadingsExtracted={handleHeadingsExtracted}
+              onContentChange={handleContentChange}
+              onSave={handleSave}
+              onCloseDiff={handleCloseDiff}
+            />
           </div>
         </MobileLayout>
       </Show>
