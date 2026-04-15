@@ -55,6 +55,18 @@ export const projectStore = {
       setProjectState('currentFile', null);
     }
   },
+
+  updateProject(id: number, updates: Partial<Project>) {
+    setProjectState(
+      'projects',
+      projectState.projects.map((p) =>
+        p.id === id ? { ...p, ...updates } : p
+      )
+    );
+    if (projectState.activeProject?.id === id) {
+      setProjectState('activeProject', { ...projectState.activeProject, ...updates });
+    }
+  },
 };
 
 export default projectStore;
