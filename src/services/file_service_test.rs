@@ -59,12 +59,13 @@ fn test_get_file_content_success() {
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Test").unwrap();
 
+    // Use relative path
     let (content, file_name, path, file_size, last_modified) =
-        FileService::get_file_content(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_file_content(temp_dir.path(), "test.md").unwrap();
 
     assert_eq!(content, "# Test");
     assert_eq!(file_name, "test.md");
-    assert!(path.ends_with("test.md"));
+    assert_eq!(path, "test.md"); // Path is now relative
     assert_eq!(file_size, 6);
     assert!(last_modified.is_some());
 }
@@ -72,7 +73,8 @@ fn test_get_file_content_success() {
 #[test]
 fn test_get_file_content_not_found() {
     let temp_dir = tempfile::tempdir().unwrap();
-    let result = FileService::get_file_content(temp_dir.path(), "/nonexistent/path/file.md");
+    // Use relative path for nonexistent file
+    let result = FileService::get_file_content(temp_dir.path(), "nonexistent.md");
     assert!(result.is_err());
 }
 
@@ -82,7 +84,8 @@ fn test_get_file_content_not_markdown() {
     let file_path = temp_dir.path().join("test.txt");
     fs::write(&file_path, "Test").unwrap();
 
-    let result = FileService::get_file_content(temp_dir.path(), file_path.to_str().unwrap());
+    // Use relative path
+    let result = FileService::get_file_content(temp_dir.path(), "test.txt");
     assert!(result.is_err());
 }
 
@@ -92,7 +95,8 @@ fn test_get_file_content_mdx() {
     let file_path = temp_dir.path().join("test.mdx");
     fs::write(&file_path, "# MDX").unwrap();
 
-    let result = FileService::get_file_content(temp_dir.path(), file_path.to_str().unwrap());
+    // Use relative path
+    let result = FileService::get_file_content(temp_dir.path(), "test.mdx");
     assert!(result.is_ok());
 }
 
@@ -229,8 +233,9 @@ fn test_get_raw_file_bmp() {
     let bmp_data = vec![0x42, 0x4D, 0x00, 0x00, 0x00, 0x00];
     fs::write(&file_path, &bmp_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "test.bmp").unwrap();
 
     assert_eq!(content, bmp_data);
     assert_eq!(mime_type, "image/bmp");
@@ -244,8 +249,9 @@ fn test_get_raw_file_ico() {
     let ico_data = vec![0x00, 0x00, 0x01, 0x00, 0x01, 0x00];
     fs::write(&file_path, &ico_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "test.ico").unwrap();
 
     assert_eq!(content, ico_data);
     assert_eq!(mime_type, "image/x-icon");
@@ -259,8 +265,9 @@ fn test_get_raw_file_webp() {
     let webp_data = vec![0x52, 0x49, 0x46, 0x46];
     fs::write(&file_path, &webp_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "test.webp").unwrap();
 
     assert_eq!(content, webp_data);
     assert_eq!(mime_type, "image/webp");
@@ -282,8 +289,9 @@ fn test_get_raw_file_png() {
     let png_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     fs::write(&file_path, &png_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "test.png").unwrap();
 
     assert_eq!(content, png_data);
     assert_eq!(mime_type, "image/png");
@@ -297,8 +305,9 @@ fn test_get_raw_file_jpg() {
     let jpg_data = vec![0xFF, 0xD8, 0xFF, 0xE0];
     fs::write(&file_path, &jpg_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "test.jpg").unwrap();
 
     assert_eq!(content, jpg_data);
     assert_eq!(mime_type, "image/jpeg");
@@ -312,8 +321,9 @@ fn test_get_raw_file_svg() {
     let svg_data = "<svg></svg>".as_bytes().to_vec();
     fs::write(&file_path, &svg_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "test.svg").unwrap();
 
     assert_eq!(content, svg_data);
     assert_eq!(mime_type, "image/svg+xml");
@@ -326,7 +336,8 @@ fn test_get_raw_file_not_allowed() {
     let file_path = temp_dir.path().join("test.txt");
     fs::write(&file_path, "text content").unwrap();
 
-    let result = FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap());
+    // Use relative path
+    let result = FileService::get_raw_file(temp_dir.path(), "test.txt");
     assert!(result.is_err());
 }
 
@@ -336,7 +347,8 @@ fn test_get_raw_file_path_traversal() {
     let outside_file = temp_dir.path().parent().unwrap().join("outside.png");
     fs::write(&outside_file, vec![0x89, 0x50]).unwrap();
 
-    let result = FileService::get_raw_file(temp_dir.path(), outside_file.to_str().unwrap());
+    // Try to use path traversal - should fail
+    let result = FileService::get_raw_file(temp_dir.path(), "../outside.png");
     assert!(result.is_err());
 
     fs::remove_file(&outside_file).ok();
@@ -357,14 +369,18 @@ fn test_build_tree_with_image_files() {
     let md_node = tree.iter().find(|n| n.name == "test.md");
     assert!(md_node.is_some());
     assert_eq!(md_node.unwrap().file_type, Some("markdown".to_string()));
+    // Path should be relative
+    assert_eq!(md_node.unwrap().path, "test.md");
 
     let png_node = tree.iter().find(|n| n.name == "image.png");
     assert!(png_node.is_some());
     assert_eq!(png_node.unwrap().file_type, Some("image".to_string()));
+    assert_eq!(png_node.unwrap().path, "image.png");
 
     let jpg_node = tree.iter().find(|n| n.name == "photo.jpg");
     assert!(jpg_node.is_some());
     assert_eq!(jpg_node.unwrap().file_type, Some("image".to_string()));
+    assert_eq!(jpg_node.unwrap().path, "photo.jpg");
 }
 
 #[test]
@@ -376,6 +392,8 @@ fn test_build_tree_folder_no_file_type() {
     assert_eq!(tree.len(), 1);
     assert!(tree[0].is_folder);
     assert_eq!(tree[0].file_type, None);
+    // Path should be relative for folder
+    assert_eq!(tree[0].path, "folder");
 }
 
 #[test]
@@ -384,13 +402,9 @@ fn test_save_file_content_success() {
     let file_path = temp_dir.path().join("test.md");
     fs::write(&file_path, "# Original").unwrap();
 
-    let (file_size, _last_modified) = FileService::save_file_content(
-        temp_dir.path(),
-        file_path.to_str().unwrap(),
-        "# Updated",
-        None,
-    )
-    .unwrap();
+    // Use relative path
+    let (file_size, _last_modified) =
+        FileService::save_file_content(temp_dir.path(), "test.md", "# Updated", None).unwrap();
 
     let content = fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "# Updated");
@@ -403,12 +417,8 @@ fn test_save_file_content_mdx() {
     let file_path = temp_dir.path().join("test.mdx");
     fs::write(&file_path, "# Original").unwrap();
 
-    let result = FileService::save_file_content(
-        temp_dir.path(),
-        file_path.to_str().unwrap(),
-        "# Updated",
-        None,
-    );
+    // Use relative path
+    let result = FileService::save_file_content(temp_dir.path(), "test.mdx", "# Updated", None);
     assert!(result.is_ok());
 }
 
@@ -418,12 +428,8 @@ fn test_save_file_content_not_markdown() {
     let file_path = temp_dir.path().join("test.txt");
     fs::write(&file_path, "Original").unwrap();
 
-    let result = FileService::save_file_content(
-        temp_dir.path(),
-        file_path.to_str().unwrap(),
-        "Updated",
-        None,
-    );
+    // Use relative path
+    let result = FileService::save_file_content(temp_dir.path(), "test.txt", "Updated", None);
     assert!(result.is_err());
 }
 
@@ -436,12 +442,8 @@ fn test_save_file_content_path_traversal() {
     let outside_file = temp_dir.path().parent().unwrap().join("outside.md");
     fs::write(&outside_file, "# Outside").unwrap();
 
-    let result = FileService::save_file_content(
-        temp_dir.path(),
-        outside_file.to_str().unwrap(),
-        "# Evil",
-        None,
-    );
+    // Try path traversal - should fail validation
+    let result = FileService::save_file_content(temp_dir.path(), "../outside.md", "# Evil", None);
     assert!(result.is_err());
 
     fs::remove_file(&outside_file).ok();
@@ -450,8 +452,9 @@ fn test_save_file_content_path_traversal() {
 #[test]
 fn test_save_file_content_not_found() {
     let temp_dir = tempfile::tempdir().unwrap();
+    // Use relative path for nonexistent file
     let result =
-        FileService::save_file_content(temp_dir.path(), "/nonexistent/file.md", "# Content", None);
+        FileService::save_file_content(temp_dir.path(), "nonexistent.md", "# Content", None);
     assert!(result.is_err());
 }
 
@@ -461,9 +464,9 @@ fn test_save_file_content_empty_content() {
     let file_path = temp_dir.path().join("empty.md");
     fs::write(&file_path, "# Original").unwrap();
 
+    // Use relative path
     let (file_size, _) =
-        FileService::save_file_content(temp_dir.path(), file_path.to_str().unwrap(), "", None)
-            .unwrap();
+        FileService::save_file_content(temp_dir.path(), "empty.md", "", None).unwrap();
 
     let content = fs::read_to_string(&file_path).unwrap();
     assert_eq!(content, "");
@@ -478,7 +481,8 @@ fn test_get_raw_file_large_file_rejected() {
     large_data.resize(51 * 1024 * 1024 + 4, 0);
     fs::write(&file_path, &large_data).unwrap();
 
-    let result = FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap());
+    // Use relative path
+    let result = FileService::get_raw_file(temp_dir.path(), "large.png");
     assert!(result.is_err());
 
     let err = result.unwrap_err();
@@ -494,7 +498,8 @@ fn test_get_raw_file_max_size_allowed() {
     max_data.resize(50 * 1024 * 1024 - 4, 0);
     fs::write(&file_path, &max_data).unwrap();
 
-    let result = FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap());
+    // Use relative path
+    let result = FileService::get_raw_file(temp_dir.path(), "max.png");
     assert!(result.is_ok());
 }
 
@@ -507,8 +512,9 @@ fn test_get_raw_file_svg_path_with_special_chars() {
     let svg_data = "<svg></svg>".as_bytes().to_vec();
     fs::write(&file_path, &svg_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "folder with spaces/test.svg").unwrap();
 
     assert_eq!(content, svg_data);
     assert_eq!(mime_type, "image/svg+xml");
@@ -524,8 +530,9 @@ fn test_get_raw_file_deep_nested_svg() {
     let svg_data = "<svg></svg>".as_bytes().to_vec();
     fs::write(&file_path, &svg_data).unwrap();
 
+    // Use relative path
     let (content, mime_type, file_name) =
-        FileService::get_raw_file(temp_dir.path(), file_path.to_str().unwrap()).unwrap();
+        FileService::get_raw_file(temp_dir.path(), "a/b/c/d/nested.svg").unwrap();
 
     assert_eq!(content, svg_data);
     assert_eq!(mime_type, "image/svg+xml");

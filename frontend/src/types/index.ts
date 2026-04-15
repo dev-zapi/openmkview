@@ -16,14 +16,14 @@ export interface Heading {
 export interface FileContent {
   content: string;
   fileName: string;
-  path: string;
+  path: string;  // Relative path from project root
   fileSize?: number;
   lastModified?: string;
 }
 
 export interface FileSaveRequest {
   project_id: number;
-  path: string;
+  relativePath: string;
   content: string;
   expectedModifiedAt?: string;
 }

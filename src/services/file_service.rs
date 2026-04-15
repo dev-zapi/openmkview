@@ -31,10 +31,15 @@ impl FileService {
 
     pub fn get_raw_file(
         project_path: &Path,
-        file_path: &str,
+        relative_path: &str,
     ) -> AppResult<(Vec<u8>, String, String)> {
-        let file_path = PathBuf::from(file_path);
-        let resolved = file_path
+        // Validate relative path to prevent path traversal
+        Self::validate_relative_path(relative_path)?;
+
+        // Join relative path with project path
+        let full_path = project_path.join(relative_path);
+
+        let resolved = full_path
             .canonicalize()
             .map_err(|_| AppError::NotFound("File does not exist".into()))?;
 
@@ -68,12 +73,38 @@ impl FileService {
 
         Ok((content, mime_type, file_name))
     }
+
+    /// Validate relative path to prevent path traversal attacks
+    fn validate_relative_path(path: &str) -> AppResult<()> {
+        // Reject absolute paths
+        if path.starts_with('/') || path.starts_with('\\') {
+            return Err(AppError::ValidationError(
+                "Absolute paths are not allowed".into(),
+            ));
+        }
+
+        // Reject parent directory references
+        if path.contains("..") {
+            return Err(AppError::ValidationError(
+                "Path traversal is not allowed".into(),
+            ));
+        }
+
+        // Reject Windows drive letter paths
+        if path.len() >= 2 && path.chars().nth(1) == Some(':') {
+            return Err(AppError::ValidationError(
+                "Absolute paths are not allowed".into(),
+            ));
+        }
+
+        Ok(())
+    }
     pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
         fn build_node(
             files: &[&PathBuf],
             depth: usize,
             current_prefix: &str,
-            root_path: &Path,
+            _root_path: &Path,
         ) -> Vec<FileTreeNode> {
             let mut groups: BTreeMap<String, Vec<&PathBuf>> = BTreeMap::new();
 
@@ -93,7 +124,8 @@ impl FileService {
 
                 if is_file {
                     for file in &group_files {
-                        let full_path = root_path.join(file);
+                        // Use relative path (file is already relative to root)
+                        let relative_path = file.to_str().unwrap().to_string();
                         let file_type = file
                             .extension()
                             .and_then(|e| e.to_str())
@@ -109,9 +141,9 @@ impl FileService {
                         });
 
                         nodes.push(FileTreeNode {
-                            id: file.to_str().unwrap().to_string(),
+                            id: relative_path.clone(),
                             name: name.clone(),
-                            path: full_path.to_str().unwrap().to_string(),
+                            path: relative_path, // Return relative path
                             is_folder: false,
                             children: None,
                             file_type: node_type,
@@ -123,11 +155,11 @@ impl FileService {
                     } else {
                         format!("{}/{}", current_prefix, name)
                     };
-                    let children = build_node(&group_files, depth + 1, &child_prefix, root_path);
+                    let children = build_node(&group_files, depth + 1, &child_prefix, _root_path);
                     nodes.push(FileTreeNode {
                         id: child_prefix.clone(),
                         name,
-                        path: root_path.join(&child_prefix).to_str().unwrap().to_string(),
+                        path: child_prefix, // Return relative path for folders too
                         is_folder: true,
                         children: Some(children),
                         file_type: None,
@@ -163,10 +195,15 @@ impl FileService {
 
     pub fn get_file_content(
         project_path: &Path,
-        file_path: &str,
+        relative_path: &str,
     ) -> AppResult<(String, String, String, u64, Option<std::time::SystemTime>)> {
-        let file_path = PathBuf::from(file_path);
-        let resolved = file_path
+        // Validate relative path to prevent path traversal
+        Self::validate_relative_path(relative_path)?;
+
+        // Join relative path with project path
+        let full_path = project_path.join(relative_path);
+
+        let resolved = full_path
             .canonicalize()
             .map_err(|_| AppError::NotFound("File does not exist".into()))?;
 
@@ -191,14 +228,21 @@ impl FileService {
 
         let content = std::fs::read_to_string(&resolved)?;
         let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
-        let path = resolved.to_str().unwrap().to_string();
+        // Return relative path for frontend
+        let path = relative_path;
 
         // Get file size and modification time
         let metadata = std::fs::metadata(&resolved)?;
         let file_size = metadata.len();
         let last_modified = metadata.modified().ok();
 
-        Ok((content, file_name, path, file_size, last_modified))
+        Ok((
+            content,
+            file_name,
+            path.to_string(),
+            file_size,
+            last_modified,
+        ))
     }
 
     pub fn create_file(project_path: &Path, file_name: &str) -> AppResult<()> {
@@ -277,12 +321,17 @@ impl FileService {
 
     pub fn save_file_content(
         project_path: &Path,
-        file_path: &str,
+        relative_path: &str,
         content: &str,
         expected_modified_at: Option<&str>,
     ) -> AppResult<(u64, std::time::SystemTime)> {
-        let file_path = PathBuf::from(file_path);
-        let resolved = file_path
+        // Validate relative path to prevent path traversal
+        Self::validate_relative_path(relative_path)?;
+
+        // Join relative path with project path
+        let full_path = project_path.join(relative_path);
+
+        let resolved = full_path
             .canonicalize()
             .map_err(|_| AppError::NotFound("File does not exist".into()))?;
 

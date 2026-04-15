@@ -29,7 +29,9 @@ pub struct FileOperationRequest {
 #[derive(Debug, Deserialize)]
 pub struct FileSaveRequest {
     pub project_id: i64,
-    pub path: String,
+    /// Relative path from project root (e.g., "docs/readme.md")
+    #[serde(rename = "relativePath")]
+    pub relative_path: String,
     pub content: String,
     /// Optional timestamp for optimistic concurrency check
     /// If provided, the save will fail with Conflict if the file has been modified

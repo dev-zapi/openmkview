@@ -16,7 +16,9 @@ pub struct FileTreeParams {
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct FileContentParams {
-    pub path: String,
+    /// Relative path from project root
+    #[serde(rename = "relativePath")]
+    pub relative_path: String,
     pub project_id: i64,
 }
 
@@ -52,8 +54,8 @@ pub async fn get_file_content(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let (content, file_name, path, file_size, last_modified) =
-        FileService::get_file_content(&project_path, &query.path)?;
+    let (content, file_name, relative_path, file_size, last_modified) =
+        FileService::get_file_content(&project_path, &query.relative_path)?;
 
     let last_modified_str = last_modified.map(|t| {
         let datetime: chrono::DateTime<chrono::Utc> = t.into();
@@ -63,7 +65,7 @@ pub async fn get_file_content(
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "content": content,
         "fileName": file_name,
-        "path": path,
+        "path": relative_path,  // Return relative path to frontend
         "fileSize": file_size,
         "lastModified": last_modified_str
     })))
@@ -158,7 +160,8 @@ pub async fn serve_project_file(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let (content, mime_type, file_name) = FileService::get_raw_file(&project_path, &query.path)?;
+    let (content, mime_type, file_name) =
+        FileService::get_raw_file(&project_path, &query.relative_path)?;
 
     let mut builder = HttpResponse::Ok();
     builder
@@ -198,7 +201,7 @@ pub async fn save_file_content(
     let expected_modified = body.expected_modified_at.as_deref();
     let (file_size, last_modified) = FileService::save_file_content(
         &project_path,
-        &body.path,
+        &body.relative_path,
         &body.content,
         expected_modified,
     )?;

@@ -13,20 +13,20 @@ export const api = {
     return res.json();
   },
 
-  async getFileContent(path: string, projectId: number): Promise<FileContent> {
+  async getFileContent(relativePath: string, projectId: number): Promise<FileContent> {
     const res = await fetch(
-      `/api/files/content?path=${encodeURIComponent(path)}&project_id=${projectId}`
+      `/api/files/content?relativePath=${encodeURIComponent(relativePath)}&project_id=${projectId}`
     );
     return res.json();
   },
 
-  async saveFileContent(path: string, content: string, projectId: number, expectedModifiedAt?: string): Promise<FileSaveResponse> {
+  async saveFileContent(relativePath: string, content: string, projectId: number, expectedModifiedAt?: string): Promise<FileSaveResponse> {
     const res = await fetch('/api/files/content', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         project_id: projectId,
-        path,
+        relativePath,
         content,
         expectedModifiedAt,
       }),
@@ -129,7 +129,7 @@ export const api = {
     return res.json();
   },
 
-  getFileRawUrl(path: string, projectId: number): string {
-    return `/api/files/raw?path=${encodeURIComponent(path)}&project_id=${projectId}`;
+  getFileRawUrl(relativePath: string, projectId: number): string {
+    return `/api/files/raw?relativePath=${encodeURIComponent(relativePath)}&project_id=${projectId}`;
   },
 };
