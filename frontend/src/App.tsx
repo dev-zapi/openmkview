@@ -12,6 +12,7 @@ import ProjectEditDialog from './components/ProjectEditDialog';
 import TrashDialog from './components/TrashDialog';
 import ImagePreview from './components/ImagePreview';
 import CodeMirrorEditor from './components/CodeMirrorEditor';
+import SidebarHeader from './components/SidebarHeader';
 import { MarkdownHeader } from './components/markdown-header';
 import type { TabType } from './components/markdown-header/ViewTabs';
 import { OpenProjectDialog } from './components/open-project';
@@ -127,7 +128,6 @@ const App: Component = () => {
   const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
   const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
   const [colorPickerPosition, setColorPickerPosition] = createSignal({ x: 0, y: 0 });
-  const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
   const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
   const [trashDialogOpen, setTrashDialogOpen] = createSignal(false);
   const [imagePreviewUrl, setImagePreviewUrl] = createSignal<string | null>(null);
@@ -466,7 +466,7 @@ const App: Component = () => {
 
     const protectedPaths = settings().protectedPaths || [];
     const pathSegments = node.path.toLowerCase().split(/[/\\]/);
-    const isProtected = protectedPaths.some(p => 
+    const isProtected = protectedPaths.some((p: string) =>
       pathSegments.includes(p.toLowerCase()) || node.name.toLowerCase() === p.toLowerCase()
     );
     
@@ -609,18 +609,35 @@ const App: Component = () => {
     return project.color ? { background: project.color } : {};
   };
 
-  const handleProjectMenuToggle = (e: MouseEvent) => {
-    e.stopPropagation();
-    setProjectMenuOpen(!projectMenuOpen());
+  const handleProjectRefresh = async () => {
+    const project = activeProject();
+    if (!project) return;
+
+    setLoading(true);
+    try {
+      const tree = await api.getFileTree(project.id);
+      setFileTree(tree);
+
+      const file = currentFile();
+      if (file) {
+        const content = await api.getFileContent(file.path, project.id);
+        setCurrentFile(content);
+        setEditContent(content.content);
+        setOriginalContent(content.content);
+        setIsDirty(false);
+      }
+    } catch (error) {
+      console.error('Failed to refresh:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProjectEdit = () => {
-    setProjectMenuOpen(false);
     setProjectEditDialogOpen(true);
   };
 
   const handleProjectClose = () => {
-    setProjectMenuOpen(false);
     const project = activeProject();
     if (project) {
       handleCloseProject(new Event('click'), project.id);
@@ -674,20 +691,6 @@ const App: Component = () => {
       );
     }
     return <span class="project-initial">{getProjectDisplayName(project)}</span>;
-  };
-
-  const renderSidebarHeaderIcon = (project: Project) => {
-    if (isFaviconIcon(project.icon)) {
-      const faviconPath = getFaviconPath(project.icon!);
-      return (
-        <img 
-          src={api.getFileRawUrl(faviconPath, project.id)}
-          alt="favicon"
-          class="sidebar-header-favicon"
-        />
-      );
-    }
-    return getProjectDisplayName(project);
   };
 
   return (
@@ -790,37 +793,12 @@ const App: Component = () => {
             >
               <div class="sidebar-header">
                 <Show when={activeProject()}>
-                  <div class="sidebar-header-content">
-                    <span class="sidebar-header-icon" style={activeProject()?.color ? { background: activeProject()?.color } : {}}>
-                      {renderSidebarHeaderIcon(activeProject()!)}
-                    </span>
-                    <span class="sidebar-header-name">{activeProject()?.name}</span>
-                    <button class="sidebar-header-menu" onClick={handleProjectMenuToggle}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="5" r="2"/>
-                        <circle cx="12" cy="12" r="2"/>
-                        <circle cx="12" cy="19" r="2"/>
-                      </svg>
-                    </button>
-                    <Show when={projectMenuOpen()}>
-                      <div class="sidebar-header-menu-dropdown">
-                        <button class="menu-item" onClick={handleProjectEdit}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                          </svg>
-                          <span>Edit Project Info</span>
-                        </button>
-                        <button class="menu-item" onClick={handleProjectClose}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                          </svg>
-                          <span>Close Project</span>
-                        </button>
-                      </div>
-                    </Show>
-                  </div>
+                  <SidebarHeader
+                    project={activeProject()!}
+                    onRefresh={handleProjectRefresh}
+                    onEdit={handleProjectEdit}
+                    onCloseProject={handleProjectClose}
+                  />
                 </Show>
               </div>
               <div class="sidebar-content">
