@@ -144,6 +144,23 @@ const App: Component = () => {
   let mediaQuery: MediaQueryList;
   let sidebarRef: HTMLDivElement | undefined;
 
+  /**
+   * Guard function to check for unsaved changes before destructive navigation
+   * Returns true if navigation should proceed, false if cancelled
+   */
+  const confirmDiscardIfDirty = (): boolean => {
+    if (isDirty() && activeTab() === 'edit') {
+      const confirmed = confirm('You have unsaved changes. Do you want to continue?');
+      if (!confirmed) {
+        return false;
+      }
+      // User confirmed - reset dirty state
+      setIsDirty(false);
+      setEditContent(originalContent());
+    }
+    return true;
+  };
+
   onMount(async () => {
     initWorker().catch(err => console.warn('Failed to init Shiki worker:', err));
     
@@ -234,13 +251,25 @@ const App: Component = () => {
         }
       }
     }
-    
+
+    // Handle page leave with unsaved changes
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty() && activeTab() === 'edit') {
+        e.preventDefault();
+        // Standard way to show a confirmation dialog on page leave
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     onCleanup(() => {
       mediaQuery.removeEventListener('change', handleThemeChange);
       window.removeEventListener('resize', checkMobile);
       window.removeEventListener('resize', handleWindowResize);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       cleanupPopState();
     });
   });
@@ -316,6 +345,9 @@ const App: Component = () => {
   };
 
   const handleSwitchProject = async (project: Project, updateUrl: boolean = true) => {
+    // Check for unsaved changes before switching projects
+    if (!confirmDiscardIfDirty()) return;
+
     setActiveProject(project);
     setLoading(true);
     try {
@@ -335,6 +367,10 @@ const App: Component = () => {
 
   const handleCloseProject = async (e: Event, projectId: number) => {
     e.stopPropagation();
+
+    // Check for unsaved changes before closing project
+    if (!confirmDiscardIfDirty()) return;
+
     try {
       await api.closeProject(projectId);
       const updated = projects().filter(p => p.id !== projectId);
@@ -357,6 +393,9 @@ const App: Component = () => {
   const handleFileClick = async (path: string, _relativePath: string, updateUrl: boolean = true) => {
     const project = activeProject();
     if (!project) return;
+
+    // Check for unsaved changes before switching files
+    if (!confirmDiscardIfDirty()) return;
 
     const node = findNodeByPath(fileTree(), path);
     const fileType = node?.fileType;
