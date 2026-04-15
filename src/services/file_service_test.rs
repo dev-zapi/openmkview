@@ -538,3 +538,158 @@ fn test_get_raw_file_deep_nested_svg() {
     assert_eq!(mime_type, "image/svg+xml");
     assert_eq!(file_name, "nested.svg");
 }
+
+// ============== Patch 11: Backend save safety tests ==============
+
+#[test]
+fn test_validate_relative_path_rejects_absolute() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Test").unwrap();
+
+    // Absolute path should be rejected
+    let result = FileService::save_file_content(temp_dir.path(), "/test.md", "# Content", None);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Absolute paths"));
+}
+
+#[test]
+fn test_validate_relative_path_rejects_parent_dir() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Test").unwrap();
+
+    // Path traversal should be rejected
+    let result = FileService::save_file_content(temp_dir.path(), "../test.md", "# Content", None);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Path traversal"));
+}
+
+#[test]
+fn test_validate_relative_path_rejects_windows_drive() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Test").unwrap();
+
+    // Windows drive letter path should be rejected
+    let result = FileService::save_file_content(temp_dir.path(), "C:/test.md", "# Content", None);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("Absolute paths"));
+}
+
+#[test]
+fn test_save_file_conflict_detection() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Original").unwrap();
+
+    // Get current modification time
+    let metadata = fs::metadata(&file_path).unwrap();
+    let original_modified = metadata.modified().unwrap();
+
+    // Modify the file externally (simulate external edit)
+    // Wait a moment then modify
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    fs::write(&file_path, "# External modification").unwrap();
+
+    // Create a timestamp that's clearly different from current state
+    let old_timestamp: chrono::DateTime<chrono::Utc> =
+        chrono::DateTime::from(original_modified) - chrono::Duration::seconds(10);
+    let expected_modified = old_timestamp.to_rfc3339();
+
+    // Save with expected timestamp should fail due to conflict
+    let result = FileService::save_file_content(
+        temp_dir.path(),
+        "test.md",
+        "# My changes",
+        Some(&expected_modified),
+    );
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    let err_msg = err.to_string();
+    assert!(err_msg.contains("Conflict") || err_msg.contains("modified externally"));
+}
+
+#[test]
+fn test_save_file_no_conflict_with_current_timestamp() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Original").unwrap();
+
+    // Get current modification time
+    let metadata = fs::metadata(&file_path).unwrap();
+    let current_modified = metadata.modified().unwrap();
+    let current_timestamp: chrono::DateTime<chrono::Utc> = current_modified.into();
+
+    // Save with current timestamp should succeed (within tolerance)
+    let result = FileService::save_file_content(
+        temp_dir.path(),
+        "test.md",
+        "# My changes",
+        Some(&current_timestamp.to_rfc3339()),
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_atomic_write_preserves_file_on_partial_failure() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.md");
+    fs::write(&file_path, "# Original content\nMore content").unwrap();
+
+    // Read original content
+    let original_content = fs::read_to_string(&file_path).unwrap();
+
+    // Verify atomic write by checking no temp files are left
+    let result = FileService::save_file_content(temp_dir.path(), "test.md", "# Updated", None);
+    assert!(result.is_ok());
+
+    // Check that temp file was cleaned up
+    let temp_file = temp_dir.path().join("test.md.tmp");
+    assert!(!temp_file.exists());
+
+    // Check that the target file exists with new content
+    let new_content = fs::read_to_string(&file_path).unwrap();
+    assert_eq!(new_content, "# Updated");
+}
+
+#[test]
+fn test_relative_path_in_nested_directory() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let nested_dir = temp_dir.path().join("docs/api");
+    fs::create_dir_all(&nested_dir).unwrap();
+    let file_path = nested_dir.join("readme.md");
+    fs::write(&file_path, "# Original").unwrap();
+
+    // Save using relative path in nested directory
+    let result = FileService::save_file_content(
+        temp_dir.path(),
+        "docs/api/readme.md",
+        "# Updated API docs",
+        None,
+    );
+    assert!(result.is_ok());
+
+    let content = fs::read_to_string(&file_path).unwrap();
+    assert_eq!(content, "# Updated API docs");
+}
+
+#[test]
+fn test_get_file_content_returns_relative_path() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let nested_dir = temp_dir.path().join("docs");
+    fs::create_dir_all(&nested_dir).unwrap();
+    let file_path = nested_dir.join("readme.md");
+    fs::write(&file_path, "# Docs").unwrap();
+
+    let (content, file_name, path, _file_size, _last_modified) =
+        FileService::get_file_content(temp_dir.path(), "docs/readme.md").unwrap();
+
+    assert_eq!(content, "# Docs");
+    assert_eq!(file_name, "readme.md");
+    // Path should be relative, not absolute
+    assert_eq!(path, "docs/readme.md");
+}

@@ -53,7 +53,7 @@ describe('api service', () => {
         content: '# Hello World',
         headings: [{ depth: 1, text: 'Hello World', id: 'hello-world' }],
         fileName: 'README.md',
-        path: '/project/README.md',
+        path: 'README.md',
       };
 
       (global.fetch as any).mockResolvedValueOnce({
@@ -61,11 +61,114 @@ describe('api service', () => {
       });
 
       const { api } = await import('../services/api');
-      const result = await api.getFileContent('/project/README.md', 1);
+      const result = await api.getFileContent('README.md', 1);
       expect(result).toEqual(mockContent);
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/files/content?path=%2Fproject%2FREADME.md&project_id=1'
+        '/api/files/content?relativePath=README.md&project_id=1'
       );
+    });
+  });
+
+  describe('saveFileContent', () => {
+    it('saves file content successfully', async () => {
+      const mockResponse = {
+        success: true,
+        fileSize: 100,
+        lastModified: '2024-01-15T10:30:00Z',
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const { api } = await import('../services/api');
+      const result = await api.saveFileContent('docs/test.md', '# Updated content', 1);
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/files/content',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: 1,
+            relativePath: 'docs/test.md',
+            content: '# Updated content',
+            expectedModifiedAt: undefined,
+          }),
+        })
+      );
+    });
+
+    it('saves file with optimistic concurrency timestamp', async () => {
+      const mockResponse = {
+        success: true,
+        fileSize: 100,
+        lastModified: '2024-01-15T11:00:00Z',
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const { api } = await import('../services/api');
+      const expectedModifiedAt = '2024-01-15T10:00:00Z';
+      const result = await api.saveFileContent('docs/test.md', '# Content', 1, expectedModifiedAt);
+      expect(result).toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/files/content',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_id: 1,
+            relativePath: 'docs/test.md',
+            content: '# Content',
+            expectedModifiedAt,
+          }),
+        })
+      );
+    });
+
+    it('throws error on conflict response', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        json: async () => ({ error: 'Conflict: File has been modified externally. Please reload and try again.' }),
+      });
+
+      const { api } = await import('../services/api');
+      await expect(api.saveFileContent('docs/test.md', '# Content', 1)).rejects.toThrow('Conflict');
+    });
+
+    it('throws error on validation failure', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: 'Only Markdown files (.md/.mdx) can be edited' }),
+      });
+
+      const { api } = await import('../services/api');
+      await expect(api.saveFileContent('test.txt', 'Content', 1)).rejects.toThrow('Only Markdown files');
+    });
+
+    it('throws error on server failure', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Internal server error' }),
+      });
+
+      const { api } = await import('../services/api');
+      await expect(api.saveFileContent('test.md', 'Content', 1)).rejects.toThrow('Internal server error');
+    });
+
+    it('handles network error gracefully', async () => {
+      (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+
+      const { api } = await import('../services/api');
+      await expect(api.saveFileContent('test.md', 'Content', 1)).rejects.toThrow('Network error');
     });
   });
 

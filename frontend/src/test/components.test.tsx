@@ -330,3 +330,74 @@ describe('ImagePreview', () => {
     expect(screen.getByText('100%')).toBeTruthy();
   });
 });
+
+describe('ViewTabs', () => {
+  const { ViewTabs } = await import('../components/markdown-header/ViewTabs');
+  type TabType = 'preview' | 'source' | 'edit' | 'diff';
+
+  it('renders all tabs for markdown files', async () => {
+    const onTabChange = vi.fn();
+    const { container } = render(() => (
+      <ViewTabs activeTab="preview" onTabChange={onTabChange} fileType="markdown" />
+    ));
+    const tabs = container.querySelectorAll('button');
+    expect(tabs.length).toBe(4);
+    expect(screen.getByText('Preview')).toBeTruthy();
+    expect(screen.getByText('Source')).toBeTruthy();
+    expect(screen.getByText('Edit')).toBeTruthy();
+    expect(screen.getByText('Diff')).toBeTruthy();
+  });
+
+  it('shows only preview tab for image files', async () => {
+    const onTabChange = vi.fn();
+    const { container } = render(() => (
+      <ViewTabs activeTab="preview" onTabChange={onTabChange} fileType="image" />
+    ));
+    const tabs = container.querySelectorAll('button');
+    expect(tabs.length).toBe(1);
+    expect(screen.getByText('Preview')).toBeTruthy();
+  });
+
+  it('highlights active tab', async () => {
+    const onTabChange = vi.fn();
+    const { container } = render(() => (
+      <ViewTabs activeTab="edit" onTabChange={onTabChange} fileType="markdown" />
+    ));
+    const editTab = screen.getByText('Edit').closest('button');
+    expect(editTab?.classList.contains('active')).toBe(true);
+  });
+
+  it('shows dirty indicator on edit tab when isDirty is true', async () => {
+    const onTabChange = vi.fn();
+    render(() => (
+      <ViewTabs activeTab="edit" onTabChange={onTabChange} fileType="markdown" isDirty={true} />
+    ));
+    // Find the asterisk indicator
+    const editTab = screen.getByText('Edit').closest('button');
+    const dirtyIndicator = editTab?.querySelector('.dirtyIndicator');
+    expect(dirtyIndicator).toBeTruthy();
+    expect(dirtyIndicator?.textContent).toBe('*');
+  });
+
+  it('does not show dirty indicator when isDirty is false', async () => {
+    const onTabChange = vi.fn();
+    render(() => (
+      <ViewTabs activeTab="edit" onTabChange={onTabChange} fileType="markdown" isDirty={false} />
+    ));
+    const editTab = screen.getByText('Edit').closest('button');
+    const dirtyIndicator = editTab?.querySelector('.dirtyIndicator');
+    expect(dirtyIndicator).toBeFalsy();
+  });
+
+  it('calls onTabChange when tab is clicked', async () => {
+    const onTabChange = vi.fn();
+    render(() => (
+      <ViewTabs activeTab="preview" onTabChange={onTabChange} fileType="markdown" />
+    ));
+    const editButton = screen.getByText('Edit').closest('button');
+    if (editButton) {
+      fireEvent.click(editButton);
+      expect(onTabChange).toHaveBeenCalledWith('edit');
+    }
+  });
+});
