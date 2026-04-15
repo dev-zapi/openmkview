@@ -598,9 +598,9 @@ const App: Component = () => {
     await handleSwitchProject(project);
   };
 
-  const getMarkdownStyle = () => {
+  const getMarkdownStyle = (): Record<string, string> => {
     const s = settings();
-    if (s.markdownWidth === 'fixed') {
+    if (s.markdownWidth === 'fixed' && s.fixedWidth) {
       return {
         'max-width': s.fixedWidth,
         'margin-left': 'auto',
@@ -923,7 +923,7 @@ const App: Component = () => {
                       theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
                       markdownStyle={getMarkdownStyle()}
                       diffMode="split"
-                      welcomeMessage="Click \"Open Project\" or the + button on the left to start"
+                      welcomeMessage='Click "Open Project" or the + button on the left to start'
                       applyFadeClass={true}
                       onHeadingsExtracted={handleHeadingsExtracted}
                       onContentChange={handleContentChange}

@@ -14,7 +14,7 @@ export interface CodeMirrorEditorProps {
   fileName?: string;
   theme?: 'light' | 'dark';
   onContentChange?: (content: string) => void;
-  onSave?: (content: string) => Promise<void>;
+  onSave?: () => void | Promise<void>;
   isDirty?: boolean;
 }
 
@@ -31,8 +31,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
         key: 'Mod-s',
         run: (view: EditorView) => {
           if (props.onSave) {
-            const content = view.state.doc.toString();
-            props.onSave(content);
+            props.onSave();
           }
           return true;
         },
