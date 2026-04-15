@@ -1,5 +1,6 @@
 import { Component, createSignal, Show } from 'solid-js';
 import styles from './styles.module.css';
+import { ViewTabs } from './ViewTabs';
 import type { TabType } from './ViewTabs';
 
 export interface DocumentTitleBarProps {
@@ -101,37 +102,12 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
       </div>
 
       <div class={styles.documentCenter}>
-        <Show when={props.fileType !== 'image'}>
-          <div class={styles.viewTabs}>
-            <button
-              class={`${styles.tabItem} ${props.activeTab === 'preview' ? styles.active : ''}`}
-              onClick={() => props.onTabChange('preview')}
-            >
-              Preview
-            </button>
-            <button
-              class={`${styles.tabItem} ${props.activeTab === 'source' ? styles.active : ''}`}
-              onClick={() => props.onTabChange('source')}
-            >
-              Source
-            </button>
-            <button
-              class={`${styles.tabItem} ${props.activeTab === 'edit' ? styles.active : ''}`}
-              onClick={() => props.onTabChange('edit')}
-            >
-              Edit
-              <Show when={props.isDirty}>
-                <span class={styles.dirtyIndicator}>*</span>
-              </Show>
-            </button>
-            <button
-              class={`${styles.tabItem} ${props.activeTab === 'diff' ? styles.active : ''}`}
-              onClick={() => props.onTabChange('diff')}
-            >
-              Diff
-            </button>
-          </div>
-        </Show>
+        <ViewTabs
+          activeTab={props.activeTab}
+          onTabChange={props.onTabChange}
+          fileType={props.fileType}
+          isDirty={props.isDirty}
+        />
       </div>
 
       <div class={styles.documentRight}>
