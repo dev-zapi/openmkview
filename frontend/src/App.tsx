@@ -81,6 +81,8 @@ const getEffectiveThemeType = (mode: ThemeMode): ThemeType => {
     markdownFontFamily: 'Georgia, "Noto Serif", serif',
     uiFontSize: '14px',
     markdownFontSize: '16px',
+    protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
+    trashExpireDays: 30,
   };
 };
 

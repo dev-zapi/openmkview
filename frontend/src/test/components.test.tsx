@@ -152,6 +152,79 @@ describe('SettingsPanel', () => {
       expect(onClose).not.toHaveBeenCalled();
     }
   });
+
+  describe('navigation', () => {
+    let scrollIntoViewMock: ReturnType<typeof vi.fn>;
+    let IntersectionObserverMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      scrollIntoViewMock = vi.fn();
+      HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+      IntersectionObserverMock = vi.fn().mockImplementation(() => ({
+        observe: vi.fn(),
+        unobserve: vi.fn(),
+        disconnect: vi.fn(),
+      }));
+      window.IntersectionObserver = IntersectionObserverMock;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('renders navigation with all categories', () => {
+      const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+      const navItems = container.querySelectorAll('.settings-nav button');
+      expect(navItems.length).toBe(4);
+      expect(screen.getByText('Themes')).toBeTruthy();
+      expect(screen.getByText('Markdown')).toBeTruthy();
+      expect(screen.getByText('Trash')).toBeTruthy();
+      expect(screen.getByText('Fonts')).toBeTruthy();
+    });
+
+    it('clicking navigation item triggers scrollIntoView', () => {
+      const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+      
+      const themesBtn = container.querySelector('.settings-nav button');
+      if (themesBtn) {
+        fireEvent.click(themesBtn);
+        expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+      }
+    });
+
+    it('clicking navigation item switches active class', () => {
+      const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+      const navButtons = container.querySelectorAll('.settings-nav button');
+      
+      if (navButtons.length >= 2) {
+        expect(navButtons[0].classList.contains('active')).toBe(true);
+        fireEvent.click(navButtons[1]);
+        expect(navButtons[0].classList.contains('active')).toBe(false);
+        expect(navButtons[1].classList.contains('active')).toBe(true);
+      }
+    });
+
+    it('IntersectionObserver is created when panel opens', () => {
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+      expect(IntersectionObserverMock).toHaveBeenCalled();
+    });
+
+    it('IntersectionObserver observes all sections', async () => {
+      const observeMock = vi.fn();
+      IntersectionObserverMock.mockImplementation(() => ({
+        observe: observeMock,
+        unobserve: vi.fn(),
+        disconnect: vi.fn(),
+      }));
+      
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+      
+      await waitFor(() => {
+        expect(observeMock).toHaveBeenCalledTimes(4);
+      });
+    });
+  });
 });
 
 describe('ImagePreview', () => {

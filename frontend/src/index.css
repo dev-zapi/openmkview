@@ -1367,8 +1367,8 @@ textarea {
 .settings-panel {
   background: var(--color-bg);
   border-radius: 12px;
-  width: 640px;
-  max-width: 90vw;
+  width: 760px;
+  max-width: calc(100vw - 32px);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -1431,20 +1431,31 @@ textarea {
 }
 
 .settings-nav li {
+  padding: 0;
+}
+
+.settings-nav button {
+  width: 100%;
   padding: 8px 16px;
   cursor: pointer;
   font-size: 13px;
   color: var(--color-text-secondary);
   border-left: 2px solid transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: transparent;
   transition: all 0.15s ease;
+  text-align: left;
+  font-family: inherit;
 }
 
-.settings-nav li:hover {
+.settings-nav button:hover {
   color: var(--color-text);
   background: var(--color-bg-hover);
 }
 
-.settings-nav li.active {
+.settings-nav button.active {
   color: var(--color-text);
   border-left-color: var(--color-accent);
   background: var(--color-bg-active);

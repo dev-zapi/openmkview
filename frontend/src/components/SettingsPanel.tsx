@@ -55,8 +55,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [themes, setThemes] = createSignal<Theme[]>([]);
   const [installing, setInstalling] = createSignal(false);
   const [installError, setInstallError] = createSignal<string | null>(null);
-  const [activeCategory, setActiveCategory] = createSignal('settings-themes');
+  const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   let observer: IntersectionObserver | null = null;
+  let observerTimer: number | undefined;
   let contentRef: HTMLDivElement | undefined;
 
   const scrollToCategory = (id: string) => {
@@ -72,10 +73,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     
     observer = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveCategory(entry.target.id);
-          }
+        const visibleEntries = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+        if (visibleEntries[0]) {
+          setActiveCategory(visibleEntries[0].target.id);
         }
       },
       {
@@ -97,14 +100,23 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
   createEffect(() => {
     if (props.isOpen) {
-      setTimeout(initObserver, 100);
+      setActiveCategory(categories[0].id);
+      observer?.disconnect();
+      observerTimer = window.setTimeout(() => initObserver(), 0);
     } else {
+      if (observerTimer) {
+        clearTimeout(observerTimer);
+        observerTimer = undefined;
+      }
       observer?.disconnect();
       observer = null;
     }
   });
 
   onCleanup(() => {
+    if (observerTimer) {
+      clearTimeout(observerTimer);
+    }
     observer?.disconnect();
   });
 
@@ -203,11 +215,15 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
               <ul>
                 <For each={categories}>
                   {(cat) => (
-                    <li
-                      class={activeCategory() === cat.id ? 'active' : ''}
-                      onClick={() => scrollToCategory(cat.id)}
-                    >
-                      {cat.label}
+                    <li>
+                      <button
+                        type="button"
+                        class={activeCategory() === cat.id ? 'active' : ''}
+                        onClick={() => scrollToCategory(cat.id)}
+                        aria-current={activeCategory() === cat.id ? 'true' : undefined}
+                      >
+                        {cat.label}
+                      </button>
                     </li>
                   )}
                 </For>
