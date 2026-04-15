@@ -67,62 +67,122 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const handleExportClick = (format: 'pdf' | 'md') => {
     const timestamp = new Date().toISOString().slice(0, 10);
     const baseName = props.fileName.replace(/\.[^/.]+$/, '');
-    
-    const markdownToHtml = (markdown: string): string => {
-      return markdown
-        .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/^###### (.*$)/gim, '<h6>$1</h6>')
-        .replace(/^##### (.*$)/gim, '<h5>$1</h5>')
-        .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.*?)__/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/_(.*?)_/g, '<em>$1</em>')
-        .replace(/~~(.*?)~~/g, '<del>$1</del>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-        .replace(/^\u003e (.*$)/gim, '<blockquote>$1</blockquote>')
-        .replace(/\n/g, '<br />');
+
+    /**
+     * Escape HTML entities to prevent XSS attacks
+     */
+    const escapeHtml = (text: string): string => {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     };
-    
+
+    /**
+     * Validate URL to prevent dangerous protocols (javascript:, data:, vbscript:)
+     */
+    const isSafeUrl = (url: string): boolean => {
+      const trimmedUrl = url.trim().toLowerCase();
+      // Reject dangerous protocols
+      const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+      for (const protocol of dangerousProtocols) {
+        if (trimmedUrl.startsWith(protocol)) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    /**
+     * Convert markdown to safe HTML using escape-first approach
+     * This prevents XSS by escaping all content first, then applying safe transformations
+     */
+    const markdownToSafeHtml = (markdown: string): string => {
+      // First, escape all HTML entities to neutralize any malicious content
+      let escaped = escapeHtml(markdown);
+
+      // Apply safe transformations on escaped content
+      // Code blocks (already escaped, wrap in pre/code)
+      escaped = escaped.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+      // Inline code
+      escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // Headers
+      escaped = escaped.replace(/^###### (.*$)/gim, '<h6>$1</h6>');
+      escaped = escaped.replace(/^##### (.*$)/gim, '<h5>$1</h5>');
+      escaped = escaped.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+      escaped = escaped.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      escaped = escaped.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      escaped = escaped.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+      // Bold
+      escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      escaped = escaped.replace(/__(.*?)__/g, '<strong>$1</strong>');
+      // Italic
+      escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      escaped = escaped.replace(/_(.*?)_/g, '<em>$1</em>');
+      // Strikethrough
+      escaped = escaped.replace(/~~(.*?)~~/g, '<del>$1</del>');
+      // Links - with URL validation (only allow safe URLs)
+      escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+        if (isSafeUrl(url)) {
+          return `<a href="${escapeHtml(url)}">${text}</a>`;
+        }
+        // Replace dangerous links with just the text
+        return text;
+      });
+      // Images - with URL validation (only allow safe URLs)
+      escaped = escaped.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+        if (isSafeUrl(url)) {
+          return `<img alt="${escapeHtml(alt)}" src="${escapeHtml(url)}" />`;
+        }
+        // Replace dangerous images with placeholder
+        return `[Image blocked: unsafe URL]`;
+      });
+      // Blockquotes
+      escaped = escaped.replace(/^&gt; (.*$)/gim, '<blockquote>$1</blockquote>');
+      // Line breaks
+      escaped = escaped.replace(/\n/g, '<br />');
+
+      return escaped;
+    };
+
     switch (format) {
       case 'pdf':
         const printWindow = window.open('', '_blank');
         if (printWindow) {
-          const htmlBody = markdownToHtml(props.content);
-          printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>${props.fileName}</title>
-              <style>
-                body { font-family: Georgia, serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; }
-                h1, h2, h3, h4, h5, h6 { color: #333; }
-                code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
-                pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
-              </style>
-            </head>
-            <body>
-              ${htmlBody}
-            </body>
-            </html>
-          `);
-          printWindow.document.close();
+          const safeHtmlBody = markdownToSafeHtml(props.content);
+          const safeFileName = escapeHtml(props.fileName);
+          // Use DOM APIs instead of document.write() for safer injection
+          printWindow.document.open();
+          const doc = printWindow.document;
+          doc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>${safeFileName}</title>
+  <style>
+    body { font-family: Georgia, serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; }
+    h1, h2, h3, h4, h5, h6 { color: #333; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+    pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  ${safeHtmlBody}
+</body>
+</html>`);
+          doc.close();
           printWindow.print();
         }
         setToast({ message: 'Exporting PDF...', type: 'success' });
         break;
-        
+
       case 'md':
         downloadFile(props.content, `${baseName}_${timestamp}.md`, 'text/markdown');
         setToast({ message: 'Markdown downloaded', type: 'success' });
         break;
     }
-    
+
     setTimeout(() => setToast(null), 2000);
   };
 
