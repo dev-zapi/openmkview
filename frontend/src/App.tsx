@@ -1,1139 +1,171 @@
-import { Component, createSignal, onMount, Show, createEffect, For, onCleanup } from 'solid-js';
-import FileTree from './components/FileTree';
-import GitPanel from './components/GitPanel';
-import OutlinePanel from './components/OutlinePanel';
-import SettingsPanel from './components/SettingsPanel';
-import ColorPicker from './components/ColorPicker';
-import ProjectEditDialog from './components/ProjectEditDialog';
-import TrashDialog from './components/TrashDialog';
-import SidebarHeader from './components/SidebarHeader';
-import { MarkdownHeader } from './components/markdown-header';
-import { FileContentView } from './components/FileContentView';
-import type { TabType } from './components/markdown-header/ViewTabs';
-import { OpenProjectDialog } from './components/open-project';
-import { MobileLayout, mobileLayoutStore } from './components/mobile';
-import type { Project, FileNode, FileContent, Heading } from './types';
-import type { RecentProject } from './types/openProject';
-import { api } from './services/api';
-import { onPopState, getCurrentRoute, navigateToProject, navigateToHome, navigateToFile } from './utils/router';
-import { openProjectStore } from './stores/openProjectStore';
-import { diffStore } from './stores/diffStore';
-import { initWorker } from './services/shikiWorkerClient';
+import { Component } from 'solid-js';
+import { DesktopLayout, MobileLayoutWrapper } from './layouts';
+import { GlobalDialogs } from './components/GlobalDialogs';
+import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
+import { projectStore } from './stores/projectStore';
+import { fileStore } from './stores/fileStore';
+import { editorStore } from './stores/editorStore';
+import { appStore } from './stores/appStore';
+import { settingsStore } from './stores/settingsStore';
+import type { Project } from './types';
+import { mobileLayoutStore } from './components/mobile';
+import { getMarkdownStyle } from './utils/settings';
 import './styles/global.css';
 import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
 
-type ThemeMode = 'light' | 'dark' | 'system';
-type ThemeType = 'light' | 'dark';
-
-interface Theme {
-  id: string;
-  name: string;
-  type: ThemeType;
-  builtin: boolean;
-}
-
-interface Settings {
-  markdownWidth: 'full' | 'fixed';
-  fixedWidth: string;
-  themeMode: ThemeMode;
-  lightTheme: string;
-  darkTheme: string;
-  uiFontFamily: string;
-  markdownFontFamily: string;
-  uiFontSize: string;
-  markdownFontSize: string;
-  protectedPaths: string[];
-  trashExpireDays: number;
-}
-
-export type { ThemeMode, ThemeType, Theme, Settings };
-
-const getSystemTheme = (): ThemeType => {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
-
-const getEffectiveThemeType = (mode: ThemeMode): ThemeType => {
-  return mode === 'system' ? getSystemTheme() : mode;
-};
-
-  const loadSettings = () => {
-  try {
-    const saved = localStorage.getItem('openmkview-settings');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (e) {
-    console.error('Failed to load settings:', e);
-  }
-  return {
-    markdownWidth: 'full',
-    fixedWidth: '900px',
-    themeMode: 'system' as ThemeMode,
-    lightTheme: 'light-default',
-    darkTheme: 'dark-default',
-    uiFontFamily: 'MiSans, sans-serif',
-    markdownFontFamily: 'Georgia, "Noto Serif", serif',
-    uiFontSize: '14px',
-    markdownFontSize: '16px',
-    protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
-    trashExpireDays: 30,
-  };
-};
-
-const loadSidebarWidth = () => {
-  try {
-    const saved = localStorage.getItem('filetree-sidebar-width');
-    if (saved) {
-      const width = parseInt(saved, 10);
-      const maxWidth = window.innerWidth * 0.4;
-      if (width >= 200 && width <= maxWidth) {
-        return width;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to load sidebar width:', e);
-  }
-  return 280;
-};
-
-const applyTheme = (settings: { themeMode: ThemeMode; lightTheme: string; darkTheme: string }) => {
-  const effectiveType = getEffectiveThemeType(settings.themeMode);
-  const themeId = effectiveType === 'light' ? settings.lightTheme : settings.darkTheme;
-  
-  document.body.classList.remove('light-theme', 'dark-theme');
-  document.body.classList.add(`${effectiveType}-theme`, themeId);
-};
-
 const App: Component = () => {
-  const [projects, setProjects] = createSignal<Project[]>([]);
-  const [activeProject, setActiveProject] = createSignal<Project | null>(null);
-  const [fileTree, setFileTree] = createSignal<FileNode[]>([]);
-  const [currentFile, setCurrentFile] = createSignal<FileContent | null>(null);
-  const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
-  const [loading, setLoading] = createSignal(false);
-  const [activeTab, setActiveTab] = createSignal<TabType>('preview');
-  const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
-  const [outlineOpen, setOutlineOpen] = createSignal(false);
-  const [settingsOpen, setSettingsOpen] = createSignal(false);
-  const [settings, setSettings] = createSignal(loadSettings());
-  const [systemTheme, setSystemTheme] = createSignal<'light' | 'dark'>(getSystemTheme());
-  const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set());
-  const [isOpenProjectDialogOpen, setIsOpenProjectDialogOpen] = createSignal(false);
-  const [isMobile, setIsMobile] = createSignal(false);
-  const [sidebarWidth, setSidebarWidth] = createSignal(280);
-  const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
-  const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
-  const [colorPickerPosition, setColorPickerPosition] = createSignal({ x: 0, y: 0 });
-  const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
-  const [trashDialogOpen, setTrashDialogOpen] = createSignal(false);
-  const [imagePreviewUrl, setImagePreviewUrl] = createSignal<string | null>(null);
-  const [imageFileName, setImageFileName] = createSignal<string>('');
-  const [currentFileType, setCurrentFileType] = createSignal<'markdown' | 'image'>('markdown');
-  const [editContent, setEditContent] = createSignal<string>('');
-  const [originalContent, setOriginalContent] = createSignal<string>('');
-  const [isDirty, setIsDirty] = createSignal<boolean>(false);
-  const [saving, setSaving] = createSignal<boolean>(false);
+  const projectHook = useProject();
+  const fileHook = useFile();
+  const editorHook = useEditor();
+  const layoutHook = useLayout();
 
-  const [isDragging, setIsDragging] = createSignal(false);
-  let mediaQuery: MediaQueryList;
-  let sidebarRef: HTMLDivElement | undefined;
+  useLifecycle();
 
-  /**
-   * Guard function to check for unsaved changes before destructive navigation
-   * Returns true if navigation should proceed, false if cancelled
-   */
-  const confirmDiscardIfDirty = (): boolean => {
-    if (isDirty() && activeTab() === 'edit') {
-      const confirmed = confirm('You have unsaved changes. Do you want to continue?');
-      if (!confirmed) {
-        return false;
-      }
-      // User confirmed - reset dirty state
-      setIsDirty(false);
-      setEditContent(originalContent());
+  const renderProjectIcon = (project: Project) => {
+    const icon = projectHook.renderProjectIconContent(project);
+    if (icon.type === 'image') {
+      return <img src={icon.src} alt="favicon" class="project-favicon" />;
     }
-    return true;
-  };
-
-  onMount(async () => {
-    initWorker().catch(err => console.warn('Failed to init Shiki worker:', err));
-    
-    const projectList = await api.getProjects();
-    setProjects(projectList);
-
-    applyTheme({
-      themeMode: settings().themeMode,
-      lightTheme: settings().lightTheme,
-      darkTheme: settings().darkTheme,
-    });
-
-    setSidebarWidth(loadSidebarWidth());
-
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-
-    const handleWindowResize = () => {
-      const maxWidth = window.innerWidth * 0.4;
-      const currentWidth = sidebarWidth();
-      if (currentWidth > maxWidth) {
-        setSidebarWidth(maxWidth);
-        localStorage.setItem('filetree-sidebar-width', String(maxWidth));
-      }
-    };
-    window.addEventListener('resize', handleWindowResize);
-    
-    mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleThemeChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
-      if ((settings().themeMode as ThemeMode) === 'system') {
-        applyTheme({
-          themeMode: 'system',
-          lightTheme: settings().lightTheme,
-          darkTheme: settings().darkTheme,
-        });
-      }
-    };
-    mediaQuery.addEventListener('change', handleThemeChange);
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging()) {
-        const maxWidth = window.innerWidth * 0.4;
-        const newWidth = Math.max(200, Math.min(maxWidth, e.clientX - 52));
-        setSidebarWidth(newWidth);
-        localStorage.setItem('filetree-sidebar-width', String(newWidth));
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isDragging()) {
-        setIsDragging(false);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
-    const cleanupPopState = onPopState(async (route) => {
-      if (route.projectId) {
-        const project = projects().find(p => p.id === route.projectId);
-        if (project) {
-          await handleSwitchProject(project, false);
-          if (route.filePath) {
-            await handleFileClick(route.filePath, '', false);
-          }
-        }
-      } else {
-        setActiveProject(null);
-        setFileTree([]);
-        setCurrentFile(null);
-        setExpandedFolders(new Set<string>());
-      }
-    });
-
-    const route = getCurrentRoute();
-    if (route.projectId) {
-      const project = projectList.find(p => p.id === route.projectId);
-      if (project) {
-        await handleSwitchProject(project, false);
-        if (route.filePath) {
-          await handleFileClick(route.filePath, '', false);
-        }
-      }
-    }
-
-    // Handle page leave with unsaved changes
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty() && activeTab() === 'edit') {
-        e.preventDefault();
-        // Standard way to show a confirmation dialog on page leave
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-        return e.returnValue;
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    onCleanup(() => {
-      mediaQuery.removeEventListener('change', handleThemeChange);
-      window.removeEventListener('resize', checkMobile);
-      window.removeEventListener('resize', handleWindowResize);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      cleanupPopState();
-    });
-  });
-
-  createEffect(() => {
-    applyTheme({
-      themeMode: settings().themeMode as ThemeMode,
-      lightTheme: settings().lightTheme,
-      darkTheme: settings().darkTheme,
-    });
-  });
-
-  // Apply font settings
-  createEffect(() => {
-    const s = settings();
-    // Apply UI font
-    document.body.style.fontFamily = s.uiFontFamily;
-    document.body.style.fontSize = s.uiFontSize;
-    // Apply Markdown font via CSS variables
-    document.documentElement.style.setProperty('--markdown-font', s.markdownFontFamily);
-    document.documentElement.style.setProperty('--markdown-size', s.markdownFontSize);
-  });
-
-  const toggleTheme = () => {
-    const currentMode = settings().themeMode as ThemeMode;
-    const modes: ThemeMode[] = ['light', 'dark', 'system'];
-    const currentIndex = modes.indexOf(currentMode);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    setSettings(prev => ({ ...prev, themeMode: nextMode }));
-  };
-
-  const handleSettingsSave = () => {
-    setSettings(loadSettings());
-  };
-
-  // 打开项目对话框
-  const handleOpenProject = () => {
-    setIsOpenProjectDialogOpen(true);
-  };
-
-  // 关闭项目对话框
-  const handleCloseOpenProjectDialog = () => {
-    setIsOpenProjectDialogOpen(false);
-  };
-
-  // 项目打开成功回调
-  const handleProjectOpened = async (recentProject: RecentProject) => {
-    setLoading(true);
-    setIsOpenProjectDialogOpen(false);
-    
-    try {
-      const project: Project = {
-        id: parseInt(recentProject.id, 10),
-        name: recentProject.name,
-        path: recentProject.path,
-        color: recentProject.color,
-      };
-      
-      const existingProject = projects().find(p => p.id === project.id);
-      if (!existingProject) {
-        setProjects([...projects(), project]);
-      }
-      
-      await handleSwitchProject(project);
-      
-      openProjectStore.addRecentProject(recentProject);
-    } catch (error) {
-      console.error('Failed to open project:', error);
-      alert('Failed to open project. Please check the path and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSwitchProject = async (project: Project, updateUrl: boolean = true) => {
-    // Check for unsaved changes before switching projects
-    if (!confirmDiscardIfDirty()) return;
-
-    setActiveProject(project);
-    setLoading(true);
-    try {
-      const tree = await api.getFileTree(project.id);
-      setFileTree(tree);
-      diffStore.reset();
-      setCurrentFile(null);
-      if (updateUrl) {
-        navigateToProject(project.id);
-      }
-    } catch (error) {
-      console.error('Failed to load file tree:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCloseProject = async (e: Event, projectId: number) => {
-    e.stopPropagation();
-
-    // Check for unsaved changes before closing project
-    if (!confirmDiscardIfDirty()) return;
-
-    try {
-      await api.closeProject(projectId);
-      const updated = projects().filter(p => p.id !== projectId);
-      setProjects(updated);
-      if (activeProject()?.id === projectId) {
-        setActiveProject(null);
-        setFileTree([]);
-        setCurrentFile(null);
-        setExpandedFolders(new Set<string>());
-        navigateToHome();
-        if (updated.length > 0) {
-          await handleSwitchProject(updated[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to close project:', error);
-    }
-  };
-
-  const handleFileClick = async (path: string, _relativePath: string, updateUrl: boolean = true) => {
-    const project = activeProject();
-    if (!project) return;
-
-    // Check for unsaved changes before switching files
-    if (!confirmDiscardIfDirty()) return;
-
-    const node = findNodeByPath(fileTree(), path);
-    const fileType = node?.fileType;
-
-    if (fileType === 'image') {
-      setCurrentFileType('image');
-      setImagePreviewUrl(api.getFileRawUrl(path, project.id));
-      setImageFileName(node?.name || '');
-      setCurrentFile(null);
-      setExtractedHeadings([]);
-      setActiveTab('preview');
-      setIsDirty(false);
-      setEditContent('');
-      setOriginalContent('');
-      diffStore.reset();
-      if (updateUrl) {
-        navigateToFile(project.id, path);
-      }
-      return;
-    }
-
-    setCurrentFileType('markdown');
-    setLoading(true);
-    try {
-      const content = await api.getFileContent(path, project.id);
-      setCurrentFile(content);
-      setImagePreviewUrl(null);
-      setExtractedHeadings([]);
-      setActiveTab('preview');
-      setEditContent(content.content);
-      setOriginalContent(content.content);
-      setIsDirty(false);
-      diffStore.reset();
-      if (updateUrl) {
-        navigateToFile(project.id, path);
-      }
-    } catch (error) {
-      console.error('Failed to load file:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const findNodeByPath = (nodes: FileNode[], path: string): FileNode | null => {
-    for (const node of nodes) {
-      if (node.path === path) return node;
-      if (node.children) {
-        const found = findNodeByPath(node.children, path);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  const handleHeadingsExtracted = (headings: Heading[]) => {
-    setExtractedHeadings(headings);
-  };
-
-  const handleContentChange = (newContent: string) => {
-    setEditContent(newContent);
-    setIsDirty(newContent !== originalContent());
-  };
-
-  const handleSave = async () => {
-    const project = activeProject();
-    const file = currentFile();
-    if (!project || !file || !isDirty()) return;
-
-    setSaving(true);
-    try {
-      // Pass expectedModifiedAt for optimistic concurrency check
-      const expectedModifiedAt = file.lastModified;
-      const response = await api.saveFileContent(file.path, editContent(), project.id, expectedModifiedAt);
-      if (response.success) {
-        setIsDirty(false);
-        setOriginalContent(editContent());
-        const updatedFile = await api.getFileContent(file.path, project.id);
-        setCurrentFile(updatedFile);
-      }
-    } catch (error) {
-      console.error('Failed to save file:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save file';
-
-      // Check for conflict error
-      if (errorMessage.includes('Conflict') || errorMessage.includes('modified externally')) {
-        alert('This file has been modified externally. Please reload the file to see the latest version, then make your changes again.');
-      } else {
-        alert(errorMessage);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleTabChange = (tab: TabType) => {
-    if (isDirty() && activeTab() === 'edit' && tab !== 'edit') {
-      const confirmed = confirm('You have unsaved changes. Do you want to continue?');
-      if (!confirmed) return;
-    }
-    setActiveTab(tab);
-  };
-
-  const handleFolderToggle = (path: string, expanded: boolean) => {
-    setExpandedFolders(prev => {
-      const newSet = new Set(prev);
-      if (expanded) {
-        newSet.add(path);
-      } else {
-        newSet.delete(path);
-      }
-      return newSet;
-    });
-  };
-
-  const handleDelete = async (node: FileNode) => {
-    const project = activeProject();
-    if (!project) return;
-
-    const protectedPaths = settings().protectedPaths || [];
-    const pathSegments = node.path.toLowerCase().split(/[/\\]/);
-    const isProtected = protectedPaths.some((p: string) =>
-      pathSegments.includes(p.toLowerCase()) || node.name.toLowerCase() === p.toLowerCase()
-    );
-    
-    if (isProtected) {
-      alert(`Cannot delete protected path: ${node.name}`);
-      return;
-    }
-
-    const confirmed = confirm(`Move "${node.name}" to trash?`);
-    if (!confirmed) return;
-
-    try {
-      await api.moveToTrash(node.path, project.id, node.isFolder);
-      
-      const tree = await api.getFileTree(project.id);
-      setFileTree(tree);
-      
-      if (currentFile()?.path === node.path) {
-        setCurrentFile(null);
-      }
-    } catch (error) {
-      console.error('Failed to move to trash:', error);
-      alert('Failed to move to trash');
-    }
-  };
-
-  const handleCopyPath = async (node: FileNode) => {
-    const project = activeProject();
-    if (!project) return;
-    
-    const fullPath = `${project.path}/${node.path}`;
-    
-    try {
-      await navigator.clipboard.writeText(fullPath);
-    } catch {
-      const textarea = document.createElement('textarea');
-      textarea.value = fullPath;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
-  };
-
-  const handleRename = (node: FileNode) => {
-    const newName = prompt('Enter new name:', node.name);
-    if (!newName || newName === node.name) return;
-    
-    alert('Rename functionality will be implemented in future version');
-  };
-
-  const handleTrashRestore = async () => {
-    const project = activeProject();
-    if (!project) return;
-    
-    const tree = await api.getFileTree(project.id);
-    setFileTree(tree);
-  };
-
-  const handleCloseDiff = () => {
-    diffStore.reset();
-    setActiveTab('preview');
-  };
-
-  const handleMobileOutlineToggle = () => {
-    if (isMobile()) {
-      mobileLayoutStore.toggleRightDrawer();
-    } else {
-      setOutlineOpen(!outlineOpen());
-    }
-  };
-
-  // Wrap file click for mobile to also close the drawer
-  const handleMobileFileClick = async (path: string, relativePath: string, updateUrl?: boolean) => {
-    mobileLayoutStore.closeLeftDrawer();
-    await handleFileClick(path, relativePath, updateUrl);
-  };
-
-  // Wrap project switch for mobile to also close the drawer
-  const handleMobileProjectSwitch = async (project: Project) => {
-    mobileLayoutStore.closeLeftDrawer();
-    await handleSwitchProject(project);
-  };
-
-  const getMarkdownStyle = (): Record<string, string> => {
-    const s = settings();
-    if (s.markdownWidth === 'fixed' && s.fixedWidth) {
-      return {
-        'max-width': s.fixedWidth,
-        'margin-left': 'auto',
-        'margin-right': 'auto',
-      };
-    }
-    return {};
-  };
-
-  const handleColorChange = async (color: string) => {
-    const projectId = colorPickerProjectId();
-    if (!projectId) return;
-
-    try {
-      await api.updateProjectColor(projectId, color);
-      setProjects(prev => prev.map(p => 
-        p.id === projectId ? { ...p, color } : p
-      ));
-      
-      if (activeProject()?.id === projectId) {
-        setActiveProject(prev => prev ? { ...prev, color } : null);
-      }
-    } catch (error) {
-      console.error('Failed to update project color:', error);
-    }
-    
-    setColorPickerOpen(false);
-    setColorPickerProjectId(null);
-  };
-
-  const handleColorPickerOpen = (e: MouseEvent, projectId: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = rect.right + 8;
-    const y = rect.top;
-    
-    const pickerWidth = 280;
-    const pickerHeight = 300;
-    
-    const adjustedX = x + pickerWidth > window.innerWidth ? rect.left - pickerWidth - 8 : x;
-    const adjustedY = y + pickerHeight > window.innerHeight ? window.innerHeight - pickerHeight - 8 : y;
-    
-    setColorPickerPosition({ x: adjustedX, y: adjustedY });
-    setColorPickerProjectId(projectId);
-    setColorPickerOpen(true);
-  };
-
-  const getColorStyle = (project: Project) => {
-    return project.color ? { background: project.color } : {};
-  };
-
-  const handleProjectRefresh = async () => {
-    const project = activeProject();
-    if (!project) return;
-
-    setLoading(true);
-    try {
-      const tree = await api.getFileTree(project.id);
-      setFileTree(tree);
-
-      const file = currentFile();
-      if (file) {
-        const content = await api.getFileContent(file.path, project.id);
-        setCurrentFile(content);
-        setEditContent(content.content);
-        setOriginalContent(content.content);
-        setIsDirty(false);
-      }
-    } catch (error) {
-      console.error('Failed to refresh:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProjectEdit = () => {
-    setProjectEditDialogOpen(true);
+    return <span class="project-initial">{icon.text}</span>;
   };
 
   const handleProjectClose = () => {
-    const project = activeProject();
+    const project = projectStore.state.activeProject;
     if (project) {
-      handleCloseProject(new Event('click'), project.id);
+      void projectHook.closeProject(project.id);
     }
   };
 
-  const handleProjectSave = async (project: Project) => {
-    try {
-      const updatedProject = await api.updateProject(project.id, {
-        name: project.name,
-        color: project.color,
-        icon: project.icon,
-      });
-      
-      setProjects(prev => prev.map(p => 
-        p.id === updatedProject.id ? updatedProject : p
-      ));
-      
-      if (activeProject()?.id === updatedProject.id) {
-        setActiveProject(updatedProject);
-      }
-    } catch (error) {
-      console.error('Failed to update project:', error);
-      alert('Failed to update project');
-    }
-    
-    setProjectEditDialogOpen(false);
+  const handleMobileProjectClick = async (project: Project) => {
+    mobileLayoutStore.closeLeftDrawer();
+    await projectHook.switchProject(project);
   };
 
-  const getProjectDisplayName = (project: Project) => {
-    return project.icon ? project.icon : project.name.charAt(0).toUpperCase();
+  const handleMobileOpenProjectColorChange = (event: MouseEvent) => {
+    const project = projectStore.state.activeProject;
+    if (!project) return;
+    projectHook.openColorPicker(event, project.id);
   };
 
-  const isFaviconIcon = (icon: string | null | undefined): boolean => {
-    return icon?.startsWith('favicon:') ?? false;
-  };
-
-  const getFaviconPath = (icon: string): string => {
-    return icon.replace('favicon:', '');
-  };
-
-  const renderProjectIcon = (project: Project) => {
-    if (isFaviconIcon(project.icon)) {
-      const faviconPath = getFaviconPath(project.icon!);
-      return (
-        <img 
-          src={api.getFileRawUrl(faviconPath, project.id)}
-          alt="favicon"
-          class="project-favicon"
-        />
-      );
-    }
-    return <span class="project-initial">{getProjectDisplayName(project)}</span>;
-  };
+  const theme = settingsStore.effectiveTheme;
+  const markdownStyle = getMarkdownStyle(settingsStore.settings());
 
   return (
     <>
-      {/* Desktop layout */}
-      <Show when={!isMobile()}>
-        <div class="app-container">
-          <aside class="activity-bar">
-            {/* 项目列表区域 - 可滚动 */}
-            <div class="activity-bar-projects"
-            >
-              <For each={projects()}>
-                {(p) => (
-                  <button
-                    class={activeProject()?.id === p.id ? 'active' : ''}
-                    title={p.name}
-                    onClick={() => handleSwitchProject(p)}
-                    onContextMenu={(e) => handleColorPickerOpen(e, p.id)}
-                    style={getColorStyle(p)}
-                  >
-                    {renderProjectIcon(p)}
-                  </button>
-                )}
-              </For>
-            </div>
-
-            {/* 加号按钮 */}
-            <button
-              class="activity-bar-add"
-              title="Open Project"
-              onClick={handleOpenProject}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-
-            {/* 底部固定区域 */}
-            <div class="activity-bar-bottom">
-              <button
-                class={(settings().themeMode as ThemeMode) === 'dark' ? 'active' : ''}
-                title={`Theme: ${settings().themeMode} (click to toggle)`}
-                onClick={toggleTheme}
-              >
-                <Show when={(settings().themeMode as ThemeMode) === 'light'}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="5"/>
-                    <line x1="12" y1="1" x2="12" y2="3"/>
-                    <line x1="12" y1="21" x2="12" y2="23"/>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                    <line x1="1" y1="12" x2="3" y2="12"/>
-                    <line x1="21" y1="12" x2="23" y2="12"/>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                  </svg>
-                </Show>
-                <Show when={(settings().themeMode as ThemeMode) === 'dark'}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                  </svg>
-                </Show>
-                <Show when={(settings().themeMode as ThemeMode) === 'system'}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                  </svg>
-                </Show>
-              </button>
-              <Show when={activeProject()}>
-                <button
-                  title="Trash"
-                  onClick={() => setTrashDialogOpen(true)}
-                >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </Show>
-              <button
-                title="Settings"
-                onClick={() => setSettingsOpen(true)}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-              </button>
-            </div>
-          </aside>
-
-          <Show when={activeProject()}>
-            <aside 
-              class="sidebar sidebar-enter" 
-              ref={sidebarRef}
-              style={{ width: `${sidebarWidth()}px`, transition: isDragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}
-            >
-              <div class="sidebar-header">
-                <Show when={activeProject()}>
-                  <SidebarHeader
-                    project={activeProject()!}
-                    onRefresh={handleProjectRefresh}
-                    onEdit={handleProjectEdit}
-                    onCloseProject={handleProjectClose}
-                  />
-                </Show>
-              </div>
-              <div class="sidebar-content">
-                <FileTree
-                  nodes={fileTree()}
-                  onFileClick={handleFileClick}
-                  expandedFolders={expandedFolders()}
-                  onFolderToggle={handleFolderToggle}
-                  onDelete={handleDelete}
-                  onCopyPath={handleCopyPath}
-                  onRename={handleRename}
-                />
-              </div>
-              {/* Resize handle */}
-              <div 
-                class="sidebar-resize-handle"
-                onMouseDown={() => {
-                  setIsDragging(true);
-                  document.body.style.cursor = 'col-resize';
-                  document.body.style.userSelect = 'none';
-                }}
-              />
-            </aside>
-          </Show>
-
-          <main class="main">
-            <div class="main-left">
-              <Show when={currentFile()}>
-                <MarkdownHeader
-                  fileName={currentFile()!.fileName}
-                  lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
-                  fileSize={currentFile()!.fileSize}
-                  activeTab={activeTab()}
-                  isOutlineOpen={outlineOpen()}
-                  outlineCount={extractedHeadings().length}
-                  content={currentFile()!.content}
-                  fileType={currentFileType()}
-                  onTabChange={handleTabChange}
-                  onOutlineToggle={handleMobileOutlineToggle}
-                  isDirty={isDirty()}
-                  onSave={handleSave}
-                  saving={saving()}
-                />
-              </Show>
-
-              <Show when={imagePreviewUrl() && currentFileType() === 'image'}>
-                <MarkdownHeader
-                  fileName={imageFileName()}
-                  activeTab={activeTab()}
-                  isOutlineOpen={outlineOpen()}
-                  outlineCount={0}
-                  content=""
-                  fileType="image"
-                  onTabChange={(tab) => setActiveTab(tab)}
-                  onOutlineToggle={handleMobileOutlineToggle}
-                />
-              </Show>
-
-              <div class="main-content">
-                <Show when={loading()}>
-                  <div class="loading">Loading...</div>
-                </Show>
-
-                <div class="content-area">
-                  <div class="content-main">
-                    <FileContentView
-                      loading={loading()}
-                      currentFile={currentFile()}
-                      currentFileType={currentFileType()}
-                      activeTab={activeTab()}
-                      activeProjectId={activeProject()?.id}
-                      imagePreviewUrl={imagePreviewUrl()}
-                      imageFileName={imageFileName()}
-                      editContent={editContent()}
-                      isDirty={isDirty()}
-                      settings={settings()}
-                      theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-                      markdownStyle={getMarkdownStyle()}
-                      diffMode="split"
-                      welcomeMessage='Click "Open Project" or the + button on the left to start'
-                      applyFadeClass={true}
-                      onHeadingsExtracted={handleHeadingsExtracted}
-                      onContentChange={handleContentChange}
-                      onSave={handleSave}
-                      onCloseDiff={handleCloseDiff}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <OutlinePanel
-              headings={extractedHeadings()}
-              isOpen={outlineOpen()}
-              onClose={() => setOutlineOpen(false)}
-            />
-          </main>
-
-          <GitPanel
-            projectId={activeProject()?.id || 0}
-            isOpen={gitPanelOpen()}
-            onClose={() => setGitPanelOpen(false)}
-          />
-        </div>
-      </Show>
-
-      {/* Project Edit Dialog */}
-      <Show when={activeProject()}>
-        <ProjectEditDialog
-          project={activeProject()!}
-          isOpen={projectEditDialogOpen()}
-          onClose={() => setProjectEditDialogOpen(false)}
-          onSave={handleProjectSave}
+      {appStore.isMobile() ? (
+        <MobileLayoutWrapper
+          projects={projectStore.state.projects}
+          activeProject={projectStore.state.activeProject}
+          currentFile={fileStore.currentFile()}
+          currentFileType={fileStore.currentFileType()}
+          imagePreviewUrl={fileStore.imagePreviewUrl()}
+          imageFileName={fileStore.imageFileName()}
+          activeTab={appStore.activeTab()}
+          headings={fileStore.extractedHeadings()}
+          loading={fileStore.loading()}
+          editContent={editorStore.editContent()}
+          isDirty={editorStore.isDirty()}
+          saving={editorStore.saving()}
+          settings={settingsStore.settings()}
+          theme={theme}
+          themeMode={settingsStore.settings().themeMode}
+          markdownStyle={markdownStyle}
+          fileTree={fileStore.fileTree()}
+          expandedFolders={fileStore.expandedFolders()}
+          onOpenProject={projectHook.openProject}
+          onOpenSettings={() => appStore.setSettingsOpen(true)}
+          onToggleTheme={() => settingsStore.toggleThemeMode()}
+          onEditProject={() => appStore.openProjectEditDialog()}
+          onOpenProjectColorChange={handleMobileOpenProjectColorChange}
+          onProjectClick={handleMobileProjectClick}
+          onFileClick={(path) => fileHook.mobileFileClick(path)}
+          onFolderToggle={fileHook.toggleFolder}
+          onDelete={(node) => void fileHook.deleteFile(node)}
+          onCopyPath={(node) => void fileHook.copyPath(node)}
+          onRename={fileHook.renameFile}
+          onTabChange={editorHook.changeTab}
+          onOutlineToggle={layoutHook.handleMobileOutlineToggle}
+          onHeadingsExtracted={editorHook.handleHeadingsExtracted}
+          onContentChange={editorHook.handleContentChange}
+          onSave={() => void editorHook.saveFile()}
+          onCloseDiff={fileHook.closeDiff}
+          renderProjectIcon={renderProjectIcon}
+          getProjectStyle={projectHook.getColorStyle}
         />
-      </Show>
-
-      {/* Mobile layout */}
-      <Show when={isMobile()}>
-        <MobileLayout
-          activeProjectName={activeProject()?.name}
-          onSettingsClick={() => setSettingsOpen(true)}
-          onThemeToggle={toggleTheme}
-          currentTheme={settings().themeMode as ThemeMode}
-          onProjectEdit={handleProjectEdit}
-          onProjectColorChange={() => {
-            if (activeProject()) {
-              const mockEvent = {
-                currentTarget: document.querySelector('.projectMenuButton'),
-                preventDefault: () => {},
-                stopPropagation: () => {},
-              } as any;
-              handleColorPickerOpen(mockEvent, activeProject()!.id);
-            }
-          }}
-          activityBarContent={
-            <>
-              <For each={projects()}>
-                {(p) => (
-                  <button
-                    class={activeProject()?.id === p.id ? 'active' : ''}
-                    title={p.name}
-                    onClick={() => handleMobileProjectSwitch(p)}
-                    style={getColorStyle(p)}
-                  >
-                    {renderProjectIcon(p)}
-                    <span class="mobile-project-name">{p.name}</span>
-                  </button>
-                )}
-              </For>
-              <button
-                class="activity-bar-add"
-                title="Open Project"
-                onClick={() => {
-                  mobileLayoutStore.closeLeftDrawer();
-                  handleOpenProject();
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                <span class="mobile-project-name">Open Project</span>
-              </button>
-            </>
-          }
-          sidebarContent={
-            <Show when={activeProject()} fallback={
-              <p class="empty-state">Tap the + button above to open a project</p>
-            }>
-              <FileTree
-                nodes={fileTree()}
-                onFileClick={handleMobileFileClick}
-                expandedFolders={expandedFolders()}
-                onFolderToggle={handleFolderToggle}
-                onDelete={handleDelete}
-                onCopyPath={handleCopyPath}
-                onRename={handleRename}
-              />
-            </Show>
-          }
-          outlinePanelContent={
-            <OutlinePanel
-              headings={extractedHeadings()}
-              isOpen={mobileLayoutStore.rightDrawerOpen}
-              onClose={() => mobileLayoutStore.closeRightDrawer()}
-              showCloseButton={true}
-              onHeadingClick={() => mobileLayoutStore.closeRightDrawer()}
-            />
-          }
-          headerContent={
-            <>
-              <Show when={currentFile()}>
-                <MarkdownHeader
-                  fileName={currentFile()!.fileName}
-                  lastModified={currentFile()!.lastModified ? new Date(currentFile()!.lastModified!) : undefined}
-                  fileSize={currentFile()!.fileSize}
-                  activeTab={activeTab()}
-                  isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
-                  outlineCount={extractedHeadings().length}
-                  content={currentFile()!.content}
-                  fileType={currentFileType()}
-                  onTabChange={handleTabChange}
-                  onOutlineToggle={handleMobileOutlineToggle}
-                  isDirty={isDirty()}
-                  onSave={handleSave}
-                  saving={saving()}
-                />
-              </Show>
-              <Show when={imagePreviewUrl() && currentFileType() === 'image'}>
-                <MarkdownHeader
-                  fileName={imageFileName()}
-                  activeTab={activeTab()}
-                  isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
-                  outlineCount={0}
-                  content=""
-                  fileType="image"
-                  onTabChange={(tab) => setActiveTab(tab)}
-                  onOutlineToggle={handleMobileOutlineToggle}
-                />
-              </Show>
-            </>
-          }
-        >
-          <div class="mobile-main-content">
-            <FileContentView
-              loading={loading()}
-              currentFile={currentFile()}
-              currentFileType={currentFileType()}
-              activeTab={activeTab()}
-              activeProjectId={activeProject()?.id}
-              imagePreviewUrl={imagePreviewUrl()}
-              imageFileName={imageFileName()}
-              editContent={editContent()}
-              isDirty={isDirty()}
-              settings={settings()}
-              theme={getEffectiveThemeType(settings().themeMode as ThemeMode)}
-              markdownStyle={getMarkdownStyle()}
-              diffMode="unified"
-              welcomeMessage="Tap the menu button to browse files"
-              applyFadeClass={false}
-              onHeadingsExtracted={handleHeadingsExtracted}
-              onContentChange={handleContentChange}
-              onSave={handleSave}
-              onCloseDiff={handleCloseDiff}
-            />
-          </div>
-        </MobileLayout>
-      </Show>
-
-      {/* Shared overlays (rendered for both desktop and mobile) */}
-      <SettingsPanel
-        isOpen={settingsOpen()}
-        onClose={() => setSettingsOpen(false)}
-        onSave={handleSettingsSave}
-      />
-
-      <OpenProjectDialog
-        isOpen={isOpenProjectDialogOpen()}
-        onClose={handleCloseOpenProjectDialog}
-        onProjectOpened={handleProjectOpened}
-      />
-
-      <Show when={colorPickerOpen()}>
-        <div 
-          style={{ 
-            position: 'fixed', 
-            top: `${colorPickerPosition().y}px`, 
-            left: `${colorPickerPosition().x}px`,
-            'z-index': '2000',
-          }}
-        >
-          <ColorPicker
-            currentColor={projects().find(p => p.id === colorPickerProjectId())?.color}
-            onColorChange={handleColorChange}
-            onClose={() => {
-              setColorPickerOpen(false);
-              setColorPickerProjectId(null);
-            }}
-          />
-        </div>
-      </Show>
-
-      <Show when={activeProject()}>
-        <TrashDialog
-          isOpen={trashDialogOpen()}
-          projectId={activeProject()!.id}
-          onClose={() => setTrashDialogOpen(false)}
-          onRestore={handleTrashRestore}
+      ) : (
+        <DesktopLayout
+          projects={projectStore.state.projects}
+          activeProject={projectStore.state.activeProject}
+          themeMode={settingsStore.settings().themeMode}
+          currentFile={fileStore.currentFile()}
+          currentFileType={fileStore.currentFileType()}
+          imagePreviewUrl={fileStore.imagePreviewUrl()}
+          imageFileName={fileStore.imageFileName()}
+          activeTab={appStore.activeTab()}
+          outlineOpen={appStore.outlineOpen()}
+          headings={fileStore.extractedHeadings()}
+          loading={fileStore.loading()}
+          editContent={editorStore.editContent()}
+          isDirty={editorStore.isDirty()}
+          saving={editorStore.saving()}
+          settings={settingsStore.settings()}
+          theme={theme}
+          markdownStyle={markdownStyle}
+          fileTree={fileStore.fileTree()}
+          expandedFolders={fileStore.expandedFolders()}
+          sidebarWidth={appStore.sidebarWidth()}
+          sidebarTransition={layoutHook.getSidebarTransitionStyle()}
+          gitPanelOpen={appStore.gitPanelOpen()}
+          onProjectClick={(project) => void projectHook.switchProject(project)}
+          onProjectContextMenu={projectHook.openColorPicker}
+          onOpenProject={projectHook.openProject}
+          onToggleTheme={() => settingsStore.toggleThemeMode()}
+          onOpenTrash={() => appStore.openTrashDialog()}
+          onOpenSettings={() => appStore.setSettingsOpen(true)}
+          renderProjectIcon={renderProjectIcon}
+          getProjectStyle={projectHook.getColorStyle}
+          onRefreshProject={() => void projectHook.refreshProject()}
+          onEditProject={() => appStore.openProjectEditDialog()}
+          onCloseProject={handleProjectClose}
+          onFileClick={(path) => void fileHook.openFile(path)}
+          onFolderToggle={fileHook.toggleFolder}
+          onDelete={(node) => void fileHook.deleteFile(node)}
+          onCopyPath={(node) => void fileHook.copyPath(node)}
+          onRename={fileHook.renameFile}
+          onStartDragging={layoutHook.startDragging}
+          onTabChange={editorHook.changeTab}
+          onOutlineToggle={layoutHook.handleMobileOutlineToggle}
+          onHeadingsExtracted={editorHook.handleHeadingsExtracted}
+          onContentChange={editorHook.handleContentChange}
+          onSave={() => void editorHook.saveFile()}
+          onCloseDiff={fileHook.closeDiff}
+          onCloseOutline={() => appStore.setOutlineOpen(false)}
+          onCloseGitPanel={() => appStore.setGitPanelOpen(false)}
         />
-      </Show>
+      )}
+
+      <GlobalDialogs
+        activeProject={projectStore.state.activeProject}
+        projects={projectStore.state.projects}
+        settingsOpen={appStore.settingsOpen()}
+        openProjectDialogOpen={appStore.openProjectDialogOpen()}
+        colorPickerOpen={appStore.colorPickerOpen()}
+        colorPickerProjectId={appStore.colorPickerProjectId()}
+        colorPickerPosition={appStore.colorPickerPosition()}
+        projectEditDialogOpen={appStore.projectEditDialogOpen()}
+        trashDialogOpen={appStore.trashDialogOpen()}
+        onCloseSettings={() => appStore.setSettingsOpen(false)}
+        onSettingsSave={() => settingsStore.reloadSettings()}
+        onCloseOpenProjectDialog={projectHook.closeOpenProjectDialog}
+        onProjectOpened={(project) => void projectHook.handleProjectOpened(project)}
+        onColorChange={(color) => void projectHook.updateProjectColor(color)}
+        onCloseColorPicker={() => appStore.closeColorPicker()}
+        onCloseProjectEditDialog={() => appStore.closeProjectEditDialog()}
+        onProjectSave={(project) => void projectHook.saveProjectEdit(project)}
+        onCloseTrashDialog={() => appStore.closeTrashDialog()}
+        onTrashRestore={() => fileHook.handleTrashRestore()}
+      />
     </>
   );
 };

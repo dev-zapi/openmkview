@@ -1,5 +1,6 @@
 import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
-import type { ThemeMode, ThemeType, Theme, Settings } from '../App';
+import type { ThemeMode, ThemeType, Theme, Settings } from '../types/app';
+import { DEFAULT_SETTINGS } from '../types/app';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -19,19 +20,7 @@ const categories: SettingsCategory[] = [
   { id: 'settings-fonts', label: 'Fonts' },
 ];
 
-const defaultSettings: Settings = {
-  markdownWidth: 'full',
-  fixedWidth: '900px',
-  themeMode: 'system',
-  lightTheme: 'light-default',
-  darkTheme: 'dark-default',
-  uiFontFamily: 'MiSans, sans-serif',
-  markdownFontFamily: 'Georgia, "Noto Serif", serif',
-  uiFontSize: '14px',
-  markdownFontSize: '16px',
-  protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
-  trashExpireDays: 30,
-};
+const defaultSettings: Settings = DEFAULT_SETTINGS;
 
 const getSystemTheme = (): ThemeType => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

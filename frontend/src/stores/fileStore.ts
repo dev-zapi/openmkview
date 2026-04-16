@@ -8,7 +8,7 @@ const [currentFileType, setCurrentFileType] = createSignal<FileType>('markdown')
 const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
 const [imagePreviewUrl, setImagePreviewUrl] = createSignal<string | null>(null);
 const [imageFileName, setImageFileName] = createSignal<string>('');
-const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set());
+const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set<string>());
 const [loading, setLoading] = createSignal<boolean>(false);
 const [fileTree, setFileTree] = createSignal<FileNode[]>([]);
 
@@ -75,7 +75,7 @@ export const fileStore = {
   },
 
   clearExpandedFolders() {
-    setExpandedFolders(new Set());
+    setExpandedFolders(new Set<string>());
   },
 
   startLoading() {
@@ -92,7 +92,7 @@ export const fileStore = {
     setExtractedHeadings([]);
     setImagePreviewUrl(null);
     setImageFileName('');
-    setExpandedFolders(new Set());
+    setExpandedFolders(new Set<string>());
     setLoading(false);
   },
 

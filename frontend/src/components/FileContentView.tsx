@@ -7,7 +7,7 @@ import ImagePreview from './ImagePreview';
 import CodeMirrorEditor from './CodeMirrorEditor';
 import type { FileContent, Heading } from '../types';
 import type { TabType } from './markdown-header/ViewTabs';
-import type { Settings, ThemeMode } from '../App';
+import type { Settings } from '../types/app';
 import { diffStore } from '../stores/diffStore';
 
 export interface FileContentViewProps {

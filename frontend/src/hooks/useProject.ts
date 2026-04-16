@@ -1,4 +1,3 @@
-import { createSignal } from 'solid-js';
 import { api } from '../services/api';
 import { projectStore } from '../stores/projectStore';
 import { fileStore } from '../stores/fileStore';
@@ -12,8 +11,6 @@ import type { Project } from '../types';
 import type { RecentProject } from '../types/openProject';
 
 export const useProject = () => {
-  const [loading, setLoading] = createSignal(false);
-
   const confirmDiscardIfDirty = (): boolean => {
     if (editorStore.isDirty() && appStore.activeTab() === 'edit') {
       const confirmed = confirm('You have unsaved changes. Do you want to continue?');
@@ -29,7 +26,7 @@ export const useProject = () => {
     if (!confirmDiscardIfDirty()) return;
 
     projectStore.setActiveProject(project);
-    setLoading(true);
+    fileStore.startLoading();
     try {
       const tree = await api.getFileTree(project.id);
       fileStore.setFileTree(tree);
@@ -42,7 +39,7 @@ export const useProject = () => {
     } catch (error) {
       console.error('Failed to load file tree:', error);
     } finally {
-      setLoading(false);
+      fileStore.finishLoading();
     }
   };
 
@@ -78,7 +75,7 @@ export const useProject = () => {
   };
 
   const handleProjectOpened = async (recentProject: RecentProject) => {
-    setLoading(true);
+    fileStore.startLoading();
     appStore.closeOpenProjectDialog();
     
     try {
@@ -100,7 +97,7 @@ export const useProject = () => {
       console.error('Failed to open project:', error);
       alert('Failed to open project. Please check the path and try again.');
     } finally {
-      setLoading(false);
+      fileStore.finishLoading();
     }
   };
 
@@ -108,7 +105,7 @@ export const useProject = () => {
     const project = projectStore.state.activeProject;
     if (!project) return;
 
-    setLoading(true);
+    fileStore.startLoading();
     try {
       const tree = await api.getFileTree(project.id);
       fileStore.setFileTree(tree);
@@ -122,7 +119,7 @@ export const useProject = () => {
     } catch (error) {
       console.error('Failed to refresh:', error);
     } finally {
-      setLoading(false);
+      fileStore.finishLoading();
     }
   };
 
@@ -185,7 +182,7 @@ export const useProject = () => {
     appStore.closeProjectEditDialog();
   };
 
-  const getColorStyle = (project: Project) => {
+  const getColorStyle = (project: Project): Record<string, string> => {
     return project.color ? { background: project.color } : {};
   };
 
@@ -216,7 +213,6 @@ export const useProject = () => {
   };
 
   return {
-    loading,
     confirmDiscardIfDirty,
     switchProject,
     closeProject,

@@ -16,7 +16,7 @@ interface MobileLayoutProps {
   onThemeToggle?: () => void;
   currentTheme?: ThemeMode;
   onProjectEdit?: () => void;
-  onProjectColorChange?: () => void;
+  onProjectColorChange?: (event: MouseEvent) => void;
 }
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
@@ -32,9 +32,9 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
     props.onProjectEdit?.();
   };
 
-  const handleProjectColorChange = () => {
+  const handleProjectColorChange = (event: MouseEvent) => {
     setProjectMenuOpen(false);
-    props.onProjectColorChange?.();
+    props.onProjectColorChange?.(event);
   };
 
   return (
