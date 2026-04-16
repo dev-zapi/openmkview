@@ -12,20 +12,15 @@
 import { Component, Show, For, createSignal, createEffect, createMemo } from 'solid-js';
 import { useOpenProject } from './hooks/useOpenProject';
 import PathInput from './PathInput';
-import type { RecentProject, PathCandidate } from '../../types/openProject';
+import type { RecentProject } from '../../types/openProject';
+import FolderItem from './FolderItem';
 import './OpenProjectDialog.css';
+import { buildListItems } from './utils/listItems';
 
 export interface OpenProjectDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onProjectOpened: (project: RecentProject) => void;
-}
-
-interface ListableItem {
-  path: string;
-  name: string;
-  icon: string;
-  relativePath?: string;
 }
 
 const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
@@ -76,43 +71,8 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
     }
   };
 
-const allListItems = createMemo<ListableItem[]>(() => {
-    const items: ListableItem[] = [];
-    const query = hook.debouncedQuery();
-    
-    if (!query) {
-      const recent = hook.recentProjects().slice(0, 3);
-      for (const p of recent) {
-        items.push({ path: p.path, name: p.name, icon: '📁' });
-      }
-      return items;
-    }
-    
-    const lowerQuery = query.toLowerCase();
-    const filteredRecent = hook.recentProjects()
-      .filter((p: RecentProject) => 
-        p.name.toLowerCase().includes(lowerQuery) || 
-        p.path.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 3);
-    
-    for (const p of filteredRecent) {
-      items.push({ path: p.path, name: p.name, icon: '📁' });
-    }
-    
-    const results = hook.searchResults();
-    if (results.length > 0) {
-      for (const r of results) {
-        items.push({ 
-          path: r.path, 
-          name: r.name, 
-          icon: '📁', 
-          relativePath: r.relative_path 
-        });
-      }
-    }
-    
-    return items;
+  const allListItems = createMemo(() => {
+    return buildListItems(hook.debouncedQuery(), hook.recentProjects(), hook.searchResults());
   });
 
   const handleTab = () => {
@@ -224,21 +184,16 @@ const allListItems = createMemo<ListableItem[]>(() => {
             <div class="folder-list-container">
               <For each={allListItems()}>
                 {(item, index) => (
-                  <div 
-                    class={`folder-item ${selectedIndex() === index() ? 'selected' : ''}`}
-                    onClick={() => hook.openProjectByPath(item.path)}
+                  <FolderItem
+                    item={item}
+                    index={index()}
+                    selectedIndex={selectedIndex()}
+                    showRecentTitle={item.type === 'recent' && (index() === 0 || allListItems()[index() - 1]?.type !== 'recent')}
+                    showQuickAccessTitle={false}
+                    showSearchTitle={item.type === 'searchResult' && (index() === 0 || allListItems()[index() - 1]?.type !== 'searchResult')}
+                    onClick={(path) => hook.openProjectByPath(path)}
                     onKeyDown={handleListItemKeyDown}
-                    tabIndex={0}
-                    role="button"
-                  >
-                    <span class="folder-icon">{item.icon}</span>
-                    <Show when={item.relativePath} fallback={<span class="folder-path">{item.path}</span>}>
-                      <div class="folder-info">
-                        <span class="folder-name">{item.name}</span>
-                        <span class="folder-path-small">{item.relativePath}</span>
-                      </div>
-                    </Show>
-                  </div>
+                  />
                 )}
               </For>
 

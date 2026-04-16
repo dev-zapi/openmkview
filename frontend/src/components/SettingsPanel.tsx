@@ -1,6 +1,8 @@
 import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
-import type { ThemeMode, ThemeType, Theme, Settings } from '../types/app';
+import type { ThemeMode, Theme, Settings } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
+import { applyTheme } from '../utils/theme';
+import { loadSettings, saveSettings } from '../utils/settings';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -13,6 +15,15 @@ interface SettingsCategory {
   label: string;
 }
 
+interface PresetOption {
+  label: string;
+  value: string;
+}
+
+type StringSettingKey = {
+  [K in keyof Settings]: Settings[K] extends string ? K : never
+}[keyof Settings];
+
 const categories: SettingsCategory[] = [
   { id: 'settings-themes', label: 'Themes' },
   { id: 'settings-markdown', label: 'Markdown' },
@@ -20,23 +31,37 @@ const categories: SettingsCategory[] = [
   { id: 'settings-fonts', label: 'Fonts' },
 ];
 
+const uiFontPresets: PresetOption[] = [
+  { label: 'System Default', value: 'MiSans, sans-serif' },
+  { label: 'Segoe UI', value: '"Segoe UI", Roboto, sans-serif' },
+  { label: 'Helvetica', value: '"Helvetica Neue", Arial, sans-serif' },
+  { label: 'Chinese Sans', value: '"Noto Sans SC", "PingFang SC", sans-serif' },
+  { label: 'Monospace', value: '"JetBrains Mono", monospace' },
+];
+
+const markdownFontPresets: PresetOption[] = [
+  { label: 'Georgia', value: 'Georgia, "Noto Serif", serif' },
+  { label: 'Chinese Sans', value: '"Noto Sans SC", "PingFang SC", sans-serif' },
+  { label: 'Chinese Serif', value: '"Noto Serif SC", "Songti SC", serif' },
+  { label: 'Monospace', value: '"JetBrains Mono", monospace' },
+];
+
+const uiFontSizePresets: PresetOption[] = [
+  { label: '12px', value: '12px' },
+  { label: '14px', value: '14px' },
+  { label: '16px', value: '16px' },
+  { label: '18px', value: '18px' },
+  { label: '20px', value: '20px' },
+];
+
+const markdownFontSizePresets: PresetOption[] = [
+  { label: '14px', value: '14px' },
+  { label: '16px', value: '16px' },
+  { label: '18px', value: '18px' },
+  { label: '20px', value: '20px' },
+];
+
 const defaultSettings: Settings = DEFAULT_SETTINGS;
-
-const getSystemTheme = (): ThemeType => {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
-
-const getEffectiveThemeType = (mode: ThemeMode): ThemeType => {
-  return mode === 'system' ? getSystemTheme() : mode;
-};
-
-const applyTheme = (settings: Settings) => {
-  const effectiveType = getEffectiveThemeType(settings.themeMode);
-  const themeId = effectiveType === 'light' ? settings.lightTheme : settings.darkTheme;
-  
-  document.body.classList.remove('light-theme', 'dark-theme');
-  document.body.classList.add(`${effectiveType}-theme`, themeId);
-};
 
 const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [settings, setSettings] = createSignal<Settings>(defaultSettings);
@@ -120,25 +145,11 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   };
 
   createEffect(() => {
-    const savedSettings = localStorage.getItem('openmkview-settings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        setSettings({ 
-          ...defaultSettings, 
-          ...parsed,
-          themeMode: parsed.themeMode || parsed.theme || 'system',
-          lightTheme: parsed.lightTheme || 'light-default',
-          darkTheme: parsed.darkTheme || 'dark-default',
-        });
-      } catch (e) {
-        console.error('Failed to parse settings:', e);
-      }
-    }
+    setSettings(loadSettings());
   });
 
   const handleSave = () => {
-    localStorage.setItem('openmkview-settings', JSON.stringify(settings()));
+    saveSettings(settings());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
 
@@ -186,6 +197,24 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const lightThemes = () => themes().filter(t => t.type === 'light');
   const darkThemes = () => themes().filter(t => t.type === 'dark');
 
+  const renderPresetButtons = <K extends StringSettingKey>(
+    key: K,
+    presets: PresetOption[],
+    className: string
+  ) => {
+    return (
+      <div class={className}>
+        <For each={presets}>
+          {(preset) => (
+            <button type="button" onClick={() => updateSetting(key, preset.value as Settings[K])}>
+              {preset.label}
+            </button>
+          )}
+        </For>
+      </div>
+    );
+  };
+
   return (
     <Show when={props.isOpen}>
       <div class="settings-overlay" onClick={props.onClose}>
@@ -224,8 +253,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 <h4>Themes</h4>
 
                 <div class="settings-item">
-                  <label>Theme Mode</label>
+                  <label for="theme-mode">Theme Mode</label>
                   <select
+                    id="theme-mode"
                     value={settings().themeMode}
                     onChange={(e) => updateSetting('themeMode', e.currentTarget.value as ThemeMode)}
                   >
@@ -236,8 +266,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 </div>
 
                 <div class="settings-item">
-                  <label>Light Theme</label>
+                  <label for="light-theme">Light Theme</label>
                   <select
+                    id="light-theme"
                     value={settings().lightTheme}
                     onChange={(e) => updateSetting('lightTheme', e.currentTarget.value)}
                   >
@@ -248,8 +279,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 </div>
 
                 <div class="settings-item">
-                  <label>Dark Theme</label>
+                  <label for="dark-theme">Dark Theme</label>
                   <select
+                    id="dark-theme"
                     value={settings().darkTheme}
                     onChange={(e) => updateSetting('darkTheme', e.currentTarget.value)}
                   >
@@ -283,8 +315,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 <h4>Markdown</h4>
 
                 <div class="settings-item">
-                  <label>Content Width</label>
+                  <label for="content-width">Content Width</label>
                   <select
+                    id="content-width"
                     value={settings().markdownWidth}
                     onChange={(e) => updateSetting('markdownWidth', e.currentTarget.value as any)}
                   >
@@ -295,8 +328,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <Show when={settings().markdownWidth === 'fixed'}>
                   <div class="settings-item">
-                    <label>Fixed Width Value</label>
+                    <label for="fixed-width-value">Fixed Width Value</label>
                     <input
+                      id="fixed-width-value"
                       type="text"
                       value={settings().fixedWidth}
                       onInput={(e) => updateSetting('fixedWidth', e.currentTarget.value)}
@@ -310,8 +344,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 <h4>Trash Settings</h4>
 
                 <div class="settings-item">
-                  <label>Auto-delete after (days)</label>
+                  <label for="trash-expire-days">Auto-delete after (days)</label>
                   <input
+                    id="trash-expire-days"
                     type="number"
                     min="1"
                     max="365"
@@ -324,8 +359,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 </div>
 
                 <div class="settings-item">
-                  <label>Protected Paths (cannot be deleted)</label>
+                  <label for="protected-paths">Protected Paths (cannot be deleted)</label>
                   <textarea
+                    id="protected-paths"
                     value={settings().protectedPaths.join('\n')}
                     onInput={(e) => updateSetting('protectedPaths', e.currentTarget.value.split('\n').filter(p => p.trim()))}
                     placeholder=".git\n.github\nnode_modules"
@@ -341,69 +377,51 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 <h4>Font Settings</h4>
 
                 <div class="settings-item">
-                  <label>UI Font</label>
+                  <label for="ui-font-family">UI Font</label>
                   <input
+                    id="ui-font-family"
                     type="text"
                     value={settings().uiFontFamily}
                     onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
                     placeholder="e.g., MiSans, sans-serif"
                   />
-                  <div class="font-presets">
-                    <button onClick={() => updateSetting('uiFontFamily', 'MiSans, sans-serif')}>System Default</button>
-                    <button onClick={() => updateSetting('uiFontFamily', '"Segoe UI", Roboto, sans-serif')}>Segoe UI</button>
-                    <button onClick={() => updateSetting('uiFontFamily', '"Helvetica Neue", Arial, sans-serif')}>Helvetica</button>
-                    <button onClick={() => updateSetting('uiFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
-                    <button onClick={() => updateSetting('uiFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
-                  </div>
+                  {renderPresetButtons('uiFontFamily', uiFontPresets, 'font-presets')}
                 </div>
 
                 <div class="settings-item">
-                  <label>UI Font Size</label>
+                  <label for="ui-font-size">UI Font Size</label>
                   <input
+                    id="ui-font-size"
                     type="text"
                     value={settings().uiFontSize}
                     onInput={(e) => updateSetting('uiFontSize', e.currentTarget.value)}
                     placeholder="e.g., 14px"
                   />
-                  <div class="size-presets">
-                    <button onClick={() => updateSetting('uiFontSize', '12px')}>12px</button>
-                    <button onClick={() => updateSetting('uiFontSize', '14px')}>14px</button>
-                    <button onClick={() => updateSetting('uiFontSize', '16px')}>16px</button>
-                    <button onClick={() => updateSetting('uiFontSize', '18px')}>18px</button>
-                    <button onClick={() => updateSetting('uiFontSize', '20px')}>20px</button>
-                  </div>
+                  {renderPresetButtons('uiFontSize', uiFontSizePresets, 'size-presets')}
                 </div>
 
                 <div class="settings-item">
-                  <label>Markdown Font</label>
+                  <label for="markdown-font-family">Markdown Font</label>
                   <input
+                    id="markdown-font-family"
                     type="text"
                     value={settings().markdownFontFamily}
                     onInput={(e) => updateSetting('markdownFontFamily', e.currentTarget.value)}
                     placeholder="e.g., Georgia, serif"
                   />
-                  <div class="font-presets">
-                    <button onClick={() => updateSetting('markdownFontFamily', 'Georgia, "Noto Serif", serif')}>Georgia</button>
-                    <button onClick={() => updateSetting('markdownFontFamily', '"Noto Sans SC", "PingFang SC", sans-serif')}>Chinese Sans</button>
-                    <button onClick={() => updateSetting('markdownFontFamily', '"Noto Serif SC", "Songti SC", serif')}>Chinese Serif</button>
-                    <button onClick={() => updateSetting('markdownFontFamily', '"JetBrains Mono", monospace')}>Monospace</button>
-                  </div>
+                  {renderPresetButtons('markdownFontFamily', markdownFontPresets, 'font-presets')}
                 </div>
 
                 <div class="settings-item">
-                  <label>Markdown Font Size</label>
+                  <label for="markdown-font-size">Markdown Font Size</label>
                   <input
+                    id="markdown-font-size"
                     type="text"
                     value={settings().markdownFontSize}
                     onInput={(e) => updateSetting('markdownFontSize', e.currentTarget.value)}
                     placeholder="e.g., 16px"
                   />
-                  <div class="size-presets">
-                    <button onClick={() => updateSetting('markdownFontSize', '14px')}>14px</button>
-                    <button onClick={() => updateSetting('markdownFontSize', '16px')}>16px</button>
-                    <button onClick={() => updateSetting('markdownFontSize', '18px')}>18px</button>
-                    <button onClick={() => updateSetting('markdownFontSize', '20px')}>20px</button>
-                  </div>
+                  {renderPresetButtons('markdownFontSize', markdownFontSizePresets, 'size-presets')}
                 </div>
               </div>
             </div>

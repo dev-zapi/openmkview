@@ -45,6 +45,20 @@ describe('settings utils', () => {
       expect(settings.themeMode).toBe('dark');
       expect(settings.uiFontSize).toBe(DEFAULT_SETTINGS.uiFontSize);
     });
+
+    it('migrates legacy theme field to themeMode', () => {
+      localStorage.setItem('openmkview-settings', JSON.stringify({ theme: 'dark' }));
+      const settings = loadSettings();
+      expect(settings.themeMode).toBe('dark');
+      expect(settings.lightTheme).toBe(DEFAULT_SETTINGS.lightTheme);
+      expect(settings.darkTheme).toBe(DEFAULT_SETTINGS.darkTheme);
+    });
+
+    it('falls back to default themeMode for invalid stored values', () => {
+      localStorage.setItem('openmkview-settings', JSON.stringify({ theme: 'sepia', themeMode: 'contrast' }));
+      const settings = loadSettings();
+      expect(settings.themeMode).toBe(DEFAULT_SETTINGS.themeMode);
+    });
   });
 
   describe('saveSettings', () => {

@@ -1,7 +1,7 @@
 import { Component, createSignal, Show } from 'solid-js';
 import type { Project } from '../types';
-import { api } from '../services/api';
 import ProjectMenu from './ProjectMenu';
+import { getProjectDisplayName, getProjectFaviconUrl, isFaviconIcon, getFaviconPath } from '../utils/projectIcon';
 
 interface SidebarHeaderProps {
   project: Project;
@@ -9,18 +9,6 @@ interface SidebarHeaderProps {
   onEdit: () => void;
   onCloseProject: () => void;
 }
-
-const isFaviconIcon = (icon: string | null | undefined): boolean => {
-  return icon?.startsWith('favicon:') ?? false;
-};
-
-const getFaviconPath = (icon: string): string => {
-  return icon.replace('favicon:', '');
-};
-
-const getProjectDisplayName = (project: Project): string => {
-  return project.icon ? project.icon : project.name.charAt(0).toUpperCase();
-};
 
 const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
   const [menuOpen, setMenuOpen] = createSignal(false);
@@ -54,7 +42,7 @@ const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
       const faviconPath = getFaviconPath(props.project.icon!);
       return (
         <img
-          src={api.getFileRawUrl(faviconPath, props.project.id)}
+          src={getProjectFaviconUrl(faviconPath, props.project.id)}
           alt="favicon"
           class="sidebar-header-favicon"
         />

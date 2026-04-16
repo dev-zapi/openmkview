@@ -6,20 +6,20 @@ import {
   cycleThemeMode,
 } from '../../utils/theme';
 import type { ThemeMode, ThemeType } from '../../types/app';
+import { resetPrefersDark, setPrefersDark } from '../setup';
 
 describe('theme utils', () => {
+  beforeEach(() => {
+    resetPrefersDark();
+  });
+
   describe('getSystemTheme', () => {
     it('returns dark when system prefers dark', () => {
-      vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
-        matches: true,
-      }));
+      setPrefersDark(true);
       expect(getSystemTheme()).toBe('dark');
     });
 
     it('returns light when system prefers light', () => {
-      vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
-        matches: false,
-      }));
       expect(getSystemTheme()).toBe('light');
     });
   });
@@ -34,9 +34,7 @@ describe('theme utils', () => {
     });
 
     it('returns system theme when mode is system', () => {
-      vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
-        matches: true,
-      }));
+      setPrefersDark(true);
       expect(getEffectiveThemeType('system')).toBe('dark');
     });
   });

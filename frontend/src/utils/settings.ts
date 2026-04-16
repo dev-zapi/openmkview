@@ -1,15 +1,31 @@
-import type { Settings } from '../types/app';
+import type { Settings, ThemeMode } from '../types/app';
 import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO } from '../types/app';
 
 const SETTINGS_KEY = 'openmkview-settings';
 const SIDEBAR_WIDTH_KEY = 'filetree-sidebar-width';
+
+const isThemeMode = (value: unknown): value is ThemeMode => {
+  return value === 'light' || value === 'dark' || value === 'system';
+};
 
 export const loadSettings = (): Settings => {
   try {
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...DEFAULT_SETTINGS, ...parsed };
+      const themeMode = isThemeMode(parsed.themeMode)
+        ? parsed.themeMode
+        : isThemeMode(parsed.theme)
+          ? parsed.theme
+          : DEFAULT_SETTINGS.themeMode;
+
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+        themeMode,
+        lightTheme: parsed.lightTheme || DEFAULT_SETTINGS.lightTheme,
+        darkTheme: parsed.darkTheme || DEFAULT_SETTINGS.darkTheme,
+      };
     }
   } catch (e) {
     console.error('Failed to load settings:', e);

@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
 import SettingsPanel from '../components/SettingsPanel';
+import { DEFAULT_SETTINGS } from '../types/app';
 
 describe('SettingsPanel', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.spyOn(window, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ themes: [] }),
+    } as Response);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders nothing when closed', () => {
@@ -61,6 +70,58 @@ describe('SettingsPanel', () => {
     }
   });
 
+  it('loads saved settings into the form', async () => {
+    localStorage.setItem('openmkview-settings', JSON.stringify({
+      ...DEFAULT_SETTINGS,
+      themeMode: 'dark',
+      uiFontSize: '18px',
+      markdownWidth: 'fixed',
+      fixedWidth: '720px',
+    }));
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Theme Mode') as HTMLSelectElement).value).toBe('dark');
+      expect((screen.getByLabelText('Content Width') as HTMLSelectElement).value).toBe('fixed');
+      expect((screen.getByLabelText('UI Font Size') as HTMLInputElement).value).toBe('18px');
+      expect((screen.getByLabelText('Fixed Width Value') as HTMLInputElement).value).toBe('720px');
+    });
+  });
+
+  it('saves settings and calls onSave', async () => {
+    const onSave = vi.fn();
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} onSave={onSave} />);
+
+    fireEvent.change(screen.getByLabelText('Content Width'), { target: { value: 'fixed' }, currentTarget: { value: 'fixed' } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Fixed Width Value')).toBeTruthy();
+    });
+
+    fireEvent.input(screen.getByLabelText('Fixed Width Value'), {
+      currentTarget: { value: '720px' },
+      target: { value: '720px' },
+    });
+    fireEvent.click(screen.getByText('Save Settings'));
+
+    const saved = JSON.parse(localStorage.getItem('openmkview-settings') || '{}');
+    expect(saved.markdownWidth).toBe('fixed');
+    expect(saved.fixedWidth).toBe('720px');
+    expect(document.body.classList.contains('light-theme') || document.body.classList.contains('dark-theme')).toBe(true);
+    expect(onSave).toHaveBeenCalled();
+  });
+
+  it('applies font preset buttons', async () => {
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Helvetica' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('"Helvetica Neue", Arial, sans-serif')).toBeTruthy();
+    });
+  });
+
   describe('navigation', () => {
     let scrollIntoViewMock: ReturnType<typeof vi.fn>;
     let IntersectionObserverMock: ReturnType<typeof vi.fn>;
@@ -79,6 +140,10 @@ describe('SettingsPanel', () => {
 
     afterEach(() => {
       vi.restoreAllMocks();
+      vi.spyOn(window, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({ themes: [] }),
+      } as Response);
     });
 
     it('renders navigation with all categories', () => {
@@ -128,7 +193,7 @@ describe('SettingsPanel', () => {
       render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
       
       await waitFor(() => {
-        expect(observeMock.mock.calls.length).toBeGreaterThanOrEqual(0);
+        expect(observeMock).toHaveBeenCalledTimes(4);
       });
     });
   });

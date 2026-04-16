@@ -1,15 +1,8 @@
 import { Component, Show } from 'solid-js';
-
-export interface FolderItemData {
-  path: string;
-  name: string;
-  icon: string;
-  relativePath?: string;
-  type: 'recent' | 'quickAccess' | 'searchResult';
-}
+import type { ListableItem } from './utils/listItems';
 
 export interface FolderItemProps {
-  item: FolderItemData;
+  item: ListableItem;
   index: number;
   selectedIndex: number;
   showRecentTitle: boolean;

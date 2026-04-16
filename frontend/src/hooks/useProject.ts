@@ -9,6 +9,7 @@ import { navigateToProject, navigateToHome } from '../utils/router';
 import { settingsStore } from '../stores/settingsStore';
 import type { Project } from '../types';
 import type { RecentProject } from '../types/openProject';
+import { getFaviconPath, getProjectDisplayName, getProjectIconContent, isFaviconIcon } from '../utils/projectIcon';
 
 export const useProject = () => {
   const confirmDiscardIfDirty = (): boolean => {
@@ -186,30 +187,8 @@ export const useProject = () => {
     return project.color ? { background: project.color } : {};
   };
 
-  const getProjectDisplayName = (project: Project) => {
-    return project.icon ? project.icon : project.name.charAt(0).toUpperCase();
-  };
-
-  const isFaviconIcon = (icon: string | null | undefined): boolean => {
-    return icon?.startsWith('favicon:') ?? false;
-  };
-
-  const getFaviconPath = (icon: string): string => {
-    return icon.replace('favicon:', '');
-  };
-
   const renderProjectIconContent = (project: Project) => {
-    if (isFaviconIcon(project.icon)) {
-      const faviconPath = getFaviconPath(project.icon!);
-      return {
-        type: 'image',
-        src: api.getFileRawUrl(faviconPath, project.id),
-      };
-    }
-    return {
-      type: 'text',
-      text: getProjectDisplayName(project),
-    };
+    return getProjectIconContent(project);
   };
 
   return {

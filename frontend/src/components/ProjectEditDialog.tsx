@@ -1,6 +1,7 @@
 import { Component, createSignal, Show, For, createEffect, onMount } from 'solid-js';
 import type { Project } from '../types';
 import { api } from '../services/api';
+import { FAVICON_PREFIX, getFaviconPath, getProjectFaviconUrl, isFaviconIcon } from '../utils/projectIcon';
 
 interface ProjectEditDialogProps {
   project: Project;
@@ -26,16 +27,6 @@ const PRESET_ICONS = [
   '🎨', '🎬', '🎵', '', '📱', '⚙️', '🔧', '🔨',
   '📊', '📈', '📉', '💳', '💰', '💵', '', '🎁',
 ];
-
-const FAVICON_PREFIX = 'favicon:';
-
-const isFaviconIcon = (icon: string | null | undefined): boolean => {
-  return icon?.startsWith(FAVICON_PREFIX) ?? false;
-};
-
-const getFaviconPath = (icon: string): string => {
-  return icon.replace(FAVICON_PREFIX, '');
-};
 
 const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
   const [name, setName] = createSignal(props.project.name);
@@ -102,7 +93,7 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
     if (isFaviconIcon(icon())) {
       return (
         <img 
-          src={`/api/files/content?path=${encodeURIComponent(getFaviconPath(icon()!))}&project_id=${props.project.id}`}
+          src={getProjectFaviconUrl(getFaviconPath(icon()!), props.project.id)}
           alt="favicon"
           class="icon-preview-image"
         />
@@ -183,7 +174,7 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
                             title={faviconPath}
                           >
                             <img 
-                              src={`/api/files/content?path=${encodeURIComponent(faviconPath)}&project_id=${props.project.id}`}
+                              src={getProjectFaviconUrl(faviconPath, props.project.id)}
                               alt={faviconPath}
                               class="favicon-thumbnail"
                             />

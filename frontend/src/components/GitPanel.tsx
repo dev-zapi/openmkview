@@ -1,6 +1,7 @@
 import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { gitApi } from '../services/git';
 import type { GitCommit } from '../types';
+import { getStatusColor, getStatusLabel, runGitAction } from '../utils/gitPanel';
 
 interface GitPanelProps {
   projectId: number;
@@ -57,11 +58,7 @@ const GitPanel: Component<GitPanelProps> = (props) => {
 
   const handleStageAll = async () => {
     try {
-      await fetch('/api/git', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add', project_id: props.projectId }),
-      });
+      await runGitAction(props.projectId, 'add');
       await loadGitStatus();
     } catch (error) {
       console.error('Failed to stage files:', error);
@@ -71,15 +68,7 @@ const GitPanel: Component<GitPanelProps> = (props) => {
   const handleCommit = async () => {
     if (!commitMessage().trim()) return;
     try {
-      await fetch('/api/git', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'commit',
-          project_id: props.projectId,
-          message: commitMessage(),
-        }),
-      });
+      await runGitAction(props.projectId, 'commit', commitMessage());
       setCommitMessage('');
       await loadGitStatus();
       await loadCommits();
@@ -90,11 +79,7 @@ const GitPanel: Component<GitPanelProps> = (props) => {
 
   const handlePull = async () => {
     try {
-      await fetch('/api/git', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pull', project_id: props.projectId }),
-      });
+      await runGitAction(props.projectId, 'pull');
       await loadGitStatus();
       await loadCommits();
     } catch (error) {
@@ -104,31 +89,11 @@ const GitPanel: Component<GitPanelProps> = (props) => {
 
   const handlePush = async () => {
     try {
-      await fetch('/api/git', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'push', project_id: props.projectId }),
-      });
+      await runGitAction(props.projectId, 'push');
       await loadGitStatus();
     } catch (error) {
       console.error('Failed to push:', error);
     }
-  };
-
-  const getStatusColor = (index: string, workTree: string) => {
-    if (workTree === 'M' || index === 'M') return 'status-modified';
-    if (workTree === '?' || index === '?') return 'status-untracked';
-    if (workTree === 'A' || index === 'A') return 'status-added';
-    if (workTree === 'D' || index === 'D') return 'status-deleted';
-    return '';
-  };
-
-  const getStatusLabel = (index: string, workTree: string) => {
-    if (workTree === 'M' || index === 'M') return 'M';
-    if (workTree === '?' || index === '?') return 'U';
-    if (workTree === 'A' || index === 'A') return 'A';
-    if (workTree === 'D' || index === 'D') return 'D';
-    return '';
   };
 
   return (
