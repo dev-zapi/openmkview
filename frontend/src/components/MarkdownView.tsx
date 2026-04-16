@@ -3,6 +3,8 @@ import { Marked } from 'marked';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import type { Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
+import { escapeHtml, unescapeHtml } from '../utils/html';
+import { generateHeadingId, resolveImagePath } from '../utils/markdown';
 import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
@@ -13,37 +15,6 @@ interface MarkdownViewProps {
   currentFilePath?: string;
   projectId?: number;
 }
-
-const generateHeadingId = (text: string): string => {
-  return text
-    .toLowerCase()
-    .split('')
-    .filter((c) => /[\p{L}\p{N}\s-]/u.test(c))
-    .join('')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-};
-
-const resolveImagePath = (currentFilePath: string, imageHref: string): string => {
-    const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'));
-    const normalizedHref = imageHref.replace(/^\.\//, '');
-    
-    if (normalizedHref.startsWith('../')) {
-      const parts = currentDir.split('/');
-      const hrefParts = normalizedHref.split('/');
-      
-      for (const part of hrefParts) {
-        if (part === '..') {
-          parts.pop();
-        } else if (part !== '.') {
-          parts.push(part);
-        }
-      }
-      return parts.join('/');
-    }
-    
-    return currentDir ? `${currentDir}/${normalizedHref}` : normalizedHref;
-  };
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
@@ -199,23 +170,5 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     </div>
   );
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function unescapeHtml(text: string): string {
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'");
-}
 
 export default MarkdownView;

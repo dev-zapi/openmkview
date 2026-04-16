@@ -1,5 +1,6 @@
 import { Component, createSignal, createEffect, Show } from 'solid-js';
 import { highlightCode } from '../services/shikiService';
+import { escapeHtml } from '../utils/html';
 
 interface SourceViewProps {
   content: string;
@@ -130,14 +131,5 @@ const SourceView: Component<SourceViewProps> = (props) => {
     </div>
   );
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
 
 export default SourceView;

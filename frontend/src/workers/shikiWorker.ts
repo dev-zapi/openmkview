@@ -1,4 +1,5 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import { escapeHtml } from '../utils/html';
 
 const LIGHT_THEME = 'github-light';
 const DARK_THEME = 'github-dark';
@@ -100,15 +101,6 @@ async function handleHighlight(request: HighlightRequest): Promise<HighlightResp
       error: String(error),
     };
   }
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
