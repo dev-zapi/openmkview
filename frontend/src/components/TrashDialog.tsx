@@ -1,6 +1,7 @@
 import { Component, Show, For, createSignal, createEffect } from 'solid-js';
 import type { TrashItem, TrashStats } from '../types';
 import { api } from '../services/api';
+import { formatTrashDate, formatTrashSize } from '../utils/trash';
 
 interface TrashDialogProps {
   isOpen: boolean;
@@ -8,25 +9,6 @@ interface TrashDialogProps {
   onClose: () => void;
   onRestore?: () => void;
 }
-
-const formatSize = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-};
-
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
-  return date.toLocaleDateString();
-};
 
 const TrashDialog: Component<TrashDialogProps> = (props) => {
   const [trashItems, setTrashItems] = createSignal<TrashItem[]>([]);
@@ -114,7 +96,7 @@ const TrashDialog: Component<TrashDialogProps> = (props) => {
           <Show when={stats()}>
             <div class="trash-stats">
               <span>{stats()!.totalItems} items</span>
-              <span>{formatSize(stats()!.totalSize)}</span>
+              <span>{formatTrashSize(stats()!.totalSize)}</span>
               <Show when={stats()!.oldestItemAge > 0}>
                 <span>Oldest: {stats()!.oldestItemAge} days ago</span>
               </Show>
@@ -161,7 +143,7 @@ const TrashDialog: Component<TrashDialogProps> = (props) => {
                       </span>
                       <span class="name">{item.originalName}</span>
                       <span class="path">{item.originalPath}</span>
-                      <span class="date">{formatDate(item.deletedAt)}</span>
+                      <span class="date">{formatTrashDate(item.deletedAt)}</span>
                     </div>
                     <div class="trash-item-actions">
                       <button class="restore-btn" onClick={() => handleRestore(item)}>

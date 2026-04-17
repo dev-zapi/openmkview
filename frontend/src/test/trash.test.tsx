@@ -187,4 +187,61 @@ describe('TrashDialog', () => {
       expect(screen.getByText('Trash is empty')).toBeTruthy();
     });
   });
+
+  it('confirms permanent delete before deleting item', async () => {
+    const { api } = await import('../services/api');
+
+    render(() => (
+      <TrashDialog
+        isOpen={true}
+        projectId={1}
+        onClose={() => {}}
+      />
+    ));
+
+    await waitFor(() => {
+      expect(screen.getByText('readme.md')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getAllByText('Delete Forever')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Permanently delete "readme.md"?')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Delete Forever', { selector: '.confirm-btn' }));
+
+    await waitFor(() => {
+      expect(api.deleteFromTrash).toHaveBeenCalledWith('1234567890_readme.md', 1);
+    });
+  });
+
+  it('confirms clear all before clearing trash', async () => {
+    const { api } = await import('../services/api');
+
+    render(() => (
+      <TrashDialog
+        isOpen={true}
+        projectId={1}
+        onClose={() => {}}
+      />
+    ));
+
+    await waitFor(() => {
+      expect(screen.getByText('readme.md')).toBeTruthy();
+      expect((screen.getByText('Clear All') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getAllByText('Clear All')[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Clear all trash items?')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByText('Clear All', { selector: '.confirm-btn' }));
+
+    await waitFor(() => {
+      expect(api.clearTrash).toHaveBeenCalledWith(1);
+    });
+  });
 });
