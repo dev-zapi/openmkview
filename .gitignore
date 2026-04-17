@@ -46,5 +46,6 @@ test-results/
 # Additional ignored directories
 plan/
 !plan/
+node_modules/
 .opencode/
 .playwright-cli/
