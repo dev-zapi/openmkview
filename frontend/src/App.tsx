@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal } from 'solid-js';
+import { Component, createEffect, createSignal, createMemo } from 'solid-js';
 import { DesktopLayout, MobileLayoutWrapper } from './layouts';
 import { GlobalDialogs } from './components/GlobalDialogs';
 import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
@@ -80,7 +80,7 @@ const App: Component = () => {
   };
 
   const theme = settingsStore.effectiveTheme;
-  const markdownStyle = getMarkdownStyle(settingsStore.settings());
+  const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
 
   const handleSearchClick = () => {
     if (fileStore.currentFileType() !== 'markdown') {
@@ -151,7 +151,7 @@ const App: Component = () => {
           settings={settingsStore.settings()}
           theme={theme}
           themeMode={settingsStore.settings().themeMode}
-          markdownStyle={markdownStyle}
+          markdownStyle={markdownStyle()}
           isSearchOpen={isSearchOpen()}
           searchQuery={searchQuery()}
           searchResultCount={searchResultCount()}
@@ -203,7 +203,7 @@ const App: Component = () => {
           saving={editorStore.saving()}
           settings={settingsStore.settings()}
           theme={theme}
-          markdownStyle={markdownStyle}
+          markdownStyle={markdownStyle()}
           isSearchOpen={isSearchOpen()}
           searchQuery={searchQuery()}
           searchResultCount={searchResultCount()}
