@@ -12,6 +12,19 @@ import type { RecentProject } from '../types/openProject';
 import { getFaviconPath, getProjectDisplayName, getProjectIconContent, isFaviconIcon } from '../utils/projectIcon';
 
 export const useProject = () => {
+  const getColorPickerPosition = (rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => {
+    const x = rect.right + 8;
+    const y = rect.top;
+
+    const pickerWidth = 280;
+    const pickerHeight = 300;
+
+    return {
+      x: x + pickerWidth > window.innerWidth ? rect.left - pickerWidth - 8 : x,
+      y: y + pickerHeight > window.innerHeight ? window.innerHeight - pickerHeight - 8 : y,
+    };
+  };
+
   const confirmDiscardIfDirty = (): boolean => {
     if (editorStore.isDirty() && appStore.activeTab() === 'edit') {
       const confirmed = confirm('You have unsaved changes. Do you want to continue?');
@@ -148,18 +161,14 @@ export const useProject = () => {
   const openColorPicker = (e: MouseEvent, projectId: number) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = rect.right + 8;
-    const y = rect.top;
-    
-    const pickerWidth = 280;
-    const pickerHeight = 300;
-    
-    const adjustedX = x + pickerWidth > window.innerWidth ? rect.left - pickerWidth - 8 : x;
-    const adjustedY = y + pickerHeight > window.innerHeight ? window.innerHeight - pickerHeight - 8 : y;
-    
-    appStore.openColorPicker(projectId, adjustedX, adjustedY);
+
+    const position = getColorPickerPosition((e.currentTarget as HTMLElement).getBoundingClientRect());
+    appStore.openColorPicker(projectId, position.x, position.y);
+  };
+
+  const openColorPickerAt = (projectId: number, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => {
+    const position = getColorPickerPosition(rect);
+    appStore.openColorPicker(projectId, position.x, position.y);
   };
 
   const saveProjectEdit = async (project: Project) => {
@@ -201,6 +210,7 @@ export const useProject = () => {
     refreshProject,
     updateProjectColor,
     openColorPicker,
+    openColorPickerAt,
     saveProjectEdit,
     getColorStyle,
     getProjectDisplayName,

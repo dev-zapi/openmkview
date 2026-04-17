@@ -152,4 +152,14 @@ describe('useProject', () => {
 
     expect(appStore.colorPickerPosition()).toEqual({ x: -68, y: -48 });
   });
+
+  it('opens color picker from explicit coordinates', () => {
+    const { openColorPickerAt } = useProject();
+
+    openColorPickerAt(9, { left: 32, right: 72, top: 44 });
+
+    expect(appStore.colorPickerOpen()).toBe(true);
+    expect(appStore.colorPickerProjectId()).toBe(9);
+    expect(appStore.colorPickerPosition()).toEqual({ x: 80, y: 44 });
+  });
 });

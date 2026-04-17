@@ -45,7 +45,6 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
 .topBarProjectName {
@@ -55,110 +54,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.projectMenuButton {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--color-text);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.15s ease;
-  flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.projectMenuButton:active {
-  background: var(--color-active-bg);
-}
-
-.projectMenuDropdown {
-  position: absolute;
-  top: calc(48px + env(safe-area-inset-top, 0));
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  min-width: 160px;
-  z-index: 100;
-  animation: dropdownFadeIn 0.15s ease;
-}
-
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-.projectMenuItem {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: var(--color-text);
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  text-align: left;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.projectMenuItem:first-child {
-  border-radius: 7px 7px 0 0;
-}
-
-.projectMenuItem:last-child {
-  border-radius: 0 0 7px 7px;
-}
-
-.projectMenuItem:only-child {
-  border-radius: 7px;
-}
-
-.projectMenuItem:active {
-  background: var(--color-active-bg);
-}
-
-.topBarActions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.topBarButton {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--color-text);
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.topBarButton:active {
-  background: var(--color-active-bg);
 }
 
 .mobileMain {
@@ -179,7 +74,7 @@
 /* Left drawer content */
 .leftDrawerContent {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100%;
   padding-top: env(safe-area-inset-top, 0);
 }
@@ -187,36 +82,94 @@
 .activityBarSection {
   display: flex;
   flex-direction: column;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+  width: 52px;
+  background: var(--color-bg-subtle);
+  border-right: 1px solid var(--color-border);
   flex-shrink: 0;
-  max-height: 40%;
+  overflow: hidden;
+}
+
+.activityBarProjects {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 8px 0 4px;
   overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
   -webkit-overflow-scrolling: touch;
 }
 
-.activityBarSection button {
-  width: 100%;
+.activityBarBottom {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
+  width: 100%;
+  padding: 4px 0 calc(4px + env(safe-area-inset-bottom, 0));
+  background: var(--color-bg-subtle);
+  flex-shrink: 0;
+}
+
+.activityBarButton {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
   background: transparent;
   border: none;
-  cursor: pointer;
   color: var(--color-text);
-  font-size: 14px;
-  transition: background-color 0.15s ease;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
-.activityBarSection button:active {
-  background: var(--color-active-bg);
+.activityBarButton::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: var(--color-accent);
+  border-radius: 0 2px 2px 0;
+  transition: height 0.2s ease;
 }
 
-.activityBarSection button.active {
-  background: var(--color-active-bg);
+.activityBarButton:active {
+  background: var(--color-code-bg);
+}
+
+.activityBarButtonActive {
+  background: var(--color-accent-bg);
   color: var(--color-text-h);
+}
+
+.activityBarButtonActive::after {
+  height: 24px;
+}
+
+.activityBarProjects .activityBarButton[style*='background'] {
+  color: white;
+  font-weight: 600;
+}
+
+.activityBarProjects .activityBarButton[style*='background'] :global(.project-initial) {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.activityBarBottom .activityBarButton:last-child,
+.activityBarProjects .activityBarButton:last-child {
+  margin-bottom: 0;
 }
 
 .sidebarSection {
@@ -267,4 +220,65 @@
 
 .rightDrawerContent :global(.outline-item) {
   padding: 10px 16px;
+}
+
+.projectActionOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1600;
+}
+
+.projectActionSheet {
+  width: min(100%, 360px);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.projectActionHeader {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.projectActionTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-h);
+}
+
+.projectActionHint {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.projectActionButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 14px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.projectActionButton:active {
+  background: var(--color-active-bg);
+}
+
+.projectActionCancel {
+  border-top: 1px solid var(--color-border);
+  justify-content: center;
+  font-weight: 600;
 }

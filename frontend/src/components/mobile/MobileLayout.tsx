@@ -1,9 +1,7 @@
-import { Component, JSX, Show, createSignal } from 'solid-js';
+import { Component, JSX, Show } from 'solid-js';
 import { MobileDrawer } from './MobileDrawer';
 import { mobileLayoutStore } from '../../stores/mobileLayoutStore';
 import styles from './MobileLayout.module.css';
-
-type ThemeMode = 'light' | 'dark' | 'system';
 
 interface MobileLayoutProps {
   children: JSX.Element;
@@ -12,31 +10,9 @@ interface MobileLayoutProps {
   outlinePanelContent?: JSX.Element;
   headerContent?: JSX.Element;
   activeProjectName?: string;
-  onSettingsClick?: () => void;
-  onThemeToggle?: () => void;
-  currentTheme?: ThemeMode;
-  onProjectEdit?: () => void;
-  onProjectColorChange?: (event: MouseEvent) => void;
 }
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
-  const [projectMenuOpen, setProjectMenuOpen] = createSignal(false);
-
-  const handleProjectMenuToggle = (e: MouseEvent) => {
-    e.stopPropagation();
-    setProjectMenuOpen(!projectMenuOpen());
-  };
-
-  const handleProjectEdit = () => {
-    setProjectMenuOpen(false);
-    props.onProjectEdit?.();
-  };
-
-  const handleProjectColorChange = (event: MouseEvent) => {
-    setProjectMenuOpen(false);
-    props.onProjectColorChange?.(event);
-  };
-
   return (
     <div class={styles.mobileContainer}>
       {/* Mobile top bar */}
@@ -58,87 +34,6 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
           <span class={styles.topBarProjectName}>
             {props.activeProjectName || 'OpenMKView'}
           </span>
-          <Show when={props.activeProjectName && (props.onProjectEdit || props.onProjectColorChange)}>
-            <button
-              class={styles.projectMenuButton}
-              onClick={handleProjectMenuToggle}
-              aria-label="Project menu"
-              aria-expanded={projectMenuOpen()}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="5" r="2"/>
-                <circle cx="12" cy="12" r="2"/>
-                <circle cx="12" cy="19" r="2"/>
-              </svg>
-            </button>
-            <Show when={projectMenuOpen()}>
-              <div class={styles.projectMenuDropdown}>
-                <Show when={props.onProjectEdit}>
-                  <button class={styles.projectMenuItem} onClick={handleProjectEdit}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                    <span>Edit Project</span>
-                  </button>
-                </Show>
-                <Show when={props.onProjectColorChange}>
-                  <button class={styles.projectMenuItem} onClick={handleProjectColorChange}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="13.5" cy="6.5" r="2.5"/>
-                      <circle cx="19" cy="13" r="2.5"/>
-                      <circle cx="13.5" cy="19.5" r="2.5"/>
-                      <circle cx="6" cy="13" r="2.5"/>
-                    </svg>
-                    <span>Change Color</span>
-                  </button>
-                </Show>
-              </div>
-            </Show>
-          </Show>
-        </div>
-        <div class={styles.topBarActions}>
-          <button
-            class={styles.topBarButton}
-            onClick={props.onThemeToggle}
-            title="Toggle theme"
-          >
-            <Show when={props.currentTheme === 'light'}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5"/>
-                <line x1="12" y1="1" x2="12" y2="3"/>
-                <line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/>
-                <line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-              </svg>
-            </Show>
-            <Show when={props.currentTheme === 'dark'}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
-            </Show>
-            <Show when={props.currentTheme === 'system'}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-            </Show>
-          </button>
-          <button
-            class={styles.topBarButton}
-            onClick={props.onSettingsClick}
-            title="Settings"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -160,14 +55,12 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         width="85%"
       >
         <div class={styles.leftDrawerContent}>
-          {/* ActivityBar section */}
           <Show when={props.activityBarContent}>
             <div class={styles.activityBarSection}>
               {props.activityBarContent}
             </div>
           </Show>
-          
-          {/* FileTree section */}
+
           <Show when={props.sidebarContent}>
             <div class={styles.sidebarSection}>
               <div class={styles.sidebarHeader}>Explorer</div>

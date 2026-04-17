@@ -73,10 +73,12 @@ const App: Component = () => {
     await projectHook.switchProject(project);
   };
 
-  const handleMobileOpenProjectColorChange = (event: MouseEvent) => {
-    const project = projectStore.state.activeProject;
-    if (!project) return;
+  const handleMobileOpenProjectColorChange = (event: MouseEvent, project: Project) => {
     projectHook.openColorPicker(event, project.id);
+  };
+
+  const handleMobileOpenProjectColorChangeAt = (project: Project, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => {
+    projectHook.openColorPickerAt(project.id, rect);
   };
 
   const theme = settingsStore.effectiveTheme;
@@ -160,10 +162,12 @@ const App: Component = () => {
           fileTree={fileStore.fileTree()}
           expandedFolders={fileStore.expandedFolders()}
           onOpenProject={projectHook.openProject}
+          onOpenTrash={() => appStore.openTrashDialog()}
           onOpenSettings={() => appStore.setSettingsOpen(true)}
           onToggleTheme={() => settingsStore.toggleThemeMode()}
           onEditProject={() => appStore.openProjectEditDialog()}
           onOpenProjectColorChange={handleMobileOpenProjectColorChange}
+          onOpenProjectColorChangeAt={handleMobileOpenProjectColorChangeAt}
           onProjectClick={handleMobileProjectClick}
           onFileClick={(path) => fileHook.mobileFileClick(path)}
           onFolderToggle={fileHook.toggleFolder}
