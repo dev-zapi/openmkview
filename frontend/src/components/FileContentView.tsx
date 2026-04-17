@@ -26,6 +26,10 @@ export interface FileContentViewProps {
   diffMode: 'split' | 'unified';
   welcomeMessage?: string;
   applyFadeClass?: boolean;
+  searchQuery: string;
+  currentSearchResult: number;
+  searchRequestKey: number;
+  onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
   onContentChange: (content: string) => void;
   onSave: () => void;
@@ -58,6 +62,9 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             onHeadingsExtracted={props.onHeadingsExtracted}
             currentFilePath={props.currentFile!.path}
             projectId={props.activeProjectId}
+            searchQuery={props.searchQuery}
+            currentSearchResult={props.currentSearchResult}
+            onSearchResultsChange={props.onSearchResultsChange}
           />
         </div>
       </Show>
@@ -101,6 +108,9 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             content={props.currentFile!.content}
             fileName={props.currentFile!.fileName}
             theme={props.theme}
+            searchQuery={props.searchQuery}
+            currentSearchResult={props.currentSearchResult}
+            onSearchResultsChange={props.onSearchResultsChange}
           />
         </div>
       </Show>
@@ -114,6 +124,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             onContentChange={props.onContentChange}
             onSave={props.onSave}
             isDirty={props.isDirty}
+            searchRequestKey={props.searchRequestKey}
           />
         </div>
       </Show>

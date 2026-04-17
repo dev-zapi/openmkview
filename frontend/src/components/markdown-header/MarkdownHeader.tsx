@@ -14,8 +14,17 @@ export interface MarkdownHeaderProps {
   outlineCount: number;
   content: string;
   fileType?: 'markdown' | 'image';
+  isSearchOpen: boolean;
+  searchQuery: string;
+  searchResultCount: number;
+  currentSearchResult: number;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  onSearchClick: () => void;
+  onSearchClose: () => void;
+  onSearchQueryChange: (query: string) => void;
+  onSearchNext: () => void;
+  onSearchPrev: () => void;
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
@@ -23,35 +32,18 @@ export interface MarkdownHeaderProps {
 
 export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const [isFullscreen, setIsFullscreen] = createSignal(false);
-  const [isSearchOpen, setIsSearchOpen] = createSignal(false);
-  const [searchQuery, setSearchQuery] = createSignal('');
-  const [searchResults, setSearchResults] = createSignal<number>(0);
-  const [currentResult, setCurrentResult] = createSignal<number>(0);
   const [toast, setToast] = createSignal<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const handleSearchClick = () => {
-    setIsSearchOpen(true);
+  const canSearch = () => props.fileType === 'markdown' && props.activeTab !== 'diff';
+  const usesInlineSearch = () => canSearch() && props.activeTab !== 'edit';
+  const searchButtonTitle = () => {
+    if (props.fileType !== 'markdown') return '当前视图不支持搜索';
+    if (props.activeTab === 'edit') return '打开编辑器搜索';
+    if (props.activeTab === 'preview') return '搜索预览内容';
+    if (props.activeTab === 'source') return '搜索源码内容';
+    return 'Diff 视图暂不支持搜索';
   };
-
-  const handleCloseSearch = () => {
-    setIsSearchOpen(false);
-    setSearchQuery('');
-    setSearchResults(0);
-    setCurrentResult(0);
-  };
-
-  const handleQueryChange = (query: string) => {
-    setSearchQuery(query);
-    if (query.trim()) {
-      const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      const matches = props.content.match(regex);
-      setSearchResults(matches ? matches.length : 0);
-      setCurrentResult(matches && matches.length > 0 ? 1 : 0);
-    } else {
-      setSearchResults(0);
-      setCurrentResult(0);
-    }
-  };
+  const searchPlaceholder = () => (props.activeTab === 'source' ? '搜索源码内容...' : '搜索预览内容...');
 
   const handleCopyClick = async () => {
     try {
@@ -113,20 +105,25 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const handleKeyDown = (e: KeyboardEvent) => {
     // Ctrl+F 或 Cmd+F 打开搜索
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      if (!canSearch()) {
+        return;
+      }
+
       e.preventDefault();
-      setIsSearchOpen(true);
+      props.onSearchClick();
     }
     // ESC 关闭搜索
-    if (e.key === 'Escape' && isSearchOpen()) {
+    if (e.key === 'Escape' && props.isSearchOpen) {
       e.preventDefault();
-      handleCloseSearch();
+      props.onSearchClose();
     }
     // Enter 查找下一个
-    if (e.key === 'Enter' && isSearchOpen()) {
+    if (e.key === 'Enter' && usesInlineSearch() && props.isSearchOpen) {
+      e.preventDefault();
       if (e.shiftKey) {
-        setCurrentResult((prev) => Math.max(prev - 1, 1));
+        props.onSearchPrev();
       } else {
-        setCurrentResult((prev) => Math.min(prev + 1, searchResults()));
+        props.onSearchNext();
       }
     }
   };
@@ -141,14 +138,15 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   return (
     <header class={styles.markdownHeader}>
       <SearchBox
-        isOpen={isSearchOpen()}
-        query={searchQuery()}
-        resultCount={searchResults()}
-        currentResult={currentResult()}
-        onQueryChange={handleQueryChange}
-        onClose={handleCloseSearch}
-        onNextResult={() => setCurrentResult((prev) => Math.min(prev + 1, searchResults()))}
-        onPrevResult={() => setCurrentResult((prev) => Math.max(prev - 1, 1))}
+        isOpen={usesInlineSearch() && props.isSearchOpen}
+        query={props.searchQuery}
+        placeholder={searchPlaceholder()}
+        resultCount={props.searchResultCount}
+        currentResult={props.currentSearchResult}
+        onQueryChange={props.onSearchQueryChange}
+        onClose={props.onSearchClose}
+        onNextResult={props.onSearchNext}
+        onPrevResult={props.onSearchPrev}
       />
       <DocumentTitleBar
         fileName={props.fileName}
@@ -162,7 +160,10 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         onFullscreenToggle={handleFullscreenToggle}
-        onSearchClick={handleSearchClick}
+        onSearchClick={props.onSearchClick}
+        isSearchActive={usesInlineSearch() && props.isSearchOpen}
+        searchDisabled={!canSearch()}
+        searchButtonTitle={searchButtonTitle()}
         onCopyClick={handleCopyClick}
         onExportClick={handleExportClick}
         isDirty={props.isDirty}

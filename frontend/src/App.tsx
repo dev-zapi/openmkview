@@ -1,4 +1,4 @@
-import { Component } from 'solid-js';
+import { Component, createEffect, createSignal } from 'solid-js';
 import { DesktopLayout, MobileLayoutWrapper } from './layouts';
 import { GlobalDialogs } from './components/GlobalDialogs';
 import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
@@ -19,8 +19,39 @@ const App: Component = () => {
   const fileHook = useFile();
   const editorHook = useEditor();
   const layoutHook = useLayout();
+  const [isSearchOpen, setIsSearchOpen] = createSignal(false);
+  const [searchQuery, setSearchQuery] = createSignal('');
+  const [searchResultCount, setSearchResultCount] = createSignal(0);
+  const [currentSearchResult, setCurrentSearchResult] = createSignal(0);
+  const [editorSearchRequestKey, setEditorSearchRequestKey] = createSignal(0);
+  const [searchScopeKey, setSearchScopeKey] = createSignal('');
 
   useLifecycle();
+
+  createEffect(() => {
+    const fileType = fileStore.currentFileType();
+    const activeTab = appStore.activeTab();
+    const currentFilePath = fileStore.currentFile()?.path || '';
+    const nextScopeKey = `${currentFilePath}:${activeTab}`;
+
+    if (nextScopeKey !== searchScopeKey()) {
+      setSearchScopeKey(nextScopeKey);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      setSearchResultCount(0);
+      setCurrentSearchResult(0);
+    }
+
+    if (fileType !== 'markdown' || activeTab === 'edit' || activeTab === 'diff') {
+      setIsSearchOpen(false);
+    }
+
+    if (fileType !== 'markdown' || activeTab === 'diff') {
+      setSearchQuery('');
+      setSearchResultCount(0);
+      setCurrentSearchResult(0);
+    }
+  });
 
   const renderProjectIcon = (project: Project) => {
     const icon = projectHook.renderProjectIconContent(project);
@@ -51,6 +82,56 @@ const App: Component = () => {
   const theme = settingsStore.effectiveTheme;
   const markdownStyle = getMarkdownStyle(settingsStore.settings());
 
+  const handleSearchClick = () => {
+    if (fileStore.currentFileType() !== 'markdown') {
+      return;
+    }
+
+    if (appStore.activeTab() === 'diff') {
+      return;
+    }
+
+    if (appStore.activeTab() === 'edit') {
+      setEditorSearchRequestKey((key) => key + 1);
+      return;
+    }
+
+    setIsSearchOpen(true);
+  };
+
+  const handleSearchClose = () => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setSearchResultCount(0);
+    setCurrentSearchResult(0);
+  };
+
+  const handleSearchQueryChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentSearchResult(query.trim() ? 1 : 0);
+  };
+
+  const handleSearchResultsChange = (count: number) => {
+    setSearchResultCount(count);
+    setCurrentSearchResult((current) => {
+      if (count === 0) return 0;
+      if (current < 1) return 1;
+      return Math.min(current, count);
+    });
+  };
+
+  const handleSearchNext = () => {
+    const count = searchResultCount();
+    if (count === 0) return;
+    setCurrentSearchResult((current) => (current >= count || current < 1 ? 1 : current + 1));
+  };
+
+  const handleSearchPrev = () => {
+    const count = searchResultCount();
+    if (count === 0) return;
+    setCurrentSearchResult((current) => (current <= 1 ? count : current - 1));
+  };
+
   return (
     <>
       {appStore.isMobile() ? (
@@ -71,6 +152,11 @@ const App: Component = () => {
           theme={theme}
           themeMode={settingsStore.settings().themeMode}
           markdownStyle={markdownStyle}
+          isSearchOpen={isSearchOpen()}
+          searchQuery={searchQuery()}
+          searchResultCount={searchResultCount()}
+          currentSearchResult={currentSearchResult()}
+          searchRequestKey={editorSearchRequestKey()}
           fileTree={fileStore.fileTree()}
           expandedFolders={fileStore.expandedFolders()}
           onOpenProject={projectHook.openProject}
@@ -86,6 +172,12 @@ const App: Component = () => {
           onRename={fileHook.renameFile}
           onTabChange={editorHook.changeTab}
           onOutlineToggle={layoutHook.handleMobileOutlineToggle}
+          onSearchClick={handleSearchClick}
+          onSearchClose={handleSearchClose}
+          onSearchQueryChange={handleSearchQueryChange}
+          onSearchNext={handleSearchNext}
+          onSearchPrev={handleSearchPrev}
+          onSearchResultsChange={handleSearchResultsChange}
           onHeadingsExtracted={editorHook.handleHeadingsExtracted}
           onContentChange={editorHook.handleContentChange}
           onSave={() => void editorHook.saveFile()}
@@ -112,6 +204,11 @@ const App: Component = () => {
           settings={settingsStore.settings()}
           theme={theme}
           markdownStyle={markdownStyle}
+          isSearchOpen={isSearchOpen()}
+          searchQuery={searchQuery()}
+          searchResultCount={searchResultCount()}
+          currentSearchResult={currentSearchResult()}
+          searchRequestKey={editorSearchRequestKey()}
           fileTree={fileStore.fileTree()}
           expandedFolders={fileStore.expandedFolders()}
           sidebarWidth={appStore.sidebarWidth()}
@@ -136,6 +233,12 @@ const App: Component = () => {
           onStartDragging={layoutHook.startDragging}
           onTabChange={editorHook.changeTab}
           onOutlineToggle={layoutHook.handleMobileOutlineToggle}
+          onSearchClick={handleSearchClick}
+          onSearchClose={handleSearchClose}
+          onSearchQueryChange={handleSearchQueryChange}
+          onSearchNext={handleSearchNext}
+          onSearchPrev={handleSearchPrev}
+          onSearchResultsChange={handleSearchResultsChange}
           onHeadingsExtracted={editorHook.handleHeadingsExtracted}
           onContentChange={editorHook.handleContentChange}
           onSave={() => void editorHook.saveFile()}

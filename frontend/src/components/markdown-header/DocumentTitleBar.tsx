@@ -16,6 +16,9 @@ export interface DocumentTitleBarProps {
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
+  isSearchActive?: boolean;
+  searchDisabled?: boolean;
+  searchButtonTitle?: string;
   onCopyClick: () => void;
   onExportClick: (format: 'pdf' | 'md') => void;
   isDirty?: boolean;
@@ -133,9 +136,10 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           </button>
         </Show>
         <button
-          class={styles.toolbarButtonIcon}
+          class={`${styles.toolbarButtonIcon} ${props.isSearchActive ? styles.active : ''}`}
           onClick={props.onSearchClick}
-          title="搜索"
+          title={props.searchButtonTitle || '搜索'}
+          disabled={props.searchDisabled}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"/>

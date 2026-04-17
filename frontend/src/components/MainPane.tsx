@@ -26,8 +26,19 @@ interface MainPaneProps {
   diffMode: 'split' | 'unified';
   welcomeMessage: string;
   applyFadeClass: boolean;
+  isSearchOpen: boolean;
+  searchQuery: string;
+  searchResultCount: number;
+  currentSearchResult: number;
+  searchRequestKey: number;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  onSearchClick: () => void;
+  onSearchClose: () => void;
+  onSearchQueryChange: (query: string) => void;
+  onSearchNext: () => void;
+  onSearchPrev: () => void;
+  onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
   onContentChange: (content: string) => void;
   onSave: () => void;
@@ -51,8 +62,17 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             outlineCount={props.outlineCount}
             content={props.currentFile!.content}
             fileType={props.currentFileType}
+            isSearchOpen={props.isSearchOpen}
+            searchQuery={props.searchQuery}
+            searchResultCount={props.searchResultCount}
+            currentSearchResult={props.currentSearchResult}
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
+            onSearchClick={props.onSearchClick}
+            onSearchClose={props.onSearchClose}
+            onSearchQueryChange={props.onSearchQueryChange}
+            onSearchNext={props.onSearchNext}
+            onSearchPrev={props.onSearchPrev}
             isDirty={props.isDirty}
             onSave={props.onSave}
             saving={props.saving}
@@ -67,8 +87,17 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             outlineCount={0}
             content=""
             fileType="image"
+            isSearchOpen={props.isSearchOpen}
+            searchQuery={props.searchQuery}
+            searchResultCount={props.searchResultCount}
+            currentSearchResult={props.currentSearchResult}
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
+            onSearchClick={props.onSearchClick}
+            onSearchClose={props.onSearchClose}
+            onSearchQueryChange={props.onSearchQueryChange}
+            onSearchNext={props.onSearchNext}
+            onSearchPrev={props.onSearchPrev}
           />
         </Show>
 
@@ -95,6 +124,10 @@ export const MainPane: Component<MainPaneProps> = (props) => {
                 diffMode={props.diffMode}
                 welcomeMessage={props.welcomeMessage}
                 applyFadeClass={props.applyFadeClass}
+                searchQuery={props.searchQuery}
+                currentSearchResult={props.currentSearchResult}
+                searchRequestKey={props.searchRequestKey}
+                onSearchResultsChange={props.onSearchResultsChange}
                 onHeadingsExtracted={props.onHeadingsExtracted}
                 onContentChange={props.onContentChange}
                 onSave={props.onSave}

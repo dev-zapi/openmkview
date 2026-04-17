@@ -1,12 +1,16 @@
 import { Component, createSignal, createEffect, Show } from 'solid-js';
 import { highlightCode } from '../services/shikiService';
 import { escapeHtml } from '../utils/html';
+import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 
 interface SourceViewProps {
   content: string;
   fileName?: string;
   theme?: 'light' | 'dark';
   showLineNumbers?: boolean;
+  searchQuery?: string;
+  currentSearchResult?: number;
+  onSearchResultsChange?: (count: number) => void;
 }
 
 const getLanguageFromFileName = (fileName: string): string => {
@@ -64,9 +68,11 @@ const getLanguageFromFileName = (fileName: string): string => {
 };
 
 const SourceView: Component<SourceViewProps> = (props) => {
+  let highlightedRef: HTMLDivElement | undefined;
   const [highlightedHtml, setHighlightedHtml] = createSignal<string>('');
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  let searchMatches: HTMLElement[] = [];
 
   const highlightSource = async () => {
     if (!props.content) {
@@ -107,6 +113,25 @@ const SourceView: Component<SourceViewProps> = (props) => {
     highlightSource();
   });
 
+  createEffect(() => {
+    highlightedHtml();
+    const query = props.searchQuery || '';
+
+    if (!highlightedRef) {
+      props.onSearchResultsChange?.(0);
+      return;
+    }
+
+    searchMatches = highlightSearchMatches(highlightedRef, query);
+    props.onSearchResultsChange?.(searchMatches.length);
+    setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
+  });
+
+  createEffect(() => {
+    props.currentSearchResult;
+    setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
+  });
+
   return (
     <div class="source-view-wrapper">
       <Show when={isLoading()}>
@@ -124,6 +149,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
 
       <Show when={!isLoading() && highlightedHtml().length > 0}>
         <div
+          ref={highlightedRef}
           class="source-highlighted"
           innerHTML={highlightedHtml()}
         />

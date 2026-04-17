@@ -25,6 +25,11 @@ interface MobileLayoutWrapperProps {
   theme: ThemeType;
   themeMode: ThemeMode;
   markdownStyle: Record<string, string>;
+  isSearchOpen: boolean;
+  searchQuery: string;
+  searchResultCount: number;
+  currentSearchResult: number;
+  searchRequestKey: number;
   fileTree: FileNode[];
   expandedFolders: Set<string>;
   onOpenProject: () => void;
@@ -40,6 +45,12 @@ interface MobileLayoutWrapperProps {
   onRename: (node: FileNode) => void;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  onSearchClick: () => void;
+  onSearchClose: () => void;
+  onSearchQueryChange: (query: string) => void;
+  onSearchNext: () => void;
+  onSearchPrev: () => void;
+  onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
   onContentChange: (content: string) => void;
   onSave: () => void;
@@ -119,14 +130,23 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               fileSize={props.currentFile!.fileSize}
               activeTab={props.activeTab}
               isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
-              outlineCount={props.headings.length}
-              content={props.currentFile!.content}
-              fileType={props.currentFileType}
-              onTabChange={props.onTabChange}
-              onOutlineToggle={props.onOutlineToggle}
-              isDirty={props.isDirty}
-              onSave={props.onSave}
-              saving={props.saving}
+               outlineCount={props.headings.length}
+               content={props.currentFile!.content}
+               fileType={props.currentFileType}
+               isSearchOpen={props.isSearchOpen}
+               searchQuery={props.searchQuery}
+               searchResultCount={props.searchResultCount}
+               currentSearchResult={props.currentSearchResult}
+               onTabChange={props.onTabChange}
+               onOutlineToggle={props.onOutlineToggle}
+               onSearchClick={props.onSearchClick}
+               onSearchClose={props.onSearchClose}
+               onSearchQueryChange={props.onSearchQueryChange}
+               onSearchNext={props.onSearchNext}
+               onSearchPrev={props.onSearchPrev}
+               isDirty={props.isDirty}
+               onSave={props.onSave}
+               saving={props.saving}
             />
           </Show>
           <Show when={props.imagePreviewUrl && props.currentFileType === 'image'}>
@@ -134,13 +154,22 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               fileName={props.imageFileName}
               activeTab={props.activeTab}
               isOutlineOpen={mobileLayoutStore.rightDrawerOpen}
-              outlineCount={0}
-              content=""
-              fileType="image"
-              onTabChange={props.onTabChange}
-              onOutlineToggle={props.onOutlineToggle}
-            />
-          </Show>
+               outlineCount={0}
+               content=""
+               fileType="image"
+               isSearchOpen={props.isSearchOpen}
+               searchQuery={props.searchQuery}
+               searchResultCount={props.searchResultCount}
+               currentSearchResult={props.currentSearchResult}
+               onTabChange={props.onTabChange}
+               onOutlineToggle={props.onOutlineToggle}
+               onSearchClick={props.onSearchClick}
+               onSearchClose={props.onSearchClose}
+               onSearchQueryChange={props.onSearchQueryChange}
+               onSearchNext={props.onSearchNext}
+               onSearchPrev={props.onSearchPrev}
+             />
+           </Show>
         </>
       }
     >
@@ -159,17 +188,28 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
           editContent={props.editContent}
           isDirty={props.isDirty}
           saving={props.saving}
-          settings={props.settings}
-          theme={props.theme}
-          markdownStyle={props.markdownStyle}
-          diffMode="unified"
-          welcomeMessage="Tap the menu button to browse files"
-          applyFadeClass={false}
-          onTabChange={props.onTabChange}
-          onOutlineToggle={props.onOutlineToggle}
-          onHeadingsExtracted={props.onHeadingsExtracted}
-          onContentChange={props.onContentChange}
-          onSave={props.onSave}
+           settings={props.settings}
+           theme={props.theme}
+           markdownStyle={props.markdownStyle}
+           isSearchOpen={props.isSearchOpen}
+           searchQuery={props.searchQuery}
+           searchResultCount={props.searchResultCount}
+           currentSearchResult={props.currentSearchResult}
+           searchRequestKey={props.searchRequestKey}
+           diffMode="unified"
+           welcomeMessage="Tap the menu button to browse files"
+           applyFadeClass={false}
+           onTabChange={props.onTabChange}
+           onOutlineToggle={props.onOutlineToggle}
+           onSearchClick={props.onSearchClick}
+           onSearchClose={props.onSearchClose}
+           onSearchQueryChange={props.onSearchQueryChange}
+           onSearchNext={props.onSearchNext}
+           onSearchPrev={props.onSearchPrev}
+           onSearchResultsChange={props.onSearchResultsChange}
+           onHeadingsExtracted={props.onHeadingsExtracted}
+           onContentChange={props.onContentChange}
+           onSave={props.onSave}
           onCloseDiff={props.onCloseDiff}
           onCloseOutline={() => mobileLayoutStore.closeRightDrawer()}
           showHeader={false}

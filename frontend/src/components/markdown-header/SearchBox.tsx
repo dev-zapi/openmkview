@@ -4,6 +4,7 @@ import styles from './styles.module.css';
 export interface SearchBoxProps {
   isOpen: boolean;
   query: string;
+  placeholder?: string;
   resultCount?: number;
   currentResult?: number;
   onQueryChange: (query: string) => void;
@@ -37,7 +38,7 @@ export const SearchBox: Component<SearchBoxProps> = (props) => {
           ref={inputRef}
           type="text"
           class={styles.searchInput}
-          placeholder="搜索文档内容..."
+          placeholder={props.placeholder || '搜索内容...'}
           value={props.query}
           onInput={(e) => props.onQueryChange(e.currentTarget.value)}
         />

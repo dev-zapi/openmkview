@@ -3,6 +3,7 @@ import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
+import { openSearchPanel, searchKeymap } from '@codemirror/search';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
@@ -16,12 +17,14 @@ export interface CodeMirrorEditorProps {
   onContentChange?: (content: string) => void;
   onSave?: () => void | Promise<void>;
   isDirty?: boolean;
+  searchRequestKey?: number;
 }
 
 export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorContainer: HTMLDivElement | undefined;
   let editorView: EditorView | undefined;
   let lastContent: string = props.content;
+  let lastSearchRequestKey = props.searchRequestKey;
 
   const createEditor = () => {
     if (!editorContainer) return;
@@ -83,6 +86,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       }),
       themeExtension,
       saveKeybinding,
+      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       updateListener,
       EditorView.lineWrapping,
     ];
@@ -136,6 +140,16 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       editorView.destroy();
       createEditor();
     }
+  });
+
+  createEffect(() => {
+    if (!editorView || props.searchRequestKey === undefined || props.searchRequestKey === lastSearchRequestKey) {
+      return;
+    }
+
+    lastSearchRequestKey = props.searchRequestKey;
+    openSearchPanel(editorView);
+    editorView.focus();
   });
 
   return (

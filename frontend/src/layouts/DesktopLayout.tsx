@@ -25,6 +25,11 @@ interface DesktopLayoutProps {
   settings: Settings;
   theme: ThemeType;
   markdownStyle: Record<string, string>;
+  isSearchOpen: boolean;
+  searchQuery: string;
+  searchResultCount: number;
+  currentSearchResult: number;
+  searchRequestKey: number;
   fileTree: FileNode[];
   expandedFolders: Set<string>;
   sidebarWidth: number;
@@ -49,6 +54,12 @@ interface DesktopLayoutProps {
   onStartDragging: () => void;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  onSearchClick: () => void;
+  onSearchClose: () => void;
+  onSearchQueryChange: (query: string) => void;
+  onSearchNext: () => void;
+  onSearchPrev: () => void;
+  onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
   onContentChange: (content: string) => void;
   onSave: () => void;
@@ -108,11 +119,22 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         settings={props.settings}
         theme={props.theme}
         markdownStyle={props.markdownStyle}
+        isSearchOpen={props.isSearchOpen}
+        searchQuery={props.searchQuery}
+        searchResultCount={props.searchResultCount}
+        currentSearchResult={props.currentSearchResult}
+        searchRequestKey={props.searchRequestKey}
         diffMode="split"
         welcomeMessage={'Click "Open Project" or the + button on the left to start'}
         applyFadeClass={true}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
+        onSearchClick={props.onSearchClick}
+        onSearchClose={props.onSearchClose}
+        onSearchQueryChange={props.onSearchQueryChange}
+        onSearchNext={props.onSearchNext}
+        onSearchPrev={props.onSearchPrev}
+        onSearchResultsChange={props.onSearchResultsChange}
         onHeadingsExtracted={props.onHeadingsExtracted}
         onContentChange={props.onContentChange}
         onSave={props.onSave}

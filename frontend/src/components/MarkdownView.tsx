@@ -5,6 +5,7 @@ import type { Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
 import { generateHeadingId, resolveImagePath } from '../utils/markdown';
+import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
@@ -14,12 +15,17 @@ interface MarkdownViewProps {
   onHeadingsExtracted?: (headings: Heading[]) => void;
   currentFilePath?: string;
   projectId?: number;
+  searchQuery?: string;
+  currentSearchResult?: number;
+  onSearchResultsChange?: (count: number) => void;
 }
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
+  let contentRef: HTMLDivElement | undefined;
   const [renderedHtml, setRenderedHtml] = createSignal<string>('');
   const [isRendering, setIsRendering] = createSignal(false);
+  let searchMatches: HTMLElement[] = [];
 
   const parsed = createMemo(() => parseFrontmatter(props.content));
   const frontmatterData = () => parsed().data;
@@ -151,6 +157,25 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     renderMarkdown();
   });
 
+  createEffect(() => {
+    renderedHtml();
+    const query = props.searchQuery || '';
+
+    if (!contentRef) {
+      props.onSearchResultsChange?.(0);
+      return;
+    }
+
+    searchMatches = highlightSearchMatches(contentRef, query);
+    props.onSearchResultsChange?.(searchMatches.length);
+    setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
+  });
+
+  createEffect(() => {
+    props.currentSearchResult;
+    setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
+  });
+
   onCleanup(() => {});
 
   return (
@@ -166,7 +191,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       {hasFrontmatter(frontmatterData()) && (
         <FrontmatterPanel data={frontmatterData()} />
       )}
-      <div class="markdown-content" innerHTML={renderedHtml()} />
+      <div ref={contentRef} class="markdown-content" innerHTML={renderedHtml()} />
     </div>
   );
 };
