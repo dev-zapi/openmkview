@@ -13,24 +13,39 @@ export const loadSettings = (): Settings => {
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      const themeMode = isThemeMode(parsed.themeMode)
-        ? parsed.themeMode
-        : isThemeMode(parsed.theme)
-          ? parsed.theme
-          : DEFAULT_SETTINGS.themeMode;
-
-      return {
-        ...DEFAULT_SETTINGS,
+      return normalizeSettings({
         ...parsed,
-        themeMode,
-        lightTheme: parsed.lightTheme || DEFAULT_SETTINGS.lightTheme,
-        darkTheme: parsed.darkTheme || DEFAULT_SETTINGS.darkTheme,
-      };
+        themeMode: isThemeMode(parsed.themeMode)
+          ? parsed.themeMode
+          : isThemeMode(parsed.theme)
+            ? parsed.theme
+            : DEFAULT_SETTINGS.themeMode,
+      });
     }
+
+    return DEFAULT_SETTINGS;
   } catch (e) {
     console.error('Failed to load settings:', e);
+    return DEFAULT_SETTINGS;
   }
-  return DEFAULT_SETTINGS;
+};
+
+export const normalizeSettings = (settings: Partial<Settings>): Settings => {
+  const themeMode = isThemeMode(settings.themeMode)
+    ? settings.themeMode
+    : DEFAULT_SETTINGS.themeMode;
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    themeMode,
+    lightTheme: settings.lightTheme || DEFAULT_SETTINGS.lightTheme,
+    darkTheme: settings.darkTheme || DEFAULT_SETTINGS.darkTheme,
+    sessionTimeoutMinutes:
+      typeof settings.sessionTimeoutMinutes === 'number' && settings.sessionTimeoutMinutes > 0
+        ? settings.sessionTimeoutMinutes
+        : DEFAULT_SETTINGS.sessionTimeoutMinutes,
+  };
 };
 
 export const saveSettings = (settings: Settings): void => {

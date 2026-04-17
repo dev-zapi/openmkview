@@ -17,6 +17,10 @@ fn default_trash_expire_days() -> u32 {
     30
 }
 
+fn default_session_timeout_minutes() -> u64 {
+    60
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SystemSettings {
     #[serde(rename = "markdownWidth", default)]
@@ -31,6 +35,11 @@ pub struct SystemSettings {
     pub protected_paths: Vec<String>,
     #[serde(rename = "trashExpireDays", default = "default_trash_expire_days")]
     pub trash_expire_days: u32,
+    #[serde(
+        rename = "sessionTimeoutMinutes",
+        default = "default_session_timeout_minutes"
+    )]
+    pub session_timeout_minutes: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

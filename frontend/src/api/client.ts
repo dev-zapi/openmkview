@@ -12,8 +12,17 @@ import type {
   OpenProjectResult,
   RecentProjectsResult,
 } from '../types/openProject';
+import { authStore } from '../stores/authStore';
 
 const API_BASE = '/api/projects';
+
+async function apiRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const res = init === undefined ? await fetch(input) : await fetch(input, init);
+  if (res.status === 401) {
+    authStore.setAuthenticated(false);
+  }
+  return res;
+}
 
 /**
  * 解析用户输入的路径
@@ -22,7 +31,7 @@ const API_BASE = '/api/projects';
  */
 export async function resolvePath(input: string): Promise<ResolvePathResult> {
   const request: ResolvePathRequest = { path: input };
-  const res = await fetch(`${API_BASE}/resolve`, {
+  const res = await apiRequest(`${API_BASE}/resolve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -42,7 +51,7 @@ export async function resolvePath(input: string): Promise<ResolvePathResult> {
  */
 export async function validateProjectPath(path: string): Promise<ValidatePathResult> {
   const request: ValidatePathRequest = { path };
-  const res = await fetch(`${API_BASE}/validate`, {
+  const res = await apiRequest(`${API_BASE}/validate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -62,7 +71,7 @@ export async function validateProjectPath(path: string): Promise<ValidatePathRes
  */
 export async function openProject(path: string): Promise<OpenProjectResult> {
   const request: OpenProjectRequest = { path };
-  const res = await fetch(`${API_BASE}/open`, {
+  const res = await apiRequest(`${API_BASE}/open`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -88,7 +97,7 @@ export async function openProject(path: string): Promise<OpenProjectResult> {
  * @returns 最近项目列表
  */
 export async function getRecentProjects(): Promise<RecentProjectsResult> {
-  const res = await fetch(`${API_BASE}/recent`, {
+  const res = await apiRequest(`${API_BASE}/recent`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });

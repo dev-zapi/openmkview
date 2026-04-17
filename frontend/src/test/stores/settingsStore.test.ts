@@ -14,6 +14,7 @@ const mockDefaultSettings = vi.hoisted(() => ({
   markdownFontSize: '16px',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   trashExpireDays: 30,
+  sessionTimeoutMinutes: 60,
 }));
 
 vi.mock('../../utils/settings', () => ({

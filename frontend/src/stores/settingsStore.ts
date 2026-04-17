@@ -1,7 +1,7 @@
 import { createSignal, createEffect } from 'solid-js';
 import type { Settings, ThemeMode } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
-import { loadSettings, saveSettings } from '../utils/settings';
+import { loadSettings, saveSettings, normalizeSettings } from '../utils/settings';
 import { applyTheme, getEffectiveThemeType, getSystemTheme } from '../utils/theme';
 import { applyFontSettings } from '../utils/settings';
 
@@ -40,6 +40,38 @@ export const settingsStore = {
 
   reloadSettings() {
     setSettings(loadSettings());
+  },
+
+  async fetchSettings() {
+    const res = await fetch('/api/settings');
+    if (!res.ok) {
+      throw new Error(`Failed to load settings: ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    const normalized = normalizeSettings(data);
+    saveSettings(normalized);
+    setSettings(normalized);
+    return normalized;
+  },
+
+  async saveServerSettings(nextSettings: Settings) {
+    const normalized = normalizeSettings(nextSettings);
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(normalized),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(errorData.error || `Failed to save settings: ${res.status}`);
+    }
+
+    const data = normalizeSettings(await res.json());
+    saveSettings(data);
+    setSettings(data);
+    return data;
   },
 
   applyThemeSettings() {

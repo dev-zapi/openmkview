@@ -7,6 +7,7 @@ pub enum AppError {
     DatabaseError(String),
     NotFound(String),
     BadRequest(String),
+    Unauthorized(String),
     InternalError(String),
     FileError(String),
     GitError(String),
@@ -25,6 +26,7 @@ impl fmt::Display for AppError {
             AppError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
             AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
             AppError::BadRequest(msg) => write!(f, "{}", msg),
+            AppError::Unauthorized(msg) => write!(f, "{}", msg),
             AppError::InternalError(msg) => write!(f, "Internal error: {}", msg),
             AppError::FileError(msg) => write!(f, "File error: {}", msg),
             AppError::GitError(msg) => write!(f, "Git error: {}", msg),
@@ -44,6 +46,7 @@ impl ResponseError for AppError {
         match self {
             AppError::NotFound(_) => HttpResponse::NotFound().json(error_response),
             AppError::BadRequest(_) => HttpResponse::BadRequest().json(error_response),
+            AppError::Unauthorized(_) => HttpResponse::Unauthorized().json(error_response),
             AppError::ValidationError(_) => HttpResponse::BadRequest().json(error_response),
             AppError::Conflict(_) => HttpResponse::Conflict().json(error_response),
             AppError::FileError(_) => HttpResponse::InternalServerError().json(error_response),

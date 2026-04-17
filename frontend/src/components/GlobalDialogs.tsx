@@ -5,6 +5,7 @@ import ProjectEditDialog from './ProjectEditDialog';
 import TrashDialog from './TrashDialog';
 import type { Project } from '../types';
 import { OpenProjectDialog } from './open-project';
+import { authStore } from '../stores/authStore';
 
 interface GlobalDialogsProps {
   activeProject: Project | null;
@@ -44,6 +45,7 @@ export const GlobalDialogs: Component<GlobalDialogsProps> = (props) => {
         isOpen={props.settingsOpen}
         onClose={props.onCloseSettings}
         onSave={props.onSettingsSave}
+        authRequired={authStore.authRequired()}
       />
 
       <OpenProjectDialog

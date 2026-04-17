@@ -1,4 +1,5 @@
 import type { GitCommit, GitDiff } from '../types';
+import { authStore } from '../stores/authStore';
 
 export interface FileDiffRequest {
   projectId: number;
@@ -7,17 +8,25 @@ export interface FileDiffRequest {
   newRef: string;
 }
 
+async function gitRequest(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const res = init === undefined ? await fetch(input) : await fetch(input, init);
+  if (res.status === 401) {
+    authStore.setAuthenticated(false);
+  }
+  return res;
+}
+
 export const gitApi = {
   async getCommits(projectId: number, filePath?: string): Promise<GitCommit[]> {
     const params = new URLSearchParams({ project_id: String(projectId) });
     if (filePath) params.append('path', filePath);
-    const res = await fetch(`/api/git/commits?${params}`);
+    const res = await gitRequest(`/api/git/commits?${params}`);
     const data = await res.json();
     return data.entries || [];
   },
 
   async getFileDiff(request: FileDiffRequest): Promise<GitDiff> {
-    const res = await fetch('/api/git/diff', {
+    const res = await gitRequest('/api/git/diff', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -31,24 +40,24 @@ export const gitApi = {
   },
 
   async getFileAtCommit(projectId: number, filePath: string, ref: string): Promise<string> {
-    const res = await fetch(
+    const res = await gitRequest(
       `/api/git/file?project_id=${projectId}&path=${encodeURIComponent(filePath)}&ref=${ref}`
     );
     return res.text();
   },
 
   async getBranches(projectId: number): Promise<string[]> {
-    const res = await fetch(`/api/git/branches?project_id=${projectId}`);
+    const res = await gitRequest(`/api/git/branches?project_id=${projectId}`);
     return res.json();
   },
 
   async getTags(projectId: number): Promise<string[]> {
-    const res = await fetch(`/api/git/tags?project_id=${projectId}`);
+    const res = await gitRequest(`/api/git/tags?project_id=${projectId}`);
     return res.json();
   },
 
   async getStatus(projectId: number): Promise<any> {
-    const res = await fetch('/api/git', {
+    const res = await gitRequest('/api/git', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'status', project_id: projectId }),

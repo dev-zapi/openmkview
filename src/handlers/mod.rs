@@ -1,3 +1,4 @@
+mod auth_handler;
 mod file_handler;
 mod git_handler;
 mod project_handler;
@@ -5,6 +6,7 @@ mod settings_handler;
 mod theme_handler;
 mod trash_handler;
 
+pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{
     create_file, delete_file, get_file_content, get_file_tree, rename_file, save_file_content,
     search_favicons, serve_project_file,

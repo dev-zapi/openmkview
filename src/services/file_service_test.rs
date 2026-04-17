@@ -641,7 +641,7 @@ fn test_atomic_write_preserves_file_on_partial_failure() {
     fs::write(&file_path, "# Original content\nMore content").unwrap();
 
     // Read original content
-    let original_content = fs::read_to_string(&file_path).unwrap();
+    let _original_content = fs::read_to_string(&file_path).unwrap();
 
     // Verify atomic write by checking no temp files are left
     let result = FileService::save_file_content(temp_dir.path(), "test.md", "# Updated", None);

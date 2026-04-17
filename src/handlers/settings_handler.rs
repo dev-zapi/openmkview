@@ -1,3 +1,4 @@
+use crate::auth::update_session_timeout;
 use crate::db::SettingsRepository;
 use crate::errors::AppResult;
 use crate::models::SystemSettings;
@@ -24,5 +25,6 @@ pub async fn update_settings(
 
     let settings = body.into_inner();
     service.save_settings(&settings)?;
+    update_session_timeout(&data, settings.session_timeout_minutes)?;
     Ok(HttpResponse::Ok().json(settings))
 }

@@ -69,12 +69,15 @@ const App: Component = () => {
   };
 
   const handleMobileProjectClick = async (project: Project) => {
-    mobileLayoutStore.closeLeftDrawer();
-    await projectHook.switchProject(project);
+    const switched = await projectHook.switchProject(project);
+    if (switched) {
+      mobileLayoutStore.closeLeftDrawer();
+    }
+    return switched;
   };
 
-  const handleMobileOpenProjectColorChange = (event: MouseEvent, project: Project) => {
-    projectHook.openColorPicker(event, project.id);
+  const handleMobileProjectActionSwitch = (project: Project) => {
+    return projectHook.switchProject(project);
   };
 
   const handleMobileOpenProjectColorChangeAt = (project: Project, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => {
@@ -166,9 +169,9 @@ const App: Component = () => {
           onOpenSettings={() => appStore.setSettingsOpen(true)}
           onToggleTheme={() => settingsStore.toggleThemeMode()}
           onEditProject={() => appStore.openProjectEditDialog()}
-          onOpenProjectColorChange={handleMobileOpenProjectColorChange}
           onOpenProjectColorChangeAt={handleMobileOpenProjectColorChangeAt}
           onProjectClick={handleMobileProjectClick}
+          onProjectActionSwitch={handleMobileProjectActionSwitch}
           onFileClick={(path) => fileHook.mobileFileClick(path)}
           onFolderToggle={fileHook.toggleFolder}
           onDelete={(node) => void fileHook.deleteFile(node)}

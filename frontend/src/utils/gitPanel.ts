@@ -1,3 +1,5 @@
+import { authStore } from '../stores/authStore';
+
 export type GitAction = 'add' | 'commit' | 'pull' | 'push';
 
 export const runGitAction = async (projectId: number, action: GitAction, message?: string) => {
@@ -10,6 +12,10 @@ export const runGitAction = async (projectId: number, action: GitAction, message
       ...(message ? { message } : {}),
     }),
   });
+
+  if (response.status === 401) {
+    authStore.setAuthenticated(false);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

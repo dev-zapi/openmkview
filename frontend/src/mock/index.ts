@@ -4,7 +4,7 @@
  */
 
 import type { Plugin } from 'vite';
-import { handleProjectsApi, handleFilesApi, handleGitApi } from './handlers';
+import { handleProjectsApi, handleFilesApi, handleGitApi, handleAuthApi, handleSettingsApi } from './handlers';
 
 // Global configuration, set by vite.config.ts
 let mockEnabled = true;
@@ -55,6 +55,14 @@ export function mockServerPlugin(): Plugin {
         try {
           // Try to handle projects API
           if (await handleProjectsApi(req, res, next)) {
+            return;
+          }
+
+          if (await handleAuthApi(req, res, next)) {
+            return;
+          }
+
+          if (await handleSettingsApi(req, res, next)) {
             return;
           }
 

@@ -8,6 +8,7 @@ interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onSave?: () => void;
+  authRequired?: boolean;
 }
 
 interface SettingsCategory {
@@ -27,6 +28,7 @@ type StringSettingKey = {
 const categories: SettingsCategory[] = [
   { id: 'settings-themes', label: 'Themes' },
   { id: 'settings-markdown', label: 'Markdown' },
+  { id: 'settings-session', label: 'Session' },
   { id: 'settings-trash', label: 'Trash' },
   { id: 'settings-fonts', label: 'Fonts' },
 ];
@@ -69,10 +71,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [themes, setThemes] = createSignal<Theme[]>([]);
   const [installing, setInstalling] = createSignal(false);
   const [installError, setInstallError] = createSignal<string | null>(null);
+  const [saveError, setSaveError] = createSignal<string | null>(null);
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   let observer: IntersectionObserver | null = null;
   let observerTimer: number | undefined;
   let contentRef: HTMLDivElement | undefined;
+  const visibleCategories = () => categories.filter((category) => props.authRequired || category.id !== 'settings-session');
 
   const scrollToCategory = (id: string) => {
     const el = document.getElementById(id);
@@ -102,7 +106,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       }
     );
 
-    categories.forEach(({ id }) => {
+    visibleCategories().forEach(({ id }) => {
       const el = document.getElementById(id);
       if (el) observer?.observe(el);
     });
@@ -114,7 +118,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
   createEffect(() => {
     if (props.isOpen) {
-      setActiveCategory(categories[0].id);
+      setActiveCategory(visibleCategories()[0]?.id ?? categories[0].id);
       observer?.disconnect();
       observerTimer = window.setTimeout(() => initObserver(), 0);
     } else {
@@ -149,12 +153,41 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   });
 
   const handleSave = () => {
-    saveSettings(settings());
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    void (async () => {
+      setSaveError(null);
+      const settingsResponse = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings()),
+      });
 
-    applyTheme(settings());
-    props.onSave?.();
+      if (!settingsResponse.ok) {
+        const error = await settingsResponse.json().catch(() => ({ error: settingsResponse.statusText }));
+        setSaveError(error.error || 'Failed to save settings');
+        return;
+      }
+
+      if (props.authRequired) {
+        const timeoutResponse = await fetch('/api/auth/session-timeout', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionTimeoutMinutes: settings().sessionTimeoutMinutes }),
+        });
+
+        if (!timeoutResponse.ok) {
+          const error = await timeoutResponse.json().catch(() => ({ error: timeoutResponse.statusText }));
+          setSaveError(error.error || 'Failed to save session timeout');
+          return;
+        }
+      }
+
+      saveSettings(settings());
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+
+      applyTheme(settings());
+      props.onSave?.();
+    })();
   };
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -231,7 +264,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
           <div class="settings-panel-body">
             <nav class="settings-nav">
               <ul>
-                <For each={categories}>
+                <For each={visibleCategories()}>
                   {(cat) => (
                     <li>
                       <button
@@ -249,6 +282,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             </nav>
 
             <div class="settings-panel-content" ref={contentRef}>
+              <Show when={saveError()}>
+                <p style="margin-bottom: 16px; color: var(--color-error); font-size: 12px;">{saveError()}</p>
+              </Show>
+
               <div class="settings-section" id="settings-themes">
                 <h4>Themes</h4>
 
@@ -339,6 +376,27 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   </div>
                 </Show>
               </div>
+
+              <Show when={props.authRequired}>
+                <div class="settings-section" id="settings-session">
+                  <h4>Session</h4>
+
+                  <div class="settings-item">
+                    <label for="session-timeout-minutes">Session Timeout (minutes)</label>
+                    <input
+                      id="session-timeout-minutes"
+                      type="number"
+                      min="1"
+                      max="10080"
+                      value={settings().sessionTimeoutMinutes}
+                      onInput={(e) => updateSetting('sessionTimeoutMinutes', parseInt(e.currentTarget.value, 10) || 60)}
+                    />
+                    <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                      Controls how long inactive sessions remain valid. Login credentials can only be changed by CLI, env, or config file.
+                    </p>
+                  </div>
+                </div>
+              </Show>
 
               <div class="settings-section" id="settings-trash">
                 <h4>Trash Settings</h4>

@@ -20,6 +20,7 @@ export interface Settings {
   markdownFontSize: string;
   protectedPaths: string[];
   trashExpireDays: number;
+  sessionTimeoutMinutes: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,7 +35,14 @@ export const DEFAULT_SETTINGS: Settings = {
   markdownFontSize: '16px',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   trashExpireDays: 30,
+  sessionTimeoutMinutes: 60,
 };
+
+export interface AuthStatus {
+  authRequired: boolean;
+  authenticated: boolean;
+  sessionTimeoutMinutes?: number;
+}
 
 export const DEFAULT_SIDEBAR_WIDTH = 280;
 export const MIN_SIDEBAR_WIDTH = 200;

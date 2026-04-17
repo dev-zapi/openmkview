@@ -91,6 +91,10 @@ describe('SettingsPanel', () => {
 
   it('saves settings and calls onSave', async () => {
     const onSave = vi.fn();
+    vi.spyOn(window, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...DEFAULT_SETTINGS, markdownWidth: 'fixed', fixedWidth: '720px' }),
+    } as Response);
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} onSave={onSave} />);
 
     fireEvent.change(screen.getByLabelText('Content Width'), { target: { value: 'fixed' }, currentTarget: { value: 'fixed' } });
@@ -105,9 +109,11 @@ describe('SettingsPanel', () => {
     });
     fireEvent.click(screen.getByText('Save Settings'));
 
-    const saved = JSON.parse(localStorage.getItem('openmkview-settings') || '{}');
-    expect(saved.markdownWidth).toBe('fixed');
-    expect(saved.fixedWidth).toBe('720px');
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('openmkview-settings') || '{}');
+      expect(saved.markdownWidth).toBe('fixed');
+      expect(saved.fixedWidth).toBe('720px');
+    });
     expect(document.body.classList.contains('light-theme') || document.body.classList.contains('dark-theme')).toBe(true);
     expect(onSave).toHaveBeenCalled();
   });
@@ -192,9 +198,9 @@ describe('SettingsPanel', () => {
       
       render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
       
-      await waitFor(() => {
-        expect(observeMock).toHaveBeenCalledTimes(4);
+        await waitFor(() => {
+          expect(observeMock).toHaveBeenCalledTimes(4);
+        });
       });
-    });
   });
 });

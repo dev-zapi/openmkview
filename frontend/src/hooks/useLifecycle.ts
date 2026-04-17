@@ -23,6 +23,10 @@ export const useLifecycle = () => {
     
     initSettingsEffects();
 
+    await settingsStore.fetchSettings().catch(err => {
+      console.warn('Failed to load server settings:', err);
+    });
+
     const projectList = await api.getProjects();
     projectStore.setProjects(projectList);
 
