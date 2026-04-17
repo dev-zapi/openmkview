@@ -3,7 +3,21 @@ import { useProject } from '../../hooks/useProject';
 import { projectStore } from '../../stores/projectStore';
 import { appStore } from '../../stores/appStore';
 import { openProjectStore } from '../../stores/openProjectStore';
+import { editorStore } from '../../stores/editorStore';
 import type { Project } from '../../types';
+
+vi.mock('../../services/api', () => ({
+  api: {
+    getFileTree: vi.fn().mockResolvedValue([]),
+    closeProject: vi.fn().mockResolvedValue(undefined),
+    updateProjectColor: vi.fn().mockResolvedValue(undefined),
+    updateProject: vi.fn(),
+    searchFavicons: vi.fn(),
+    getFileRawUrl: vi.fn((relativePath: string, projectId: number) =>
+      `/api/files/raw?relativePath=${encodeURIComponent(relativePath)}&project_id=${projectId}`
+    ),
+  },
+}));
 
 describe('useProject', () => {
   const project: Project = {
@@ -16,6 +30,8 @@ describe('useProject', () => {
   beforeEach(() => {
     projectStore.setProjects([]);
     projectStore.setActiveProject(null);
+    editorStore.reset();
+    appStore.setActiveTab('preview');
     appStore.closeColorPicker();
     appStore.closeOpenProjectDialog();
     openProjectStore.resetAll();
@@ -150,7 +166,7 @@ describe('useProject', () => {
       7
     );
 
-    expect(appStore.colorPickerPosition()).toEqual({ x: -68, y: -48 });
+    expect(appStore.colorPickerPosition()).toEqual({ x: 8, y: 8 });
   });
 
   it('opens color picker from explicit coordinates', () => {
@@ -161,5 +177,39 @@ describe('useProject', () => {
     expect(appStore.colorPickerOpen()).toBe(true);
     expect(appStore.colorPickerProjectId()).toBe(9);
     expect(appStore.colorPickerPosition()).toEqual({ x: 80, y: 44 });
+  });
+
+  it('clamps explicit color picker coordinates within the viewport', () => {
+    const { openColorPickerAt } = useProject();
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 320,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      writable: true,
+      configurable: true,
+      value: 280,
+    });
+
+    openColorPickerAt(9, { left: 220, right: 260, top: 260 });
+
+    expect(appStore.colorPickerPosition()).toEqual({ x: 8, y: 8 });
+  });
+
+  it('returns false when switching projects is cancelled by dirty editor confirmation', async () => {
+    const { switchProject } = useProject();
+    const targetProject = { ...project, id: 2, name: 'beta' };
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    editorStore.initialize('old');
+    editorStore.updateContent('new');
+
+    appStore.setActiveTab('edit');
+    projectStore.setActiveProject(project);
+
+    await expect(switchProject(targetProject)).resolves.toBe(false);
+    expect(projectStore.state.activeProject).toEqual(project);
+    expect(editorStore.editContent()).toBe('new');
+    expect(editorStore.isDirty()).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import { Component, For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import { MobileLayout, mobileLayoutStore } from '../components/mobile';
 import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
@@ -38,9 +39,9 @@ interface MobileLayoutWrapperProps {
   onOpenSettings: () => void;
   onToggleTheme: () => void;
   onEditProject: () => void;
-  onOpenProjectColorChange: (event: MouseEvent, project: Project) => void;
   onOpenProjectColorChangeAt: (project: Project, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => void;
-  onProjectClick: (project: Project) => void;
+  onProjectClick: (project: Project) => void | Promise<boolean | void>;
+  onProjectActionSwitch: (project: Project) => Promise<boolean>;
   onFileClick: (path: string, relativePath: string) => void;
   onFolderToggle: (path: string, expanded: boolean) => void;
   onDelete: (node: FileNode) => void;
@@ -63,9 +64,20 @@ interface MobileLayoutWrapperProps {
 }
 
 export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) => {
+  const LONG_PRESS_DURATION = 450;
+  const LONG_PRESS_MOVE_THRESHOLD = 10;
+
   const [actionProject, setActionProject] = createSignal<Project | null>(null);
   const [longPressTriggered, setLongPressTriggered] = createSignal(false);
   let longPressTimer: number | undefined;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchMoved = false;
+  let ignoreProjectClickUntil = 0;
+  let actionTriggerElement: HTMLElement | null = null;
+  let editProjectActionButton: HTMLButtonElement | undefined;
+  let colorProjectActionButton: HTMLButtonElement | undefined;
+  let cancelProjectActionButton: HTMLButtonElement | undefined;
 
   const clearLongPressTimer = () => {
     if (longPressTimer) {
@@ -74,40 +86,139 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     }
   };
 
-  const openProjectActions = (project: Project) => {
+  const suppressNextProjectClick = () => {
+    ignoreProjectClickUntil = Date.now() + 750;
+  };
+
+  const shouldIgnoreProjectClick = () => Date.now() < ignoreProjectClickUntil;
+
+  const getActionButtons = () => [
+    editProjectActionButton,
+    colorProjectActionButton,
+    cancelProjectActionButton,
+  ].filter((button): button is HTMLButtonElement => Boolean(button));
+
+  const restoreActionTriggerFocus = () => {
+    const triggerElement = actionTriggerElement;
+    actionTriggerElement = null;
+
+    if (!triggerElement || !mobileLayoutStore.leftDrawerOpen || !document.contains(triggerElement)) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (mobileLayoutStore.leftDrawerOpen && document.contains(triggerElement)) {
+        triggerElement.focus();
+      }
+    }, 0);
+  };
+
+  const openProjectActions = (project: Project, triggerElement?: HTMLElement) => {
     clearLongPressTimer();
     setLongPressTriggered(true);
+    actionTriggerElement = triggerElement ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setActionProject(project);
   };
 
   const closeProjectActions = () => {
     clearLongPressTimer();
     setLongPressTriggered(false);
+    touchMoved = false;
+    editProjectActionButton = undefined;
+    colorProjectActionButton = undefined;
+    cancelProjectActionButton = undefined;
     setActionProject(null);
+    restoreActionTriggerFocus();
   };
 
-  const handleProjectTouchStart = (project: Project) => {
+  const handleProjectTouchStart = (project: Project, event: TouchEvent) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    const triggerElement = event.currentTarget as HTMLButtonElement;
+
     setLongPressTriggered(false);
     clearLongPressTimer();
-    longPressTimer = window.setTimeout(() => openProjectActions(project), 450);
+    touchMoved = false;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    actionTriggerElement = triggerElement;
+
+    longPressTimer = window.setTimeout(
+      () => openProjectActions(project, triggerElement),
+      LONG_PRESS_DURATION
+    );
   };
 
-  const handleProjectTouchEnd = async (project: Project) => {
-    const triggered = longPressTriggered();
+  const handleProjectTouchMove = (event: TouchEvent) => {
+    const touch = event.touches[0];
+    if (!touch || !longPressTimer) return;
+
+    const deltaX = Math.abs(touch.clientX - touchStartX);
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+    if (deltaX > LONG_PRESS_MOVE_THRESHOLD || deltaY > LONG_PRESS_MOVE_THRESHOLD) {
+      touchMoved = true;
+      clearLongPressTimer();
+    }
+  };
+
+  const handleProjectTouchCancel = () => {
     clearLongPressTimer();
+    touchMoved = false;
+    setLongPressTriggered(false);
+    suppressNextProjectClick();
+  };
+
+  const handleProjectTouchEnd = async (project: Project, event: TouchEvent) => {
+    const triggered = longPressTriggered();
+    const moved = touchMoved;
+
+    clearLongPressTimer();
+    suppressNextProjectClick();
+    touchMoved = false;
+
     if (triggered) {
+      event.preventDefault();
       setLongPressTriggered(false);
       return;
     }
+
+    if (moved) {
+      event.preventDefault();
+      setLongPressTriggered(false);
+      return;
+    }
+
+    event.preventDefault();
+    setLongPressTriggered(false);
     await props.onProjectClick(project);
+  };
+
+  const handleProjectClick = (project: Project) => {
+    if (shouldIgnoreProjectClick()) {
+      return;
+    }
+
+    void props.onProjectClick(project);
+  };
+
+  const handleProjectKeyDown = (event: KeyboardEvent, project: Project) => {
+    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault();
+      openProjectActions(project, event.currentTarget as HTMLButtonElement);
+    }
   };
 
   const handleProjectEdit = async () => {
     const project = actionProject();
     if (!project) return;
 
+    const switched = await props.onProjectActionSwitch(project);
+    if (switched === false) {
+      return;
+    }
+
     closeProjectActions();
-    await props.onProjectClick(project);
     props.onEditProject();
   };
 
@@ -122,6 +233,49 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
   };
 
   createEffect(() => {
+    if (!actionProject()) {
+      return;
+    }
+
+    queueMicrotask(() => editProjectActionButton?.focus());
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeProjectActions();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const buttons = getActionButtons();
+      if (buttons.length === 0) {
+        return;
+      }
+
+      const firstButton = buttons[0];
+      const lastButton = buttons[buttons.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey && activeElement === firstButton) {
+        event.preventDefault();
+        lastButton.focus();
+      } else if (!event.shiftKey && activeElement === lastButton) {
+        event.preventDefault();
+        firstButton.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    onCleanup(() => {
+      document.removeEventListener('keydown', handleKeyDown);
+    });
+  });
+
+  createEffect(() => {
     if (!mobileLayoutStore.leftDrawerOpen) {
       closeProjectActions();
     }
@@ -132,8 +286,11 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
   });
 
   return (
-    <MobileLayout
+    <>
+      <MobileLayout
       activeProjectName={props.activeProject?.name}
+      leftDrawerCloseOnEscape={!actionProject()}
+      leftDrawerModal={!actionProject()}
       activityBarContent={
         <>
           <div class={styles.activityBarProjects}>
@@ -144,19 +301,17 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
                   classList={{ [styles.activityBarButtonActive]: props.activeProject?.id === project.id }}
                   title={project.name}
                   aria-label={project.name}
-                  onTouchStart={() => handleProjectTouchStart(project)}
-                  onTouchMove={clearLongPressTimer}
-                  onTouchCancel={clearLongPressTimer}
-                  onTouchEnd={() => void handleProjectTouchEnd(project)}
+                  aria-keyshortcuts="Shift+F10"
+                  onTouchStart={(event) => handleProjectTouchStart(project, event)}
+                  onTouchMove={handleProjectTouchMove}
+                  onTouchCancel={handleProjectTouchCancel}
+                  onTouchEnd={(event) => void handleProjectTouchEnd(project, event)}
                   onContextMenu={(event) => {
                     event.preventDefault();
-                    openProjectActions(project);
+                    openProjectActions(project, event.currentTarget as HTMLButtonElement);
                   }}
-                  onClick={() => {
-                    if (!longPressTriggered()) {
-                      void props.onProjectClick(project);
-                    }
-                  }}
+                  onKeyDown={(event) => handleProjectKeyDown(event, project)}
+                  onClick={() => handleProjectClick(project)}
                   style={props.getProjectStyle(project)}
                 >
                   {props.renderProjectIcon(project)}
@@ -250,42 +405,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               </svg>
             </button>
           </div>
-
-          <Show when={actionProject()}>
-            <div class={styles.projectActionOverlay} onClick={closeProjectActions}>
-              <div
-                class={styles.projectActionSheet}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="mobile-project-actions-title"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div class={styles.projectActionHeader}>
-                  <div class={styles.projectActionTitle} id="mobile-project-actions-title">{actionProject()!.name}</div>
-                  <div class={styles.projectActionHint}>Long press project actions</div>
-                </div>
-                <button class={styles.projectActionButton} onClick={() => void handleProjectEdit()}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  <span>Edit Project</span>
-                </button>
-                <button class={styles.projectActionButton} onClick={handleProjectColorChange}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="13.5" cy="6.5" r="2.5"/>
-                    <circle cx="19" cy="13" r="2.5"/>
-                    <circle cx="13.5" cy="19.5" r="2.5"/>
-                    <circle cx="6" cy="13" r="2.5"/>
-                  </svg>
-                  <span>Change Color</span>
-                </button>
-                <button class={`${styles.projectActionButton} ${styles.projectActionCancel}`} onClick={closeProjectActions}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </Show>
         </>
       }
       sidebarContent={
@@ -405,7 +524,66 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
           showOutline={false}
         />
       </div>
-    </MobileLayout>
+      </MobileLayout>
+      <Show when={actionProject()}>
+        <Portal>
+          <div class={styles.projectActionOverlay} onClick={closeProjectActions}>
+            <div
+              class={styles.projectActionSheet}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-project-actions-title"
+              aria-describedby="mobile-project-actions-description"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div class={styles.projectActionHandle} aria-hidden="true" />
+              <div class={styles.projectActionHeader}>
+                <div class={styles.projectActionEyebrow}>Project Actions</div>
+                <div class={styles.projectActionTitle} id="mobile-project-actions-title">{actionProject()!.name}</div>
+                <div class={styles.projectActionHint} id="mobile-project-actions-description">Long press or press Shift+F10 to manage this project.</div>
+              </div>
+              <button
+                ref={(element) => {
+                  editProjectActionButton = element;
+                }}
+                class={styles.projectActionButton}
+                onClick={() => void handleProjectEdit()}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                <span>Edit Project</span>
+              </button>
+              <button
+                ref={(element) => {
+                  colorProjectActionButton = element;
+                }}
+                class={styles.projectActionButton}
+                onClick={handleProjectColorChange}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="13.5" cy="6.5" r="2.5"/>
+                  <circle cx="19" cy="13" r="2.5"/>
+                  <circle cx="13.5" cy="19.5" r="2.5"/>
+                  <circle cx="6" cy="13" r="2.5"/>
+                </svg>
+                <span>Change Color</span>
+              </button>
+              <button
+                ref={(element) => {
+                  cancelProjectActionButton = element;
+                }}
+                class={`${styles.projectActionButton} ${styles.projectActionCancel}`}
+                onClick={closeProjectActions}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Portal>
+      </Show>
+    </>
   );
 };
 

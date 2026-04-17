@@ -8,6 +8,9 @@ interface MobileDrawerProps {
   children: JSX.Element;
   width?: string;
   disableOverlayClose?: boolean;
+  closeOnEscape?: boolean;
+  modal?: boolean;
+  ariaLabel?: string;
 }
 
 export const MobileDrawer: Component<MobileDrawerProps> = (props) => {
@@ -26,7 +29,7 @@ export const MobileDrawer: Component<MobileDrawerProps> = (props) => {
 
   // Handle ESC key to close drawer
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && props.isOpen) {
+    if (e.key === 'Escape' && props.isOpen && props.closeOnEscape !== false) {
       props.onClose();
     }
   };
@@ -154,9 +157,10 @@ export const MobileDrawer: Component<MobileDrawerProps> = (props) => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        role="dialog"
-        aria-modal="true"
-        aria-label={props.position === 'left' ? 'Navigation drawer' : 'Outline panel'}
+        role={props.modal === false ? undefined : 'dialog'}
+        aria-modal={props.modal === false ? undefined : 'true'}
+        aria-label={props.modal === false ? undefined : props.ariaLabel ?? (props.position === 'left' ? 'Navigation drawer' : 'Outline panel')}
+        aria-hidden={props.modal === false ? 'true' : undefined}
       >
         <div
           ref={drawerRef}

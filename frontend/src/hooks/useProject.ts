@@ -18,10 +18,19 @@ export const useProject = () => {
 
     const pickerWidth = 280;
     const pickerHeight = 300;
+    const viewportPadding = 8;
+    const maxX = Math.max(viewportPadding, window.innerWidth - pickerWidth - viewportPadding);
+    const maxY = Math.max(viewportPadding, window.innerHeight - pickerHeight - viewportPadding);
+    const nextX = x + pickerWidth > window.innerWidth - viewportPadding
+      ? rect.left - pickerWidth - 8
+      : x;
+    const nextY = y + pickerHeight > window.innerHeight - viewportPadding
+      ? window.innerHeight - pickerHeight - viewportPadding
+      : y;
 
     return {
-      x: x + pickerWidth > window.innerWidth ? rect.left - pickerWidth - 8 : x,
-      y: y + pickerHeight > window.innerHeight ? window.innerHeight - pickerHeight - 8 : y,
+      x: Math.min(Math.max(nextX, viewportPadding), maxX),
+      y: Math.min(Math.max(nextY, viewportPadding), maxY),
     };
   };
 
@@ -36,13 +45,13 @@ export const useProject = () => {
     return true;
   };
 
-  const switchProject = async (project: Project, updateUrl: boolean = true) => {
-    if (!confirmDiscardIfDirty()) return;
+  const switchProject = async (project: Project, updateUrl: boolean = true): Promise<boolean> => {
+    if (!confirmDiscardIfDirty()) return false;
 
-    projectStore.setActiveProject(project);
     fileStore.startLoading();
     try {
       const tree = await api.getFileTree(project.id);
+      projectStore.setActiveProject(project);
       fileStore.setFileTree(tree);
       diffStore.reset();
       fileStore.closeFile();
@@ -52,9 +61,12 @@ export const useProject = () => {
       }
     } catch (error) {
       console.error('Failed to load file tree:', error);
+      return false;
     } finally {
       fileStore.finishLoading();
     }
+
+    return true;
   };
 
   const closeProject = async (projectId: number) => {
@@ -105,8 +117,10 @@ export const useProject = () => {
         projectStore.addProject(project);
       }
       
-      await switchProject(project);
-      openProjectStore.addRecentProject(recentProject);
+      const switched = await switchProject(project);
+      if (switched) {
+        openProjectStore.addRecentProject(recentProject);
+      }
     } catch (error) {
       console.error('Failed to open project:', error);
       alert('Failed to open project. Please check the path and try again.');

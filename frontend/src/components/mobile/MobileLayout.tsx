@@ -10,6 +10,8 @@ interface MobileLayoutProps {
   outlinePanelContent?: JSX.Element;
   headerContent?: JSX.Element;
   activeProjectName?: string;
+  leftDrawerCloseOnEscape?: boolean;
+  leftDrawerModal?: boolean;
 }
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
@@ -40,7 +42,7 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
       {/* Main content area */}
       <div class={styles.mobileMain}>
         <Show when={props.headerContent}>
-          {props.headerContent}
+          {(content) => content()}
         </Show>
         <div class={styles.mobileContent}>
           {props.children}
@@ -53,21 +55,27 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         onClose={mobileLayoutStore.closeLeftDrawer}
         position="left"
         width="85%"
+        closeOnEscape={props.leftDrawerCloseOnEscape}
+        modal={props.leftDrawerModal}
       >
         <div class={styles.leftDrawerContent}>
           <Show when={props.activityBarContent}>
-            <div class={styles.activityBarSection}>
-              {props.activityBarContent}
-            </div>
+            {(content) => (
+              <div class={styles.activityBarSection}>
+                {content()}
+              </div>
+            )}
           </Show>
 
           <Show when={props.sidebarContent}>
-            <div class={styles.sidebarSection}>
-              <div class={styles.sidebarHeader}>Explorer</div>
-              <div class={styles.sidebarContent}>
-                {props.sidebarContent}
+            {(content) => (
+              <div class={styles.sidebarSection}>
+                <div class={styles.sidebarHeader}>Explorer</div>
+                <div class={styles.sidebarContent}>
+                  {content()}
+                </div>
               </div>
-            </div>
+            )}
           </Show>
         </div>
       </MobileDrawer>
@@ -81,7 +89,7 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
       >
         <div class={styles.rightDrawerContent}>
           <Show when={props.outlinePanelContent}>
-            {props.outlinePanelContent}
+            {(content) => content()}
           </Show>
         </div>
       </MobileDrawer>
