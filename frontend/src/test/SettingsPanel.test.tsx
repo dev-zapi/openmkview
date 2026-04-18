@@ -8,7 +8,7 @@ describe('SettingsPanel', () => {
     localStorage.clear();
     vi.spyOn(window, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({ themes: [] }),
+      json: async () => ({ themes: [], credentials: [] }),
     } as Response);
   });
 
@@ -33,6 +33,15 @@ describe('SettingsPanel', () => {
     expect(screen.getAllByText('Markdown').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Themes').length).toBeGreaterThan(0);
     expect(screen.getByText('Trash Settings')).toBeTruthy();
+  });
+
+  it('renders passkey management when auth is enabled', async () => {
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Passkeys').length).toBeGreaterThan(0);
+      expect(screen.getByText('Register New Passkey')).toBeTruthy();
+    });
   });
 
   it('calls onClose when close button clicked', () => {
@@ -146,17 +155,23 @@ describe('SettingsPanel', () => {
 
     afterEach(() => {
       vi.restoreAllMocks();
-      vi.spyOn(window, 'fetch').mockResolvedValue({
-        ok: true,
-        json: async () => ({ themes: [] }),
-      } as Response);
-    });
+        vi.spyOn(window, 'fetch').mockResolvedValue({
+          ok: true,
+          json: async () => ({ themes: [], credentials: [] }),
+        } as Response);
+      });
 
     it('renders navigation with all categories', () => {
       const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
       const navItems = container.querySelectorAll('.settings-nav button');
       expect(navItems.length).toBe(4);
       expect(container.querySelector('.settings-nav')).toBeTruthy();
+    });
+
+    it('renders auth-only navigation categories when auth is enabled', () => {
+      const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+      const navItems = container.querySelectorAll('.settings-nav button');
+      expect(navItems.length).toBe(6);
     });
 
     it('clicking navigation item triggers scrollIntoView', () => {
@@ -200,6 +215,21 @@ describe('SettingsPanel', () => {
       
         await waitFor(() => {
           expect(observeMock).toHaveBeenCalledTimes(4);
+        });
+      });
+
+      it('IntersectionObserver observes auth-only sections when auth is enabled', async () => {
+        const observeMock = vi.fn();
+        IntersectionObserverMock.mockImplementation(function(this: IntersectionObserver) {
+          this.observe = observeMock;
+          this.unobserve = vi.fn();
+          this.disconnect = vi.fn();
+        } as any);
+
+        render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+
+        await waitFor(() => {
+          expect(observeMock).toHaveBeenCalledTimes(6);
         });
       });
   });

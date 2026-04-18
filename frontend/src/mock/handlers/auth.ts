@@ -1,8 +1,18 @@
 import type { Connect } from 'vite';
+import type { PasskeyCredentialSummary } from '../../types/app';
 
 type NextFunction = () => void;
 
 let sessionTimeoutMinutes = 60;
+let passkeyAvailable = true;
+let passkeys: PasskeyCredentialSummary[] = [
+  {
+    id: 'demo-passkey',
+    name: 'Demo Device',
+    createdAt: new Date('2026-04-18T12:00:00Z').toISOString(),
+    lastUsedAt: new Date('2026-04-18T12:30:00Z').toISOString(),
+  },
+];
 
 function sendJson(res: any, data: any, status = 200) {
   res.statusCode = status;
@@ -36,12 +46,84 @@ export async function handleAuthApi(
   const pathname = url.pathname;
 
   if (req.method === 'GET' && pathname === '/api/auth/status') {
-    sendJson(res, { authRequired: false, authenticated: true, sessionTimeoutMinutes });
+    sendJson(res, { authRequired: false, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
     return true;
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/login') {
-    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes });
+    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/passkey/login/start') {
+    sendJson(res, {
+      requestId: 'mock-login-request',
+      options: {
+        publicKey: {
+          challenge: 'ZmFrZS1jaGFsbGVuZ2U',
+          timeout: 300000,
+          rpId: 'localhost',
+          allowCredentials: [
+            { id: 'ZmFrZS1jcmVkLWlk', type: 'public-key' },
+          ],
+          userVerification: 'required',
+        },
+      },
+    });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/passkey/login/finish') {
+    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/passkey/register/start') {
+    sendJson(res, {
+      requestId: 'mock-register-request',
+      options: {
+        publicKey: {
+          challenge: 'ZmFrZS1yZWdpc3Rlci1jaGFsbGVuZ2U',
+          rp: { id: 'localhost', name: 'OpenMKView' },
+          user: {
+            id: 'ZmFrZS11c2VyLWlk',
+            name: 'admin',
+            displayName: 'admin',
+          },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          timeout: 300000,
+          authenticatorSelection: { userVerification: 'required' },
+        },
+      },
+    });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/auth/passkey/register/finish') {
+    const body = await parseBody<{ name?: string }>(req);
+    passkeys = [
+      {
+        id: `passkey-${Date.now()}`,
+        name: body.name || `Device ${passkeys.length + 1}`,
+        createdAt: new Date().toISOString(),
+      },
+      ...passkeys,
+    ];
+    passkeyAvailable = passkeys.length > 0;
+    sendJson(res, { credentials: passkeys });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/auth/passkey/list') {
+    sendJson(res, { credentials: passkeys });
+    return true;
+  }
+
+  if (req.method === 'DELETE' && pathname.startsWith('/api/auth/passkey/')) {
+    const id = decodeURIComponent(pathname.slice('/api/auth/passkey/'.length));
+    passkeys = passkeys.filter((item) => item.id !== id);
+    passkeyAvailable = passkeys.length > 0;
+    sendJson(res, { credentials: passkeys });
     return true;
   }
 
@@ -50,7 +132,7 @@ export async function handleAuthApi(
     if (typeof body.sessionTimeoutMinutes === 'number' && body.sessionTimeoutMinutes > 0) {
       sessionTimeoutMinutes = body.sessionTimeoutMinutes;
     }
-    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes });
+    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
     return true;
   }
 

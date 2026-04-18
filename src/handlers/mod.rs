@@ -1,6 +1,7 @@
 mod auth_handler;
 mod file_handler;
 mod git_handler;
+mod passkey_handler;
 mod project_handler;
 mod settings_handler;
 mod theme_handler;
@@ -13,6 +14,10 @@ pub use file_handler::{
 };
 pub use git_handler::{
     execute_git, get_branches, get_commits, get_file_at_ref, get_file_diff, get_tags,
+};
+pub use passkey_handler::{
+    passkey_delete, passkey_list, passkey_login_finish, passkey_login_start,
+    passkey_register_finish, passkey_register_start,
 };
 pub use project_handler::{
     close_project, create_project, get_recent_projects, list_projects, open_project, resolve_path,

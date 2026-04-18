@@ -42,6 +42,23 @@ export interface AuthStatus {
   authRequired: boolean;
   authenticated: boolean;
   sessionTimeoutMinutes?: number;
+  passkeyAvailable: boolean;
+}
+
+export interface PasskeyCredentialSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+export interface PasskeyListResponse {
+  credentials: PasskeyCredentialSummary[];
+}
+
+export interface PasskeyCeremonyStart<T = unknown> {
+  requestId: string;
+  options: T;
 }
 
 export const DEFAULT_SIDEBAR_WIDTH = 280;

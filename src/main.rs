@@ -11,9 +11,12 @@ use openmkview::handlers::{
     get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
     get_recent_projects, get_settings, get_tags, get_theme_css_content, get_trash_stats,
     install_custom_theme, list_projects, list_themes, list_trash, move_to_trash, open_project,
-    rename_file, resolve_path, restore_from_trash, save_file_content, search_favicons,
-    serve_project_file, update_project, update_project_color, update_settings, validate_project,
+    passkey_delete, passkey_list, passkey_login_finish, passkey_login_start,
+    passkey_register_finish, passkey_register_start, rename_file, resolve_path, restore_from_trash,
+    save_file_content, search_favicons, serve_project_file, update_project, update_project_color,
+    update_settings, validate_project,
 };
+use openmkview::passkey::{build_passkey_site, build_passkey_state, resolve_passkey_origin};
 use openmkview::services::TrashService;
 use openmkview::static_files;
 use std::sync::{Arc, Mutex};
@@ -104,6 +107,24 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.route("/api/auth/status", web::get().to(auth_status))
         .route("/api/auth/login", web::post().to(auth_login))
         .route("/api/auth/logout", web::post().to(auth_logout))
+        .route(
+            "/api/auth/passkey/register/start",
+            web::post().to(passkey_register_start),
+        )
+        .route(
+            "/api/auth/passkey/register/finish",
+            web::post().to(passkey_register_finish),
+        )
+        .route(
+            "/api/auth/passkey/login/start",
+            web::post().to(passkey_login_start),
+        )
+        .route(
+            "/api/auth/passkey/login/finish",
+            web::post().to(passkey_login_finish),
+        )
+        .route("/api/auth/passkey/list", web::get().to(passkey_list))
+        .route("/api/auth/passkey/{id}", web::delete().to(passkey_delete))
         .route(
             "/api/auth/session-timeout",
             web::put().to(auth_update_session_timeout),
@@ -266,13 +287,29 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
         config.session.timeout_minutes.max(1)
     };
 
+    let configured_passkey_origin = std::env::var("OPENMKVIEW_PASSKEY_ORIGIN").ok();
+    let passkey_origin =
+        resolve_passkey_origin(&args.host, args.port, configured_passkey_origin.as_deref());
+
     let auth = resolve_auth_config(args.username, args.password, &config)
         .and_then(|auth| {
-            auth.map(|cfg| build_auth_state(cfg, timeout_minutes))
+            let secure_cookies = passkey_origin.starts_with("https://");
+            auth.map(|cfg| build_auth_state(cfg, timeout_minutes, secure_cookies))
                 .transpose()
         })
         .map(|auth| auth.map(Arc::new))
         .map_err(std::io::Error::other)?;
+
+    let bind_addr = format!("{}:{}", args.host, args.port);
+
+    let passkey = if let Some(auth_state) = auth.as_ref() {
+        let passkey_site = build_passkey_site(&passkey_origin).map_err(std::io::Error::other)?;
+        Some(Arc::new(
+            build_passkey_state(auth_state, passkey_site).map_err(std::io::Error::other)?,
+        ))
+    } else {
+        None
+    };
 
     let project_repo = ProjectRepository::new(&conn);
     let projects = project_repo.list(false).expect("Failed to list projects");
@@ -289,12 +326,15 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
     let app_state = web::Data::new(AppState {
         db: Arc::new(Mutex::new(conn)),
         auth: auth.clone(),
+        passkey: passkey.clone(),
     });
 
-    let bind_addr = format!("{}:{}", args.host, args.port);
     log::info!("Server started at http://{}", bind_addr);
     if auth.is_some() {
         log::info!("Authentication enabled");
+        if passkey.is_some() {
+            log::info!("Passkey support enabled for {}", passkey_origin);
+        }
     } else {
         log::info!("Authentication disabled");
     }

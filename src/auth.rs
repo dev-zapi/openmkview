@@ -45,6 +45,7 @@ pub struct AuthState {
     pub sessions: Arc<Mutex<HashMap<String, SessionRecord>>>,
     pub session_timeout_minutes: Arc<Mutex<u64>>,
     pub secret_key: Arc<Vec<u8>>,
+    pub secure_cookies: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -66,6 +67,7 @@ pub struct AuthStatusResponse {
     pub authenticated: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_timeout_minutes: Option<u64>,
+    pub passkey_available: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,7 +134,11 @@ pub fn resolve_auth_config(
     }
 }
 
-pub fn build_auth_state(auth_config: AuthConfig, timeout_minutes: u64) -> AppResult<AuthState> {
+pub fn build_auth_state(
+    auth_config: AuthConfig,
+    timeout_minutes: u64,
+    secure_cookies: bool,
+) -> AppResult<AuthState> {
     let mut config = load_config()?;
     let secret_key = ensure_secret_key(&mut config)?;
 
@@ -146,6 +152,7 @@ pub fn build_auth_state(auth_config: AuthConfig, timeout_minutes: u64) -> AppRes
         sessions: Arc::new(Mutex::new(HashMap::new())),
         session_timeout_minutes: Arc::new(Mutex::new(timeout_minutes.max(1))),
         secret_key: Arc::new(secret_key),
+        secure_cookies,
     })
 }
 
@@ -173,7 +180,11 @@ fn session_timeout_minutes(auth: &AuthState) -> AppResult<u64> {
 }
 
 fn is_public_path(path: &str) -> bool {
-    !path.starts_with("/api/") || path == "/api/auth/status" || path == "/api/auth/login"
+    !path.starts_with("/api/")
+        || path == "/api/auth/status"
+        || path == "/api/auth/login"
+        || path == "/api/auth/passkey/login/start"
+        || path == "/api/auth/passkey/login/finish"
 }
 
 fn build_session_token(secret_key: &[u8]) -> AppResult<String> {
@@ -246,6 +257,45 @@ fn validate_session(auth: &AuthState, token: &str) -> AppResult<bool> {
     Ok(is_valid)
 }
 
+pub fn current_session_timeout_minutes(auth: &AuthState) -> AppResult<u64> {
+    session_timeout_minutes(auth)
+}
+
+pub fn create_session_cookie(auth: &AuthState) -> AppResult<Cookie<'static>> {
+    let token = build_session_token(&auth.secret_key)?;
+    let now = Utc::now().timestamp();
+    auth.sessions
+        .lock()
+        .map_err(|_| AppError::InternalError("session 状态已损坏".to_string()))?
+        .insert(
+            token.clone(),
+            SessionRecord {
+                issued_at: now,
+                last_seen_at: now,
+            },
+        );
+
+    let timeout_seconds = (session_timeout_minutes(auth)? as i64) * 60;
+    let mut cookie = Cookie::build(SESSION_COOKIE_NAME, token)
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .max_age(CookieDuration::seconds(timeout_seconds));
+
+    if auth.secure_cookies {
+        cookie = cookie.secure(true);
+    }
+
+    Ok(cookie.finish())
+}
+
+fn passkey_available(data: &AppState) -> AppResult<bool> {
+    match &data.passkey {
+        Some(passkey) => passkey.has_credentials(),
+        None => Ok(false),
+    }
+}
+
 fn unauthorized_response<B>(req: ServiceRequest) -> ServiceResponse<EitherBody<B>>
 where
     B: MessageBody + 'static,
@@ -272,6 +322,7 @@ pub async fn auth_status(data: web::Data<AppState>, req: HttpRequest) -> AppResu
             auth_required: false,
             authenticated: true,
             session_timeout_minutes: None,
+            passkey_available: false,
         }));
     };
 
@@ -286,6 +337,7 @@ pub async fn auth_status(data: web::Data<AppState>, req: HttpRequest) -> AppResu
         auth_required: true,
         authenticated,
         session_timeout_minutes: Some(timeout_minutes),
+        passkey_available: passkey_available(&data)?,
     }))
 }
 
@@ -298,6 +350,7 @@ pub async fn auth_login(
             auth_required: false,
             authenticated: true,
             session_timeout_minutes: None,
+            passkey_available: false,
         }));
     };
 
@@ -306,31 +359,13 @@ pub async fn auth_login(
         return Err(AppError::Unauthorized("用户名或密码错误".to_string()));
     }
 
-    let token = build_session_token(&auth.secret_key)?;
-    let now = Utc::now().timestamp();
-    auth.sessions
-        .lock()
-        .map_err(|_| AppError::InternalError("session 状态已损坏".to_string()))?
-        .insert(
-            token.clone(),
-            SessionRecord {
-                issued_at: now,
-                last_seen_at: now,
-            },
-        );
-
-    let timeout_seconds = (session_timeout_minutes(auth)? as i64) * 60;
-    let cookie = Cookie::build(SESSION_COOKIE_NAME, token)
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Strict)
-        .max_age(CookieDuration::seconds(timeout_seconds))
-        .finish();
+    let cookie = create_session_cookie(auth)?;
 
     Ok(HttpResponse::Ok().cookie(cookie).json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
         session_timeout_minutes: Some(session_timeout_minutes(auth)?),
+        passkey_available: passkey_available(&data)?,
     }))
 }
 
@@ -349,27 +384,34 @@ pub async fn auth_update_session_timeout(
         auth_required: true,
         authenticated: true,
         session_timeout_minutes: Some(timeout_minutes),
+        passkey_available: passkey_available(&data)?,
     }))
 }
 
 pub async fn auth_logout(data: web::Data<AppState>, req: HttpRequest) -> AppResult<HttpResponse> {
-    if let Some(auth) = &data.auth {
+    let secure_cookies = if let Some(auth) = &data.auth {
         if let Some(cookie) = req.cookie(SESSION_COOKIE_NAME) {
             auth.sessions
                 .lock()
                 .map_err(|_| AppError::InternalError("session 状态已损坏".to_string()))?
                 .remove(cookie.value());
         }
-    }
+        auth.secure_cookies
+    } else {
+        false
+    };
 
-    let cookie = Cookie::build(SESSION_COOKIE_NAME, "")
+    let mut cookie = Cookie::build(SESSION_COOKIE_NAME, "")
         .path("/")
         .http_only(true)
         .same_site(SameSite::Strict)
-        .max_age(CookieDuration::seconds(0))
-        .finish();
+        .max_age(CookieDuration::seconds(0));
 
-    Ok(HttpResponse::Ok().cookie(cookie).finish())
+    if secure_cookies {
+        cookie = cookie.secure(true);
+    }
+
+    Ok(HttpResponse::Ok().cookie(cookie.finish()).finish())
 }
 
 pub struct AuthMiddleware {

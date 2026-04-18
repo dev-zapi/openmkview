@@ -1,8 +1,9 @@
 import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
-import type { ThemeMode, Theme, Settings } from '../types/app';
+import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
 import { applyTheme } from '../utils/theme';
 import { loadSettings, saveSettings } from '../utils/settings';
+import { authStore } from '../stores/authStore';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const categories: SettingsCategory[] = [
   { id: 'settings-themes', label: 'Themes' },
   { id: 'settings-markdown', label: 'Markdown' },
   { id: 'settings-session', label: 'Session' },
+  { id: 'settings-passkeys', label: 'Passkeys' },
   { id: 'settings-trash', label: 'Trash' },
   { id: 'settings-fonts', label: 'Fonts' },
 ];
@@ -72,11 +74,21 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [installing, setInstalling] = createSignal(false);
   const [installError, setInstallError] = createSignal<string | null>(null);
   const [saveError, setSaveError] = createSignal<string | null>(null);
+  const [passkeys, setPasskeys] = createSignal<PasskeyCredentialSummary[]>([]);
+  const [passkeyLoading, setPasskeyLoading] = createSignal(false);
+  const [passkeyBusyId, setPasskeyBusyId] = createSignal<string | null>(null);
+  const [passkeyError, setPasskeyError] = createSignal<string | null>(null);
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   let observer: IntersectionObserver | null = null;
   let observerTimer: number | undefined;
   let contentRef: HTMLDivElement | undefined;
-  const visibleCategories = () => categories.filter((category) => props.authRequired || category.id !== 'settings-session');
+  const visibleCategories = () => categories.filter((category) => {
+    if (!props.authRequired) {
+      return category.id !== 'settings-session' && category.id !== 'settings-passkeys';
+    }
+
+    return true;
+  });
 
   const scrollToCategory = (id: string) => {
     const el = document.getElementById(id);
@@ -88,6 +100,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
   const initObserver = () => {
     if (!contentRef) return;
+    if (typeof window.IntersectionObserver === 'undefined') return;
     
     observer = new IntersectionObserver(
       (entries) => {
@@ -113,7 +126,8 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   };
 
   onMount(() => {
-    loadThemes();
+    void loadThemes();
+    void loadPasskeys();
   });
 
   createEffect(() => {
@@ -148,8 +162,33 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     }
   };
 
+  const loadPasskeys = async () => {
+    if (!props.authRequired) {
+      setPasskeys([]);
+      return;
+    }
+
+    setPasskeyLoading(true);
+    setPasskeyError(null);
+
+    try {
+      const credentials = await authStore.listPasskeys();
+      setPasskeys(credentials);
+    } catch (err) {
+      setPasskeyError(err instanceof Error ? err.message : 'Failed to load Passkeys');
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
   createEffect(() => {
     setSettings(loadSettings());
+  });
+
+  createEffect(() => {
+    if (props.isOpen && props.authRequired) {
+      void loadPasskeys();
+    }
   });
 
   const handleSave = () => {
@@ -225,6 +264,49 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     } finally {
       setInstalling(false);
     }
+  };
+
+  const handlePasskeyRegister = async () => {
+    const suggested = `Device ${passkeys().length + 1}`;
+    const name = window.prompt('Passkey name', suggested) || undefined;
+    setPasskeyBusyId('__register__');
+    setPasskeyError(null);
+
+    try {
+      const credentials = await authStore.registerPasskey(name);
+      setPasskeys(credentials);
+    } catch (err) {
+      setPasskeyError(err instanceof Error ? err.message : 'Failed to register Passkey');
+    } finally {
+      setPasskeyBusyId(null);
+    }
+  };
+
+  const handlePasskeyDelete = async (id: string) => {
+    setPasskeyBusyId(id);
+    setPasskeyError(null);
+
+    try {
+      const credentials = await authStore.deletePasskey(id);
+      setPasskeys(credentials);
+    } catch (err) {
+      setPasskeyError(err instanceof Error ? err.message : 'Failed to delete Passkey');
+    } finally {
+      setPasskeyBusyId(null);
+    }
+  };
+
+  const formatTimestamp = (value?: string) => {
+    if (!value) {
+      return 'Never used';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleString();
   };
 
   const lightThemes = () => themes().filter(t => t.type === 'light');
@@ -394,6 +476,63 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
                       Controls how long inactive sessions remain valid. Login credentials can only be changed by CLI, env, or config file.
                     </p>
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={props.authRequired}>
+                <div class="settings-section" id="settings-passkeys">
+                  <h4>Passkeys</h4>
+
+                  <div class="settings-item">
+                    <label>Registered Passkeys</label>
+                    <p style="margin-top: 4px; margin-bottom: 12px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                      Register a Passkey on this device or a security key, then use it as an alternative to password login.
+                    </p>
+
+                    <Show when={passkeyError()}>
+                      <p style="margin-bottom: 12px; color: var(--color-error); font-size: 12px;">{passkeyError()}</p>
+                    </Show>
+
+                    <div class="passkey-list">
+                      <Show when={passkeyLoading()}>
+                        <div class="passkey-empty">Loading Passkeys...</div>
+                      </Show>
+
+                      <Show when={!passkeyLoading() && passkeys().length === 0}>
+                        <div class="passkey-empty">No Passkeys registered yet.</div>
+                      </Show>
+
+                      <For each={passkeys()}>
+                        {(credential) => (
+                          <div class="passkey-card">
+                            <div class="passkey-card-meta">
+                              <div class="passkey-card-name">{credential.name}</div>
+                              <div class="passkey-card-time">Created {formatTimestamp(credential.createdAt)}</div>
+                              <div class="passkey-card-time">Last used {formatTimestamp(credential.lastUsedAt)}</div>
+                            </div>
+
+                            <button
+                              type="button"
+                              class="passkey-delete-btn"
+                              disabled={passkeyBusyId() === credential.id}
+                              onClick={() => void handlePasskeyDelete(credential.id)}
+                            >
+                              {passkeyBusyId() === credential.id ? 'Removing...' : 'Remove'}
+                            </button>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="passkey-register-btn"
+                      disabled={passkeyBusyId() === '__register__'}
+                      onClick={() => void handlePasskeyRegister()}
+                    >
+                      {passkeyBusyId() === '__register__' ? 'Waiting for Passkey...' : 'Register New Passkey'}
+                    </button>
                   </div>
                 </div>
               </Show>

@@ -33,6 +33,7 @@ sha2 = "0.10"
 argon2 = "0.5"
 bcrypt = "0.16"
 rpassword = "7"
+webauthn-rs = "0.5"
 
 # 日志
 env_logger = "0.11"

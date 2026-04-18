@@ -5,6 +5,7 @@ const LoginPage: Component = () => {
   const [username, setUsername] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [submitting, setSubmitting] = createSignal(false);
+  const [passkeySubmitting, setPasskeySubmitting] = createSignal(false);
 
   const handleSubmit = async (event: Event) => {
     event.preventDefault();
@@ -17,6 +18,18 @@ const LoginPage: Component = () => {
       // error is already stored in authStore
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    setPasskeySubmitting(true);
+
+    try {
+      await authStore.loginWithPasskey();
+    } catch {
+      // error is already stored in authStore
+    } finally {
+      setPasskeySubmitting(false);
     }
   };
 
@@ -61,6 +74,21 @@ const LoginPage: Component = () => {
           <button class="login-submit" type="submit" disabled={submitting()}>
             {submitting() ? 'Signing in...' : 'Sign in'}
           </button>
+
+          <Show when={authStore.passkeyAvailable()}>
+            <div class="login-divider" aria-hidden="true">
+              <span>or</span>
+            </div>
+
+            <button
+              class="login-passkey"
+              type="button"
+              onClick={() => void handlePasskeyLogin()}
+              disabled={passkeySubmitting()}
+            >
+              {passkeySubmitting() ? 'Waiting for Passkey...' : 'Sign in with Passkey'}
+            </button>
+          </Show>
         </form>
       </div>
     </div>
