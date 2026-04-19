@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, createSignal, onCleanup, type JSX } from 'solid-js';
+import { Component, For, Show, createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { MobileLayout, mobileLayoutStore } from '../components/mobile';
 import FileTree from '../components/FileTree';
@@ -279,6 +279,36 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     if (!mobileLayoutStore.leftDrawerOpen) {
       closeProjectActions();
     }
+  });
+
+  onMount(() => {
+    const rootStyle = document.documentElement.style;
+    const visualViewport = window.visualViewport;
+    let lastViewportHeight = 0;
+
+    const updateViewportHeight = () => {
+      const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+
+      if (viewportHeight > 0 && viewportHeight !== lastViewportHeight) {
+        lastViewportHeight = viewportHeight;
+        rootStyle.setProperty('--app-height', `${viewportHeight}px`);
+      }
+    };
+
+    updateViewportHeight();
+
+    window.addEventListener('resize', updateViewportHeight, { passive: true });
+    window.addEventListener('orientationchange', updateViewportHeight);
+    visualViewport?.addEventListener('resize', updateViewportHeight);
+    visualViewport?.addEventListener('scroll', updateViewportHeight);
+
+    onCleanup(() => {
+      window.removeEventListener('resize', updateViewportHeight);
+      window.removeEventListener('orientationchange', updateViewportHeight);
+      visualViewport?.removeEventListener('resize', updateViewportHeight);
+      visualViewport?.removeEventListener('scroll', updateViewportHeight);
+      rootStyle.removeProperty('--app-height');
+    });
   });
 
   onCleanup(() => {

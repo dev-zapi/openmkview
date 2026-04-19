@@ -101,6 +101,63 @@ describe('MobileLayoutWrapper', () => {
     expect(container.querySelectorAll('.documentTitleBar').length).toBe(0);
   });
 
+  it('syncs app height to the visible viewport and cleans up on unmount', () => {
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 812,
+    });
+
+    const setPropertySpy = vi.spyOn(document.documentElement.style, 'setProperty');
+    const removePropertySpy = vi.spyOn(document.documentElement.style, 'removeProperty');
+
+    const { unmount } = renderWrapper();
+
+    expect(setPropertySpy).toHaveBeenCalledWith('--app-height', '812px');
+
+    unmount();
+
+    expect(removePropertySpy).toHaveBeenCalledWith('--app-height');
+  });
+
+  it('updates app height when visual viewport changes', () => {
+    let visualViewportHeight = 724;
+    const listeners = new Map<string, EventListener>();
+
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: {
+        get height() {
+          return visualViewportHeight;
+        },
+        addEventListener: vi.fn((event: string, listener: EventListener) => {
+          listeners.set(event, listener);
+        }),
+        removeEventListener: vi.fn((event: string) => {
+          listeners.delete(event);
+        }),
+      },
+    });
+
+    const setPropertySpy = vi.spyOn(document.documentElement.style, 'setProperty');
+
+    const { unmount } = renderWrapper();
+    const initialCallCount = setPropertySpy.mock.calls.length;
+
+    expect(setPropertySpy).toHaveBeenLastCalledWith('--app-height', '724px');
+
+    visualViewportHeight = 680;
+    listeners.get('resize')?.(new Event('resize'));
+
+    expect(setPropertySpy).toHaveBeenLastCalledWith('--app-height', '680px');
+    expect(setPropertySpy.mock.calls.length).toBe(initialCallCount + 1);
+
+    listeners.get('scroll')?.(new Event('scroll'));
+
+    expect(setPropertySpy.mock.calls.length).toBe(initialCallCount + 1);
+
+    unmount();
+  });
+
   it('switches project on click in mobile drawer', async () => {
     const onProjectClick = vi.fn();
 

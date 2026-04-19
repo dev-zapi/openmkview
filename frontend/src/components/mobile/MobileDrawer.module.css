@@ -1,19 +1,21 @@
 .drawerOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
+  min-height: var(--app-height);
+  height: var(--app-height);
   background: rgba(0, 0, 0, 0.5);
   z-index: 1000;
   animation: fadeIn 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .drawer {
   position: fixed;
   top: 0;
-  bottom: 0;
+  height: var(--app-height);
+  max-height: var(--app-height);
   width: 85%;
   max-width: 400px;
   background: var(--color-bg);
@@ -21,6 +23,7 @@
   z-index: 1001;
   overflow: hidden;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overscroll-behavior: contain;
 }
 
 .drawer.left {
@@ -40,6 +43,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 @keyframes fadeIn {
