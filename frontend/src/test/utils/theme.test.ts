@@ -84,7 +84,7 @@ describe('theme utils', () => {
         return 1;
       });
 
-      document.body.style.setProperty('--color-bg-subtle', '#161b22');
+      document.body.style.setProperty('--color-bg', '#161b22');
       updateBrowserThemeColor();
 
       expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#161b22');

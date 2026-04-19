@@ -24,7 +24,7 @@ export const updateBrowserThemeColor = (): void => {
     if (!themeColorMeta) return;
 
     const computedStyle = getComputedStyle(document.body);
-    const bgColor = computedStyle.getPropertyValue('--color-bg-subtle').trim();
+    const bgColor = computedStyle.getPropertyValue('--color-bg').trim();
 
     if (bgColor) {
       themeColorMeta.setAttribute('content', bgColor);
