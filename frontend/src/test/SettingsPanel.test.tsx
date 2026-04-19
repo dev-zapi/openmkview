@@ -75,6 +75,25 @@ describe('SettingsPanel', () => {
     });
   });
 
+  it('shows a focused-tab message when passkey registration loses focus', async () => {
+    authStore.setPasskeyConfigured(true);
+    authStore.setPasskeyAvailable(false);
+    authStore.setPasskeyOrigin('https://example.com');
+    vi.spyOn(window, 'prompt').mockReturnValue('Device 1');
+    vi.spyOn(authStore, 'registerPasskey').mockRejectedValue(
+      new Error('Passkey requires the current tab to stay focused. Please return to this tab and try again.'),
+    );
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add Passkey for This Domain' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Passkey requires the current tab to stay focused. Please return to this tab and try again.'),
+      ).toBeTruthy();
+    });
+  });
+
   it('calls onClose when close button clicked', () => {
     const onClose = vi.fn();
     const { container } = render(() => <SettingsPanel isOpen={true} onClose={onClose} />);

@@ -140,3 +140,23 @@ export function ensureWebauthnSupport(): void {
     throw new Error('Current browser does not support Passkey');
   }
 }
+
+export function ensureWebauthnFocus(): void {
+  if (typeof document.hasFocus === 'function' && !document.hasFocus()) {
+    throw new Error('Passkey requires the current tab to stay focused. Please return to this tab and try again.');
+  }
+}
+
+export function normalizeWebauthnError(error: unknown, fallback: string): Error {
+  if (error instanceof Error) {
+    if (error.message.toLowerCase().includes('not focused')) {
+      return new Error(
+        'Passkey requires the current tab to stay focused. Please return to this tab and try again.',
+      );
+    }
+
+    return error;
+  }
+
+  return new Error(fallback);
+}

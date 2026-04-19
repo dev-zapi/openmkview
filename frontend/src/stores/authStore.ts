@@ -7,7 +7,9 @@ import type {
 } from '../types/app';
 import { settingsStore } from './settingsStore';
 import {
+  ensureWebauthnFocus,
   ensureWebauthnSupport,
+  normalizeWebauthnError,
   prepareCreationOptions,
   prepareRequestOptions,
   serializeAuthenticationCredential,
@@ -103,6 +105,7 @@ export const authStore = {
 
     try {
       ensureWebauthnSupport();
+      ensureWebauthnFocus();
       const startRes = await fetch('/api/auth/passkey/login/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,9 +139,10 @@ export const authStore = {
       applyAuthStatus(data);
       setError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Passkey login failed';
+      const normalizedError = normalizeWebauthnError(error, 'Passkey login failed');
+      const message = normalizedError.message;
       setError(message);
-      throw error;
+      throw normalizedError;
     } finally {
       setLoading(false);
     }
@@ -162,6 +166,7 @@ export const authStore = {
 
     try {
       ensureWebauthnSupport();
+      ensureWebauthnFocus();
       const startRes = await fetch('/api/auth/passkey/register/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,9 +204,10 @@ export const authStore = {
       setError(null);
       return data.credentials;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Passkey registration failed';
+      const normalizedError = normalizeWebauthnError(error, 'Passkey registration failed');
+      const message = normalizedError.message;
       setError(message);
-      throw error;
+      throw normalizedError;
     } finally {
       setLoading(false);
     }

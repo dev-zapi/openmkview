@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   decodeBase64Url,
+  ensureWebauthnFocus,
   encodeBase64Url,
+  normalizeWebauthnError,
   prepareCreationOptions,
   prepareRequestOptions,
   serializeRegistrationCredential,
@@ -241,6 +243,44 @@ describe('webauthn utils', () => {
         configurable: true,
       });
       expect(() => ensureWebauthnSupport()).not.toThrow();
+    });
+  });
+
+  describe('ensureWebauthnFocus', () => {
+    const originalHasFocus = document.hasFocus;
+
+    afterEach(() => {
+      document.hasFocus = originalHasFocus;
+    });
+
+    it('throws when current tab is not focused', () => {
+      document.hasFocus = vi.fn(() => false);
+
+      expect(() => ensureWebauthnFocus()).toThrow(
+        'Passkey requires the current tab to stay focused. Please return to this tab and try again.',
+      );
+    });
+
+    it('does not throw when current tab is focused', () => {
+      document.hasFocus = vi.fn(() => true);
+
+      expect(() => ensureWebauthnFocus()).not.toThrow();
+    });
+  });
+
+  describe('normalizeWebauthnError', () => {
+    it('maps browser focus errors to a clearer message', () => {
+      const error = normalizeWebauthnError(new Error('The document is not focused'), 'fallback');
+
+      expect(error.message).toBe(
+        'Passkey requires the current tab to stay focused. Please return to this tab and try again.',
+      );
+    });
+
+    it('preserves other Error messages', () => {
+      const error = normalizeWebauthnError(new Error('Passkey failed'), 'fallback');
+
+      expect(error.message).toBe('Passkey failed');
     });
   });
 });
