@@ -42,7 +42,9 @@ export interface AuthStatus {
   authRequired: boolean;
   authenticated: boolean;
   sessionTimeoutMinutes?: number;
+  passkeyConfigured: boolean;
   passkeyAvailable: boolean;
+  passkeyOrigin?: string;
 }
 
 export interface PasskeyCredentialSummary {

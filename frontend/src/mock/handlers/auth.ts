@@ -4,7 +4,9 @@ import type { PasskeyCredentialSummary } from '../../types/app';
 type NextFunction = () => void;
 
 let sessionTimeoutMinutes = 60;
+let passkeyConfigured = true;
 let passkeyAvailable = true;
+let passkeyOrigin = 'http://localhost:4567';
 let passkeys: PasskeyCredentialSummary[] = [
   {
     id: 'demo-passkey',
@@ -46,12 +48,26 @@ export async function handleAuthApi(
   const pathname = url.pathname;
 
   if (req.method === 'GET' && pathname === '/api/auth/status') {
-    sendJson(res, { authRequired: false, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
+    sendJson(res, {
+      authRequired: false,
+      authenticated: true,
+      sessionTimeoutMinutes,
+      passkeyConfigured,
+      passkeyAvailable,
+      passkeyOrigin,
+    });
     return true;
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/login') {
-    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
+    sendJson(res, {
+      authRequired: true,
+      authenticated: true,
+      sessionTimeoutMinutes,
+      passkeyConfigured,
+      passkeyAvailable,
+      passkeyOrigin,
+    });
     return true;
   }
 
@@ -74,7 +90,14 @@ export async function handleAuthApi(
   }
 
   if (req.method === 'POST' && pathname === '/api/auth/passkey/login/finish') {
-    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
+    sendJson(res, {
+      authRequired: true,
+      authenticated: true,
+      sessionTimeoutMinutes,
+      passkeyConfigured,
+      passkeyAvailable,
+      passkeyOrigin,
+    });
     return true;
   }
 
@@ -132,7 +155,14 @@ export async function handleAuthApi(
     if (typeof body.sessionTimeoutMinutes === 'number' && body.sessionTimeoutMinutes > 0) {
       sessionTimeoutMinutes = body.sessionTimeoutMinutes;
     }
-    sendJson(res, { authRequired: true, authenticated: true, sessionTimeoutMinutes, passkeyAvailable });
+    sendJson(res, {
+      authRequired: true,
+      authenticated: true,
+      sessionTimeoutMinutes,
+      passkeyConfigured,
+      passkeyAvailable,
+      passkeyOrigin,
+    });
     return true;
   }
 

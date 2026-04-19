@@ -168,6 +168,13 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       return;
     }
 
+    if (!authStore.passkeyConfigured()) {
+      setPasskeys([]);
+      setPasskeyError(null);
+      setPasskeyLoading(false);
+      return;
+    }
+
     setPasskeyLoading(true);
     setPasskeyError(null);
 
@@ -267,6 +274,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   };
 
   const handlePasskeyRegister = async () => {
+    if (!authStore.passkeyConfigured()) {
+      return;
+    }
+
     const suggested = `Device ${passkeys().length + 1}`;
     const name = window.prompt('Passkey name', suggested) || undefined;
     setPasskeyBusyId('__register__');
@@ -311,6 +322,17 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
   const lightThemes = () => themes().filter(t => t.type === 'light');
   const darkThemes = () => themes().filter(t => t.type === 'dark');
+  const passkeyStatusText = () => {
+    if (!authStore.passkeyConfigured()) {
+      return 'Passkey is not configured for this domain.';
+    }
+
+    if (!authStore.passkeyAvailable()) {
+      return 'Passkey is configured for this domain, but no Passkeys are registered yet.';
+    }
+
+    return 'Passkey is available for this domain.';
+  };
 
   const renderPresetButtons = <K extends StringSettingKey>(
     key: K,
@@ -485,10 +507,18 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <h4>Passkeys</h4>
 
                   <div class="settings-item">
-                    <label>Registered Passkeys</label>
+                    <label>Passkeys for Current Site</label>
                     <p style="margin-top: 4px; margin-bottom: 12px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
-                      Register a Passkey on this device or a security key, then use it as an alternative to password login.
+                      Register a Passkey on this device or a security key, then use it as an alternative to password login for the current domain.
                     </p>
+                    <p style="margin-top: 4px; margin-bottom: 8px; color: var(--color-text); font-size: 12px; opacity: 0.85;">
+                      {passkeyStatusText()}
+                    </p>
+                    <Show when={authStore.passkeyOrigin()}>
+                      <p style="margin-top: 0; margin-bottom: 12px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                        Current site: {authStore.passkeyOrigin()}
+                      </p>
+                    </Show>
 
                     <Show when={passkeyError()}>
                       <p style="margin-bottom: 12px; color: var(--color-error); font-size: 12px;">{passkeyError()}</p>
@@ -499,7 +529,11 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                         <div class="passkey-empty">Loading Passkeys...</div>
                       </Show>
 
-                      <Show when={!passkeyLoading() && passkeys().length === 0}>
+                      <Show when={!passkeyLoading() && !authStore.passkeyConfigured()}>
+                        <div class="passkey-empty">Passkey is not enabled for this domain.</div>
+                      </Show>
+
+                      <Show when={!passkeyLoading() && authStore.passkeyConfigured() && passkeys().length === 0}>
                         <div class="passkey-empty">No Passkeys registered yet.</div>
                       </Show>
 
@@ -528,10 +562,14 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <button
                       type="button"
                       class="passkey-register-btn"
-                      disabled={passkeyBusyId() === '__register__'}
+                      disabled={passkeyBusyId() === '__register__' || !authStore.passkeyConfigured()}
                       onClick={() => void handlePasskeyRegister()}
                     >
-                      {passkeyBusyId() === '__register__' ? 'Waiting for Passkey...' : 'Register New Passkey'}
+                      {passkeyBusyId() === '__register__'
+                        ? 'Waiting for Passkey...'
+                        : authStore.passkeyConfigured()
+                          ? 'Add Passkey for This Domain'
+                          : 'Passkey Unavailable for This Domain'}
                     </button>
                   </div>
                 </div>

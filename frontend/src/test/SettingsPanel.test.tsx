@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
 import SettingsPanel from '../components/SettingsPanel';
 import { DEFAULT_SETTINGS } from '../types/app';
+import { authStore } from '../stores/authStore';
 
 describe('SettingsPanel', () => {
   beforeEach(() => {
     localStorage.clear();
+    authStore.setPasskeyConfigured(false);
+    authStore.setPasskeyAvailable(false);
+    authStore.setPasskeyOrigin(null);
     vi.spyOn(window, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ themes: [], credentials: [] }),
@@ -36,11 +40,38 @@ describe('SettingsPanel', () => {
   });
 
   it('renders passkey management when auth is enabled', async () => {
+    authStore.setPasskeyConfigured(true);
+    authStore.setPasskeyOrigin('https://example.com');
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
 
     await waitFor(() => {
       expect(screen.getAllByText('Passkeys').length).toBeGreaterThan(0);
-      expect(screen.getByText('Register New Passkey')).toBeTruthy();
+      expect(screen.getByText('Add Passkey for This Domain')).toBeTruthy();
+    });
+  });
+
+  it('shows current domain passkey status when configured', async () => {
+    authStore.setPasskeyConfigured(true);
+    authStore.setPasskeyAvailable(false);
+    authStore.setPasskeyOrigin('https://example.com');
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Current site: https://example.com')).toBeTruthy();
+      expect(screen.getByText('Passkey is configured for this domain, but no Passkeys are registered yet.')).toBeTruthy();
+    });
+  });
+
+  it('disables passkey registration when current domain is not configured', async () => {
+    authStore.setPasskeyConfigured(false);
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: 'Passkey Unavailable for This Domain' });
+      expect(button).toHaveProperty('disabled', true);
+      expect(screen.getByText('Passkey is not enabled for this domain.')).toBeTruthy();
     });
   });
 

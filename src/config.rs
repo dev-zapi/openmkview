@@ -37,6 +37,25 @@ pub struct AppConfig {
     pub auth: AuthFileConfig,
     #[serde(default)]
     pub session: SessionFileConfig,
+    #[serde(default)]
+    pub passkeys: PasskeysFileConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PasskeysFileConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub sites: Vec<PasskeySiteFileConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PasskeySiteFileConfig {
+    pub id: String,
+    pub origin: String,
+    pub rp_id: String,
+    #[serde(default)]
+    pub rp_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -2,7 +2,8 @@ use actix_web::{middleware::Logger, web, App, HttpServer};
 use clap::{Args, Parser, Subcommand};
 use openmkview::auth::{build_auth_state, resolve_auth_config, AuthMiddleware};
 use openmkview::config::{
-    default_timeout_minutes, hash_password, load_config, save_config, PasswordAlgorithm,
+    default_timeout_minutes, hash_password, load_config, save_config, PasskeySiteFileConfig,
+    PasskeysFileConfig, PasswordAlgorithm,
 };
 use openmkview::db::{init_db, ProjectRepository, SettingsRepository};
 use openmkview::handlers::{
@@ -16,7 +17,7 @@ use openmkview::handlers::{
     save_file_content, search_favicons, serve_project_file, update_project, update_project_color,
     update_settings, validate_project,
 };
-use openmkview::passkey::{build_passkey_site, build_passkey_state, resolve_passkey_origin};
+use openmkview::passkey::{build_passkey_sites, build_passkey_state};
 use openmkview::services::TrashService;
 use openmkview::static_files;
 use std::sync::{Arc, Mutex};
@@ -83,6 +84,8 @@ struct ServeArgs {
 enum ConfigAction {
     SetUser(SetUserArgs),
     SetTimeout(SetTimeoutArgs),
+    AddPasskeySite(AddPasskeySiteArgs),
+    RemovePasskeySite(RemovePasskeySiteArgs),
     Show,
 }
 
@@ -101,6 +104,27 @@ struct SetUserArgs {
 #[derive(Args, Debug)]
 struct SetTimeoutArgs {
     minutes: u64,
+}
+
+#[derive(Args, Debug)]
+struct AddPasskeySiteArgs {
+    #[arg(short = 'i', long)]
+    id: String,
+
+    #[arg(short = 'o', long)]
+    origin: String,
+
+    #[arg(short = 'r', long = "rp-id")]
+    rp_id: String,
+
+    #[arg(short = 'n', long = "rp-name")]
+    rp_name: Option<String>,
+}
+
+#[derive(Args, Debug)]
+struct RemovePasskeySiteArgs {
+    #[arg(short = 'i', long)]
+    id: String,
 }
 
 fn configure_routes(cfg: &mut web::ServiceConfig) {
@@ -228,6 +252,51 @@ fn handle_config_command(action: ConfigAction) -> anyhow::Result<()> {
             save_config(&config)?;
             println!("Session 超时已更新为 {} 分钟", args.minutes.max(1));
         }
+        ConfigAction::AddPasskeySite(args) => {
+            let mut config = load_config()?;
+            let new_site = PasskeySiteFileConfig {
+                id: args.id.trim().to_string(),
+                origin: args.origin.trim().to_string(),
+                rp_id: args.rp_id.trim().to_string(),
+                rp_name: args
+                    .rp_name
+                    .map(|name| name.trim().to_string())
+                    .filter(|name| !name.is_empty()),
+            };
+
+            if let Some(site) = config
+                .passkeys
+                .sites
+                .iter_mut()
+                .find(|site| site.id.trim() == new_site.id)
+            {
+                *site = new_site;
+            } else {
+                config.passkeys.sites.push(new_site);
+            }
+            config.passkeys.enabled = true;
+            validate_passkey_config(&config.passkeys)?;
+            save_config(&config)?;
+            println!("Passkey 站点配置已保存到配置文件");
+        }
+        ConfigAction::RemovePasskeySite(args) => {
+            let mut config = load_config()?;
+            let target_id = args.id.trim();
+            let before = config.passkeys.sites.len();
+            config
+                .passkeys
+                .sites
+                .retain(|site| site.id.trim() != target_id);
+            if before == config.passkeys.sites.len() {
+                anyhow::bail!("未找到 Passkey 站点: {}", target_id);
+            }
+            if config.passkeys.sites.is_empty() {
+                config.passkeys.enabled = false;
+            }
+            validate_passkey_config(&config.passkeys)?;
+            save_config(&config)?;
+            println!("Passkey 站点已移除: {}", target_id);
+        }
         ConfigAction::Show => {
             let config = load_config()?;
             let username = config.auth.username.unwrap_or_else(|| "<none>".to_string());
@@ -251,10 +320,50 @@ fn handle_config_command(action: ConfigAction) -> anyhow::Result<()> {
                     "<none>"
                 }
             );
+            println!();
+            println!("[passkeys]");
+            println!("enabled = {}", config.passkeys.enabled);
+            if config.passkeys.sites.is_empty() {
+                println!("sites = <none>");
+            } else {
+                for site in &config.passkeys.sites {
+                    println!();
+                    println!("[[passkeys.sites]]");
+                    println!("id = {}", site.id);
+                    println!("origin = {}", site.origin);
+                    println!("rp_id = {}", site.rp_id);
+                    println!(
+                        "rp_name = {}",
+                        site.rp_name.as_deref().unwrap_or("OpenMKView")
+                    );
+                }
+            }
         }
     }
 
     Ok(())
+}
+
+fn validate_passkey_config(passkeys: &PasskeysFileConfig) -> anyhow::Result<bool> {
+    build_passkey_sites(passkeys)?;
+
+    let has_https_passkey_site = passkeys.sites.iter().any(|site| {
+        site.origin
+            .trim()
+            .to_ascii_lowercase()
+            .starts_with("https://")
+    });
+    let has_http_passkey_site = passkeys.sites.iter().any(|site| {
+        site.origin
+            .trim()
+            .to_ascii_lowercase()
+            .starts_with("http://")
+    });
+    if has_http_passkey_site && has_https_passkey_site {
+        anyhow::bail!("Passkey 站点不能同时混用 HTTP 和 HTTPS，请统一协议配置");
+    }
+
+    Ok(has_https_passkey_site)
 }
 
 async fn run_server(args: ServeArgs) -> std::io::Result<()> {
@@ -287,13 +396,15 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
         config.session.timeout_minutes.max(1)
     };
 
-    let configured_passkey_origin = std::env::var("OPENMKVIEW_PASSKEY_ORIGIN").ok();
-    let passkey_origin =
-        resolve_passkey_origin(&args.host, args.port, configured_passkey_origin.as_deref());
+    let passkey_enabled = config.passkeys.enabled && !config.passkeys.sites.is_empty();
+    let secure_cookies = if passkey_enabled {
+        validate_passkey_config(&config.passkeys).map_err(std::io::Error::other)?
+    } else {
+        false
+    };
 
     let auth = resolve_auth_config(args.username, args.password, &config)
         .and_then(|auth| {
-            let secure_cookies = passkey_origin.starts_with("https://");
             auth.map(|cfg| build_auth_state(cfg, timeout_minutes, secure_cookies))
                 .transpose()
         })
@@ -303,10 +414,13 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
     let bind_addr = format!("{}:{}", args.host, args.port);
 
     let passkey = if let Some(auth_state) = auth.as_ref() {
-        let passkey_site = build_passkey_site(&passkey_origin).map_err(std::io::Error::other)?;
-        Some(Arc::new(
-            build_passkey_state(auth_state, passkey_site).map_err(std::io::Error::other)?,
-        ))
+        if passkey_enabled {
+            Some(Arc::new(
+                build_passkey_state(auth_state, &config.passkeys).map_err(std::io::Error::other)?,
+            ))
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -333,7 +447,10 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
     if auth.is_some() {
         log::info!("Authentication enabled");
         if passkey.is_some() {
-            log::info!("Passkey support enabled for {}", passkey_origin);
+            log::info!(
+                "Passkey support enabled for {} configured site(s)",
+                config.passkeys.sites.len()
+            );
         }
     } else {
         log::info!("Authentication disabled");
@@ -370,5 +487,55 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
         }
 
         server.run().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_passkey_config;
+    use openmkview::config::{PasskeySiteFileConfig, PasskeysFileConfig};
+
+    #[test]
+    fn validate_passkey_config_rejects_mixed_protocols() {
+        let result = validate_passkey_config(&PasskeysFileConfig {
+            enabled: true,
+            sites: vec![
+                site("foo", "http://localhost:4567", "localhost"),
+                site("bar", "https://example.com", "example.com"),
+            ],
+        });
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_passkey_config_reports_https_cookie_requirement() {
+        let result = validate_passkey_config(&PasskeysFileConfig {
+            enabled: true,
+            sites: vec![site("foo", "https://example.com", "example.com")],
+        })
+        .unwrap();
+
+        assert!(result);
+    }
+
+    #[test]
+    fn validate_passkey_config_accepts_uppercase_scheme_from_parser() {
+        let result = validate_passkey_config(&PasskeysFileConfig {
+            enabled: true,
+            sites: vec![site("foo", "HTTPS://example.com", "example.com")],
+        })
+        .unwrap();
+
+        assert!(result);
+    }
+
+    fn site(id: &str, origin: &str, rp_id: &str) -> PasskeySiteFileConfig {
+        PasskeySiteFileConfig {
+            id: id.to_string(),
+            origin: origin.to_string(),
+            rp_id: rp_id.to_string(),
+            rp_name: None,
+        }
     }
 }

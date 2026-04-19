@@ -67,7 +67,10 @@ pub struct AuthStatusResponse {
     pub authenticated: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_timeout_minutes: Option<u64>,
+    pub passkey_configured: bool,
     pub passkey_available: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub passkey_origin: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -289,10 +292,13 @@ pub fn create_session_cookie(auth: &AuthState) -> AppResult<Cookie<'static>> {
     Ok(cookie.finish())
 }
 
-fn passkey_available(data: &AppState) -> AppResult<bool> {
+fn passkey_status(data: &AppState, req: &HttpRequest) -> AppResult<(bool, bool, Option<String>)> {
     match &data.passkey {
-        Some(passkey) => passkey.has_credentials(),
-        None => Ok(false),
+        Some(passkey) => {
+            let status = passkey.current_site_status(req)?;
+            Ok((status.configured, status.has_credentials, status.origin))
+        }
+        None => Ok((false, false, None)),
     }
 }
 
@@ -322,7 +328,9 @@ pub async fn auth_status(data: web::Data<AppState>, req: HttpRequest) -> AppResu
             auth_required: false,
             authenticated: true,
             session_timeout_minutes: None,
+            passkey_configured: false,
             passkey_available: false,
+            passkey_origin: None,
         }));
     };
 
@@ -333,16 +341,21 @@ pub async fn auth_status(data: web::Data<AppState>, req: HttpRequest) -> AppResu
         false
     };
 
+    let (passkey_configured, passkey_available, passkey_origin) = passkey_status(&data, &req)?;
+
     Ok(HttpResponse::Ok().json(AuthStatusResponse {
         auth_required: true,
         authenticated,
         session_timeout_minutes: Some(timeout_minutes),
-        passkey_available: passkey_available(&data)?,
+        passkey_configured,
+        passkey_available,
+        passkey_origin,
     }))
 }
 
 pub async fn auth_login(
     data: web::Data<AppState>,
+    req: HttpRequest,
     body: web::Json<LoginRequest>,
 ) -> AppResult<HttpResponse> {
     let Some(auth) = &data.auth else {
@@ -350,7 +363,9 @@ pub async fn auth_login(
             auth_required: false,
             authenticated: true,
             session_timeout_minutes: None,
+            passkey_configured: false,
             passkey_available: false,
+            passkey_origin: None,
         }));
     };
 
@@ -361,16 +376,21 @@ pub async fn auth_login(
 
     let cookie = create_session_cookie(auth)?;
 
+    let (passkey_configured, passkey_available, passkey_origin) = passkey_status(&data, &req)?;
+
     Ok(HttpResponse::Ok().cookie(cookie).json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
         session_timeout_minutes: Some(session_timeout_minutes(auth)?),
-        passkey_available: passkey_available(&data)?,
+        passkey_configured,
+        passkey_available,
+        passkey_origin,
     }))
 }
 
 pub async fn auth_update_session_timeout(
     data: web::Data<AppState>,
+    req: HttpRequest,
     body: web::Json<UpdateSessionTimeoutRequest>,
 ) -> AppResult<HttpResponse> {
     if data.auth.is_none() {
@@ -380,11 +400,15 @@ pub async fn auth_update_session_timeout(
     let timeout_minutes = body.session_timeout_minutes.max(1);
     update_session_timeout(&data, timeout_minutes)?;
 
+    let (passkey_configured, passkey_available, passkey_origin) = passkey_status(&data, &req)?;
+
     Ok(HttpResponse::Ok().json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
         session_timeout_minutes: Some(timeout_minutes),
-        passkey_available: passkey_available(&data)?,
+        passkey_configured,
+        passkey_available,
+        passkey_origin,
     }))
 }
 
@@ -492,3 +516,6 @@ where
         Box::pin(async move { Ok(unauthorized_response::<B>(req)) })
     }
 }
+
+#[cfg(test)]
+mod tests {}

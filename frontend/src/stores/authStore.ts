@@ -17,7 +17,9 @@ import {
 function applyAuthStatus(data: AuthStatus) {
   setAuthRequired(data.authRequired);
   setAuthenticated(data.authenticated);
+  setPasskeyConfigured(Boolean(data.passkeyConfigured));
   setPasskeyAvailable(Boolean(data.passkeyAvailable));
+  setPasskeyOrigin(data.passkeyOrigin || null);
   if (typeof data.sessionTimeoutMinutes === 'number' && data.sessionTimeoutMinutes > 0) {
     settingsStore.updateSettings({ sessionTimeoutMinutes: data.sessionTimeoutMinutes });
   }
@@ -25,7 +27,9 @@ function applyAuthStatus(data: AuthStatus) {
 
 const [authRequired, setAuthRequired] = createSignal(false);
 const [authenticated, setAuthenticated] = createSignal(true);
+const [passkeyConfigured, setPasskeyConfigured] = createSignal(false);
 const [passkeyAvailable, setPasskeyAvailable] = createSignal(false);
+const [passkeyOrigin, setPasskeyOrigin] = createSignal<string | null>(null);
 const [loading, setLoading] = createSignal(true);
 const [error, setError] = createSignal<string | null>(null);
 
@@ -37,12 +41,16 @@ async function readErrorMessage(res: Response): Promise<string> {
 export const authStore = {
   authRequired,
   authenticated,
+  passkeyConfigured,
   passkeyAvailable,
+  passkeyOrigin,
   loading,
   error,
   setAuthenticated,
   setAuthRequired,
+  setPasskeyConfigured,
   setPasskeyAvailable,
+  setPasskeyOrigin,
   setLoading,
   setError,
 
@@ -85,6 +93,9 @@ export const authStore = {
   async logout(): Promise<void> {
     await fetch('/api/auth/logout', { method: 'POST' });
     setAuthenticated(false);
+    setPasskeyConfigured(false);
+    setPasskeyAvailable(false);
+    setPasskeyOrigin(null);
   },
 
   async loginWithPasskey(): Promise<void> {

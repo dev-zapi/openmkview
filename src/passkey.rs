@@ -2,6 +2,7 @@ use crate::auth::{
     create_session_cookie, current_session_timeout_minutes, AuthState, AuthStatusResponse,
     PasswordSource,
 };
+use crate::config::{PasskeySiteFileConfig, PasskeysFileConfig};
 use crate::errors::{AppError, AppResult};
 use crate::AppState;
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -26,7 +27,7 @@ const MAX_PENDING_CHALLENGES: usize = 100;
 
 #[derive(Debug, Clone)]
 pub struct PasskeyState {
-    site: PasskeySiteConfig,
+    sites: HashMap<String, PasskeySiteConfig>,
     store_path: PathBuf,
     store: Arc<Mutex<PasskeyStoreData>>,
     registration_challenges: Arc<Mutex<HashMap<String, ChallengeRecord<PasskeyRegistration>>>>,
@@ -50,6 +51,13 @@ pub struct PasskeyListResponse {
     pub credentials: Vec<PasskeyCredentialSummary>,
 }
 
+#[derive(Debug, Clone)]
+pub struct PasskeySiteStatus {
+    pub configured: bool,
+    pub has_credentials: bool,
+    pub origin: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CeremonyStartResponse<T> {
@@ -61,6 +69,12 @@ struct CeremonyStartResponse<T> {
 struct PasskeyStoreData {
     #[serde(default)]
     auth_binding: String,
+    #[serde(default)]
+    sites: HashMap<String, StoredSitePasskeys>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StoredSitePasskeys {
     user_id: String,
     #[serde(default)]
     credentials: Vec<StoredPasskey>,
@@ -78,14 +92,16 @@ struct StoredPasskey {
 
 #[derive(Debug, Clone)]
 pub struct PasskeySiteConfig {
+    id: String,
     rp_id: String,
     origin: String,
+    rp_name: String,
 }
 
 #[derive(Debug, Clone)]
 struct ChallengeRecord<T> {
     started_at: DateTime<Utc>,
-    site: PasskeySiteConfig,
+    site_id: String,
     state: T,
 }
 
@@ -105,26 +121,36 @@ pub struct PasskeyLoginFinishRequest {
     pub credential: PublicKeyCredential,
 }
 
-pub fn build_passkey_state(auth: &AuthState, site: PasskeySiteConfig) -> AppResult<PasskeyState> {
+pub fn build_passkey_state(
+    auth: &AuthState,
+    config: &PasskeysFileConfig,
+) -> AppResult<PasskeyState> {
     let store_path = passkey_store_path()?;
     if let Some(parent) = store_path.parent() {
         fs::create_dir_all(parent)?;
     }
 
+    let sites = build_passkey_sites(config)?;
+    if sites.is_empty() {
+        return Err(AppError::BadRequest(
+            "当前未配置 Passkey 站点，请检查配置文件".to_string(),
+        ));
+    }
+
     let mut store = load_store(&store_path)?;
     let auth_binding = build_auth_binding(auth);
-    if store.user_id.is_empty() {
-        store.user_id = Uuid::new_v4().to_string();
-    }
     if store.auth_binding != auth_binding {
         store.auth_binding = auth_binding;
-        store.user_id = Uuid::new_v4().to_string();
-        store.credentials.clear();
+        store.sites.clear();
         save_store_to_path(&store_path, &store)?;
     }
 
+    retain_configured_sites(&mut store, &sites);
+    ensure_site_store_entries(&mut store, &sites);
+    save_store_to_path(&store_path, &store)?;
+
     Ok(PasskeyState {
-        site,
+        sites,
         store: Arc::new(Mutex::new(store)),
         store_path,
         registration_challenges: Arc::new(Mutex::new(HashMap::new())),
@@ -134,21 +160,42 @@ pub fn build_passkey_state(auth: &AuthState, site: PasskeySiteConfig) -> AppResu
 }
 
 impl PasskeyState {
-    pub fn has_credentials(&self) -> AppResult<bool> {
-        Ok(!self
-            .store
-            .lock()
-            .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?
-            .credentials
-            .is_empty())
-    }
+    pub fn current_site_status(&self, req: &HttpRequest) -> AppResult<PasskeySiteStatus> {
+        let Some(site) = self.try_match_request_site(req)? else {
+            return Ok(PasskeySiteStatus {
+                configured: false,
+                has_credentials: false,
+                origin: None,
+            });
+        };
 
-    pub fn list_credentials(&self) -> AppResult<Vec<PasskeyCredentialSummary>> {
         let store = self
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
-        Ok(summarize_credentials(&store))
+        Ok(PasskeySiteStatus {
+            configured: true,
+            has_credentials: !self.site_store(&store, &site.id)?.credentials.is_empty(),
+            origin: Some(site.origin),
+        })
+    }
+
+    pub fn has_credentials(&self, req: &HttpRequest) -> AppResult<bool> {
+        let site = self.match_request_site(req)?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
+        Ok(!self.site_store(&store, &site.id)?.credentials.is_empty())
+    }
+
+    pub fn list_credentials(&self, req: &HttpRequest) -> AppResult<Vec<PasskeyCredentialSummary>> {
+        let site = self.match_request_site(req)?;
+        let store = self
+            .store
+            .lock()
+            .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
+        Ok(summarize_credentials(self.site_store(&store, &site.id)?))
     }
 
     fn start_registration(
@@ -156,10 +203,10 @@ impl PasskeyState {
         auth: &crate::auth::AuthState,
         req: &HttpRequest,
     ) -> AppResult<CeremonyStartResponse<CreationChallengeResponse>> {
-        ensure_request_origin(req, &self.site)?;
-        let webauthn = build_webauthn(&self.site, self.ceremony_timeout_seconds)?;
-        let user_id = self.user_uuid()?;
-        let exclude_credentials = self.exclude_credentials()?;
+        let site = self.match_request_site(req)?;
+        let webauthn = build_webauthn(&site, self.ceremony_timeout_seconds)?;
+        let user_id = self.user_uuid(&site.id)?;
+        let exclude_credentials = self.exclude_credentials(&site.id)?;
 
         let (options, state) = webauthn
             .start_passkey_registration(
@@ -186,7 +233,7 @@ impl PasskeyState {
                 request_id.clone(),
                 ChallengeRecord {
                     started_at: Utc::now(),
-                    site: self.site.clone(),
+                    site_id: site.id.clone(),
                     state,
                 },
             );
@@ -207,7 +254,8 @@ impl PasskeyState {
             self.ceremony_timeout_seconds,
             "Passkey 注册请求已过期，请重试",
         )?;
-        let webauthn = build_webauthn(&challenge.site, self.ceremony_timeout_seconds)?;
+        let site = self.site_for_challenge(&challenge)?;
+        let webauthn = build_webauthn(site, self.ceremony_timeout_seconds)?;
         let passkey = webauthn
             .finish_passkey_registration(&body.credential, &challenge.state)
             .map_err(|err| {
@@ -222,38 +270,43 @@ impl PasskeyState {
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
-
-        if store
-            .credentials
-            .iter()
-            .any(|item| item.id == credential_id)
         {
-            return Err(AppError::Conflict("该 Passkey 已经注册过了".to_string()));
+            let site_store = self.site_store_mut(&mut store, &challenge.site_id)?;
+
+            if site_store
+                .credentials
+                .iter()
+                .any(|item| item.id == credential_id)
+            {
+                return Err(AppError::Conflict("该 Passkey 已经注册过了".to_string()));
+            }
+
+            site_store.credentials.push(StoredPasskey {
+                id: credential_id,
+                name: credential_name,
+                created_at: now,
+                last_used_at: None,
+                passkey,
+            });
         }
 
-        store.credentials.push(StoredPasskey {
-            id: credential_id,
-            name: credential_name,
-            created_at: now,
-            last_used_at: None,
-            passkey,
-        });
-
         self.save_store(&store)?;
-        Ok(summarize_credentials(&store))
+        Ok(summarize_credentials(
+            self.site_store(&store, &challenge.site_id)?,
+        ))
     }
 
     fn start_authentication(
         &self,
         req: &HttpRequest,
     ) -> AppResult<CeremonyStartResponse<RequestChallengeResponse>> {
-        let credentials = self.registered_passkeys()?;
+        let site = self.match_request_site(req)?;
+        let credentials = self.registered_passkeys(&site.id)?;
         if credentials.is_empty() {
             return Err(AppError::BadRequest("当前没有可用的 Passkey".to_string()));
         }
 
-        ensure_request_origin(req, &self.site)?;
-        let webauthn = build_webauthn(&self.site, self.ceremony_timeout_seconds)?;
+        let webauthn = build_webauthn(&site, self.ceremony_timeout_seconds)?;
         let (options, state) = webauthn
             .start_passkey_authentication(&credentials)
             .map_err(|err| {
@@ -272,7 +325,7 @@ impl PasskeyState {
                 request_id.clone(),
                 ChallengeRecord {
                     started_at: Utc::now(),
-                    site: self.site.clone(),
+                    site_id: site.id.clone(),
                     state,
                 },
             );
@@ -290,7 +343,8 @@ impl PasskeyState {
             self.ceremony_timeout_seconds,
             "Passkey 登录请求已过期，请重试",
         )?;
-        let webauthn = build_webauthn(&challenge.site, self.ceremony_timeout_seconds)?;
+        let site = self.site_for_challenge(&challenge)?;
+        let webauthn = build_webauthn(site, self.ceremony_timeout_seconds)?;
         let result = webauthn
             .finish_passkey_authentication(&body.credential, &challenge.state)
             .map_err(|err| {
@@ -303,56 +357,71 @@ impl PasskeyState {
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
-        let credential = store
-            .credentials
-            .iter_mut()
-            .find(|item| item.id == credential_id)
-            .ok_or_else(|| AppError::Unauthorized("Passkey 验证失败".to_string()))?;
+        {
+            let credential = self
+                .site_store_mut(&mut store, &challenge.site_id)?
+                .credentials
+                .iter_mut()
+                .find(|item| item.id == credential_id)
+                .ok_or_else(|| AppError::Unauthorized("Passkey 验证失败".to_string()))?;
 
-        if result.needs_update() {
-            let _ = credential.passkey.update_credential(&result);
+            if result.needs_update() {
+                let _ = credential.passkey.update_credential(&result);
+            }
+
+            credential.last_used_at = Some(Utc::now());
         }
-
-        credential.last_used_at = Some(Utc::now());
         self.save_store(&store)?;
 
         Ok(())
     }
 
-    fn delete_credential(&self, credential_id: &str) -> AppResult<Vec<PasskeyCredentialSummary>> {
+    fn delete_credential(
+        &self,
+        req: &HttpRequest,
+        credential_id: &str,
+    ) -> AppResult<Vec<PasskeyCredentialSummary>> {
+        let site = self.match_request_site(req)?;
         let mut store = self
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
-        let before = store.credentials.len();
-        store.credentials.retain(|item| item.id != credential_id);
-
-        if before == store.credentials.len() {
-            return Err(AppError::NotFound("指定的 Passkey 不存在".to_string()));
+        let before;
+        {
+            let site_store = self.site_store_mut(&mut store, &site.id)?;
+            before = site_store.credentials.len();
+            site_store
+                .credentials
+                .retain(|item| item.id != credential_id);
+            if before == site_store.credentials.len() {
+                return Err(AppError::NotFound("指定的 Passkey 不存在".to_string()));
+            }
         }
 
         self.save_store(&store)?;
-        Ok(summarize_credentials(&store))
+        Ok(summarize_credentials(self.site_store(&store, &site.id)?))
     }
 
-    fn registered_passkeys(&self) -> AppResult<Vec<Passkey>> {
+    fn registered_passkeys(&self, site_id: &str) -> AppResult<Vec<Passkey>> {
         let store = self
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
-        Ok(store
+        Ok(self
+            .site_store(&store, site_id)?
             .credentials
             .iter()
             .map(|item| item.passkey.clone())
             .collect())
     }
 
-    fn exclude_credentials(&self) -> AppResult<Option<Vec<CredentialID>>> {
+    fn exclude_credentials(&self, site_id: &str) -> AppResult<Option<Vec<CredentialID>>> {
         let store = self
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
-        let credentials: Vec<CredentialID> = store
+        let credentials: Vec<CredentialID> = self
+            .site_store(&store, site_id)?
             .credentials
             .iter()
             .map(|item| item.passkey.cred_id().clone())
@@ -365,21 +434,75 @@ impl PasskeyState {
         }
     }
 
-    fn user_uuid(&self) -> AppResult<Uuid> {
+    fn user_uuid(&self, site_id: &str) -> AppResult<Uuid> {
         let mut store = self
             .store
             .lock()
             .map_err(|_| AppError::InternalError("Passkey 状态已损坏".to_string()))?;
+        let site_store = self.site_store_mut(&mut store, site_id)?;
 
-        match Uuid::parse_str(&store.user_id) {
+        match Uuid::parse_str(&site_store.user_id) {
             Ok(uuid) => Ok(uuid),
             Err(_) => {
                 let uuid = Uuid::new_v4();
-                store.user_id = uuid.to_string();
+                site_store.user_id = uuid.to_string();
                 self.save_store(&store)?;
                 Ok(uuid)
             }
         }
+    }
+
+    fn match_request_site(&self, req: &HttpRequest) -> AppResult<PasskeySiteConfig> {
+        self.try_match_request_site(req)?.ok_or_else(|| {
+            let origins = self
+                .sites
+                .values()
+                .map(|site| site.origin.clone())
+                .collect::<Vec<_>>()
+                .join(", ");
+            AppError::BadRequest(format!(
+                "当前访问地址与 Passkey 配置不一致，请使用以下地址之一访问: {}",
+                origins
+            ))
+        })
+    }
+
+    fn try_match_request_site(&self, req: &HttpRequest) -> AppResult<Option<PasskeySiteConfig>> {
+        let actual_origin = request_origin(req)?;
+        Ok(self
+            .sites
+            .values()
+            .find(|site| origin_matches(&actual_origin, &site.origin))
+            .cloned())
+    }
+
+    fn site_for_challenge<T>(
+        &self,
+        challenge: &ChallengeRecord<T>,
+    ) -> AppResult<&PasskeySiteConfig> {
+        self.sites.get(&challenge.site_id).ok_or_else(|| {
+            AppError::InternalError("Passkey 站点配置已损坏，请重新启动服务".to_string())
+        })
+    }
+
+    fn site_store<'a>(
+        &self,
+        store: &'a PasskeyStoreData,
+        site_id: &str,
+    ) -> AppResult<&'a StoredSitePasskeys> {
+        store.sites.get(site_id).ok_or_else(|| {
+            AppError::InternalError("Passkey 站点数据已损坏，请重新启动服务".to_string())
+        })
+    }
+
+    fn site_store_mut<'a>(
+        &self,
+        store: &'a mut PasskeyStoreData,
+        site_id: &str,
+    ) -> AppResult<&'a mut StoredSitePasskeys> {
+        store.sites.get_mut(site_id).ok_or_else(|| {
+            AppError::InternalError("Passkey 站点数据已损坏，请重新启动服务".to_string())
+        })
     }
 
     fn cleanup_registration_challenges(&self) -> AppResult<()> {
@@ -455,6 +578,7 @@ pub async fn passkey_login_start(
 
 pub async fn passkey_login_finish(
     data: web::Data<AppState>,
+    req: HttpRequest,
     body: web::Json<PasskeyLoginFinishRequest>,
 ) -> AppResult<HttpResponse> {
     let auth = data
@@ -467,36 +591,40 @@ pub async fn passkey_login_finish(
         .ok_or_else(|| AppError::BadRequest("当前未启用 Passkey".to_string()))?;
 
     passkey.finish_authentication(body.into_inner())?;
+    let site_status = passkey.current_site_status(&req)?;
     let cookie = create_session_cookie(auth)?;
 
     Ok(HttpResponse::Ok().cookie(cookie).json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
         session_timeout_minutes: Some(current_session_timeout_minutes(auth)?),
-        passkey_available: passkey.has_credentials()?,
+        passkey_configured: site_status.configured,
+        passkey_available: site_status.has_credentials,
+        passkey_origin: site_status.origin,
     }))
 }
 
-pub async fn passkey_list(data: web::Data<AppState>) -> AppResult<HttpResponse> {
+pub async fn passkey_list(data: web::Data<AppState>, req: HttpRequest) -> AppResult<HttpResponse> {
     let passkey = data
         .passkey
         .as_ref()
         .ok_or_else(|| AppError::BadRequest("当前未启用 Passkey".to_string()))?;
 
     Ok(HttpResponse::Ok().json(PasskeyListResponse {
-        credentials: passkey.list_credentials()?,
+        credentials: passkey.list_credentials(&req)?,
     }))
 }
 
 pub async fn passkey_delete(
     data: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<String>,
 ) -> AppResult<HttpResponse> {
     let passkey = data
         .passkey
         .as_ref()
         .ok_or_else(|| AppError::BadRequest("当前未启用 Passkey".to_string()))?;
-    let credentials = passkey.delete_credential(&path.into_inner())?;
+    let credentials = passkey.delete_credential(&req, &path.into_inner())?;
 
     Ok(HttpResponse::Ok().json(PasskeyListResponse { credentials }))
 }
@@ -512,8 +640,7 @@ fn load_store(path: &PathBuf) -> AppResult<PasskeyStoreData> {
     if !path.exists() {
         return Ok(PasskeyStoreData {
             auth_binding: String::new(),
-            user_id: Uuid::new_v4().to_string(),
-            credentials: Vec::new(),
+            sites: HashMap::new(),
         });
     }
 
@@ -527,14 +654,13 @@ fn load_store(path: &PathBuf) -> AppResult<PasskeyStoreData> {
             log::warn!("invalid passkey store moved to {:?}: {}", backup_path, err);
             Ok(PasskeyStoreData {
                 auth_binding: String::new(),
-                user_id: Uuid::new_v4().to_string(),
-                credentials: Vec::new(),
+                sites: HashMap::new(),
             })
         }
     }
 }
 
-fn summarize_credentials(store: &PasskeyStoreData) -> Vec<PasskeyCredentialSummary> {
+fn summarize_credentials(store: &StoredSitePasskeys) -> Vec<PasskeyCredentialSummary> {
     let mut credentials: Vec<PasskeyCredentialSummary> = store
         .credentials
         .iter()
@@ -562,7 +688,17 @@ fn credential_id_string(value: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(value)
 }
 
-pub fn build_passkey_site(origin: &str) -> AppResult<PasskeySiteConfig> {
+pub fn build_passkey_site(site: &PasskeySiteFileConfig) -> AppResult<PasskeySiteConfig> {
+    let id = site.id.trim();
+    if id.is_empty() {
+        return Err(AppError::BadRequest("Passkey 站点 ID 不能为空".to_string()));
+    }
+
+    let origin = site.origin.trim();
+    if origin.is_empty() {
+        return Err(AppError::BadRequest("Passkey 访问地址配置无效".to_string()));
+    }
+
     let parsed_origin = Url::parse(origin)
         .map_err(|_| AppError::BadRequest("Passkey 访问地址配置无效".to_string()))?;
 
@@ -576,59 +712,46 @@ pub fn build_passkey_site(origin: &str) -> AppResult<PasskeySiteConfig> {
         return Err(AppError::BadRequest("Passkey 访问地址配置无效".to_string()));
     }
 
-    let rp_id = parsed_origin
-        .host_str()
-        .ok_or_else(|| AppError::BadRequest("Passkey 访问地址配置无效".to_string()))?;
+    let rp_id = site.rp_id.trim();
+    if rp_id.is_empty() {
+        return Err(AppError::BadRequest("Passkey RP ID 不能为空".to_string()));
+    }
 
     let site = PasskeySiteConfig {
+        id: id.to_string(),
         rp_id: rp_id.to_string(),
         origin: parsed_origin.to_string(),
+        rp_name: site
+            .rp_name
+            .clone()
+            .unwrap_or_else(|| PASSKEY_RP_NAME.to_string()),
     };
 
     validate_passkey_site(&site)?;
     Ok(site)
 }
 
-pub fn default_passkey_origin(host: &str, port: u16) -> String {
-    let host = match host {
-        "0.0.0.0" | "::" | "[::]" => "localhost".to_string(),
-        value if value.contains(':') && !value.starts_with('[') => format!("[{}]", value),
-        value => value.to_string(),
-    };
-    format!("http://{}:{}", host, port)
-}
-
-pub fn resolve_passkey_origin(host: &str, port: u16, configured_origin: Option<&str>) -> String {
-    configured_origin
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| default_passkey_origin(host, port))
-}
-
-fn ensure_request_origin(req: &HttpRequest, site: &PasskeySiteConfig) -> AppResult<()> {
-    let connection = req.connection_info();
-    let actual_origin = Url::parse(&format!("{}://{}", connection.scheme(), connection.host()))
-        .map_err(|_| {
-            AppError::BadRequest(
-                "当前访问地址与 Passkey 配置不一致，请使用配置中的访问地址登录".to_string(),
-            )
-        })?;
-    let expected_origin = Url::parse(&site.origin).map_err(|_| {
-        AppError::BadRequest("Passkey 访问地址配置无效，请检查服务启动地址".to_string())
-    })?;
-
-    if actual_origin.scheme() != expected_origin.scheme()
-        || actual_origin.host_str() != expected_origin.host_str()
-        || actual_origin.port_or_known_default() != expected_origin.port_or_known_default()
-    {
-        return Err(AppError::BadRequest(format!(
-            "当前访问地址与 Passkey 配置不一致，请使用 {} 访问",
-            site.origin
-        )));
+pub fn build_passkey_sites(
+    config: &PasskeysFileConfig,
+) -> AppResult<HashMap<String, PasskeySiteConfig>> {
+    let mut sites = HashMap::new();
+    let mut origins = HashMap::new();
+    for site in &config.sites {
+        let built = build_passkey_site(site)?;
+        if let Some(existing_id) = origins.insert(built.origin.clone(), built.id.clone()) {
+            return Err(AppError::BadRequest(format!(
+                "Passkey 访问地址重复: {} 已同时分配给 {} 和 {}",
+                built.origin, existing_id, built.id
+            )));
+        }
+        if sites.insert(built.id.clone(), built).is_some() {
+            return Err(AppError::BadRequest(format!(
+                "Passkey 站点 ID 重复: {}",
+                site.id.trim()
+            )));
+        }
     }
-
-    Ok(())
+    Ok(sites)
 }
 
 fn build_webauthn(site: &PasskeySiteConfig, timeout_seconds: u64) -> AppResult<Webauthn> {
@@ -659,7 +782,7 @@ fn build_webauthn_with_message(
     WebauthnBuilder::new(&site.rp_id, &origin)
         .map(|builder| {
             builder
-                .rp_name(PASSKEY_RP_NAME)
+                .rp_name(&site.rp_name)
                 .timeout(Duration::from_secs(timeout_seconds))
         })
         .and_then(WebauthnBuilder::build)
@@ -667,6 +790,47 @@ fn build_webauthn_with_message(
             log::warn!("build webauthn failed: {}", err);
             AppError::BadRequest(error_message.to_string())
         })
+}
+
+fn retain_configured_sites(
+    store: &mut PasskeyStoreData,
+    sites: &HashMap<String, PasskeySiteConfig>,
+) {
+    store.sites.retain(|site_id, _| sites.contains_key(site_id));
+}
+
+fn ensure_site_store_entries(
+    store: &mut PasskeyStoreData,
+    sites: &HashMap<String, PasskeySiteConfig>,
+) {
+    for site_id in sites.keys() {
+        store
+            .sites
+            .entry(site_id.clone())
+            .or_insert_with(|| StoredSitePasskeys {
+                user_id: Uuid::new_v4().to_string(),
+                credentials: Vec::new(),
+            });
+    }
+}
+
+fn request_origin(req: &HttpRequest) -> AppResult<Url> {
+    let connection = req.connection_info();
+    Url::parse(&format!("{}://{}", connection.scheme(), connection.host())).map_err(|_| {
+        AppError::BadRequest(
+            "当前访问地址与 Passkey 配置不一致，请使用配置中的访问地址登录".to_string(),
+        )
+    })
+}
+
+fn origin_matches(actual_origin: &Url, expected_origin: &str) -> bool {
+    let Ok(expected_origin) = Url::parse(expected_origin) else {
+        return false;
+    };
+
+    actual_origin.scheme() == expected_origin.scheme()
+        && actual_origin.host_str() == expected_origin.host_str()
+        && actual_origin.port_or_known_default() == expected_origin.port_or_known_default()
 }
 
 fn cleanup_challenges<T>(
@@ -735,112 +899,149 @@ fn take_challenge<T: Clone>(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_auth_binding, build_passkey_site, default_passkey_origin, ensure_request_origin,
-        load_store, normalize_passkey_name, resolve_passkey_origin, save_store_to_path,
-        PasskeyStoreData, MAX_PENDING_CHALLENGES,
+        build_auth_binding, build_passkey_site, build_passkey_sites, load_store,
+        normalize_passkey_name, origin_matches, request_origin, save_store_to_path,
+        PasskeyStoreData, StoredSitePasskeys, MAX_PENDING_CHALLENGES,
     };
     use actix_web::{http::header, test::TestRequest};
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
     use crate::auth::{AuthConfig, AuthState, PasswordSource};
-    use crate::config::PasswordAlgorithm;
-
-    #[test]
-    fn default_passkey_origin_maps_wildcard_hosts_to_localhost() {
-        assert_eq!(
-            default_passkey_origin("0.0.0.0", 4567),
-            "http://localhost:4567"
-        );
-        assert_eq!(default_passkey_origin("::", 4567), "http://localhost:4567");
-    }
-
-    #[test]
-    fn default_passkey_origin_wraps_ipv6_addresses() {
-        assert_eq!(default_passkey_origin("::1", 4567), "http://[::1]:4567");
-    }
-
-    #[test]
-    fn resolve_passkey_origin_prefers_configured_value() {
-        assert_eq!(
-            resolve_passkey_origin("0.0.0.0", 4567, Some("https://example.com")),
-            "https://example.com"
-        );
-    }
-
-    #[test]
-    fn resolve_passkey_origin_ignores_blank_configured_value() {
-        assert_eq!(
-            resolve_passkey_origin("0.0.0.0", 4567, Some("   ")),
-            "http://localhost:4567"
-        );
-    }
+    use crate::config::{PasskeySiteFileConfig, PasskeysFileConfig, PasswordAlgorithm};
 
     #[test]
     fn build_passkey_site_rejects_non_origin_url() {
-        assert!(build_passkey_site("https://example.com/app").is_err());
-        assert!(build_passkey_site("https://user@example.com").is_err());
-        assert!(build_passkey_site("ftp://example.com").is_err());
+        assert!(
+            build_passkey_site(&site_file("main", "https://example.com/app", "example.com"))
+                .is_err()
+        );
+        assert!(build_passkey_site(&site_file(
+            "main",
+            "https://user@example.com",
+            "example.com"
+        ))
+        .is_err());
+        assert!(
+            build_passkey_site(&site_file("main", "ftp://example.com", "example.com")).is_err()
+        );
     }
 
     #[test]
     fn build_passkey_site_accepts_plain_origin() {
-        assert!(build_passkey_site("https://example.com:8443").is_ok());
+        assert!(build_passkey_site(&site_file(
+            "main",
+            "https://example.com:8443",
+            "example.com"
+        ))
+        .is_ok());
     }
 
     #[test]
-    fn ensure_request_origin_accepts_exact_match() {
-        let site = build_passkey_site("https://example.com:8443").unwrap();
+    fn build_passkey_site_requires_id() {
+        assert!(build_passkey_site(&site_file(" ", "https://example.com", "example.com")).is_err());
+    }
+
+    #[test]
+    fn build_passkey_site_requires_rp_id() {
+        assert!(build_passkey_site(&site_file("main", "https://example.com", " ")).is_err());
+    }
+
+    #[test]
+    fn origin_matches_accepts_exact_match() {
         let req = TestRequest::default()
             .insert_header((header::HOST, "example.com:8443"))
             .insert_header(("X-Forwarded-Proto", "https"))
             .to_http_request();
+        let origin = request_origin(&req).unwrap();
 
-        assert!(ensure_request_origin(&req, &site).is_ok());
+        assert!(origin_matches(&origin, "https://example.com:8443"));
     }
 
     #[test]
-    fn ensure_request_origin_rejects_mismatched_host() {
-        let site = build_passkey_site("https://example.com").unwrap();
+    fn origin_matches_rejects_mismatched_host() {
         let req = TestRequest::default()
             .insert_header((header::HOST, "evil.example.com"))
             .insert_header(("X-Forwarded-Proto", "https"))
             .to_http_request();
+        let origin = request_origin(&req).unwrap();
 
-        assert!(ensure_request_origin(&req, &site).is_err());
+        assert!(!origin_matches(&origin, "https://example.com"));
     }
 
     #[test]
-    fn ensure_request_origin_rejects_mismatched_scheme() {
-        let site = build_passkey_site("https://example.com").unwrap();
+    fn origin_matches_rejects_mismatched_scheme() {
         let req = TestRequest::default()
             .insert_header((header::HOST, "example.com"))
             .to_http_request();
+        let origin = request_origin(&req).unwrap();
 
-        assert!(ensure_request_origin(&req, &site).is_err());
+        assert!(!origin_matches(&origin, "https://example.com"));
     }
 
     #[test]
-    fn ensure_request_origin_normalizes_default_https_port() {
-        let site = build_passkey_site("https://example.com").unwrap();
+    fn origin_matches_normalizes_default_https_port() {
         let req = TestRequest::default()
             .insert_header((header::HOST, "example.com:443"))
             .insert_header(("X-Forwarded-Proto", "https"))
             .to_http_request();
+        let origin = request_origin(&req).unwrap();
 
-        assert!(ensure_request_origin(&req, &site).is_ok());
+        assert!(origin_matches(&origin, "https://example.com"));
     }
 
     #[test]
-    fn ensure_request_origin_uses_forwarded_headers() {
-        let site = build_passkey_site("https://example.com").unwrap();
+    fn request_origin_uses_forwarded_headers() {
         let req = TestRequest::default()
             .insert_header((header::HOST, "127.0.0.1:4567"))
             .insert_header(("X-Forwarded-Host", "example.com"))
             .insert_header(("X-Forwarded-Proto", "https"))
             .to_http_request();
 
-        assert!(ensure_request_origin(&req, &site).is_ok());
+        let origin = request_origin(&req).unwrap();
+        assert_eq!(origin.as_str(), "https://example.com/");
+    }
+
+    #[test]
+    fn build_passkey_sites_rejects_duplicate_ids() {
+        let config = PasskeysFileConfig {
+            enabled: true,
+            sites: vec![
+                site_file("main", "https://foo.example.com", "foo.example.com"),
+                site_file("main", "https://bar.example.net", "bar.example.net"),
+            ],
+        };
+
+        assert!(build_passkey_sites(&config).is_err());
+    }
+
+    #[test]
+    fn build_passkey_sites_rejects_duplicate_origins() {
+        let config = PasskeysFileConfig {
+            enabled: true,
+            sites: vec![
+                site_file("foo", "https://shared.example.com", "shared.example.com"),
+                site_file("bar", "https://shared.example.com", "shared.example.com"),
+            ],
+        };
+
+        assert!(build_passkey_sites(&config).is_err());
+    }
+
+    #[test]
+    fn build_passkey_sites_accepts_multiple_domains() {
+        let config = PasskeysFileConfig {
+            enabled: true,
+            sites: vec![
+                site_file("foo", "https://foo.example.com", "foo.example.com"),
+                site_file("bar", "https://bar.example.net", "bar.example.net"),
+            ],
+        };
+
+        let sites = build_passkey_sites(&config).unwrap();
+        assert_eq!(sites.len(), 2);
+        assert_eq!(sites.get("foo").unwrap().rp_id, "foo.example.com");
+        assert_eq!(sites.get("bar").unwrap().rp_id, "bar.example.net");
     }
 
     fn make_test_auth(username: &str, password: &str) -> AuthState {
@@ -882,8 +1083,7 @@ mod tests {
     fn load_store_returns_empty_for_missing_file() {
         let path = std::path::PathBuf::from("/tmp/openmkview-test-nonexistent.json");
         let store = load_store(&path).unwrap();
-        assert!(store.credentials.is_empty());
-        assert!(!store.user_id.is_empty());
+        assert!(store.sites.is_empty());
     }
 
     #[test]
@@ -893,7 +1093,7 @@ mod tests {
         std::fs::write(&path, "not valid json!!!").unwrap();
 
         let store = load_store(&path).unwrap();
-        assert!(store.credentials.is_empty());
+        assert!(store.sites.is_empty());
         // Original file should be renamed
         assert!(!path.exists());
         // Broken backup should exist
@@ -911,14 +1111,19 @@ mod tests {
         let path = dir.path().join("passkeys.json");
         let store = PasskeyStoreData {
             auth_binding: "test-binding".to_string(),
-            user_id: "test-user-id".to_string(),
-            credentials: Vec::new(),
+            sites: HashMap::from([(
+                "foo".to_string(),
+                StoredSitePasskeys {
+                    user_id: "test-user-id".to_string(),
+                    credentials: Vec::new(),
+                },
+            )]),
         };
         save_store_to_path(&path, &store).unwrap();
         let loaded = load_store(&path).unwrap();
-        assert_eq!(loaded.user_id, "test-user-id");
         assert_eq!(loaded.auth_binding, "test-binding");
-        assert!(loaded.credentials.is_empty());
+        assert_eq!(loaded.sites.get("foo").unwrap().user_id, "test-user-id");
+        assert!(loaded.sites.get("foo").unwrap().credentials.is_empty());
     }
 
     #[test]
@@ -951,5 +1156,14 @@ mod tests {
         let limit = MAX_PENDING_CHALLENGES;
         assert!(limit >= 10);
         assert!(limit <= 1000);
+    }
+
+    fn site_file(id: &str, origin: &str, rp_id: &str) -> PasskeySiteFileConfig {
+        PasskeySiteFileConfig {
+            id: id.to_string(),
+            origin: origin.to_string(),
+            rp_id: rp_id.to_string(),
+            rp_name: None,
+        }
     }
 }
