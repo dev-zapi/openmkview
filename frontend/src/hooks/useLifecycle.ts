@@ -42,6 +42,8 @@ export const useLifecycle = () => {
     };
     mediaQuery.addEventListener('change', handleThemeChange);
 
+    import('../utils/theme').then(({ updateBrowserThemeColor }) => updateBrowserThemeColor());
+
     const cleanupPopState = onPopState(async (route) => {
       if (route.projectId) {
         const project = projectStore.state.projects.find(p => p.id === route.projectId);

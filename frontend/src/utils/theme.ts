@@ -19,15 +19,17 @@ export const applyTheme = (settings: { themeMode: ThemeMode; lightTheme: string;
 };
 
 export const updateBrowserThemeColor = (): void => {
-  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-  if (!themeColorMeta) return;
+  requestAnimationFrame(() => {
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeColorMeta) return;
 
-  const computedStyle = getComputedStyle(document.body);
-  const bgColor = computedStyle.getPropertyValue('--color-bg-subtle').trim();
+    const computedStyle = getComputedStyle(document.documentElement);
+    const bgColor = computedStyle.getPropertyValue('--color-bg-subtle').trim();
 
-  if (bgColor) {
-    themeColorMeta.setAttribute('content', bgColor);
-  }
+    if (bgColor) {
+      themeColorMeta.setAttribute('content', bgColor);
+    }
+  });
 };
 
 export const cycleThemeMode = (currentMode: ThemeMode): ThemeMode => {
