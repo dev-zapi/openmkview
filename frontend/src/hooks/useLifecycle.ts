@@ -38,6 +38,7 @@ export const useLifecycle = () => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleThemeChange = (e: MediaQueryListEvent) => {
       settingsStore.updateSystemTheme(e.matches ? 'dark' : 'light');
+      import('../utils/theme').then(({ updateBrowserThemeColor }) => updateBrowserThemeColor());
     };
     mediaQuery.addEventListener('change', handleThemeChange);
 

@@ -11,9 +11,23 @@ export const getEffectiveThemeType = (mode: ThemeMode): ThemeType => {
 export const applyTheme = (settings: { themeMode: ThemeMode; lightTheme: string; darkTheme: string }): void => {
   const effectiveType = getEffectiveThemeType(settings.themeMode);
   const themeId = effectiveType === 'light' ? settings.lightTheme : settings.darkTheme;
-  
+
   document.body.classList.remove('light-theme', 'dark-theme');
   document.body.classList.add(`${effectiveType}-theme`, themeId);
+
+  updateBrowserThemeColor();
+};
+
+export const updateBrowserThemeColor = (): void => {
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (!themeColorMeta) return;
+
+  const computedStyle = getComputedStyle(document.body);
+  const bgColor = computedStyle.getPropertyValue('--color-bg-subtle').trim();
+
+  if (bgColor) {
+    themeColorMeta.setAttribute('content', bgColor);
+  }
 };
 
 export const cycleThemeMode = (currentMode: ThemeMode): ThemeMode => {
