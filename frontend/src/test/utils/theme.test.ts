@@ -4,6 +4,7 @@ import {
   getEffectiveThemeType,
   applyTheme,
   cycleThemeMode,
+  updateBrowserThemeColor,
 } from '../../utils/theme';
 import type { ThemeMode, ThemeType } from '../../types/app';
 import { resetPrefersDark, setPrefersDark } from '../setup';
@@ -74,6 +75,21 @@ describe('theme utils', () => {
       expect(document.body.classList.contains('light-theme')).toBe(false);
       expect(document.body.classList.contains('dark-theme')).toBe(true);
       expect(document.body.classList.contains('new-dark')).toBe(true);
+    });
+
+    it('updates theme-color from the applied body theme variables', async () => {
+      document.head.innerHTML = '<meta name="theme-color" content="#ffffff">';
+      const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      });
+
+      document.body.style.setProperty('--color-bg-subtle', '#161b22');
+      updateBrowserThemeColor();
+
+      expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#161b22');
+
+      raf.mockRestore();
     });
   });
 
