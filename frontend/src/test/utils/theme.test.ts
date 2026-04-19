@@ -84,10 +84,26 @@ describe('theme utils', () => {
         return 1;
       });
 
-      document.body.style.setProperty('--color-bg', '#161b22');
+      document.body.style.setProperty('--color-topbar-bg', '#161b22');
       updateBrowserThemeColor();
 
       expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#161b22');
+
+      raf.mockRestore();
+    });
+
+    it('falls back to --color-bg when top bar color is unavailable', () => {
+      document.head.innerHTML = '<meta name="theme-color" content="#ffffff">';
+      const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      });
+
+      document.body.style.removeProperty('--color-topbar-bg');
+      document.body.style.setProperty('--color-bg', '#241f31');
+      updateBrowserThemeColor();
+
+      expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe('#241f31');
 
       raf.mockRestore();
     });
