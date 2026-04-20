@@ -21,17 +21,31 @@ export const ActivityBar: Component<ActivityBarProps> = (props) => {
     <aside class="activity-bar">
       <div class="activity-bar-projects">
         <For each={props.projects}>
-          {(project) => (
-            <button
-              class={props.activeProject?.id === project.id ? 'active' : ''}
-              title={project.name}
-              onClick={() => props.onProjectClick(project)}
-              onContextMenu={(event) => props.onProjectContextMenu(event, project.id)}
-              style={props.getProjectStyle(project)}
-            >
-              {props.renderProjectIcon(project)}
-            </button>
-          )}
+          {(project) => {
+            const activeStyle = () => props.getProjectStyle(project);
+            const projectColor = () => activeStyle().background;
+            const isActive = () => props.activeProject?.id === project.id;
+
+            return (
+              <button
+                class={isActive() ? 'active' : ''}
+                classList={{ 'has-project-color': Boolean(projectColor()) && isActive(), 'project-color-hint': Boolean(projectColor()) && !isActive() }}
+                title={project.name}
+                onClick={() => props.onProjectClick(project)}
+                onContextMenu={(event) => props.onProjectContextMenu(event, project.id)}
+                style={projectColor()
+                  ? (isActive()
+                      ? activeStyle()
+                      : {
+                          '--project-color': projectColor(),
+                          background: 'transparent',
+                        })
+                  : undefined}
+              >
+                {props.renderProjectIcon(project)}
+              </button>
+            );
+          }}
         </For>
       </div>
 

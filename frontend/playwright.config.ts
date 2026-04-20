@@ -1,5 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:4173';
+const webServerCommand = process.env.PLAYWRIGHT_WEBSERVER_COMMAND ?? 'npm run preview';
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -8,7 +12,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { outputFile: 'playwright-report.html' }], ['list']],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'always',
     browserName: 'chromium',
@@ -19,10 +23,12 @@ export default defineConfig({
       use: { browserName: 'chromium' },
     },
   ],
-  webServer: {
-    command: 'npm run preview',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60000,
-  },
+  webServer: skipWebServer
+    ? undefined
+    : {
+        command: webServerCommand,
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 60000,
+      },
 });

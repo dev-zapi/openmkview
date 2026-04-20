@@ -166,12 +166,58 @@
   height: 24px;
 }
 
-.activityBarProjects .activityBarButton[style*='background'] {
+.activityBarButtonColored {
   color: white;
   font-weight: 600;
 }
 
-.activityBarProjects .activityBarButton[style*='background'] :global(.project-initial) {
+.activityBarButtonHint {
+  color: var(--color-text-h);
+}
+
+.activityBarButtonHint::before {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border);
+  opacity: 1;
+}
+
+.activityBarButtonHint :global(.project-initial),
+.activityBarButtonHint :global(.project-favicon) {
+  color: var(--color-text-h);
+  position: relative;
+  z-index: 1;
+}
+
+.activityBarButtonHint :global(.project-initial) {
+  text-shadow: none;
+}
+
+.activityBarButtonHint :global(.project-initial)::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--project-color, var(--color-accent));
+  box-shadow: 0 0 0 2px var(--color-bg-subtle);
+}
+
+.activityBarButtonHint :global(.project-favicon) {
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--project-color, var(--color-accent));
+}
+
+.activityBarProjects .activityBarButtonColored {
+  color: white;
+  font-weight: 600;
+}
+
+.activityBarProjects .activityBarButtonColored :global(.project-initial) {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }

@@ -185,4 +185,5 @@ test.describe('OpenMKView E2E Tests', () => {
 
     logConsoleMessages(consoleMessages, 'should toggle theme from activity bar');
   });
+
 });

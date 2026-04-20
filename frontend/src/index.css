@@ -608,19 +608,60 @@ body {
   height: 24px;
 }
 
-/* Project button with custom color */
-.activity-bar-projects button[style*="background"] {
+.activity-bar-projects button.has-project-color {
   color: white;
   font-weight: 600;
 }
 
-.activity-bar-projects button[style*="background"]:hover {
+.activity-bar-projects button.active.has-project-color:hover {
   filter: brightness(1.1);
 }
 
-.activity-bar-projects button[style*="background"] .project-initial {
+.activity-bar-projects button.has-project-color .project-initial {
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.activity-bar-projects button.project-color-hint {
+  color: var(--color-text-h);
+}
+
+.activity-bar-projects button.project-color-hint::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border);
+  opacity: 1;
+}
+
+.activity-bar-projects button.project-color-hint .project-initial,
+.activity-bar-projects button.project-color-hint .project-favicon {
+  color: var(--color-text-h);
+  text-shadow: none;
+}
+
+.activity-bar-projects button.project-color-hint .project-initial::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--project-color, var(--color-accent));
+  box-shadow: 0 0 0 2px var(--color-bg-subtle);
+}
+
+.activity-bar-projects button.project-color-hint .project-favicon {
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--project-color, var(--color-accent));
+}
+
+.activity-bar-projects button.project-color-hint .project-initial,
+.activity-bar-projects button.project-color-hint .project-favicon {
+  position: relative;
+  z-index: 1;
 }
 
 /* Activity bar item transition animation */

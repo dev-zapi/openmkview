@@ -1,6 +1,10 @@
 import { createStore } from 'solid-js/store';
 import type { Project, FileNode, FileContent } from '../types';
 
+const cloneProject = (project: Project): Project => ({ ...project });
+
+const cloneProjects = (projects: Project[]): Project[] => projects.map(cloneProject);
+
 interface ProjectState {
   projects: Project[];
   activeProject: Project | null;
@@ -21,15 +25,15 @@ export const projectStore = {
   state: projectState,
 
   setProjects(projects: Project[]) {
-    setProjectState('projects', projects);
+    setProjectState('projects', cloneProjects(projects));
   },
 
   addProject(project: Project) {
-    setProjectState('projects', [...projectState.projects, project]);
+    setProjectState('projects', [...projectState.projects, cloneProject(project)]);
   },
 
   setActiveProject(project: Project | null) {
-    setProjectState('activeProject', project);
+    setProjectState('activeProject', project ? cloneProject(project) : null);
   },
 
   setFileTree(tree: FileNode[]) {

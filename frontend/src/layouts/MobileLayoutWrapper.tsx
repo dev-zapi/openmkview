@@ -325,10 +325,19 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
         <>
           <div class={styles.activityBarProjects}>
             <For each={props.projects}>
-              {(project) => (
+              {(project) => {
+                const activeStyle = () => props.getProjectStyle(project);
+                const projectColor = () => activeStyle().background;
+                const isActive = () => props.activeProject?.id === project.id;
+
+                return (
                 <button
                   class={styles.activityBarButton}
-                  classList={{ [styles.activityBarButtonActive]: props.activeProject?.id === project.id }}
+                  classList={{
+                    [styles.activityBarButtonActive]: isActive(),
+                    [styles.activityBarButtonColored]: Boolean(projectColor()) && isActive(),
+                    [styles.activityBarButtonHint]: Boolean(projectColor()) && !isActive(),
+                  }}
                   title={project.name}
                   aria-label={project.name}
                   aria-keyshortcuts="Shift+F10"
@@ -342,11 +351,19 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
                   }}
                   onKeyDown={(event) => handleProjectKeyDown(event, project)}
                   onClick={() => handleProjectClick(project)}
-                  style={props.getProjectStyle(project)}
+                  style={projectColor()
+                    ? (isActive()
+                        ? activeStyle()
+                        : {
+                            '--project-color': projectColor(),
+                            background: 'transparent',
+                          })
+                    : undefined}
                 >
                   {props.renderProjectIcon(project)}
                 </button>
-              )}
+                );
+              }}
             </For>
 
             <button

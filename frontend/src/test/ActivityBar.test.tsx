@@ -1,3 +1,4 @@
+import { createSignal } from 'solid-js';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@solidjs/testing-library';
 import ActivityBar from '../components/ActivityBar';
@@ -60,5 +61,42 @@ describe('ActivityBar', () => {
     expect(onProjectClick).toHaveBeenCalledWith(projects[0]);
     expect(onOpenProject).toHaveBeenCalled();
     expect(onToggleTheme).toHaveBeenCalled();
+  });
+
+  it('updates active class when active project changes', () => {
+    const [activeProject, setActiveProject] = createSignal(projects[0]);
+
+    render(() => (
+      <ActivityBar
+        projects={projects}
+        activeProject={activeProject()}
+        themeMode="light"
+        onProjectClick={() => {}}
+        onProjectContextMenu={() => {}}
+        onOpenProject={() => {}}
+        onToggleTheme={() => {}}
+        onOpenTrash={() => {}}
+        onOpenSettings={() => {}}
+        renderProjectIcon={(project) => <span>{project.name[0]}</span>}
+        getProjectStyle={(project) => project.color ? { background: project.color } : {}}
+      />
+    ));
+
+    const alphaButton = screen.getByTitle('Alpha');
+    const betaButton = screen.getByTitle('Beta');
+
+    expect(alphaButton.classList.contains('active')).toBe(true);
+    expect(betaButton.classList.contains('active')).toBe(false);
+    expect(alphaButton.getAttribute('style')).toContain('background: rgb(255, 0, 0)');
+
+    setActiveProject(projects[1]);
+
+    const alphaButtonAfterSwitch = screen.getByTitle('Alpha');
+
+    expect(alphaButtonAfterSwitch.classList.contains('active')).toBe(false);
+    expect(alphaButtonAfterSwitch.classList.contains('project-color-hint')).toBe(true);
+    expect(alphaButtonAfterSwitch.style.getPropertyValue('--project-color')).toBe('#ff0000');
+    expect(alphaButtonAfterSwitch.style.background).toBe('transparent');
+    expect(betaButton.classList.contains('active')).toBe(true);
   });
 });

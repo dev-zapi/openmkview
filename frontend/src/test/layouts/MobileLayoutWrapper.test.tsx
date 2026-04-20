@@ -4,7 +4,7 @@ import { MobileLayoutWrapper } from '../../layouts/MobileLayoutWrapper';
 import { mobileLayoutStore } from '../../components/mobile';
 import type { Project } from '../../types';
 import type { Settings } from '../../types/app';
-import type { ComponentProps } from 'solid-js';
+import { createSignal, type ComponentProps } from 'solid-js';
 
 const settings: Settings = {
   markdownWidth: 'full',
@@ -24,6 +24,13 @@ const project: Project = {
   id: 1,
   name: 'Demo',
   path: '/demo',
+};
+
+const alternateProject: Project = {
+  id: 2,
+  name: 'Workspace',
+  path: '/workspace',
+  color: '#ff6b6b',
 };
 
 type MobileLayoutWrapperProps = ComponentProps<typeof MobileLayoutWrapper>;
@@ -273,5 +280,45 @@ describe('MobileLayoutWrapper', () => {
     expect(onProjectActionSwitch).toHaveBeenCalledWith(project);
     expect(screen.getByRole('dialog', { name: 'Demo' })).toBeTruthy();
     expect(onEditProject).not.toHaveBeenCalled();
+  });
+
+  it('updates selected project button and top bar title when active project changes', async () => {
+    const coloredProject = { ...project, color: '#c2185b' };
+    const [activeProject, setActiveProject] = createSignal<Project | null>(coloredProject);
+
+    render(() => (
+      <MobileLayoutWrapper
+        {...createProps({
+          projects: [coloredProject, alternateProject],
+          activeProject: activeProject(),
+          renderProjectIcon: (item) => <span>{item.name[0]}</span>,
+          getProjectStyle: (item) => item.color ? { background: item.color } : {},
+        })}
+      />
+    ));
+
+    mobileLayoutStore.openLeftDrawer();
+    const demoButton = await screen.findByLabelText('Demo');
+    const workspaceButton = await screen.findByLabelText('Workspace');
+
+    expect(screen.getAllByText('Demo').length).toBeGreaterThan(0);
+    expect(demoButton.className).toContain('activityBarButtonActive');
+    expect(demoButton.getAttribute('style')).toContain('background: rgb(194, 24, 91)');
+    expect(workspaceButton.className).toContain('activityBarButtonHint');
+    expect(workspaceButton.style.getPropertyValue('--project-color')).toBe('#ff6b6b');
+    expect(workspaceButton.style.background).toBe('transparent');
+
+    setActiveProject(alternateProject);
+
+    expect(screen.getAllByText('Workspace').length).toBeGreaterThan(0);
+    const demoButtonAfterSwitch = screen.getByLabelText('Demo');
+    const workspaceButtonAfterSwitch = screen.getByLabelText('Workspace');
+
+    expect(demoButtonAfterSwitch.className).toContain('activityBarButtonHint');
+    expect(demoButtonAfterSwitch.className).not.toContain('activityBarButtonActive');
+    expect(demoButtonAfterSwitch.style.getPropertyValue('--project-color')).toBe('#c2185b');
+    expect(demoButtonAfterSwitch.style.background).toBe('transparent');
+    expect(workspaceButtonAfterSwitch.className).toContain('activityBarButtonActive');
+    expect(workspaceButtonAfterSwitch.getAttribute('style')).toContain('background: rgb(255, 107, 107)');
   });
 });
