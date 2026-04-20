@@ -52,7 +52,7 @@ const normalizeMarkdownWidth = (raw: unknown, legacyFixedWidth?: unknown): Markd
   return DEFAULT_SETTINGS.markdownWidth;
 };
 
-export const normalizeSettings = (settings: Partial<Settings> & Record<string, unknown>): Settings => {
+export const normalizeSettings = (settings: Settings | (Partial<Settings> & Record<string, unknown>)): Settings => {
   const themeMode = isThemeMode(settings.themeMode)
     ? settings.themeMode
     : DEFAULT_SETTINGS.themeMode;
