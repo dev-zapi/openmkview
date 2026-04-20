@@ -11,7 +11,7 @@
 .mobileTopBar {
   display: flex;
   align-items: center;
-  min-height: 48px;
+  min-height: 40px;
   padding: 0 8px;
   padding-top: var(--safe-top);
   background: var(--color-topbar-bg, var(--color-bg));
@@ -85,7 +85,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 52px;
+  width: 40px;
   background: var(--color-bg-subtle);
   border-right: 1px solid var(--color-border);
   flex-shrink: 0;
@@ -117,15 +117,15 @@
 }
 
 .activityBarButton {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   margin-bottom: 8px;
   background: transparent;
   border: none;
   color: var(--color-text);
   cursor: pointer;
   border-radius: 8px;
-  font-size: 22px;
+  font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -190,7 +190,7 @@
 }
 
 .sidebarHeader {
-  padding: 12px 16px;
+  padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -199,6 +199,9 @@
   background: var(--color-bg-subtle);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .sidebarContent {
