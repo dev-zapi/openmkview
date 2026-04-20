@@ -69,11 +69,7 @@ const App: Component = () => {
   };
 
   const handleMobileProjectClick = async (project: Project) => {
-    const switched = await projectHook.switchProject(project);
-    if (switched) {
-      mobileLayoutStore.closeLeftDrawer();
-    }
-    return switched;
+    return projectHook.switchProject(project);
   };
 
   const handleMobileProjectActionSwitch = (project: Project) => {
