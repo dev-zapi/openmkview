@@ -5,7 +5,6 @@ import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
 import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
-import ProjectMenu from '../components/ProjectMenu';
 import type { Project, FileContent, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import type { TabType } from '../components/markdown-header';
@@ -73,7 +72,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
   const [actionProject, setActionProject] = createSignal<Project | null>(null);
   const [longPressTriggered, setLongPressTriggered] = createSignal(false);
   const [topBarMenuOpen, setTopBarMenuOpen] = createSignal(false);
-  const [topBarMenuPos, setTopBarMenuPos] = createSignal({ top: 44, right: 8 });
   let longPressTimer: number | undefined;
   let touchStartX = 0;
   let touchStartY = 0;
@@ -93,9 +91,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
 
   const handleTopBarMenuOpen = (e: MouseEvent) => {
     e.stopPropagation();
-    const btn = e.currentTarget as HTMLElement;
-    const rect = btn.getBoundingClientRect();
-    setTopBarMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
     setTopBarMenuOpen(true);
   };
 
@@ -661,23 +656,43 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
       </Show>
       <Show when={topBarMenuOpen() && props.activeProject}>
         <Portal>
-          <div
-            style={{
-              position: 'fixed',
-              inset: '0',
-              'z-index': '1500',
-            }}
-            onClick={() => setTopBarMenuOpen(false)}
-          >
-            <div style={{ position: 'absolute', top: `${topBarMenuPos().top}px`, right: `${topBarMenuPos().right}px` }} onClick={(e) => e.stopPropagation()}>
-              <ProjectMenu
-                isOpen={true}
-                position={{ top: 0, right: 0 }}
-                onRefresh={handleTopBarMenuRefresh}
-                onEdit={handleTopBarMenuEdit}
-                onCloseProject={handleTopBarMenuCloseProject}
-                onCloseMenu={() => setTopBarMenuOpen(false)}
-              />
+          <div class={styles.projectMenuOverlay} onClick={() => setTopBarMenuOpen(false)}>
+            <div
+              class={styles.projectMenuSheet}
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div class={styles.projectMenuHandle} aria-hidden="true" />
+              <div class={styles.projectMenuHeader}>
+                <div class={styles.projectMenuHeaderLabel}>Project Actions</div>
+                <div class={styles.projectMenuHeaderName}>{props.activeProject!.name}</div>
+              </div>
+              <button class={styles.projectMenuButton} onClick={handleTopBarMenuRefresh}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6" />
+                  <path d="M1 20v-6h6" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                <span>Refresh</span>
+              </button>
+              <button class={styles.projectMenuButton} onClick={handleTopBarMenuEdit}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                <span>Edit Project Info</span>
+              </button>
+              <button class={styles.projectMenuButton} onClick={handleTopBarMenuCloseProject}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                <span>Close Project</span>
+              </button>
+              <button class={`${styles.projectMenuButton} ${styles.projectMenuCancel}`} onClick={() => setTopBarMenuOpen(false)}>
+                Cancel
+              </button>
             </div>
           </div>
         </Portal>
