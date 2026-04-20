@@ -8,9 +8,13 @@ export interface Theme {
   builtin: boolean;
 }
 
-export interface Settings {
-  markdownWidth: 'full' | 'fixed';
+export interface MarkdownWidthSetting {
+  mode: 'full' | 'fixed';
   fixedWidth: string;
+}
+
+export interface Settings {
+  markdownWidth: MarkdownWidthSetting;
   themeMode: ThemeMode;
   lightTheme: string;
   darkTheme: string;
@@ -24,8 +28,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  markdownWidth: 'full',
-  fixedWidth: '900px',
+  markdownWidth: { mode: 'full', fixedWidth: '900px' },
   themeMode: 'system',
   lightTheme: 'light-default',
   darkTheme: 'dark-default',

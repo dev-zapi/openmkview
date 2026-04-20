@@ -13,7 +13,7 @@ import {
 describe('app types', () => {
   describe('DEFAULT_SETTINGS', () => {
     it('has valid default values', () => {
-      expect(DEFAULT_SETTINGS.markdownWidth).toBe('full');
+      expect(DEFAULT_SETTINGS.markdownWidth).toEqual({ mode: 'full', fixedWidth: '900px' });
       expect(DEFAULT_SETTINGS.themeMode).toBe('system');
       expect(DEFAULT_SETTINGS.trashExpireDays).toBe(30);
     });
@@ -70,7 +70,7 @@ describe('app types', () => {
 
     it('Settings interface is correctly typed', () => {
       const settings: Settings = DEFAULT_SETTINGS;
-      expect(settings.markdownWidth).toBe('full');
+      expect(settings.markdownWidth).toEqual({ mode: 'full', fixedWidth: '900px' });
       expect(typeof settings.protectedPaths).toBe('object');
     });
   });

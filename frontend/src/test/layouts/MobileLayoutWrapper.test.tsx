@@ -7,8 +7,7 @@ import type { Settings } from '../../types/app';
 import { createSignal, type ComponentProps } from 'solid-js';
 
 const settings: Settings = {
-  markdownWidth: 'full',
-  fixedWidth: '900px',
+  markdownWidth: { mode: 'full', fixedWidth: '900px' },
   themeMode: 'system',
   lightTheme: 'light-default',
   darkTheme: 'dark-default',

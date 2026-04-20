@@ -4,8 +4,7 @@ import { DesktopLayout } from '../../layouts/DesktopLayout';
 import type { Settings } from '../../types/app';
 
 const settings: Settings = {
-  markdownWidth: 'full',
-  fixedWidth: '900px',
+  markdownWidth: { mode: 'full', fixedWidth: '900px' },
   themeMode: 'system',
   lightTheme: 'light-default',
   darkTheme: 'dark-default',

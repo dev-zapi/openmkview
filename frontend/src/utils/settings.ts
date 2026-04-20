@@ -1,4 +1,4 @@
-import type { Settings, ThemeMode } from '../types/app';
+import type { Settings, ThemeMode, MarkdownWidthSetting } from '../types/app';
 import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO } from '../types/app';
 
 const SETTINGS_KEY = 'openmkview-settings';
@@ -30,7 +30,29 @@ export const loadSettings = (): Settings => {
   }
 };
 
-export const normalizeSettings = (settings: Partial<Settings>): Settings => {
+const normalizeMarkdownWidth = (raw: unknown, legacyFixedWidth?: unknown): MarkdownWidthSetting => {
+  // Handle old flat format: markdownWidth was a string 'full' | 'fixed'
+  if (typeof raw === 'string') {
+    return {
+      mode: raw === 'fixed' ? 'fixed' : 'full',
+      fixedWidth: typeof legacyFixedWidth === 'string' && legacyFixedWidth
+        ? legacyFixedWidth
+        : DEFAULT_SETTINGS.markdownWidth.fixedWidth,
+    };
+  }
+  if (raw && typeof raw === 'object' && 'mode' in raw) {
+    const obj = raw as Record<string, unknown>;
+    return {
+      mode: obj.mode === 'fixed' ? 'fixed' : 'full',
+      fixedWidth: typeof obj.fixedWidth === 'string' && obj.fixedWidth
+        ? obj.fixedWidth
+        : DEFAULT_SETTINGS.markdownWidth.fixedWidth,
+    };
+  }
+  return DEFAULT_SETTINGS.markdownWidth;
+};
+
+export const normalizeSettings = (settings: Partial<Settings> & Record<string, unknown>): Settings => {
   const themeMode = isThemeMode(settings.themeMode)
     ? settings.themeMode
     : DEFAULT_SETTINGS.themeMode;
@@ -39,6 +61,7 @@ export const normalizeSettings = (settings: Partial<Settings>): Settings => {
     ...DEFAULT_SETTINGS,
     ...settings,
     themeMode,
+    markdownWidth: normalizeMarkdownWidth(settings.markdownWidth, settings['fixedWidth']),
     lightTheme: settings.lightTheme || DEFAULT_SETTINGS.lightTheme,
     darkTheme: settings.darkTheme || DEFAULT_SETTINGS.darkTheme,
     sessionTimeoutMinutes:
@@ -86,9 +109,9 @@ export const getValidatedSidebarWidth = (width: number): number => {
 };
 
 export const getMarkdownStyle = (settings: Settings): Record<string, string> => {
-  if (settings.markdownWidth === 'fixed' && settings.fixedWidth) {
+  if (settings.markdownWidth.mode === 'fixed' && settings.markdownWidth.fixedWidth) {
     return {
-      'max-width': settings.fixedWidth,
+      'max-width': settings.markdownWidth.fixedWidth,
       'margin-left': 'auto',
       'margin-right': 'auto',
     };

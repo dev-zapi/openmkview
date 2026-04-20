@@ -3,8 +3,7 @@ import { settingsStore } from '../../stores/settingsStore';
 import { DEFAULT_SETTINGS } from '../../types/app';
 
 const mockDefaultSettings = vi.hoisted(() => ({
-  markdownWidth: 'full' as const,
-  fixedWidth: '900px',
+  markdownWidth: { mode: 'full' as const, fixedWidth: '900px' },
   themeMode: 'system' as const,
   lightTheme: 'light-default',
   darkTheme: 'dark-default',

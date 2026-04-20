@@ -134,8 +134,7 @@ describe('SettingsPanel', () => {
       ...DEFAULT_SETTINGS,
       themeMode: 'dark',
       uiFontSize: '18px',
-      markdownWidth: 'fixed',
-      fixedWidth: '720px',
+      markdownWidth: { mode: 'fixed', fixedWidth: '720px' },
     }));
 
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
@@ -152,7 +151,7 @@ describe('SettingsPanel', () => {
     const onSave = vi.fn();
     vi.spyOn(window, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({ ...DEFAULT_SETTINGS, markdownWidth: 'fixed', fixedWidth: '720px' }),
+      json: async () => ({ ...DEFAULT_SETTINGS, markdownWidth: { mode: 'fixed', fixedWidth: '720px' } }),
     } as Response);
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} onSave={onSave} />);
 
@@ -170,8 +169,8 @@ describe('SettingsPanel', () => {
 
     await waitFor(() => {
       const saved = JSON.parse(localStorage.getItem('openmkview-settings') || '{}');
-      expect(saved.markdownWidth).toBe('fixed');
-      expect(saved.fixedWidth).toBe('720px');
+      expect(saved.markdownWidth?.mode).toBe('fixed');
+      expect(saved.markdownWidth?.fixedWidth).toBe('720px');
     });
     expect(document.body.classList.contains('light-theme') || document.body.classList.contains('dark-theme')).toBe(true);
     expect(onSave).toHaveBeenCalled();

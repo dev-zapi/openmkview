@@ -120,12 +120,12 @@ describe('settings utils', () => {
 
   describe('getMarkdownStyle', () => {
     it('returns empty object for full width', () => {
-      const settings = { ...DEFAULT_SETTINGS, markdownWidth: 'full' };
+      const settings = { ...DEFAULT_SETTINGS, markdownWidth: { mode: 'full' as const, fixedWidth: '900px' } };
       expect(getMarkdownStyle(settings)).toEqual({});
     });
 
     it('returns style object for fixed width', () => {
-      const settings = { ...DEFAULT_SETTINGS, markdownWidth: 'fixed', fixedWidth: '800px' };
+      const settings = { ...DEFAULT_SETTINGS, markdownWidth: { mode: 'fixed' as const, fixedWidth: '800px' } };
       expect(getMarkdownStyle(settings)).toEqual({
         'max-width': '800px',
         'margin-left': 'auto',

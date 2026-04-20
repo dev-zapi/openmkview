@@ -459,22 +459,22 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="content-width">Content Width</label>
                   <select
                     id="content-width"
-                    value={settings().markdownWidth}
-                    onChange={(e) => updateSetting('markdownWidth', e.currentTarget.value as any)}
+                    value={settings().markdownWidth.mode}
+                    onChange={(e) => updateSetting('markdownWidth', { ...settings().markdownWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
                   >
                     <option value="full">Full Width</option>
                     <option value="fixed">Fixed Width</option>
                   </select>
                 </div>
 
-                <Show when={settings().markdownWidth === 'fixed'}>
+                <Show when={settings().markdownWidth.mode === 'fixed'}>
                   <div class="settings-item">
                     <label for="fixed-width-value">Fixed Width Value</label>
                     <input
                       id="fixed-width-value"
                       type="text"
-                      value={settings().fixedWidth}
-                      onInput={(e) => updateSetting('fixedWidth', e.currentTarget.value)}
+                      value={settings().markdownWidth.fixedWidth}
+                      onInput={(e) => updateSetting('markdownWidth', { ...settings().markdownWidth, fixedWidth: e.currentTarget.value })}
                       placeholder="e.g., 900px, 70%"
                     />
                   </div>
