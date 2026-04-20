@@ -52,21 +52,22 @@ const normalizeMarkdownWidth = (raw: unknown, legacyFixedWidth?: unknown): Markd
   return DEFAULT_SETTINGS.markdownWidth;
 };
 
-export const normalizeSettings = (settings: Settings | (Partial<Settings> & Record<string, unknown>)): Settings => {
-  const themeMode = isThemeMode(settings.themeMode)
-    ? settings.themeMode
+export const normalizeSettings = (settings: (Partial<Settings> & Record<string, unknown>) | Settings): Settings => {
+  const s = settings as Partial<Settings> & Record<string, unknown>;
+  const themeMode = isThemeMode(s.themeMode)
+    ? s.themeMode
     : DEFAULT_SETTINGS.themeMode;
 
   return {
     ...DEFAULT_SETTINGS,
-    ...settings,
+    ...s,
     themeMode,
-    markdownWidth: normalizeMarkdownWidth(settings.markdownWidth, settings['fixedWidth']),
-    lightTheme: settings.lightTheme || DEFAULT_SETTINGS.lightTheme,
-    darkTheme: settings.darkTheme || DEFAULT_SETTINGS.darkTheme,
+    markdownWidth: normalizeMarkdownWidth(s.markdownWidth, s['fixedWidth']),
+    lightTheme: s.lightTheme || DEFAULT_SETTINGS.lightTheme,
+    darkTheme: s.darkTheme || DEFAULT_SETTINGS.darkTheme,
     sessionTimeoutMinutes:
-      typeof settings.sessionTimeoutMinutes === 'number' && settings.sessionTimeoutMinutes > 0
-        ? settings.sessionTimeoutMinutes
+      typeof s.sessionTimeoutMinutes === 'number' && s.sessionTimeoutMinutes > 0
+        ? s.sessionTimeoutMinutes
         : DEFAULT_SETTINGS.sessionTimeoutMinutes,
   };
 };
