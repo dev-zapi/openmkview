@@ -213,6 +213,17 @@
   overscroll-behavior: contain;
 }
 
+.drawerEmptyState {
+  font-size: 12px;
+  color: var(--color-text);
+  margin: 8px 10px;
+  padding: 8px 10px;
+  text-align: center;
+  background: var(--color-bg-subtle);
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+}
+
 /* Right drawer content */
 .rightDrawerContent {
   height: 100%;

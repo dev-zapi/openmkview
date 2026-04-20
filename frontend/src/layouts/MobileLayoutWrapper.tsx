@@ -438,7 +438,7 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
         </>
       }
       sidebarContent={
-        <Show when={props.activeProject} fallback={<p class="empty-state">Tap the + button above to open a project</p>}>
+        <Show when={props.activeProject} fallback={<p class={styles.drawerEmptyState}>Tap the + button above to open a project</p>}>
           <FileTree
             nodes={props.fileTree}
             onFileClick={props.onFileClick}
