@@ -27,14 +27,12 @@ export const SidebarPane: Component<SidebarPaneProps> = (props) => {
         class="sidebar sidebar-enter"
         style={{ width: `${props.sidebarWidth}px`, transition: props.transition }}
       >
-        <div class="sidebar-header">
-          <SidebarHeader
-            project={props.project!}
-            onRefresh={props.onRefresh}
-            onEdit={props.onEdit}
-            onCloseProject={props.onCloseProject}
-          />
-        </div>
+        <SidebarHeader
+          project={props.project!}
+          onRefresh={props.onRefresh}
+          onEdit={props.onEdit}
+          onCloseProject={props.onCloseProject}
+        />
         <div class="sidebar-content">
           <FileTree
             nodes={props.nodes}
