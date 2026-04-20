@@ -3,7 +3,7 @@
   inset: 0;
   min-height: var(--app-height);
   height: var(--app-height);
-  background: rgba(0, 0, 0, 0.5);
+  background: transparent;
   z-index: 1000;
   animation: fadeIn 0.2s ease;
   -webkit-tap-highlight-color: transparent;
@@ -19,7 +19,7 @@
   width: 85%;
   max-width: 400px;
   background: var(--color-bg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1001;
   overflow: hidden;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
