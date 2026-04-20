@@ -5,6 +5,7 @@ import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
 import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
+import ProjectMenu from '../components/ProjectMenu';
 import type { Project, FileContent, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import type { TabType } from '../components/markdown-header';
@@ -39,6 +40,8 @@ interface MobileLayoutWrapperProps {
   onOpenSettings: () => void;
   onToggleTheme: () => void;
   onEditProject: () => void;
+  onRefreshProject?: () => void;
+  onCloseProject?: () => void;
   onOpenProjectColorChangeAt: (project: Project, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => void;
   onProjectClick: (project: Project) => void | Promise<boolean | void>;
   onProjectActionSwitch: (project: Project) => Promise<boolean>;
@@ -69,6 +72,8 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
 
   const [actionProject, setActionProject] = createSignal<Project | null>(null);
   const [longPressTriggered, setLongPressTriggered] = createSignal(false);
+  const [topBarMenuOpen, setTopBarMenuOpen] = createSignal(false);
+  const [topBarMenuPos, setTopBarMenuPos] = createSignal({ top: 44, right: 8 });
   let longPressTimer: number | undefined;
   let touchStartX = 0;
   let touchStartY = 0;
@@ -84,6 +89,29 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
       window.clearTimeout(longPressTimer);
       longPressTimer = undefined;
     }
+  };
+
+  const handleTopBarMenuOpen = (e: MouseEvent) => {
+    e.stopPropagation();
+    const btn = e.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    setTopBarMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setTopBarMenuOpen(true);
+  };
+
+  const handleTopBarMenuRefresh = () => {
+    setTopBarMenuOpen(false);
+    props.onRefreshProject?.();
+  };
+
+  const handleTopBarMenuEdit = () => {
+    setTopBarMenuOpen(false);
+    props.onEditProject();
+  };
+
+  const handleTopBarMenuCloseProject = () => {
+    setTopBarMenuOpen(false);
+    props.onCloseProject?.();
   };
 
   const suppressNextProjectClick = () => {
@@ -321,6 +349,7 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
       activeProjectName={props.activeProject?.name}
       leftDrawerCloseOnEscape={!actionProject()}
       leftDrawerModal={!actionProject()}
+      onProjectMenuOpen={props.activeProject ? handleTopBarMenuOpen : undefined}
       activityBarContent={
         <>
           <div class={styles.activityBarProjects}>
@@ -626,6 +655,29 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </Portal>
+      </Show>
+      <Show when={topBarMenuOpen() && props.activeProject}>
+        <Portal>
+          <div
+            style={{
+              position: 'fixed',
+              inset: '0',
+              'z-index': '1500',
+            }}
+            onClick={() => setTopBarMenuOpen(false)}
+          >
+            <div style={{ position: 'absolute', top: `${topBarMenuPos().top}px`, right: `${topBarMenuPos().right}px` }} onClick={(e) => e.stopPropagation()}>
+              <ProjectMenu
+                isOpen={true}
+                position={{ top: 0, right: 0 }}
+                onRefresh={handleTopBarMenuRefresh}
+                onEdit={handleTopBarMenuEdit}
+                onCloseProject={handleTopBarMenuCloseProject}
+                onCloseMenu={() => setTopBarMenuOpen(false)}
+              />
             </div>
           </div>
         </Portal>

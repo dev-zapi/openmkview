@@ -165,6 +165,8 @@ const App: Component = () => {
           onOpenSettings={() => appStore.setSettingsOpen(true)}
           onToggleTheme={() => settingsStore.toggleThemeMode()}
           onEditProject={() => appStore.openProjectEditDialog()}
+          onRefreshProject={() => void projectHook.refreshProject()}
+          onCloseProject={handleProjectClose}
           onOpenProjectColorChangeAt={handleMobileOpenProjectColorChangeAt}
           onProjectClick={handleMobileProjectClick}
           onProjectActionSwitch={handleMobileProjectActionSwitch}

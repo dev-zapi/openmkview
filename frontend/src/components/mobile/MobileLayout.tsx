@@ -12,6 +12,7 @@ interface MobileLayoutProps {
   activeProjectName?: string;
   leftDrawerCloseOnEscape?: boolean;
   leftDrawerModal?: boolean;
+  onProjectMenuOpen?: (e: MouseEvent) => void;
 }
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
@@ -37,6 +38,20 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
             {props.activeProjectName || 'OpenMKView'}
           </span>
         </div>
+        <Show when={props.activeProjectName && props.onProjectMenuOpen}>
+          <button
+            class={styles.topBarMenuButton}
+            onClick={(e) => props.onProjectMenuOpen!(e)}
+            title="Project options"
+            aria-label="Project options"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="12" cy="19" r="2" />
+            </svg>
+          </button>
+        </Show>
       </div>
 
       {/* Main content area */}
