@@ -66,28 +66,12 @@ interface MobileLayoutWrapperProps {
 }
 
 export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) => {
-  const LONG_PRESS_DURATION = 450;
-  const LONG_PRESS_MOVE_THRESHOLD = 10;
-
   const [actionProject, setActionProject] = createSignal<Project | null>(null);
-  const [longPressTriggered, setLongPressTriggered] = createSignal(false);
   const [topBarMenuOpen, setTopBarMenuOpen] = createSignal(false);
-  let longPressTimer: number | undefined;
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let touchMoved = false;
-  let ignoreProjectClickUntil = 0;
   let actionTriggerElement: HTMLElement | null = null;
   let editProjectActionButton: HTMLButtonElement | undefined;
   let colorProjectActionButton: HTMLButtonElement | undefined;
   let cancelProjectActionButton: HTMLButtonElement | undefined;
-
-  const clearLongPressTimer = () => {
-    if (longPressTimer) {
-      window.clearTimeout(longPressTimer);
-      longPressTimer = undefined;
-    }
-  };
 
   const handleTopBarMenuOpen = (e: MouseEvent) => {
     e.stopPropagation();
@@ -108,12 +92,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     setTopBarMenuOpen(false);
     props.onCloseProject?.();
   };
-
-  const suppressNextProjectClick = () => {
-    ignoreProjectClickUntil = Date.now() + 750;
-  };
-
-  const shouldIgnoreProjectClick = () => Date.now() < ignoreProjectClickUntil;
 
   const getActionButtons = () => [
     editProjectActionButton,
@@ -137,16 +115,11 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
   };
 
   const openProjectActions = (project: Project, triggerElement?: HTMLElement) => {
-    clearLongPressTimer();
-    setLongPressTriggered(true);
     actionTriggerElement = triggerElement ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     setActionProject(project);
   };
 
   const closeProjectActions = () => {
-    clearLongPressTimer();
-    setLongPressTriggered(false);
-    touchMoved = false;
     editProjectActionButton = undefined;
     colorProjectActionButton = undefined;
     cancelProjectActionButton = undefined;
@@ -154,74 +127,7 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     restoreActionTriggerFocus();
   };
 
-  const handleProjectTouchStart = (project: Project, event: TouchEvent) => {
-    const touch = event.touches[0];
-    if (!touch) return;
-    const triggerElement = event.currentTarget as HTMLButtonElement;
-
-    setLongPressTriggered(false);
-    clearLongPressTimer();
-    touchMoved = false;
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    actionTriggerElement = triggerElement;
-
-    longPressTimer = window.setTimeout(
-      () => openProjectActions(project, triggerElement),
-      LONG_PRESS_DURATION
-    );
-  };
-
-  const handleProjectTouchMove = (event: TouchEvent) => {
-    const touch = event.touches[0];
-    if (!touch || !longPressTimer) return;
-
-    const deltaX = Math.abs(touch.clientX - touchStartX);
-    const deltaY = Math.abs(touch.clientY - touchStartY);
-
-    if (deltaX > LONG_PRESS_MOVE_THRESHOLD || deltaY > LONG_PRESS_MOVE_THRESHOLD) {
-      touchMoved = true;
-      clearLongPressTimer();
-    }
-  };
-
-  const handleProjectTouchCancel = () => {
-    clearLongPressTimer();
-    touchMoved = false;
-    setLongPressTriggered(false);
-    suppressNextProjectClick();
-  };
-
-  const handleProjectTouchEnd = async (project: Project, event: TouchEvent) => {
-    const triggered = longPressTriggered();
-    const moved = touchMoved;
-
-    clearLongPressTimer();
-    suppressNextProjectClick();
-    touchMoved = false;
-
-    if (triggered) {
-      event.preventDefault();
-      setLongPressTriggered(false);
-      return;
-    }
-
-    if (moved) {
-      event.preventDefault();
-      setLongPressTriggered(false);
-      return;
-    }
-
-    event.preventDefault();
-    setLongPressTriggered(false);
-    await props.onProjectClick(project);
-  };
-
   const handleProjectClick = (project: Project) => {
-    if (shouldIgnoreProjectClick()) {
-      return;
-    }
-
     void props.onProjectClick(project);
   };
 
@@ -334,10 +240,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     });
   });
 
-  onCleanup(() => {
-    clearLongPressTimer();
-  });
-
   return (
     <>
       <MobileLayout
@@ -365,10 +267,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
                   title={project.name}
                   aria-label={project.name}
                   aria-keyshortcuts="Shift+F10"
-                  onTouchStart={(event) => handleProjectTouchStart(project, event)}
-                  onTouchMove={handleProjectTouchMove}
-                  onTouchCancel={handleProjectTouchCancel}
-                  onTouchEnd={(event) => void handleProjectTouchEnd(project, event)}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     openProjectActions(project, event.currentTarget as HTMLButtonElement);
@@ -611,7 +509,7 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               <div class={styles.projectActionHeader}>
                 <div class={styles.projectActionEyebrow}>Project Actions</div>
                 <div class={styles.projectActionTitle} id="mobile-project-actions-title">{actionProject()!.name}</div>
-                <div class={styles.projectActionHint} id="mobile-project-actions-description">Long press or press Shift+F10 to manage this project.</div>
+                <div class={styles.projectActionHint} id="mobile-project-actions-description">Press Shift+F10 to manage this project.</div>
               </div>
               <button
                 ref={(element) => {

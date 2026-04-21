@@ -203,62 +203,6 @@ describe('MobileLayoutWrapper', () => {
     await waitFor(() => expect(document.activeElement).toBe(projectButton));
   });
 
-  it('opens project actions on long press and suppresses touch click switch', async () => {
-    vi.useFakeTimers();
-    const onProjectClick = vi.fn();
-
-    renderWrapper({
-      projects: [project],
-      activeProject: project,
-      onProjectClick,
-    });
-
-    mobileLayoutStore.openLeftDrawer();
-    const projectButton = await screen.findByLabelText('Demo');
-
-    await fireEvent.touchStart(projectButton, {
-      touches: [{ clientX: 10, clientY: 10 }],
-    });
-    vi.advanceTimersByTime(500);
-
-    expect(screen.getByRole('dialog', { name: 'Demo' })).toBeTruthy();
-
-    await fireEvent.touchEnd(projectButton, {
-      changedTouches: [{ clientX: 10, clientY: 10 }],
-    });
-    await fireEvent.click(projectButton);
-
-    expect(onProjectClick).not.toHaveBeenCalled();
-  });
-
-  it('cancels long press when touch moves beyond threshold', async () => {
-    vi.useFakeTimers();
-    const onProjectClick = vi.fn();
-
-    renderWrapper({
-      projects: [project],
-      activeProject: project,
-      onProjectClick,
-    });
-
-    mobileLayoutStore.openLeftDrawer();
-    const projectButton = await screen.findByLabelText('Demo');
-
-    await fireEvent.touchStart(projectButton, {
-      touches: [{ clientX: 10, clientY: 10 }],
-    });
-    await fireEvent.touchMove(projectButton, {
-      touches: [{ clientX: 26, clientY: 26 }],
-    });
-    vi.advanceTimersByTime(500);
-    await fireEvent.touchEnd(projectButton, {
-      changedTouches: [{ clientX: 26, clientY: 26 }],
-    });
-
-    expect(screen.queryByRole('dialog', { name: 'Demo' })).toBeNull();
-    expect(onProjectClick).not.toHaveBeenCalled();
-  });
-
   it('does not open edit dialog when project switch is cancelled', async () => {
     const onProjectActionSwitch = vi.fn().mockResolvedValue(false);
     const onEditProject = vi.fn();
