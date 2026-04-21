@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@solidjs/testing-library';
+import { fireEvent, render, screen } from '@solidjs/testing-library';
 import { MobileLayoutWrapper } from '../../layouts/MobileLayoutWrapper';
 import { mobileLayoutStore } from '../../components/mobile';
 import type { Project } from '../../types';
@@ -63,9 +63,7 @@ const createProps = (overrides: Partial<MobileLayoutWrapperProps> = {}): MobileL
   onOpenSettings: () => {},
   onToggleTheme: () => {},
   onEditProject: () => {},
-  onOpenProjectColorChangeAt: () => {},
   onProjectClick: () => {},
-  onProjectActionSwitch: async () => true,
   onFileClick: () => {},
   onFolderToggle: () => {},
   onDelete: () => {},
@@ -178,51 +176,6 @@ describe('MobileLayoutWrapper', () => {
     await fireEvent.click(projectButton);
 
     expect(onProjectClick).toHaveBeenCalledWith(project);
-  });
-
-  it('opens project action sheet with keyboard and restores focus on escape', async () => {
-    renderWrapper({
-      projects: [project],
-      activeProject: project,
-    });
-
-    mobileLayoutStore.openLeftDrawer();
-    const projectButton = await screen.findByLabelText('Demo');
-    projectButton.focus();
-
-    await fireEvent.keyDown(projectButton, { key: 'F10', shiftKey: true });
-
-    const dialog = screen.getByRole('dialog', { name: 'Demo' });
-    expect(dialog).toBeTruthy();
-    expect(screen.getByText('Project Actions')).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Edit Project' }));
-
-    await fireEvent.keyDown(document, { key: 'Escape' });
-
-    expect(screen.queryByRole('dialog', { name: 'Demo' })).toBeNull();
-    await waitFor(() => expect(document.activeElement).toBe(projectButton));
-  });
-
-  it('does not open edit dialog when project switch is cancelled', async () => {
-    const onProjectActionSwitch = vi.fn().mockResolvedValue(false);
-    const onEditProject = vi.fn();
-
-    renderWrapper({
-      projects: [project],
-      activeProject: project,
-      onProjectActionSwitch,
-      onEditProject,
-    });
-
-    mobileLayoutStore.openLeftDrawer();
-    const projectButton = await screen.findByLabelText('Demo');
-
-    await fireEvent.keyDown(projectButton, { key: 'F10', shiftKey: true });
-    await fireEvent.click(screen.getByRole('button', { name: 'Edit Project' }));
-
-    expect(onProjectActionSwitch).toHaveBeenCalledWith(project);
-    expect(screen.getByRole('dialog', { name: 'Demo' })).toBeTruthy();
-    expect(onEditProject).not.toHaveBeenCalled();
   });
 
   it('updates selected project button and top bar title when active project changes', async () => {

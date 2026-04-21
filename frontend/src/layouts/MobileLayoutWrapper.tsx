@@ -1,4 +1,4 @@
-import { Component, For, Show, createEffect, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
+import { Component, For, Show, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { MobileLayout, mobileLayoutStore } from '../components/mobile';
 import FileTree from '../components/FileTree';
@@ -41,9 +41,7 @@ interface MobileLayoutWrapperProps {
   onEditProject: () => void;
   onRefreshProject?: () => void;
   onCloseProject?: () => void;
-  onOpenProjectColorChangeAt: (project: Project, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => void;
   onProjectClick: (project: Project) => void | Promise<boolean | void>;
-  onProjectActionSwitch: (project: Project) => Promise<boolean>;
   onFileClick: (path: string, relativePath: string) => void;
   onFolderToggle: (path: string, expanded: boolean) => void;
   onDelete: (node: FileNode) => void;
@@ -66,12 +64,7 @@ interface MobileLayoutWrapperProps {
 }
 
 export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) => {
-  const [actionProject, setActionProject] = createSignal<Project | null>(null);
   const [topBarMenuOpen, setTopBarMenuOpen] = createSignal(false);
-  let actionTriggerElement: HTMLElement | null = null;
-  let editProjectActionButton: HTMLButtonElement | undefined;
-  let colorProjectActionButton: HTMLButtonElement | undefined;
-  let cancelProjectActionButton: HTMLButtonElement | undefined;
 
   const handleTopBarMenuOpen = (e: MouseEvent) => {
     e.stopPropagation();
@@ -93,122 +86,9 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     props.onCloseProject?.();
   };
 
-  const getActionButtons = () => [
-    editProjectActionButton,
-    colorProjectActionButton,
-    cancelProjectActionButton,
-  ].filter((button): button is HTMLButtonElement => Boolean(button));
-
-  const restoreActionTriggerFocus = () => {
-    const triggerElement = actionTriggerElement;
-    actionTriggerElement = null;
-
-    if (!triggerElement || !mobileLayoutStore.leftDrawerOpen || !document.contains(triggerElement)) {
-      return;
-    }
-
-    window.setTimeout(() => {
-      if (mobileLayoutStore.leftDrawerOpen && document.contains(triggerElement)) {
-        triggerElement.focus();
-      }
-    }, 0);
-  };
-
-  const openProjectActions = (project: Project, triggerElement?: HTMLElement) => {
-    actionTriggerElement = triggerElement ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    setActionProject(project);
-  };
-
-  const closeProjectActions = () => {
-    editProjectActionButton = undefined;
-    colorProjectActionButton = undefined;
-    cancelProjectActionButton = undefined;
-    setActionProject(null);
-    restoreActionTriggerFocus();
-  };
-
   const handleProjectClick = (project: Project) => {
     void props.onProjectClick(project);
   };
-
-  const handleProjectKeyDown = (event: KeyboardEvent, project: Project) => {
-    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
-      event.preventDefault();
-      openProjectActions(project, event.currentTarget as HTMLButtonElement);
-    }
-  };
-
-  const handleProjectEdit = async () => {
-    const project = actionProject();
-    if (!project) return;
-
-    const switched = await props.onProjectActionSwitch(project);
-    if (switched === false) {
-      return;
-    }
-
-    closeProjectActions();
-    props.onEditProject();
-  };
-
-  const handleProjectColorChange = (event: MouseEvent) => {
-    const project = actionProject();
-    if (!project) return;
-
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    closeProjectActions();
-    props.onOpenProjectColorChangeAt(project, rect);
-  };
-
-  createEffect(() => {
-    if (!actionProject()) {
-      return;
-    }
-
-    queueMicrotask(() => editProjectActionButton?.focus());
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeProjectActions();
-        return;
-      }
-
-      if (event.key !== 'Tab') {
-        return;
-      }
-
-      const buttons = getActionButtons();
-      if (buttons.length === 0) {
-        return;
-      }
-
-      const firstButton = buttons[0];
-      const lastButton = buttons[buttons.length - 1];
-      const activeElement = document.activeElement;
-
-      if (event.shiftKey && activeElement === firstButton) {
-        event.preventDefault();
-        lastButton.focus();
-      } else if (!event.shiftKey && activeElement === lastButton) {
-        event.preventDefault();
-        firstButton.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    onCleanup(() => {
-      document.removeEventListener('keydown', handleKeyDown);
-    });
-  });
-
-  createEffect(() => {
-    if (!mobileLayoutStore.leftDrawerOpen) {
-      closeProjectActions();
-    }
-  });
 
   onMount(() => {
     const rootStyle = document.documentElement.style;
@@ -244,8 +124,8 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
     <>
       <MobileLayout
       activeProjectName={props.activeProject?.name}
-      leftDrawerCloseOnEscape={!actionProject()}
-      leftDrawerModal={!actionProject()}
+      leftDrawerCloseOnEscape={true}
+      leftDrawerModal={true}
       onProjectMenuOpen={props.activeProject ? handleTopBarMenuOpen : undefined}
       activityBarContent={
         <>
@@ -266,12 +146,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
                   }}
                   title={project.name}
                   aria-label={project.name}
-                  aria-keyshortcuts="Shift+F10"
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    openProjectActions(project, event.currentTarget as HTMLButtonElement);
-                  }}
-                  onKeyDown={(event) => handleProjectKeyDown(event, project)}
                   onClick={() => handleProjectClick(project)}
                   style={projectColor()
                     ? (isActive()
@@ -292,11 +166,10 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               class={styles.activityBarButton}
               title="Open Project"
               aria-label="Open Project"
-              onClick={() => {
-                closeProjectActions();
-                mobileLayoutStore.closeLeftDrawer();
-                props.onOpenProject();
-              }}
+onClick={() => {
+                 mobileLayoutStore.closeLeftDrawer();
+                 props.onOpenProject();
+               }}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/>
@@ -345,11 +218,10 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
                 class={styles.activityBarButton}
                 title="Trash"
                 aria-label="Trash"
-                onClick={() => {
-                  closeProjectActions();
-                  mobileLayoutStore.closeLeftDrawer();
-                  props.onOpenTrash();
-                }}
+onClick={() => {
+                 mobileLayoutStore.closeLeftDrawer();
+                 props.onOpenTrash();
+               }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
@@ -362,11 +234,10 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
               class={styles.activityBarButton}
               title="Settings"
               aria-label="Settings"
-              onClick={() => {
-                closeProjectActions();
-                mobileLayoutStore.closeLeftDrawer();
-                props.onOpenSettings();
-              }}
+onClick={() => {
+               mobileLayoutStore.closeLeftDrawer();
+               props.onOpenSettings();
+             }}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"/>
@@ -494,64 +365,6 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
         />
       </div>
       </MobileLayout>
-      <Show when={actionProject()}>
-        <Portal>
-          <div class={styles.projectActionOverlay} onClick={closeProjectActions}>
-            <div
-              class={styles.projectActionSheet}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="mobile-project-actions-title"
-              aria-describedby="mobile-project-actions-description"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div class={styles.projectActionHandle} aria-hidden="true" />
-              <div class={styles.projectActionHeader}>
-                <div class={styles.projectActionEyebrow}>Project Actions</div>
-                <div class={styles.projectActionTitle} id="mobile-project-actions-title">{actionProject()!.name}</div>
-                <div class={styles.projectActionHint} id="mobile-project-actions-description">Press Shift+F10 to manage this project.</div>
-              </div>
-              <button
-                ref={(element) => {
-                  editProjectActionButton = element;
-                }}
-                class={styles.projectActionButton}
-                onClick={() => void handleProjectEdit()}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                <span>Edit Project</span>
-              </button>
-              <button
-                ref={(element) => {
-                  colorProjectActionButton = element;
-                }}
-                class={styles.projectActionButton}
-                onClick={handleProjectColorChange}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="13.5" cy="6.5" r="2.5"/>
-                  <circle cx="19" cy="13" r="2.5"/>
-                  <circle cx="13.5" cy="19.5" r="2.5"/>
-                  <circle cx="6" cy="13" r="2.5"/>
-                </svg>
-                <span>Change Color</span>
-              </button>
-              <button
-                ref={(element) => {
-                  cancelProjectActionButton = element;
-                }}
-                class={`${styles.projectActionButton} ${styles.projectActionCancel}`}
-                onClick={closeProjectActions}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </Portal>
-      </Show>
       <Show when={topBarMenuOpen() && props.activeProject}>
         <Portal>
           <div class={styles.projectMenuOverlay} onClick={() => setTopBarMenuOpen(false)}>

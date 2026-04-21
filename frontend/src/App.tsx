@@ -72,14 +72,6 @@ const App: Component = () => {
     return projectHook.switchProject(project);
   };
 
-  const handleMobileProjectActionSwitch = (project: Project) => {
-    return projectHook.switchProject(project);
-  };
-
-  const handleMobileOpenProjectColorChangeAt = (project: Project, rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => {
-    projectHook.openColorPickerAt(project.id, rect);
-  };
-
   const theme = settingsStore.effectiveTheme;
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
 
@@ -166,11 +158,9 @@ const App: Component = () => {
           onToggleTheme={() => settingsStore.toggleThemeMode()}
           onEditProject={() => appStore.openProjectEditDialog()}
           onRefreshProject={() => void projectHook.refreshProject()}
-          onCloseProject={handleProjectClose}
-          onOpenProjectColorChangeAt={handleMobileOpenProjectColorChangeAt}
-          onProjectClick={handleMobileProjectClick}
-          onProjectActionSwitch={handleMobileProjectActionSwitch}
-          onFileClick={(path) => fileHook.mobileFileClick(path)}
+onCloseProject={handleProjectClose}
+           onProjectClick={handleMobileProjectClick}
+           onFileClick={(path) => fileHook.mobileFileClick(path)}
           onFolderToggle={fileHook.toggleFolder}
           onDelete={(node) => void fileHook.deleteFile(node)}
           onCopyPath={(node) => void fileHook.copyPath(node)}
