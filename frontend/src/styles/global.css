@@ -762,16 +762,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tree-item-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
   cursor: pointer;
+  min-height: 28px;
+  border-radius: 4px;
+}
+
+.tree-item-content:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .tree-item-menu {
@@ -785,8 +792,12 @@
   opacity: 1;
 }
 
+.tree-item:focus-within .tree-item-menu {
+  opacity: 1;
+}
+
 .menu-button {
-  padding: 4px 6px;
+  padding: 3px 5px;
   border-radius: 4px;
   background: transparent;
   border: none;
@@ -795,10 +806,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 .menu-button:hover {
   background: var(--color-bg-subtle);
+}
+
+.menu-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Trash Dialog Styles */

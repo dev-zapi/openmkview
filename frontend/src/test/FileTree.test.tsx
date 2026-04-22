@@ -105,4 +105,40 @@ describe('FileTree', () => {
 
     expect(mockOnFolderToggle).toHaveBeenCalledWith('/project/src', true);
   });
+
+  it('opens file when Enter is pressed on a file item', () => {
+    const mockOnFileClick = vi.fn();
+    render(() => <FileTree nodes={mockNodes} onFileClick={mockOnFileClick} />);
+
+    const fileItem = screen.getByRole('button', { name: 'README.md' });
+    fireEvent.keyDown(fileItem, { key: 'Enter' });
+
+    expect(mockOnFileClick).toHaveBeenCalledWith('/project/README.md', 'README.md');
+  });
+
+  it('does not toggle empty folders', () => {
+    const mockOnFolderToggle = vi.fn();
+    const mockOnFileClick = vi.fn();
+
+    render(() => (
+      <FileTree
+        nodes={[
+          {
+            id: 'empty',
+            name: 'empty',
+            path: '/project/empty',
+            isFolder: true,
+            children: [],
+          },
+        ]}
+        onFileClick={mockOnFileClick}
+        expandedFolders={new Set()}
+        onFolderToggle={mockOnFolderToggle}
+      />
+    ));
+
+    fireEvent.click(screen.getByText('empty'));
+
+    expect(mockOnFolderToggle).not.toHaveBeenCalled();
+  });
 });

@@ -980,7 +980,7 @@ body {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 10px;
 }
 
 /* Buttons */
@@ -1381,17 +1381,18 @@ textarea {
 .file-tree ul {
   list-style: none;
   padding-left: 0;
+  margin: 0;
 }
 
 .file-tree li {
-  margin: 1px 0;
+  margin: 0;
 }
 
 .file-tree .item,
 .file-tree .tree-item {
   display: flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 3px 6px;
   cursor: pointer;
   border-radius: 6px;
   font-size: 13px;
@@ -1422,7 +1423,7 @@ textarea {
 }
 
 .file-tree .folder-children {
-  padding-left: 12px;
+  padding-left: 10px;
   overflow: hidden;
 }
 
@@ -1457,16 +1458,6 @@ textarea {
   }
 }
 
-/* Folder icon rotation animation */
-.folder-icon {
-  display: inline-block;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.folder-icon.expanded {
-  transform: rotate(90deg);
-}
-
 /* Tree item animation */
 .file-tree .tree-item {
   animation: treeItemFadeIn 0.2s ease forwards;
@@ -1484,10 +1475,45 @@ textarea {
 }
 
 .file-tree .icon {
-  margin-right: 8px;
-  width: 18px;
-  text-align: center;
-  font-size: 14px;
+  width: 28px;
+  min-width: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: currentColor;
+}
+
+.file-tree .tree-chevron,
+.file-tree .tree-chevron-spacer {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.file-tree .tree-chevron {
+  color: currentColor;
+  opacity: 0.72;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.file-tree .tree-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.file-tree .node-icon-svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.file-tree .folder-node-icon {
+  color: currentColor;
+}
+
+.file-tree .file-node-icon,
+.file-tree .image-node-icon {
+  color: currentColor;
+  opacity: 0.84;
 }
 
 /* Overlay and Panel Base - Separate settings from drawer panels */
@@ -2062,12 +2088,38 @@ textarea {
   /* Optimize file tree for mobile */
   .file-tree .item,
   .file-tree .tree-item {
-    padding: 10px 12px;
+    padding: 8px 10px;
     font-size: 14px;
   }
 
+  .file-tree .tree-item-content {
+    min-height: 32px;
+  }
+
+  .file-tree .menu-button {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
   .file-tree .folder-children {
-    padding-left: 20px;
+    padding-left: 14px;
+  }
+
+  .file-tree .icon {
+    width: 30px;
+    min-width: 30px;
+    gap: 5px;
+  }
+
+  .file-tree .tree-chevron,
+  .file-tree .tree-chevron-spacer {
+    width: 11px;
+    height: 11px;
+  }
+
+  .file-tree .node-icon-svg {
+    width: 15px;
+    height: 15px;
   }
 
   /* Mobile main content wrapper */
@@ -2225,5 +2277,11 @@ textarea {
   .activity-bar-bottom button:hover,
   .activity-bar-add:hover {
     transform: none;
+  }
+}
+
+@media (hover: none) {
+  .file-tree .tree-item-menu {
+    opacity: 1;
   }
 }
