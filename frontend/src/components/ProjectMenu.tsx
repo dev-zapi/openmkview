@@ -1,4 +1,4 @@
-import { Component, Show, onMount, onCleanup } from 'solid-js';
+import { Component, Show } from 'solid-js';
 
 interface ProjectMenuProps {
   isOpen: boolean;
@@ -10,31 +10,28 @@ interface ProjectMenuProps {
 }
 
 const ProjectMenu: Component<ProjectMenuProps> = (props) => {
-  let handleClickOutside: ((e: MouseEvent) => void) | null = null;
-
-  onMount(() => {
-    handleClickOutside = (e: MouseEvent) => {
-      props.onCloseMenu();
-    };
-    setTimeout(() => {
-      document.addEventListener('click', handleClickOutside!);
-    }, 0);
-  });
-
-  onCleanup(() => {
-    if (handleClickOutside) {
-      document.removeEventListener('click', handleClickOutside);
-    }
-  });
-
   return (
     <Show when={props.isOpen}>
+      <div
+        class="menu-overlay"
+        onClick={props.onCloseMenu}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          'z-index': 9998,
+          background: 'transparent',
+        }}
+      />
       <div
         class="sidebar-header-menu-dropdown"
         style={{
           position: 'absolute',
           top: `${props.position.top}px`,
           right: `${props.position.right}px`,
+          'z-index': 9999,
         }}
         onClick={(e) => e.stopPropagation()}
       >
