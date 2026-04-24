@@ -318,7 +318,7 @@
 }
 
 .leftDrawerContent :global(.tree-item) {
-  padding: 8px 12px;
+  padding: 6px 12px;
   margin-left: 6px;
   margin-right: 6px;
 }
