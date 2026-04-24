@@ -34,7 +34,7 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
           </svg>
         </button>
         <div class={styles.topBarTitle}>
-          <span class={styles.topBarProjectName}>
+          <span class={styles.topBarProjectName} data-testid="mobile-topbar-title">
             {props.activeProjectName || 'OpenMKView'}
           </span>
         </div>
@@ -72,7 +72,9 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
             {(content) => (
               <div class={styles.sidebarSection}>
                 <div class={styles.sidebarHeader}>
-                  <span class={styles.sidebarHeaderTitle}>Explorer</span>
+                  <span class={styles.sidebarHeaderTitle} data-testid="mobile-sidebar-title">
+                    {props.activeProjectName || 'Explorer'}
+                  </span>
                   <Show when={props.activeProjectName && props.onProjectMenuOpen}>
                     <button
                       class={styles.sidebarHeaderMenuButton}

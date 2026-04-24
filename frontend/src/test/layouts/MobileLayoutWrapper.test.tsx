@@ -99,9 +99,11 @@ afterEach(() => {
 describe('MobileLayoutWrapper', () => {
   it('renders mobile layout shell', () => {
     const { container } = renderWrapper();
+    mobileLayoutStore.openLeftDrawer();
 
     expect(screen.getByLabelText('Toggle navigation menu')).toBeTruthy();
-    expect(screen.getAllByText('OpenMKView').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('mobile-topbar-title').textContent).toBe('OpenMKView');
+    expect(screen.getByTestId('mobile-sidebar-title').textContent).toBe('Explorer');
     expect(container.querySelectorAll('.documentTitleBar').length).toBe(0);
   });
 
@@ -197,7 +199,8 @@ describe('MobileLayoutWrapper', () => {
     const demoButton = await screen.findByLabelText('Demo');
     const workspaceButton = await screen.findByLabelText('Workspace');
 
-    expect(screen.getAllByText('Demo').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('mobile-topbar-title').textContent).toBe('Demo');
+    expect(screen.getByTestId('mobile-sidebar-title').textContent).toBe('Demo');
     expect(demoButton.className).toContain('activityBarButtonActive');
     expect(demoButton.getAttribute('style')).toContain('background: rgb(194, 24, 91)');
     expect(workspaceButton.className).toContain('activityBarButtonHint');
@@ -206,7 +209,8 @@ describe('MobileLayoutWrapper', () => {
 
     setActiveProject(alternateProject);
 
-    expect(screen.getAllByText('Workspace').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('mobile-topbar-title').textContent).toBe('Workspace');
+    expect(screen.getByTestId('mobile-sidebar-title').textContent).toBe('Workspace');
     const demoButtonAfterSwitch = screen.getByLabelText('Demo');
     const workspaceButtonAfterSwitch = screen.getByLabelText('Workspace');
 
