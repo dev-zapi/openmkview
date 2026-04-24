@@ -1,4 +1,5 @@
 .mobileContainer {
+  --mobile-topbar-height: 40px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -11,7 +12,7 @@
 .mobileTopBar {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: var(--mobile-topbar-height);
   padding: 0 8px;
   padding-top: var(--safe-top);
   background: var(--color-topbar-bg, var(--color-bg));
@@ -432,16 +433,16 @@
   font-weight: 600;
 }
 
-/* Mobile project menu bottom sheet */
+/* Mobile project menu top sheet */
 .projectMenuOverlay {
   position: fixed;
   inset: 0;
   min-height: var(--app-height);
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: center;
   padding: 16px;
-  padding-bottom: calc(16px + var(--safe-bottom));
+  padding-top: calc(var(--safe-top) + var(--mobile-topbar-height) + 16px);
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
   z-index: 1700;
@@ -450,12 +451,15 @@
 
 .projectMenuSheet {
   width: min(100%, 360px);
+  max-height: calc(var(--app-height) - var(--safe-top) - var(--mobile-topbar-height) - 32px);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
   overflow: hidden;
-  animation: projectActionSheetSlideIn 0.22s cubic-bezier(0.2, 0.9, 0.2, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: projectMenuSheetSlideDown 0.22s cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
 .projectMenuHandle {
@@ -464,6 +468,17 @@
   margin: 10px auto 0;
   border-radius: 999px;
   background: var(--color-border);
+}
+
+@keyframes projectMenuSheetSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .projectMenuHeader {

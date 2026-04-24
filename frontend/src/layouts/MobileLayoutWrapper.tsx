@@ -372,12 +372,13 @@ onClick={() => {
               class={styles.projectMenuSheet}
               role="dialog"
               aria-modal="true"
+              aria-labelledby="mobile-project-menu-title"
               onClick={(e) => e.stopPropagation()}
             >
               <div class={styles.projectMenuHandle} aria-hidden="true" />
               <div class={styles.projectMenuHeader}>
                 <div class={styles.projectMenuHeaderLabel}>Project Actions</div>
-                <div class={styles.projectMenuHeaderName}>{props.activeProject!.name}</div>
+                <div class={styles.projectMenuHeaderName} id="mobile-project-menu-title">{props.activeProject!.name}</div>
               </div>
               <button class={styles.projectMenuButton} onClick={handleTopBarMenuRefresh}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
