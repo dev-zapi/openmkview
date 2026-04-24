@@ -2093,12 +2093,12 @@ textarea {
   }
 
   .file-tree .tree-item-content {
-    min-height: 32px;
+    min-height: 28px;
   }
 
   .file-tree .menu-button {
     min-width: 32px;
-    min-height: 32px;
+    min-height: 28px;
   }
 
   .file-tree .folder-children {
