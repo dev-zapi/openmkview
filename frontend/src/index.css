@@ -2088,7 +2088,7 @@ textarea {
   /* Optimize file tree for mobile */
   .file-tree .item,
   .file-tree .tree-item {
-    padding: 8px 10px;
+    padding: 4px 10px;
     font-size: 14px;
   }
 
