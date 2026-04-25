@@ -19,9 +19,36 @@ describe('api service', () => {
       });
 
       const { api } = await import('../services/api');
+      const result = await api.getProjects({ openOnly: true });
+      expect(result).toEqual(mockProjects);
+      expect(global.fetch).toHaveBeenCalledWith('/api/projects?open=true');
+    });
+
+    it('requests all projects when no filter is provided', async () => {
+      const mockProjects = [
+        { id: 1, name: 'Project 1', path: '/path/to/project1' },
+      ];
+
+      (global.fetch as any).mockResolvedValueOnce({
+        json: async () => mockProjects,
+      });
+
+      const { api } = await import('../services/api');
       const result = await api.getProjects();
       expect(result).toEqual(mockProjects);
       expect(global.fetch).toHaveBeenCalledWith('/api/projects');
+    });
+
+    it('throws error when project list request fails', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Internal server error' }),
+      });
+
+      const { api } = await import('../services/api');
+      await expect(api.getProjects({ openOnly: true })).rejects.toThrow('Internal server error');
+      expect(global.fetch).toHaveBeenCalledWith('/api/projects?open=true');
     });
   });
 

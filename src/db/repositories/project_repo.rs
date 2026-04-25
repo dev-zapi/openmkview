@@ -99,10 +99,17 @@ impl<'a> ProjectRepository<'a> {
         })
     }
 
-    pub fn update_open_status(&self, id: i64, is_open: bool) -> AppResult<bool> {
+    pub fn close_project(&self, id: i64) -> AppResult<bool> {
+        let rows = self
+            .conn
+            .execute("UPDATE projects SET is_open = 0 WHERE id = ?", [id])?;
+        Ok(rows > 0)
+    }
+
+    pub fn open_project(&self, id: i64) -> AppResult<bool> {
         let rows = self.conn.execute(
-            "UPDATE projects SET is_open = ?, last_opened_at = datetime('now') WHERE id = ?",
-            (is_open, id),
+            "UPDATE projects SET is_open = 1, last_opened_at = datetime('now') WHERE id = ?",
+            [id],
         )?;
         Ok(rows > 0)
     }

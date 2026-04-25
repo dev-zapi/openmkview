@@ -73,7 +73,7 @@ impl<'a> ProjectService<'a> {
                 "[ProjectService] Project already exists, updating open status: id={}",
                 existing.id
             );
-            self.project_repo.update_open_status(existing.id, true)?;
+            self.project_repo.open_project(existing.id)?;
             return self
                 .project_repo
                 .find_by_id(existing.id)
@@ -86,7 +86,7 @@ impl<'a> ProjectService<'a> {
 
     pub fn close_project(&self, id: i64) -> AppResult<bool> {
         debug!("[ProjectService] Closing project: id={}", id);
-        self.project_repo.update_open_status(id, false)
+        self.project_repo.close_project(id)
     }
 
     pub fn get_project_path(&self, id: i64) -> AppResult<PathBuf> {

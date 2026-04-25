@@ -55,8 +55,9 @@ export const api = {
     return res.json();
   },
 
-  async getProjects(): Promise<Project[]> {
-    const res = await request('/api/projects');
+  async getProjects(options?: { openOnly?: boolean }): Promise<Project[]> {
+    const query = options?.openOnly ? '?open=true' : '';
+    const res = await request(`/api/projects${query}`);
     await checkResponse(res);
     return res.json();
   },

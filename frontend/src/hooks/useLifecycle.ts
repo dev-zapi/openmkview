@@ -28,7 +28,7 @@ export const useLifecycle = () => {
       console.warn('Failed to load server settings:', err);
     });
 
-    const projectList = await api.getProjects();
+    const projectList = await api.getProjects({ openOnly: true });
     projectStore.setProjects(projectList);
 
     appStore.setSidebarWidth(loadSidebarWidth());

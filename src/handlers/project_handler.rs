@@ -9,6 +9,82 @@ use actix_web::{web, HttpResponse};
 use log::debug;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{test, web, App};
+    use rusqlite::Connection;
+    use std::sync::{Arc, Mutex};
+
+    fn test_app_state() -> AppState {
+        let conn = Connection::open_in_memory().expect("open in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                last_opened_at TEXT NOT NULL DEFAULT (datetime('now')),
+                is_open INTEGER NOT NULL DEFAULT 1,
+                color TEXT NULL DEFAULT NULL,
+                icon TEXT NULL DEFAULT NULL
+            );",
+        )
+        .expect("create projects table");
+
+        conn.execute(
+            "INSERT INTO projects (path, name, is_open) VALUES (?, ?, 1)",
+            ("/workspace/open", "open"),
+        )
+        .expect("insert open project");
+        conn.execute(
+            "INSERT INTO projects (path, name, is_open) VALUES (?, ?, 0)",
+            ("/workspace/closed", "closed"),
+        )
+        .expect("insert closed project");
+
+        AppState {
+            db: Arc::new(Mutex::new(conn)),
+            auth: None,
+            passkey: None,
+        }
+    }
+
+    #[actix_web::test]
+    async fn list_projects_defaults_to_all_projects() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_app_state()))
+                .route("/api/projects", web::get().to(list_projects)),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/api/projects").to_request();
+        let projects: Vec<crate::models::Project> = test::call_and_read_body_json(&app, req).await;
+
+        assert_eq!(projects.len(), 2);
+    }
+
+    #[actix_web::test]
+    async fn list_projects_can_filter_open_projects() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_app_state()))
+                .route("/api/projects", web::get().to(list_projects)),
+        )
+        .await;
+
+        let req = test::TestRequest::get()
+            .uri("/api/projects?open=true")
+            .to_request();
+        let projects: Vec<crate::models::Project> = test::call_and_read_body_json(&app, req).await;
+
+        assert_eq!(projects.len(), 1);
+        assert_eq!(projects[0].name, "open");
+        assert!(projects[0].is_open);
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct ProjectListParams {
