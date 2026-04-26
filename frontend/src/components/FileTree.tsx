@@ -96,11 +96,11 @@ function renderContextMenu(
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  let left = context.anchorRect.left;
+  let left = context.anchorRect.right - menuWidth;
   let top = context.anchorRect.bottom + 4;
 
-  if (left + menuWidth > viewportWidth) {
-    left = Math.max(8, context.anchorRect.right - menuWidth);
+  if (left + menuWidth > viewportWidth - 8) {
+    left = viewportWidth - menuWidth - 8;
   }
   if (left < 8) {
     left = 8;
