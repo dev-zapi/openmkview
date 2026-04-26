@@ -5,7 +5,6 @@ import type { FileContent, FileNode, Heading } from '../../types';
 describe('fileStore', () => {
   beforeEach(() => {
     fileStore.reset();
-    fileStore.clearExpandedFolders();
     fileStore.setFileTree([]);
   });
 
@@ -114,27 +113,6 @@ describe('fileStore', () => {
       ];
       fileStore.setHeadings(headings);
       expect(fileStore.extractedHeadings()).toEqual(headings);
-    });
-  });
-
-  describe('expandedFolders', () => {
-    it('can toggle folder expanded', () => {
-      fileStore.toggleFolder('/src', true);
-      expect(fileStore.isFolderExpanded('/src')).toBe(true);
-    });
-
-    it('can toggle folder collapsed', () => {
-      fileStore.toggleFolder('/src', true);
-      fileStore.toggleFolder('/src', false);
-      expect(fileStore.isFolderExpanded('/src')).toBe(false);
-    });
-
-    it('can clear all expanded folders', () => {
-      fileStore.toggleFolder('/src', true);
-      fileStore.toggleFolder('/dist', true);
-      fileStore.clearExpandedFolders();
-      expect(fileStore.isFolderExpanded('/src')).toBe(false);
-      expect(fileStore.isFolderExpanded('/dist')).toBe(false);
     });
   });
 

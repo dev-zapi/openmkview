@@ -52,16 +52,6 @@ describe('useFile', () => {
     expect(editorStore.isDirty()).toBe(true);
   });
 
-  it('toggles folder state in the file store', () => {
-    const { toggleFolder } = useFile();
-
-    toggleFolder('docs', true);
-    expect(fileStore.isFolderExpanded('docs')).toBe(true);
-
-    toggleFolder('docs', false);
-    expect(fileStore.isFolderExpanded('docs')).toBe(false);
-  });
-
   it('resets diff mode and returns to preview tab when closing diff', () => {
     const { closeDiff } = useFile();
 

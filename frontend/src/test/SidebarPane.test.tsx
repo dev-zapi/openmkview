@@ -7,18 +7,16 @@ describe('SidebarPane', () => {
   const nodes = [{ id: '1', name: 'README.md', path: 'README.md', isFolder: false }];
 
   it('renders project header and file tree', () => {
-    render(() => (
+    const { container } = render(() => (
       <SidebarPane
         project={project}
         nodes={nodes}
-        expandedFolders={new Set()}
         sidebarWidth={280}
         transition="none"
         onRefresh={() => {}}
         onEdit={() => {}}
         onCloseProject={() => {}}
         onFileClick={() => {}}
-        onFolderToggle={() => {}}
         onDelete={() => {}}
         onCopyPath={() => {}}
         onRename={() => {}}
@@ -27,7 +25,7 @@ describe('SidebarPane', () => {
     ));
 
     expect(screen.getByText('Alpha')).toBeTruthy();
-    expect(screen.getByText('README.md')).toBeTruthy();
+    expect(container.querySelector('.pierre-file-tree-host')).toBeTruthy();
   });
 
   it('calls resize handler on mouse down', () => {
@@ -36,14 +34,12 @@ describe('SidebarPane', () => {
       <SidebarPane
         project={project}
         nodes={nodes}
-        expandedFolders={new Set()}
         sidebarWidth={280}
         transition="none"
         onRefresh={() => {}}
         onEdit={() => {}}
         onCloseProject={() => {}}
         onFileClick={() => {}}
-        onFolderToggle={() => {}}
         onDelete={() => {}}
         onCopyPath={() => {}}
         onRename={() => {}}

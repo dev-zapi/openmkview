@@ -38,7 +38,6 @@ describe('DesktopLayout', () => {
         theme="light"
         markdownStyle={{}}
         fileTree={[]}
-        expandedFolders={new Set()}
         sidebarWidth={280}
         sidebarTransition="none"
         gitPanelOpen={false}
@@ -54,7 +53,6 @@ describe('DesktopLayout', () => {
         onEditProject={() => {}}
         onCloseProject={() => {}}
         onFileClick={() => {}}
-        onFolderToggle={() => {}}
         onDelete={() => {}}
         onCopyPath={() => {}}
         onRename={() => {}}

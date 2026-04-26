@@ -6,14 +6,12 @@ import SidebarHeader from './SidebarHeader';
 interface SidebarPaneProps {
   project: Project | null;
   nodes: FileNode[];
-  expandedFolders: Set<string>;
   sidebarWidth: number;
   transition: string;
   onRefresh: () => void;
   onEdit: () => void;
   onCloseProject: () => void;
   onFileClick: (path: string, relativePath: string) => void;
-  onFolderToggle: (path: string, expanded: boolean) => void;
   onDelete: (node: FileNode) => void;
   onCopyPath: (node: FileNode) => void;
   onRename: (node: FileNode) => void;
@@ -37,8 +35,6 @@ export const SidebarPane: Component<SidebarPaneProps> = (props) => {
           <FileTree
             nodes={props.nodes}
             onFileClick={props.onFileClick}
-            expandedFolders={props.expandedFolders}
-            onFolderToggle={props.onFolderToggle}
             onDelete={props.onDelete}
             onCopyPath={props.onCopyPath}
             onRename={props.onRename}

@@ -31,7 +31,6 @@ interface DesktopLayoutProps {
   currentSearchResult: number;
   searchRequestKey: number;
   fileTree: FileNode[];
-  expandedFolders: Set<string>;
   sidebarWidth: number;
   sidebarTransition: string;
   gitPanelOpen: boolean;
@@ -47,7 +46,6 @@ interface DesktopLayoutProps {
   onEditProject: () => void;
   onCloseProject: () => void;
   onFileClick: (path: string, relativePath: string) => void;
-  onFolderToggle: (path: string, expanded: boolean) => void;
   onDelete: (node: FileNode) => void;
   onCopyPath: (node: FileNode) => void;
   onRename: (node: FileNode) => void;
@@ -88,14 +86,12 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
       <SidebarPane
         project={props.activeProject}
         nodes={props.fileTree}
-        expandedFolders={props.expandedFolders}
         sidebarWidth={props.sidebarWidth}
         transition={props.sidebarTransition}
         onRefresh={props.onRefreshProject}
         onEdit={props.onEditProject}
         onCloseProject={props.onCloseProject}
         onFileClick={props.onFileClick}
-        onFolderToggle={props.onFolderToggle}
         onDelete={props.onDelete}
         onCopyPath={props.onCopyPath}
         onRename={props.onRename}

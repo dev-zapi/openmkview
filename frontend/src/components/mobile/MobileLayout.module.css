@@ -310,18 +310,10 @@
   padding-bottom: max(12px, var(--safe-bottom));
 }
 
-/* Ensure FileTree and OutlinePanel work well in mobile */
-.leftDrawerContent :global(.file-tree),
-.leftDrawerContent :global(.tree-item),
+/* Ensure OutlinePanel works well in mobile */
 .rightDrawerContent :global(.outline-panel),
 .rightDrawerContent :global(.outline-item) {
   font-size: 14px;
-}
-
-.leftDrawerContent :global(.tree-item) {
-  padding: 4px 8px;
-  margin-left: 6px;
-  margin-right: 6px;
 }
 
 .rightDrawerContent :global(.outline-item) {

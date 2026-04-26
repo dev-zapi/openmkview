@@ -112,10 +112,6 @@ export const useFile = () => {
     alert('Rename functionality will be implemented in future version');
   };
 
-  const toggleFolder = (path: string, expanded: boolean) => {
-    fileStore.toggleFolder(path, expanded);
-  };
-
   const mobileFileClick = async (path: string, updateUrl?: boolean) => {
     mobileLayoutStore.closeLeftDrawer();
     await openFile(path, updateUrl ?? true);
@@ -140,7 +136,6 @@ export const useFile = () => {
     deleteFile,
     copyPath,
     renameFile,
-    toggleFolder,
     mobileFileClick,
     handleTrashRestore,
     closeDiff,

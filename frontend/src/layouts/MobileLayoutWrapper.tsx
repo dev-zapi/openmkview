@@ -33,7 +33,6 @@ interface MobileLayoutWrapperProps {
   currentSearchResult: number;
   searchRequestKey: number;
   fileTree: FileNode[];
-  expandedFolders: Set<string>;
   onOpenProject: () => void;
   onOpenTrash: () => void;
   onOpenSettings: () => void;
@@ -43,7 +42,6 @@ interface MobileLayoutWrapperProps {
   onCloseProject?: () => void;
   onProjectClick: (project: Project) => void | Promise<boolean | void>;
   onFileClick: (path: string, relativePath: string) => void;
-  onFolderToggle: (path: string, expanded: boolean) => void;
   onDelete: (node: FileNode) => void;
   onCopyPath: (node: FileNode) => void;
   onRename: (node: FileNode) => void;
@@ -252,8 +250,6 @@ onClick={() => {
           <FileTree
             nodes={props.fileTree}
             onFileClick={props.onFileClick}
-            expandedFolders={props.expandedFolders}
-            onFolderToggle={props.onFolderToggle}
             onDelete={props.onDelete}
             onCopyPath={props.onCopyPath}
             onRename={props.onRename}

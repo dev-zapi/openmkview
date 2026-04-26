@@ -151,7 +151,6 @@ const App: Component = () => {
           currentSearchResult={currentSearchResult()}
           searchRequestKey={editorSearchRequestKey()}
           fileTree={fileStore.fileTree()}
-          expandedFolders={fileStore.expandedFolders()}
           onOpenProject={projectHook.openProject}
           onOpenTrash={() => appStore.openTrashDialog()}
           onOpenSettings={() => appStore.setSettingsOpen(true)}
@@ -161,7 +160,6 @@ const App: Component = () => {
 onCloseProject={handleProjectClose}
            onProjectClick={handleMobileProjectClick}
            onFileClick={(path) => fileHook.mobileFileClick(path)}
-          onFolderToggle={fileHook.toggleFolder}
           onDelete={(node) => void fileHook.deleteFile(node)}
           onCopyPath={(node) => void fileHook.copyPath(node)}
           onRename={fileHook.renameFile}
@@ -205,7 +203,6 @@ onCloseProject={handleProjectClose}
           currentSearchResult={currentSearchResult()}
           searchRequestKey={editorSearchRequestKey()}
           fileTree={fileStore.fileTree()}
-          expandedFolders={fileStore.expandedFolders()}
           sidebarWidth={appStore.sidebarWidth()}
           sidebarTransition={layoutHook.getSidebarTransitionStyle()}
           gitPanelOpen={appStore.gitPanelOpen()}
@@ -221,7 +218,6 @@ onCloseProject={handleProjectClose}
           onEditProject={() => appStore.openProjectEditDialog()}
           onCloseProject={handleProjectClose}
           onFileClick={(path) => void fileHook.openFile(path)}
-          onFolderToggle={fileHook.toggleFolder}
           onDelete={(node) => void fileHook.deleteFile(node)}
           onCopyPath={(node) => void fileHook.copyPath(node)}
           onRename={fileHook.renameFile}
