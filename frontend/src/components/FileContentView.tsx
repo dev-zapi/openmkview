@@ -79,7 +79,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
       </Show>
 
       <Show when={!props.loading && props.activeTab === 'diff' && props.activeProjectId && props.currentFile}>
-        <div class={fadeClass}>
+        <div class={`diff-wrapper ${fadeClass}`}>
           <DiffSelector
             projectId={props.activeProjectId!}
             filePath={props.currentFile!.path}

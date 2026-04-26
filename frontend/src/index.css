@@ -1226,7 +1226,8 @@ textarea {
 
 @media (min-width: 769px) {
   .content-main:has(> .source-view),
-  .content-main:has(> .edit-view) {
+  .content-main:has(> .edit-view),
+  .content-main:has(> .diff-wrapper) {
     padding: 0;
   }
 }
@@ -2078,6 +2079,10 @@ textarea {
   /* Reduce padding on mobile */
   .content-main {
     padding: 16px;
+  }
+
+  .content-main:has(> .diff-wrapper) {
+    padding: 0;
   }
 
   /* Make header more compact */
