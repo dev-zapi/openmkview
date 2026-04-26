@@ -980,7 +980,26 @@ body {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 10px 0;
+}
+
+/* File tree hover visibility override */
+.pierre-file-tree-host {
+  --trees-bg-muted-override: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pierre-file-tree-host {
+    --trees-bg-muted-override: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.dark-theme .pierre-file-tree-host {
+  --trees-bg-muted-override: rgba(255, 255, 255, 0.14);
+}
+
+.light-theme .pierre-file-tree-host {
+  --trees-bg-muted-override: rgba(0, 0, 0, 0.1);
 }
 
 /* Buttons */

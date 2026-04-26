@@ -81,7 +81,6 @@ export const useProject = () => {
         projectStore.setActiveProject(null);
         fileStore.setFileTree([]);
         fileStore.closeFile();
-        fileStore.clearExpandedFolders();
         navigateToHome();
         if (projects.length > 0) {
           await switchProject(projects[0]);

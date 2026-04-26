@@ -58,7 +58,6 @@ export const useLifecycle = () => {
         projectStore.setActiveProject(null);
         fileStore.setFileTree([]);
         fileStore.closeFile();
-        fileStore.clearExpandedFolders();
       }
     });
 

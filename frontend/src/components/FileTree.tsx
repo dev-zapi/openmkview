@@ -1,18 +1,19 @@
 import { Component, onMount, onCleanup, createEffect } from 'solid-js';
 import { FileTree as PierreTree } from '@pierre/trees';
 import type { FileNode } from '../types';
+import { fileStore } from '../stores/fileStore';
 import type {
   FileTreeOptions,
-  FileTreeContextMenuItem,
-  FileTreeContextMenuOpenContext,
+  ContextMenuItem,
+  ContextMenuOpenContext,
 } from '@pierre/trees';
 
 interface FileTreeProps {
   nodes: FileNode[];
   onFileClick: (path: string, relativePath: string) => void;
-  onDelete?: (node: { path: string; name: string; isFolder: boolean }) => void;
-  onCopyPath?: (node: { path: string; name: string; isFolder: boolean }) => void;
-  onRename?: (node: { path: string; name: string; isFolder: boolean }) => void;
+  onDelete?: (node: FileNode) => void;
+  onCopyPath?: (node: FileNode) => void;
+  onRename?: (node: FileNode) => void;
   theme?: 'light' | 'dark';
 }
 
@@ -32,12 +33,13 @@ function fileNodesToPaths(nodes: FileNode[]): string[] {
   return paths;
 }
 
-function getTreeStyles(theme: 'light' | 'dark'): Record<string, string> {
+function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
   return {
     height: '100%',
     width: '100%',
     backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
+    '--trees-padding-inline-override': '8px',
     '--trees-theme-sidebar-bg': 'var(--color-bg)',
     '--trees-theme-sidebar-fg': 'var(--color-text)',
     '--trees-theme-list-hover-bg': 'var(--color-hover-bg)',
@@ -58,6 +60,7 @@ function createMenuButton(label: string, iconSvg: string, color?: string): HTMLB
     padding: 10px 14px;
     width: 100%;
     border: none;
+    border-radius: 4px;
     background: transparent;
     cursor: pointer;
     font-size: 13px;
@@ -68,7 +71,7 @@ function createMenuButton(label: string, iconSvg: string, color?: string): HTMLB
   `;
   btn.innerHTML = `${iconSvg}<span>${label}</span>`;
   btn.addEventListener('mouseenter', () => {
-    btn.style.background = 'var(--color-hover-bg, rgba(0,0,0,0.06))';
+    btn.style.background = 'var(--color-active-bg, rgba(0,0,0,0.1))';
   });
   btn.addEventListener('mouseleave', () => {
     btn.style.background = 'transparent';
@@ -77,12 +80,40 @@ function createMenuButton(label: string, iconSvg: string, color?: string): HTMLB
 }
 
 function renderContextMenu(
-  item: FileTreeContextMenuItem,
-  context: FileTreeContextMenuOpenContext,
+  item: ContextMenuItem,
+  context: ContextMenuOpenContext,
   props: FileTreeProps
 ): HTMLElement | null {
+  const node = fileStore.findNodeByPath(item.path) || {
+    id: item.path,
+    name: item.name,
+    path: item.path,
+    isFolder: item.kind === 'directory',
+  };
   const menu = document.createElement('div');
+  const menuWidth = 180;
+  const menuHeight = 120;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = context.anchorRect.left;
+  let top = context.anchorRect.bottom + 4;
+
+  if (left + menuWidth > viewportWidth) {
+    left = Math.max(8, context.anchorRect.right - menuWidth);
+  }
+  if (left < 8) {
+    left = 8;
+  }
+  if (top + menuHeight > viewportHeight) {
+    top = Math.max(8, context.anchorRect.top - menuHeight - 4);
+  }
+
   menu.style.cssText = `
+    position: fixed;
+    left: ${left}px;
+    top: ${top}px;
+    z-index: 10000;
     background: var(--color-bg, #fff);
     border: 1px solid var(--color-border, #d0d0d0);
     border-radius: 6px;
@@ -99,7 +130,7 @@ function renderContextMenu(
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
   );
   renameBtn.addEventListener('click', () => {
-    props.onRename?.(item);
+    props.onRename?.(node);
     context.close();
   });
 
@@ -108,7 +139,7 @@ function renderContextMenu(
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
   );
   copyBtn.addEventListener('click', () => {
-    props.onCopyPath?.(item);
+    props.onCopyPath?.(node);
     context.close();
   });
 
@@ -118,7 +149,7 @@ function renderContextMenu(
     'var(--color-error, #ef4444)'
   );
   deleteBtn.addEventListener('click', () => {
-    props.onDelete?.(item);
+    props.onDelete?.(node);
     context.close();
   });
 
