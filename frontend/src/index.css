@@ -1224,6 +1224,13 @@ textarea {
   transition: padding 0.3s ease;
 }
 
+@media (min-width: 769px) {
+  .content-main:has(> .source-view),
+  .content-main:has(> .edit-view) {
+    padding: 0;
+  }
+}
+
 /* Content tab fade transition */
 .content-fade-enter {
   animation: contentFadeIn 0.25s ease forwards;
