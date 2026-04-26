@@ -39,7 +39,20 @@ function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
     width: '100%',
     backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
-    '--trees-padding-inline-override': '8px',
+    // Pierre trees computes the scroll container's right padding as
+    //   max(padding-inline - item-margin-x - scrollbar-gutter-measured, 0)
+    // and the left padding as
+    //   max(padding-inline - item-margin-x, 0)
+    // The intent is that "right padding + scrollbar width" equals "left padding"
+    // — but only when `padding-inline >= item-margin-x + scrollbar-gutter`,
+    // otherwise the right side clamps to 0 and the row content sits flush
+    // against the (Chrome-rendered) scrollbar, making the right gap visibly
+    // larger than the left. Chrome reports ~10px from our global
+    // `::-webkit-scrollbar { width: 10px }`, while Firefox's `scrollbar-width:
+    // thin` measures ~0–6px, which is why the asymmetry only shows in Chrome.
+    // Use 12px (= 2px item-margin + 10px scrollbar) so both browsers land on
+    // a symmetric 10px visual inset on each side.
+    '--trees-padding-inline-override': '12px',
     '--trees-theme-sidebar-bg': 'var(--color-bg)',
     '--trees-theme-sidebar-fg': 'var(--color-text)',
     '--trees-theme-list-hover-bg': 'var(--color-hover-bg)',
