@@ -90,9 +90,25 @@ function renderContextMenu(
     path: item.path,
     isFolder: item.kind === 'directory',
   };
+
+  // `menuRoot` is the placeholder element returned to the library — its
+  // lifecycle is owned by `@pierre/trees` (it is inserted into the file-tree
+  // slot and removed when the menu closes). The actual visible menu is
+  // portaled into `document.body` so it escapes ancestors that establish a
+  // containing block (e.g. ancestors with `will-change: transform` /
+  // `contain: layout` from the virtualization layer) and the sidebar's
+  // stacking context.
+  const menuRoot = document.createElement('div');
+  menuRoot.setAttribute('data-file-tree-context-menu-root', 'true');
+  menuRoot.style.cssText = 'display: contents;';
+
   const menu = document.createElement('div');
+  // Tag the portaled element too so library outside-click logic recognises
+  // clicks inside it.
+  menu.setAttribute('data-file-tree-context-menu-root', 'true');
+
   const menuWidth = 180;
-  const menuHeight = 120;
+  const menuHeight = 132;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
@@ -105,7 +121,7 @@ function renderContextMenu(
   if (left < 8) {
     left = 8;
   }
-  if (top + menuHeight > viewportHeight) {
+  if (top + menuHeight > viewportHeight - 8) {
     top = Math.max(8, context.anchorRect.top - menuHeight - 4);
   }
 
@@ -119,6 +135,9 @@ function renderContextMenu(
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     min-width: 160px;
+    width: ${menuWidth}px;
+    box-sizing: border-box;
+    padding: 4px;
     overflow: hidden;
     font-family: inherit;
     font-size: 13px;
@@ -157,7 +176,20 @@ function renderContextMenu(
   menu.appendChild(copyBtn);
   menu.appendChild(deleteBtn);
 
-  return menu;
+  document.body.appendChild(menu);
+
+  // Mirror `menuRoot`'s removal onto the portaled `menu`.
+  const observer = new MutationObserver(() => {
+    if (!menuRoot.isConnected) {
+      if (menu.parentNode) {
+        menu.parentNode.removeChild(menu);
+      }
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  return menuRoot;
 }
 
 const FileTree: Component<FileTreeProps> = (props) => {
