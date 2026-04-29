@@ -419,6 +419,112 @@
   }
 }
 
+/* Mobile merged title bar (hamburger + filename + tabs + overflow menu) */
+.mobileTitleBar {
+  height: auto;
+  min-height: 44px;
+  padding-top: var(--safe-top);
+  padding-left: 4px;
+  padding-right: 4px;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--color-topbar-bg, var(--color-bg));
+}
+
+.mobileMenuButton {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 8px;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.mobileMenuButton:active {
+  background: var(--color-active-bg);
+}
+
+.mobileTitleSection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mobileTitleSection .fileName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobileTabsSection {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mobileTitleBar .tabItem {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.overflowMenuRoot {
+  position: relative;
+}
+
+.overflowDropdown {
+  right: 4px;
+  left: auto;
+  top: calc(100% - 2px);
+  min-width: 200px;
+  z-index: 1500;
+}
+
+.overflowDropdown .dropdownItem {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.overflowDropdown .dropdownItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .mobileTitleBar {
+    flex-wrap: wrap;
+  }
+
+  .mobileTitleSection {
+    order: 1;
+    flex: 1 1 auto;
+  }
+
+  .mobileTabsSection {
+    order: 3;
+    flex: 1 1 100%;
+    justify-content: center;
+    padding: 2px 0 4px;
+  }
+
+  .documentRight.overflowMenuRoot {
+    order: 2;
+  }
+}
+
 /* Toast notifications */
 .toast {
   position: fixed;

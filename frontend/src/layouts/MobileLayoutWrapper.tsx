@@ -124,6 +124,7 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
       activeProjectName={props.activeProject?.name}
       leftDrawerCloseOnEscape={true}
       leftDrawerModal={true}
+      hideTopBar={Boolean(props.currentFile) || Boolean(props.imagePreviewUrl && props.currentFileType === 'image')}
       onProjectMenuOpen={props.activeProject ? handleTopBarMenuOpen : undefined}
       activityBarContent={
         <>
@@ -291,6 +292,8 @@ onClick={() => {
                isDirty={props.isDirty}
                onSave={props.onSave}
                saving={props.saving}
+               mobile={true}
+               onMenuClick={() => mobileLayoutStore.toggleLeftDrawer()}
             />
           </Show>
           <Show when={props.imagePreviewUrl && props.currentFileType === 'image'}>
@@ -312,6 +315,8 @@ onClick={() => {
                onSearchQueryChange={props.onSearchQueryChange}
                onSearchNext={props.onSearchNext}
                onSearchPrev={props.onSearchPrev}
+               mobile={true}
+               onMenuClick={() => mobileLayoutStore.toggleLeftDrawer()}
              />
            </Show>
         </>

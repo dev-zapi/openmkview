@@ -28,6 +28,10 @@ export interface MarkdownHeaderProps {
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
+  /** Render the header in compact mobile mode. */
+  mobile?: boolean;
+  /** Hamburger menu click handler (mobile mode only). */
+  onMenuClick?: () => void;
 }
 
 export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
@@ -169,6 +173,8 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         isDirty={props.isDirty}
         onSave={props.onSave}
         saving={props.saving}
+        mobile={props.mobile}
+        onMenuClick={props.onMenuClick}
       />
       {toast() && (
         <div class={`${styles.toast} ${styles[toast()!.type]}`}>

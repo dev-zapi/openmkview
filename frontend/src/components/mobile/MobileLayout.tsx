@@ -13,32 +13,39 @@ interface MobileLayoutProps {
   leftDrawerCloseOnEscape?: boolean;
   leftDrawerModal?: boolean;
   onProjectMenuOpen?: (e: MouseEvent) => void;
+  /**
+   * When true, the standalone top bar (hamburger + project name) is hidden
+   * because the header content already includes a merged hamburger button.
+   */
+  hideTopBar?: boolean;
 }
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
   return (
     <div class={styles.mobileContainer}>
-      {/* Mobile top bar */}
-      <div class={styles.mobileTopBar}>
-        <button
-          class={styles.menuButton}
-          onClick={() => mobileLayoutStore.toggleLeftDrawer()}
-          title="Menu"
-          aria-label="Toggle navigation menu"
-          aria-expanded={mobileLayoutStore.leftDrawerOpen}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </button>
-        <div class={styles.topBarTitle}>
-          <span class={styles.topBarProjectName} data-testid="mobile-topbar-title">
-            {props.activeProjectName || 'OpenMKView'}
-          </span>
+      {/* Mobile top bar (hidden when the merged header content is being shown) */}
+      <Show when={!props.hideTopBar}>
+        <div class={styles.mobileTopBar}>
+          <button
+            class={styles.menuButton}
+            onClick={() => mobileLayoutStore.toggleLeftDrawer()}
+            title="Menu"
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileLayoutStore.leftDrawerOpen}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <div class={styles.topBarTitle}>
+            <span class={styles.topBarProjectName} data-testid="mobile-topbar-title">
+              {props.activeProjectName || 'OpenMKView'}
+            </span>
+          </div>
         </div>
-      </div>
+      </Show>
 
       {/* Main content area */}
       <div class={styles.mobileMain}>
