@@ -8,12 +8,23 @@ export const getEffectiveThemeType = (mode: ThemeMode): ThemeType => {
   return mode === 'system' ? getSystemTheme() : mode;
 };
 
+let previousThemeId: string | null = null;
+
+export const __resetPreviousThemeId = (): void => {
+  previousThemeId = null;
+};
+
 export const applyTheme = (settings: { themeMode: ThemeMode; lightTheme: string; darkTheme: string }): void => {
   const effectiveType = getEffectiveThemeType(settings.themeMode);
   const themeId = effectiveType === 'light' ? settings.lightTheme : settings.darkTheme;
 
   document.body.classList.remove('light-theme', 'dark-theme');
+  if (previousThemeId) {
+    document.body.classList.remove(previousThemeId);
+  }
+
   document.body.classList.add(`${effectiveType}-theme`, themeId);
+  previousThemeId = themeId;
 
   updateBrowserThemeColor();
 };

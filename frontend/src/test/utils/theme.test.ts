@@ -5,6 +5,7 @@ import {
   applyTheme,
   cycleThemeMode,
   updateBrowserThemeColor,
+  __resetPreviousThemeId,
 } from '../../utils/theme';
 import type { ThemeMode, ThemeType } from '../../types/app';
 import { resetPrefersDark, setPrefersDark } from '../setup';
@@ -43,6 +44,7 @@ describe('theme utils', () => {
   describe('applyTheme', () => {
     beforeEach(() => {
       document.body.className = '';
+      __resetPreviousThemeId();
     });
 
     it('applies light theme correctly', () => {
@@ -74,6 +76,21 @@ describe('theme utils', () => {
       });
       expect(document.body.classList.contains('light-theme')).toBe(false);
       expect(document.body.classList.contains('dark-theme')).toBe(true);
+      expect(document.body.classList.contains('new-dark')).toBe(true);
+    });
+
+    it('removes previous theme id class', () => {
+      applyTheme({
+        themeMode: 'light',
+        lightTheme: 'old-theme',
+        darkTheme: 'old-dark',
+      });
+      applyTheme({
+        themeMode: 'dark',
+        lightTheme: 'new-light',
+        darkTheme: 'new-dark',
+      });
+      expect(document.body.classList.contains('old-theme')).toBe(false);
       expect(document.body.classList.contains('new-dark')).toBe(true);
     });
 
