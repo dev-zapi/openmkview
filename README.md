@@ -2,9 +2,9 @@
 
 # OpenMKView
 
-**A modern, web-based Markdown previewer inspired by OpenCode Web UI — Now in Rust!**
+**A modern, web-based Markdown and HTML previewer inspired by OpenCode Web UI — Now in Rust!**
 
-Browse local directories, preview `.md` / `.mdx` files, manage Git — all from the browser.
+Browse local directories, preview `.md` / `.mdx` / `.html` / `.htm` files, manage Git — all from the browser.
 
 [![Rust](https://img.shields.io/badge/Rust-2021-black?logo=rust)](https://www.rust-lang.org/)
 [![Actix-web](https://img.shields.io/badge/Actix--web-4-F44336?logo=actix)](https://actix.rs/)
@@ -17,7 +17,7 @@ Browse local directories, preview `.md` / `.mdx` files, manage Git — all from 
 
 ## Why OpenMKView?
 
-Most Markdown previewers are either too simple (no project management) or too heavy (full IDEs). OpenMKView sits in the sweet spot — a lightweight, browser-based tool that lets you **open any local folder as a project**, navigate its Markdown files with a familiar tree view, and preview them with beautiful rendering.
+Most document previewers are either too simple (no project management) or too heavy (full IDEs). OpenMKView sits in the sweet spot — a lightweight, browser-based tool that lets you **open any local folder as a project**, navigate its Markdown and HTML files with a familiar tree view, and preview them with beautiful rendering.
 
 No Electron. No desktop app. No Node.js. Just `cargo run` and you're ready.
 
@@ -29,7 +29,7 @@ Built with Rust for **maximum performance** and **minimal resource usage**.
 
 ### Three-Column Layout (Inspired by OpenCode Web UI)
 
-A familiar, productive layout: **Activity Bar** (project switching) → **File Explorer** (directory tree) → **Markdown Viewer** (preview / source / diff).
+A familiar, productive layout: **Activity Bar** (project switching) → **File Explorer** (directory tree) → **Document Viewer** (preview / source / edit / diff).
 
 All panels are resizable via drag, with sizes persisted across sessions.
 
@@ -41,6 +41,12 @@ All panels are resizable via drag, with sizes persisted across sessions.
 - **Source mode** — raw Markdown text
 - **Diff mode** — inline diff against the latest Git HEAD version
 
+### HTML Support
+
+- **HTML preview** — sandboxed iframe rendering for `.html` and `.htm` files
+- **Source and edit modes** — syntax highlighting and CodeMirror editing
+- **Diff mode** — compare HTML file versions through the same Git diff workflow
+
 ### Project Management
 
 - Open any local directory as a "project"
@@ -51,7 +57,7 @@ All panels are resizable via drag, with sizes persisted across sessions.
 ### File Explorer
 
 - Recursive directory tree
-- Filters to `.md` / `.mdx` files automatically
+- Filters to `.md` / `.mdx` / `.html` / `.htm` files automatically
 - Nested subdirectories with expand/collapse
 - Smart exclusion of `node_modules` and `.git` directories
 
@@ -69,7 +75,7 @@ Full Git client built right in — no terminal needed:
 | **Log** | Browse commit history with details |
 | **Diff** | View file diffs (working tree & staged) |
 | **Show** | Inspect any commit's full diff |
-| **Exec** | Run arbitrary Git commands |
+| **Exec** | Run approved Git subcommands |
 
 ### Theming & Customization
 
@@ -223,7 +229,7 @@ openmkview/
 | `/api/projects` | `GET` | List all open and historical projects |
 | `/api/projects` | `POST` | Open a new project by directory path |
 | `/api/projects/:id` | `DELETE` | Close a project (soft delete) |
-| `/api/files/tree` | `GET` | Get Markdown file tree for a project |
+| `/api/files/tree` | `GET` | Get Markdown, HTML, and image file tree for a project |
 | `/api/files/content` | `GET` | Read file content (with path traversal protection) |
 | `/api/files` | `POST` | Create a new file |
 | `/api/files` | `PUT` | Rename a file |

@@ -3,6 +3,7 @@ import styles from './styles.module.css';
 import { DocumentTitleBar } from './DocumentTitleBar';
 import { SearchBox } from './SearchBox';
 import type { TabType } from './ViewTabs';
+import type { FileType } from '../../types';
 import { buildMarkdownDownloadName, buildPrintableMarkdownDocument } from '../../utils/markdownExport';
 
 export interface MarkdownHeaderProps {
@@ -13,7 +14,7 @@ export interface MarkdownHeaderProps {
   isOutlineOpen: boolean;
   outlineCount: number;
   content: string;
-  fileType?: 'markdown' | 'image';
+  fileType?: FileType;
   isSearchOpen: boolean;
   searchQuery: string;
   searchResultCount: number;
@@ -38,10 +39,11 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const [toast, setToast] = createSignal<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const canSearch = () => props.fileType === 'markdown' && props.activeTab !== 'diff';
+  const isDocumentFile = () => props.fileType === 'markdown' || props.fileType === 'html';
+  const canSearch = () => isDocumentFile() && props.activeTab !== 'diff';
   const usesInlineSearch = () => canSearch() && props.activeTab !== 'edit';
   const searchButtonTitle = () => {
-    if (props.fileType !== 'markdown') return '当前视图不支持搜索';
+    if (!isDocumentFile()) return '当前视图不支持搜索';
     if (props.activeTab === 'edit') return '打开编辑器搜索';
     if (props.activeTab === 'preview') return '搜索预览内容';
     if (props.activeTab === 'source') return '搜索源码内容';
@@ -77,8 +79,13 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         break;
 
       case 'md':
-        downloadFile(props.content, buildMarkdownDownloadName(props.fileName), 'text/markdown');
-        setToast({ message: 'Markdown downloaded', type: 'success' });
+        if (props.fileType === 'html') {
+          downloadFile(props.content, props.fileName, 'text/html');
+          setToast({ message: 'HTML downloaded', type: 'success' });
+        } else {
+          downloadFile(props.content, buildMarkdownDownloadName(props.fileName), 'text/markdown');
+          setToast({ message: 'Markdown downloaded', type: 'success' });
+        }
         break;
     }
 

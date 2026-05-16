@@ -101,6 +101,32 @@ fn test_get_file_content_mdx() {
 }
 
 #[test]
+fn test_get_file_content_html() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("test.html");
+    fs::write(&file_path, "<h1>HTML</h1>").unwrap();
+
+    let (content, file_name, path, file_size, last_modified) =
+        FileService::get_file_content(temp_dir.path(), "test.html").unwrap();
+
+    assert_eq!(content, "<h1>HTML</h1>");
+    assert_eq!(file_name, "test.html");
+    assert_eq!(path, "test.html");
+    assert_eq!(file_size, 13);
+    assert!(last_modified.is_some());
+}
+
+#[test]
+fn test_build_tree_html_file_type() {
+    let files = vec![PathBuf::from("index.html")];
+    let root = Path::new("/tmp");
+    let tree = FileService::build_tree(&files, root);
+
+    assert_eq!(tree.len(), 1);
+    assert_eq!(tree[0].file_type, Some("html".to_string()));
+}
+
+#[test]
 fn test_create_file_success() {
     let temp_dir = tempfile::tempdir().unwrap();
     let result = FileService::create_file(temp_dir.path(), "new.md");
@@ -115,6 +141,19 @@ fn test_create_file_already_exists() {
 
     let result = FileService::create_file(temp_dir.path(), "exists.md");
     assert!(result.is_err());
+}
+
+#[test]
+fn test_create_file_rejects_path_traversal() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let result = FileService::create_file(temp_dir.path(), "../outside.md");
+    assert!(result.is_err());
+    assert!(!temp_dir
+        .path()
+        .parent()
+        .unwrap()
+        .join("outside.md")
+        .exists());
 }
 
 #[test]
@@ -137,6 +176,23 @@ fn test_rename_file_not_found() {
 }
 
 #[test]
+fn test_rename_file_rejects_path_traversal() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    fs::write(temp_dir.path().join("old.md"), "").unwrap();
+
+    let result = FileService::rename_file(temp_dir.path(), "old.md", "../outside.md");
+
+    assert!(result.is_err());
+    assert!(temp_dir.path().join("old.md").exists());
+    assert!(!temp_dir
+        .path()
+        .parent()
+        .unwrap()
+        .join("outside.md")
+        .exists());
+}
+
+#[test]
 fn test_delete_file_success() {
     let temp_dir = tempfile::tempdir().unwrap();
     let file_path = temp_dir.path().join("delete.md");
@@ -152,6 +208,19 @@ fn test_delete_file_not_found() {
     let temp_dir = tempfile::tempdir().unwrap();
     let result = FileService::delete_file(temp_dir.path(), "nonexistent.md");
     assert!(result.is_err());
+}
+
+#[test]
+fn test_delete_file_rejects_path_traversal() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let outside_file = temp_dir.path().parent().unwrap().join("outside_delete.md");
+    fs::write(&outside_file, "outside").unwrap();
+
+    let result = FileService::delete_file(temp_dir.path(), "../outside_delete.md");
+
+    assert!(result.is_err());
+    assert!(outside_file.exists());
+    fs::remove_file(outside_file).ok();
 }
 
 #[test]

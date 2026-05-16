@@ -115,15 +115,17 @@ impl<'a> ProjectService<'a> {
             return Ok((false, Some("路径不是目录".to_string())));
         }
 
-        let has_markdown = self.check_markdown_files(&path_buf)?;
-        if !has_markdown {
+        let has_document = self.check_document_files(&path_buf)?;
+        if !has_document {
             debug!(
-                "[ProjectService] No Markdown files found in directory: {}",
+                "[ProjectService] No document files found in directory: {}",
                 path
             );
             return Ok((
                 false,
-                Some("目录中没有找到 Markdown 文件（.md 或 .mdx）".to_string()),
+                Some(
+                    "目录中没有找到 Markdown 或 HTML 文件（.md、.mdx、.html 或 .htm）".to_string(),
+                ),
             ));
         }
 
@@ -153,7 +155,7 @@ impl<'a> ProjectService<'a> {
         self.project_repo.update_project(id, name, color, icon)
     }
 
-    fn check_markdown_files(&self, dir: &PathBuf) -> AppResult<bool> {
+    fn check_document_files(&self, dir: &PathBuf) -> AppResult<bool> {
         let entries = std::fs::read_dir(dir)?;
 
         for entry in entries {
@@ -163,11 +165,11 @@ impl<'a> ProjectService<'a> {
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     let ext = ext.to_string_lossy().to_lowercase();
-                    if ext == "md" || ext == "mdx" {
+                    if ext == "md" || ext == "mdx" || ext == "html" || ext == "htm" {
                         return Ok(true);
                     }
                 }
-            } else if path.is_dir() && self.check_markdown_files(&path)? {
+            } else if path.is_dir() && self.check_document_files(&path)? {
                 return Ok(true);
             }
         }

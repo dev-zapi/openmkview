@@ -109,6 +109,24 @@ fn test_run_git_invalid_command() {
 }
 
 #[test]
+fn test_parse_exec_command_allows_expected_commands() {
+    let result = GitService::parse_exec_command("status --porcelain").unwrap();
+    assert_eq!(result, vec!["status", "--porcelain"]);
+}
+
+#[test]
+fn test_parse_exec_command_rejects_disallowed_subcommand() {
+    let result = GitService::parse_exec_command("config core.sshCommand evil");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_parse_exec_command_rejects_dash_c_option() {
+    let result = GitService::parse_exec_command("status -c core.sshCommand=evil");
+    assert!(result.is_err());
+}
+
+#[test]
 fn test_status_returns_status() {
     let cwd = PathBuf::from(".");
     let status = GitService::status(&cwd);

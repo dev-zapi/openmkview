@@ -1,7 +1,5 @@
 import { createSignal } from 'solid-js';
-import type { FileContent, Heading, FileNode } from '../types';
-
-type FileType = 'markdown' | 'image';
+import type { DocumentFileType, FileContent, FileType, Heading, FileNode } from '../types';
 
 const [currentFile, setCurrentFile] = createSignal<FileContent | null>(null);
 const [currentFileType, setCurrentFileType] = createSignal<FileType>('markdown');
@@ -31,12 +29,20 @@ export const fileStore = {
     setExtractedHeadings(headings);
   },
 
-  openMarkdownFile(file: FileContent) {
+  openDocumentFile(file: FileContent, fileType: DocumentFileType) {
     setCurrentFile(file);
-    setCurrentFileType('markdown');
+    setCurrentFileType(fileType);
     setImagePreviewUrl(null);
     setImageFileName('');
     setExtractedHeadings([]);
+  },
+
+  openMarkdownFile(file: FileContent) {
+    this.openDocumentFile(file, 'markdown');
+  },
+
+  openHtmlFile(file: FileContent) {
+    this.openDocumentFile(file, 'html');
   },
 
   openImageFile(url: string, fileName: string) {

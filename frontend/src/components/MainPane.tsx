@@ -2,13 +2,13 @@ import { Component, Show } from 'solid-js';
 import { MarkdownHeader } from './markdown-header';
 import { FileContentView } from './FileContentView';
 import OutlinePanel from './OutlinePanel';
-import type { FileContent, Heading } from '../types';
+import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header';
 import type { Settings, ThemeType } from '../types/app';
 
 interface MainPaneProps {
   currentFile: FileContent | null;
-  currentFileType: 'markdown' | 'image';
+  currentFileType: FileType;
   imagePreviewUrl: string | null;
   imageFileName: string;
   activeTab: TabType;

@@ -233,6 +233,8 @@ fn collect_project_files(root_path: &PathBuf) -> Vec<PathBuf> {
                 let ext_lower = ext.to_string_lossy().to_lowercase();
                 if ext_lower == "md"
                     || ext_lower == "mdx"
+                    || ext_lower == "html"
+                    || ext_lower == "htm"
                     || ext_lower == "png"
                     || ext_lower == "jpg"
                     || ext_lower == "jpeg"

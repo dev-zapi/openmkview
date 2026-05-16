@@ -64,6 +64,19 @@ describe('fileStore', () => {
     });
   });
 
+  describe('openHtmlFile', () => {
+    it('sets current file and file type to html', () => {
+      const file: FileContent = {
+        content: '<h1>Hello</h1>',
+        fileName: 'test.html',
+        path: 'test.html',
+      };
+      fileStore.openHtmlFile(file);
+      expect(fileStore.currentFile()).toEqual(file);
+      expect(fileStore.currentFileType()).toBe('html');
+    });
+  });
+
   describe('openImageFile', () => {
     it('sets image preview URL', () => {
       fileStore.openImageFile('/test.png', 'test.png');

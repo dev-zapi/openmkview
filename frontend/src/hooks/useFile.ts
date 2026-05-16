@@ -44,7 +44,7 @@ export const useFile = () => {
     fileStore.startLoading();
     try {
       const content = await api.getFileContent(path, project.id);
-      fileStore.openMarkdownFile(content);
+      fileStore.openDocumentFile(content, fileType === 'html' ? 'html' : 'markdown');
       editorStore.initialize(content.content);
       diffStore.reset();
       appStore.setActiveTab('preview');

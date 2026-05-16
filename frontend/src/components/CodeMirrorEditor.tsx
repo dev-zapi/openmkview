@@ -1,6 +1,7 @@
 import { Component, onMount, onCleanup, createEffect } from 'solid-js';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
+import { html } from '@codemirror/lang-html';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { openSearchPanel, searchKeymap } from '@codemirror/search';
@@ -25,6 +26,19 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorView: EditorView | undefined;
   let lastContent: string = props.content;
   let lastSearchRequestKey = props.searchRequestKey;
+
+  const languageExtension = () => {
+    const ext = props.fileName?.split('.').pop()?.toLowerCase();
+
+    if (ext === 'html' || ext === 'htm') {
+      return html();
+    }
+
+    return markdown({
+      base: markdownLanguage,
+      codeLanguages: languages,
+    });
+  };
 
   const createEditor = () => {
     if (!editorContainer) return;
@@ -80,10 +94,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     const extensions = [
       basicSetup,
       history(),
-      markdown({
-        base: markdownLanguage,
-        codeLanguages: languages,
-      }),
+      languageExtension(),
       themeExtension,
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),

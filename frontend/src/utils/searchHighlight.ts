@@ -14,13 +14,14 @@ const shouldSkipTextNode = (node: Text): boolean => {
 };
 
 export const clearSearchHighlights = (root: HTMLElement): void => {
+  const ownerDocument = root.ownerDocument || document;
   const marks = root.querySelectorAll(`mark[${SEARCH_MARK_ATTR}]`);
 
   marks.forEach((mark) => {
     const parent = mark.parentNode;
     if (!parent) return;
 
-    parent.replaceChild(document.createTextNode(mark.textContent || ''), mark);
+    parent.replaceChild(ownerDocument.createTextNode(mark.textContent || ''), mark);
     parent.normalize();
   });
 };
@@ -33,7 +34,9 @@ export const highlightSearchMatches = (root: HTMLElement, query: string): HTMLEl
     return [];
   }
 
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+  const ownerDocument = root.ownerDocument || document;
+
+  const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const textNode = node as Text;
       if (shouldSkipTextNode(textNode)) {
@@ -68,14 +71,14 @@ export const highlightSearchMatches = (root: HTMLElement, query: string): HTMLEl
       return;
     }
 
-    const fragment = document.createDocumentFragment();
+    const fragment = ownerDocument.createDocumentFragment();
 
     while (index !== -1) {
       if (index > start) {
-        fragment.appendChild(document.createTextNode(value.slice(start, index)));
+        fragment.appendChild(ownerDocument.createTextNode(value.slice(start, index)));
       }
 
-      const mark = document.createElement('mark');
+      const mark = ownerDocument.createElement('mark');
       mark.setAttribute(SEARCH_MARK_ATTR, 'true');
       mark.className = SEARCH_MATCH_CLASS;
       mark.textContent = value.slice(index, index + normalizedQuery.length);
@@ -87,7 +90,7 @@ export const highlightSearchMatches = (root: HTMLElement, query: string): HTMLEl
     }
 
     if (start < value.length) {
-      fragment.appendChild(document.createTextNode(value.slice(start)));
+      fragment.appendChild(ownerDocument.createTextNode(value.slice(start)));
     }
 
     textNode.parentNode?.replaceChild(fragment, textNode);

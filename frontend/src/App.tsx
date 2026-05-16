@@ -26,6 +26,11 @@ const App: Component = () => {
   const [editorSearchRequestKey, setEditorSearchRequestKey] = createSignal(0);
   const [searchScopeKey, setSearchScopeKey] = createSignal('');
 
+  const isDocumentFile = () => {
+    const fileType = fileStore.currentFileType();
+    return fileType === 'markdown' || fileType === 'html';
+  };
+
   useLifecycle();
 
   createEffect(() => {
@@ -42,11 +47,11 @@ const App: Component = () => {
       setCurrentSearchResult(0);
     }
 
-    if (fileType !== 'markdown' || activeTab === 'edit' || activeTab === 'diff') {
+    if ((fileType !== 'markdown' && fileType !== 'html') || activeTab === 'edit' || activeTab === 'diff') {
       setIsSearchOpen(false);
     }
 
-    if (fileType !== 'markdown' || activeTab === 'diff') {
+    if ((fileType !== 'markdown' && fileType !== 'html') || activeTab === 'diff') {
       setSearchQuery('');
       setSearchResultCount(0);
       setCurrentSearchResult(0);
@@ -76,7 +81,7 @@ const App: Component = () => {
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
 
   const handleSearchClick = () => {
-    if (fileStore.currentFileType() !== 'markdown') {
+    if (!isDocumentFile()) {
       return;
     }
 

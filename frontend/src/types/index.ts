@@ -4,8 +4,12 @@ export interface FileNode {
   path: string;
   isFolder: boolean;
   children?: FileNode[];
-  fileType?: 'markdown' | 'image';
+  fileType?: DocumentFileType | 'image';
 }
+
+export type DocumentFileType = 'markdown' | 'html';
+
+export type FileType = DocumentFileType | 'image';
 
 export interface Heading {
   depth: number;

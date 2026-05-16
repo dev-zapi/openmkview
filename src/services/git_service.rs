@@ -37,6 +37,35 @@ pub struct GitLogEntry {
 pub struct GitService;
 
 impl GitService {
+    pub fn parse_exec_command(command: &str) -> AppResult<Vec<String>> {
+        let args: Vec<String> = command.split_whitespace().map(str::to_string).collect();
+
+        let Some(subcommand) = args.first().map(String::as_str) else {
+            return Err(AppError::BadRequest("Command cannot be empty".into()));
+        };
+
+        let allowed = matches!(
+            subcommand,
+            "status"
+                | "log"
+                | "diff"
+                | "show"
+                | "branch"
+                | "tag"
+                | "fetch"
+                | "pull"
+                | "push"
+                | "add"
+                | "commit"
+        );
+
+        if !allowed || args.iter().any(|arg| arg == "-c" || arg.starts_with("-c")) {
+            return Err(AppError::BadRequest("Git command is not allowed".into()));
+        }
+
+        Ok(args)
+    }
+
     pub fn run_git(cwd: &PathBuf, args: &[&str]) -> Result<(String, String), String> {
         let output = Command::new("git")
             .args(args)
@@ -452,6 +481,24 @@ mod tests {
         let result = GitService::run_git(&cwd, &["status"]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Git execution failed"));
+    }
+
+    #[test]
+    fn test_parse_exec_command_allows_expected_commands() {
+        let result = GitService::parse_exec_command("status --porcelain").unwrap();
+        assert_eq!(result, vec!["status", "--porcelain"]);
+    }
+
+    #[test]
+    fn test_parse_exec_command_rejects_disallowed_subcommand() {
+        let result = GitService::parse_exec_command("config core.sshCommand evil");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_exec_command_rejects_dash_c_option() {
+        let result = GitService::parse_exec_command("status -c core.sshCommand=evil");
+        assert!(result.is_err());
     }
 
     #[test]

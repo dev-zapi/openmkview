@@ -155,11 +155,8 @@ fn handle_file_at_head(cwd: &PathBuf, file_path: &Option<String>) -> AppResult<H
 fn handle_exec(cwd: &PathBuf, command: &Option<String>) -> AppResult<HttpResponse> {
     match command {
         Some(cmd) if !cmd.trim().is_empty() => {
-            let args: Vec<&str> = cmd.split_whitespace().collect();
-
-            if args.is_empty() {
-                return Ok(HttpResponse::BadRequest().body("Command cannot be empty"));
-            }
+            let parsed_args = GitService::parse_exec_command(cmd)?;
+            let args: Vec<&str> = parsed_args.iter().map(String::as_str).collect();
 
             let (stdout, stderr) = GitService::run_git(cwd, &args).map_err(AppError::GitError)?;
 

@@ -3,7 +3,7 @@ import GitPanel from '../components/GitPanel';
 import ActivityBar from '../components/ActivityBar';
 import SidebarPane from '../components/SidebarPane';
 import MainPane from '../components/MainPane';
-import type { Project, FileContent, Heading, FileNode } from '../types';
+import type { Project, FileContent, FileType, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import type { TabType } from '../components/markdown-header';
 
@@ -12,7 +12,7 @@ interface DesktopLayoutProps {
   activeProject: Project | null;
   themeMode: ThemeMode;
   currentFile: FileContent | null;
-  currentFileType: 'markdown' | 'image';
+  currentFileType: FileType;
   imagePreviewUrl: string | null;
   imageFileName: string;
   activeTab: TabType;

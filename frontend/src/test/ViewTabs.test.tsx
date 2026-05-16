@@ -18,6 +18,19 @@ describe('ViewTabs', () => {
     expect(screen.getByText('Diff')).toBeTruthy();
   });
 
+  it('renders all tabs for html files', async () => {
+    const onTabChange = vi.fn();
+    const { container } = render(() => (
+      <ViewTabs activeTab="preview" onTabChange={onTabChange} fileType="html" />
+    ));
+    const tabs = container.querySelectorAll('button');
+    expect(tabs.length).toBe(4);
+    expect(screen.getByText('Preview')).toBeTruthy();
+    expect(screen.getByText('Source')).toBeTruthy();
+    expect(screen.getByText('Edit')).toBeTruthy();
+    expect(screen.getByText('Diff')).toBeTruthy();
+  });
+
   it('shows only preview tab for image files', async () => {
     const onTabChange = vi.fn();
     const { container } = render(() => (

@@ -2,6 +2,7 @@ import { Component, createSignal, onCleanup, Show } from 'solid-js';
 import styles from './styles.module.css';
 import { ViewTabs } from './ViewTabs';
 import type { TabType } from './ViewTabs';
+import type { FileType } from '../../types';
 
 export interface DocumentTitleBarProps {
   fileName: string;
@@ -11,7 +12,7 @@ export interface DocumentTitleBarProps {
   outlineCount: number;
   isOutlineOpen: boolean;
   isFullscreen: boolean;
-  fileType?: 'markdown' | 'image';
+  fileType?: FileType;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
@@ -65,6 +66,9 @@ const formatTimeAgo = (date: Date): string => {
 const getFileIcon = (fileName: string): string => {
   if (fileName.endsWith('.md') || fileName.endsWith('.mdx')) {
     return '📄';
+  }
+  if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+    return '🌐';
   }
   if (fileName.endsWith('.txt')) {
     return '📝';

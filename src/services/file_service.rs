@@ -7,10 +7,16 @@ pub struct FileService;
 
 const MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
 
+const DOCUMENT_EXTENSIONS: &[&str] = &["md", "mdx", "html", "htm"];
 const ALLOWED_IMAGE_EXTENSIONS: &[&str] =
     &["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"];
 
 impl FileService {
+    pub fn is_document_file_type(ext: &str) -> bool {
+        let ext_lower = ext.to_lowercase();
+        DOCUMENT_EXTENSIONS.contains(&ext_lower.as_str())
+    }
+
     pub fn is_allowed_file_type(ext: &str) -> bool {
         let ext_lower = ext.to_lowercase();
         ALLOWED_IMAGE_EXTENSIONS.contains(&ext_lower.as_str())
@@ -76,6 +82,10 @@ impl FileService {
 
     /// Validate relative path to prevent path traversal attacks
     fn validate_relative_path(path: &str) -> AppResult<()> {
+        if path.trim().is_empty() {
+            return Err(AppError::ValidationError("Path is required".into()));
+        }
+
         // Reject absolute paths
         if path.starts_with('/') || path.starts_with('\\') {
             return Err(AppError::ValidationError(
@@ -99,6 +109,64 @@ impl FileService {
 
         Ok(())
     }
+
+    fn validate_file_name(file_name: &str) -> AppResult<()> {
+        if file_name.trim().is_empty()
+            || file_name.contains('/')
+            || file_name.contains('\\')
+            || file_name.contains("..")
+            || file_name.len() >= 2 && file_name.chars().nth(1) == Some(':')
+        {
+            return Err(AppError::ValidationError("Invalid file name".into()));
+        }
+
+        Ok(())
+    }
+
+    fn canonical_project_path(project_path: &Path) -> AppResult<PathBuf> {
+        project_path
+            .canonicalize()
+            .map_err(|_| AppError::FileError("Invalid project path".into()))
+    }
+
+    fn resolve_existing_project_path(
+        project_path: &Path,
+        relative_path: &str,
+    ) -> AppResult<PathBuf> {
+        Self::validate_relative_path(relative_path)?;
+
+        let project_resolved = Self::canonical_project_path(project_path)?;
+        let resolved = project_resolved
+            .join(relative_path)
+            .canonicalize()
+            .map_err(|_| AppError::NotFound("File does not exist".into()))?;
+
+        if !resolved.starts_with(&project_resolved) {
+            return Err(AppError::ValidationError("Access denied".into()));
+        }
+
+        Ok(resolved)
+    }
+
+    fn resolve_new_project_path(project_path: &Path, relative_path: &str) -> AppResult<PathBuf> {
+        Self::validate_relative_path(relative_path)?;
+
+        let project_resolved = Self::canonical_project_path(project_path)?;
+        let full_path = project_resolved.join(relative_path);
+        let parent = full_path
+            .parent()
+            .ok_or_else(|| AppError::ValidationError("Invalid file path".into()))?;
+        let parent_resolved = parent
+            .canonicalize()
+            .map_err(|_| AppError::NotFound("Parent directory does not exist".into()))?;
+
+        if !parent_resolved.starts_with(&project_resolved) {
+            return Err(AppError::ValidationError("Access denied".into()));
+        }
+
+        Ok(full_path)
+    }
+
     pub fn build_tree(files: &[PathBuf], root_path: &Path) -> Vec<FileTreeNode> {
         fn build_node(
             files: &[&PathBuf],
@@ -133,6 +201,8 @@ impl FileService {
                         let node_type = file_type.as_deref().and_then(|ext| {
                             if ext == "md" || ext == "mdx" {
                                 Some("markdown".to_string())
+                            } else if ext == "html" || ext == "htm" {
+                                Some("html".to_string())
                             } else if FileService::is_allowed_file_type(ext) {
                                 Some("image".to_string())
                             } else {
@@ -220,9 +290,12 @@ impl FileService {
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase());
 
-        if ext != Some("md".to_string()) && ext != Some("mdx".to_string()) {
+        if !ext
+            .as_deref()
+            .is_some_and(FileService::is_document_file_type)
+        {
             return Err(AppError::BadRequest(
-                "Only Markdown files are supported".into(),
+                "Only Markdown and HTML files are supported".into(),
             ));
         }
 
@@ -246,7 +319,7 @@ impl FileService {
     }
 
     pub fn create_file(project_path: &Path, file_name: &str) -> AppResult<()> {
-        let file_path = project_path.join(file_name);
+        let file_path = Self::resolve_new_project_path(project_path, file_name)?;
 
         if file_path.exists() {
             return Err(AppError::BadRequest("File already exists".into()));
@@ -257,8 +330,12 @@ impl FileService {
     }
 
     pub fn rename_file(project_path: &Path, old_path: &str, new_name: &str) -> AppResult<()> {
-        let old_path = project_path.join(old_path);
-        let new_path = old_path.parent().unwrap().join(new_name);
+        Self::validate_file_name(new_name)?;
+        let old_path = Self::resolve_existing_project_path(project_path, old_path)?;
+        let new_path = old_path
+            .parent()
+            .ok_or_else(|| AppError::ValidationError("Invalid file path".into()))?
+            .join(new_name);
 
         if !old_path.exists() {
             return Err(AppError::NotFound("File does not exist".into()));
@@ -273,10 +350,10 @@ impl FileService {
     }
 
     pub fn delete_file(project_path: &Path, file_path: &str) -> AppResult<()> {
-        let file_path = project_path.join(file_path);
+        let file_path = Self::resolve_existing_project_path(project_path, file_path)?;
 
-        if !file_path.exists() {
-            return Err(AppError::NotFound("File does not exist".into()));
+        if !file_path.is_file() {
+            return Err(AppError::BadRequest("Only files can be deleted".into()));
         }
 
         std::fs::remove_file(&file_path)?;
@@ -350,9 +427,12 @@ impl FileService {
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase());
 
-        if ext != Some("md".to_string()) && ext != Some("mdx".to_string()) {
+        if !ext
+            .as_deref()
+            .is_some_and(FileService::is_document_file_type)
+        {
             return Err(AppError::BadRequest(
-                "Only Markdown files (.md/.mdx) can be edited".into(),
+                "Only Markdown and HTML files (.md/.mdx/.html/.htm) can be edited".into(),
             ));
         }
 

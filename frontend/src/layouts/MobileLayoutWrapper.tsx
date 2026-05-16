@@ -5,7 +5,7 @@ import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
 import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
-import type { Project, FileContent, Heading, FileNode } from '../types';
+import type { Project, FileContent, FileType, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import type { TabType } from '../components/markdown-header';
 import styles from '../components/mobile/MobileLayout.module.css';
@@ -14,7 +14,7 @@ interface MobileLayoutWrapperProps {
   projects: Project[];
   activeProject: Project | null;
   currentFile: FileContent | null;
-  currentFileType: 'markdown' | 'image';
+  currentFileType: FileType;
   imagePreviewUrl: string | null;
   imageFileName: string;
   activeTab: TabType;

@@ -1246,6 +1246,7 @@ textarea {
 @media (min-width: 769px) {
   .content-main:has(> .source-view),
   .content-main:has(> .edit-view),
+  .content-main:has(> .html-preview-wrapper),
   .content-main:has(> .diff-wrapper) {
     padding: 0;
   }
@@ -1337,6 +1338,24 @@ textarea {
 /* Markdown Wrapper */
 .markdown-wrapper {
   max-width: 100%;
+}
+
+.html-preview-wrapper {
+  height: 100%;
+  background: var(--color-bg);
+}
+
+.html-preview {
+  min-height: 100%;
+  background: white;
+}
+
+.html-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  background: white;
 }
 
 /* Source View */
@@ -2129,5 +2148,3 @@ textarea {
     transform: none;
   }
 }
-
-

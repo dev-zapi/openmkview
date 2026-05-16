@@ -623,6 +623,14 @@
   min-height: 100px;
 }
 
+.html-preview {
+  width: 100%;
+}
+
+.html-preview-frame {
+  color-scheme: normal;
+}
+
 /* Loading Spinner */
 .loading-spinner {
   width: 20px;

@@ -1,12 +1,13 @@
 import { Component, Show } from 'solid-js';
 import styles from './styles.module.css';
+import type { FileType } from '../../types';
 
 export type TabType = 'preview' | 'source' | 'edit' | 'diff';
 
 export interface ViewTabsProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
-  fileType?: 'markdown' | 'image';
+  fileType?: FileType;
   isDirty?: boolean;
 }
 

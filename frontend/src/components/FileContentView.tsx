@@ -1,11 +1,12 @@
 import { Component, Show } from 'solid-js';
 import MarkdownView from './MarkdownView';
+import HtmlPreview from './HtmlPreview';
 import SourceView from './SourceView';
 import DiffViewer from './DiffViewer';
 import DiffSelector from './DiffSelector';
 import ImagePreview from './ImagePreview';
 import CodeMirrorEditor from './CodeMirrorEditor';
-import type { FileContent, Heading } from '../types';
+import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header/ViewTabs';
 import type { Settings } from '../types/app';
 import { diffStore } from '../stores/diffStore';
@@ -13,7 +14,7 @@ import { diffStore } from '../stores/diffStore';
 export interface FileContentViewProps {
   loading: boolean;
   currentFile: FileContent | null;
-  currentFileType: 'markdown' | 'image';
+  currentFileType: FileType;
   activeTab: TabType;
   activeProjectId: number | undefined;
   imagePreviewUrl: string | null;
@@ -60,6 +61,19 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             content={props.currentFile!.content}
             theme={props.theme}
             onHeadingsExtracted={props.onHeadingsExtracted}
+            currentFilePath={props.currentFile!.path}
+            projectId={props.activeProjectId}
+            searchQuery={props.searchQuery}
+            currentSearchResult={props.currentSearchResult}
+            onSearchResultsChange={props.onSearchResultsChange}
+          />
+        </div>
+      </Show>
+
+      <Show when={!props.loading && props.currentFile && props.activeTab === 'preview' && props.currentFileType === 'html'}>
+        <div class={`html-preview-wrapper ${fadeClass}`}>
+          <HtmlPreview
+            content={props.currentFile!.content}
             currentFilePath={props.currentFile!.path}
             projectId={props.activeProjectId}
             searchQuery={props.searchQuery}
