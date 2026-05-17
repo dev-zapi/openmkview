@@ -10,7 +10,7 @@ describe('HtmlPreview', () => {
 
     const iframe = container.querySelector('iframe');
     expect(iframe).toBeTruthy();
-    expect(iframe?.getAttribute('sandbox')).toBe('allow-same-origin');
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts');
     expect(iframe?.getAttribute('srcdoc')).toContain('<h1>Hello</h1>');
   });
 
