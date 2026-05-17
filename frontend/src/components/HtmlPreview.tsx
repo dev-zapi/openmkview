@@ -210,7 +210,7 @@ const HtmlPreview: Component<HtmlPreviewProps> = (props) => {
         class="html-preview-frame"
         srcdoc={srcDoc()}
         sandbox="allow-scripts"
-        style={{ height: iframeHeight() }}
+        style={{ height: `max(100%, ${iframeHeight()})` }}
         onLoad={sendSearchRequest}
         title="HTML preview"
       />
