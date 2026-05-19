@@ -2,8 +2,7 @@
 
 NAME := openmkview
 VERSION := $(shell cargo metadata --no-deps --format-version 1 2>/dev/null | jq -r '.packages[0].version' 2>/dev/null || echo "0.2.0")
-PREFIX ?= $(HOME)/.local
-BINDIR := $(PREFIX)/bin
+CARGO_BINDIR := $(HOME)/.cargo/bin
 SYSTEMD_USER_DIR := $(HOME)/.config/systemd/user
 
 all: build
@@ -17,13 +16,13 @@ backend:
 build: frontend backend
 
 install: build
-	@mkdir -p $(BINDIR)
-	@install -m 755 target/release/$(NAME) $(BINDIR)/$(NAME)
-	@echo "Installed $(NAME) to $(BINDIR)"
+	@mkdir -p $(CARGO_BINDIR)
+	@install -m 755 target/release/$(NAME) $(CARGO_BINDIR)/$(NAME)
+	@echo "Installed $(NAME) to $(CARGO_BINDIR)"
 
-install-service: install
+install-service:
 	@mkdir -p $(SYSTEMD_USER_DIR)
-	@sed 's|{{BINDIR}}|$(BINDIR)|g' contrib/$(NAME).service.in > $(SYSTEMD_USER_DIR)/$(NAME).service
+	@sed 's|{{BINDIR}}|$(CARGO_BINDIR)|g' contrib/$(NAME).service.in > $(SYSTEMD_USER_DIR)/$(NAME).service
 	@systemctl --user daemon-reload
 	@echo "Installed systemd user service"
 ifdef ENABLE
@@ -43,8 +42,8 @@ endif
 endif
 
 uninstall:
-	@rm -f $(BINDIR)/$(NAME)
-	@echo "Uninstalled $(NAME) from $(BINDIR)"
+	@rm -f $(CARGO_BINDIR)/$(NAME)
+	@echo "Uninstalled $(NAME)"
 
 uninstall-service:
 	@systemctl --user stop $(NAME) 2>/dev/null || true
@@ -75,11 +74,11 @@ help:
 	@echo "  frontend        Build frontend only"
 	@echo "  backend         Build backend only"
 	@echo "  build           Build both frontend and backend (default)"
-	@echo "  install         Install binary to $(BINDIR)"
-	@echo "  install-service Install binary and systemd user service"
+	@echo "  install         Install binary via cargo install to $(CARGO_BINDIR)"
+	@echo "  install-service Install systemd user service only"
 	@echo "                  ENABLE=1 to enable service"
 	@echo "                  START=1 to enable and start service"
-	@echo "  uninstall       Remove binary from $(BINDIR)"
+	@echo "  uninstall       Remove binary via cargo uninstall"
 	@echo "  uninstall-service Remove systemd user service"
 	@echo "  clean           Remove build artifacts"
 	@echo "  run             Run the server (development)"
@@ -87,7 +86,5 @@ help:
 	@echo "  test            Run tests"
 	@echo ""
 	@echo "Variables:"
-	@echo "  PREFIX=$(PREFIX)"
-	@echo "  BINDIR=$(BINDIR)"
 	@echo "  ENABLE=1         Enable service after install"
 	@echo "  START=1          Enable and start service after install"
