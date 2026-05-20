@@ -6,6 +6,7 @@ mod project_handler;
 mod settings_handler;
 mod theme_handler;
 mod trash_handler;
+mod version_handler;
 
 pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{
@@ -30,3 +31,4 @@ pub use theme_handler::{
 pub use trash_handler::{
     clear_trash, delete_from_trash, get_trash_stats, list_trash, move_to_trash, restore_from_trash,
 };
+pub use version_handler::get_version;
