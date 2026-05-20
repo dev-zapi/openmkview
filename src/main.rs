@@ -175,6 +175,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
         .route("/api/files", web::delete().to(delete_file))
         .route("/api/settings", web::get().to(get_settings))
         .route("/api/settings", web::put().to(update_settings))
+        .route("/api/version", web::get().to(get_version))
         .route("/api/themes", web::get().to(list_themes))
         .route("/api/themes/install", web::post().to(install_custom_theme))
         .route("/api/themes/{id}/css", web::get().to(get_theme_css_content))
