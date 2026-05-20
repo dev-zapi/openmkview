@@ -434,7 +434,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 16px;
-  padding-top: calc(var(--safe-top) + var(--mobile-topbar-height) + 16px);
+  padding-top: calc(var(--safe-top) + var(--mobile-topbar-height) + 48px);
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
   z-index: 1700;
