@@ -79,6 +79,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [passkeyBusyId, setPasskeyBusyId] = createSignal<string | null>(null);
   const [passkeyError, setPasskeyError] = createSignal<string | null>(null);
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
+  const [version, setVersion] = createSignal<string>("");
   let observer: IntersectionObserver | null = null;
   let observerTimer: number | undefined;
   let contentRef: HTMLDivElement | undefined;
@@ -128,6 +129,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   onMount(() => {
     void loadThemes();
     void loadPasskeys();
+    void loadVersion();
   });
 
   createEffect(() => {
@@ -185,6 +187,16 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       setPasskeyError(err instanceof Error ? err.message : 'Failed to load Passkeys');
     } finally {
       setPasskeyLoading(false);
+    }
+  };
+
+  const loadVersion = async () => {
+    try {
+      const response = await fetch('/api/version');
+      const data = await response.json();
+      setVersion(data.version);
+    } catch (e) {
+      console.error('Failed to load version:', e);
     }
   };
 
@@ -663,6 +675,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
           </div>
 
           <div class="settings-panel-footer">
+            <Show when={version()}>
+              <span class="settings-version">{version()}</span>
+            </Show>
             <button class="settings-save-btn" onClick={handleSave}>
               {saved() ? '✓ Saved!' : 'Save Settings'}
             </button>
