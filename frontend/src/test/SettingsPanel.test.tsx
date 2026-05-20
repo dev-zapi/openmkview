@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
 import SettingsPanel from '../components/SettingsPanel';
 import { DEFAULT_SETTINGS } from '../types/app';
 import { authStore } from '../stores/authStore';
+import { settingsStore } from '../stores/settingsStore';
 
 describe('SettingsPanel', () => {
   beforeEach(() => {
@@ -130,12 +131,14 @@ describe('SettingsPanel', () => {
   });
 
   it('loads saved settings into the form', async () => {
-    localStorage.setItem('openmkview-settings', JSON.stringify({
+    const customSettings = {
       ...DEFAULT_SETTINGS,
       themeMode: 'dark',
       uiFontSize: '18px',
       markdownWidth: { mode: 'fixed', fixedWidth: '720px' },
-    }));
+    };
+    localStorage.setItem('openmkview-settings', JSON.stringify(customSettings));
+    settingsStore.reloadSettings();
 
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
 
@@ -149,10 +152,25 @@ describe('SettingsPanel', () => {
 
   it('saves settings and calls onSave', async () => {
     const onSave = vi.fn();
-    vi.spyOn(window, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ ...DEFAULT_SETTINGS, markdownWidth: { mode: 'fixed', fixedWidth: '720px' } }),
-    } as Response);
+    const customSettings = { 
+      ...DEFAULT_SETTINGS, 
+      themeMode: 'dark',
+      markdownWidth: { mode: 'fixed', fixedWidth: '720px' } 
+    };
+    vi.spyOn(window, 'fetch').mockImplementation(async (url: string) => {
+      if (url === '/api/themes') {
+        return { ok: true, json: async () => ({ themes: [] }) } as Response;
+      }
+      if (url === '/api/version') {
+        return { ok: true, json: async () => ({ version: 'test' }) } as Response;
+      }
+      if (url === '/api/settings') {
+        return { ok: true, json: async () => customSettings } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    
+    settingsStore.updateSettings(customSettings);
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} onSave={onSave} />);
 
     fireEvent.change(screen.getByLabelText('Content Width'), { target: { value: 'fixed' }, currentTarget: { value: 'fixed' } });
@@ -171,9 +189,10 @@ describe('SettingsPanel', () => {
       const saved = JSON.parse(localStorage.getItem('openmkview-settings') || '{}');
       expect(saved.markdownWidth?.mode).toBe('fixed');
       expect(saved.markdownWidth?.fixedWidth).toBe('720px');
+      expect(onSave).toHaveBeenCalled();
     });
+    
     expect(document.body.classList.contains('light-theme') || document.body.classList.contains('dark-theme')).toBe(true);
-    expect(onSave).toHaveBeenCalled();
   });
 
   it('applies font preset buttons', async () => {

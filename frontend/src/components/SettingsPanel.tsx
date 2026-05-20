@@ -2,8 +2,9 @@ import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } 
 import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
 import { applyTheme } from '../utils/theme';
-import { loadSettings, saveSettings } from '../utils/settings';
+import { saveSettings } from '../utils/settings';
 import { authStore } from '../stores/authStore';
+import { settingsStore } from '../stores/settingsStore';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -65,10 +66,7 @@ const markdownFontSizePresets: PresetOption[] = [
   { label: '20px', value: '20px' },
 ];
 
-const defaultSettings: Settings = DEFAULT_SETTINGS;
-
 const SettingsPanel: Component<SettingsPanelProps> = (props) => {
-  const [settings, setSettings] = createSignal<Settings>(defaultSettings);
   const [saved, setSaved] = createSignal(false);
   const [themes, setThemes] = createSignal<Theme[]>([]);
   const [installing, setInstalling] = createSignal(false);
@@ -90,7 +88,6 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
     return true;
   });
-
   const scrollToCategory = (id: string) => {
     const el = document.getElementById(id);
     if (el) {
@@ -201,10 +198,6 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   };
 
   createEffect(() => {
-    setSettings(loadSettings());
-  });
-
-  createEffect(() => {
     if (props.isOpen && props.authRequired) {
       void loadPasskeys();
     }
@@ -213,43 +206,20 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const handleSave = () => {
     void (async () => {
       setSaveError(null);
-      const settingsResponse = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings()),
-      });
-
-      if (!settingsResponse.ok) {
-        const error = await settingsResponse.json().catch(() => ({ error: settingsResponse.statusText }));
-        setSaveError(error.error || 'Failed to save settings');
-        return;
+      try {
+        await settingsStore.saveServerSettings(settingsStore.settings());
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+        applyTheme(settingsStore.settings());
+        props.onSave?.();
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Failed to save settings');
       }
-
-      if (props.authRequired) {
-        const timeoutResponse = await fetch('/api/auth/session-timeout', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionTimeoutMinutes: settings().sessionTimeoutMinutes }),
-        });
-
-        if (!timeoutResponse.ok) {
-          const error = await timeoutResponse.json().catch(() => ({ error: timeoutResponse.statusText }));
-          setSaveError(error.error || 'Failed to save session timeout');
-          return;
-        }
-      }
-
-      saveSettings(settings());
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-
-      applyTheme(settings());
-      props.onSave?.();
     })();
   };
 
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    settingsStore.updateSettings({ [key]: value });
   };
 
   const handleThemeInstall = async (e: Event) => {
@@ -409,7 +379,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="theme-mode">Theme Mode</label>
                   <select
                     id="theme-mode"
-                    value={settings().themeMode}
+                    value={settingsStore.settings().themeMode}
                     onChange={(e) => updateSetting('themeMode', e.currentTarget.value as ThemeMode)}
                   >
                     <option value="system">Follow System</option>
@@ -422,7 +392,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="light-theme">Light Theme</label>
                   <select
                     id="light-theme"
-                    value={settings().lightTheme}
+                    value={settingsStore.settings().lightTheme}
                     onChange={(e) => updateSetting('lightTheme', e.currentTarget.value)}
                   >
                     <For each={lightThemes()}>
@@ -435,7 +405,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="dark-theme">Dark Theme</label>
                   <select
                     id="dark-theme"
-                    value={settings().darkTheme}
+                    value={settingsStore.settings().darkTheme}
                     onChange={(e) => updateSetting('darkTheme', e.currentTarget.value)}
                   >
                     <For each={darkThemes()}>
@@ -471,22 +441,22 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="content-width">Content Width</label>
                   <select
                     id="content-width"
-                    value={settings().markdownWidth.mode}
-                    onChange={(e) => updateSetting('markdownWidth', { ...settings().markdownWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
+                    value={settingsStore.settings().markdownWidth.mode}
+                    onChange={(e) => updateSetting('markdownWidth', { ...settingsStore.settings().markdownWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
                   >
                     <option value="full">Full Width</option>
                     <option value="fixed">Fixed Width</option>
                   </select>
                 </div>
 
-                <Show when={settings().markdownWidth.mode === 'fixed'}>
+                <Show when={settingsStore.settings().markdownWidth.mode === 'fixed'}>
                   <div class="settings-item">
                     <label for="fixed-width-value">Fixed Width Value</label>
                     <input
                       id="fixed-width-value"
                       type="text"
-                      value={settings().markdownWidth.fixedWidth}
-                      onInput={(e) => updateSetting('markdownWidth', { ...settings().markdownWidth, fixedWidth: e.currentTarget.value })}
+                      value={settingsStore.settings().markdownWidth.fixedWidth}
+                      onInput={(e) => updateSetting('markdownWidth', { ...settingsStore.settings().markdownWidth, fixedWidth: e.currentTarget.value })}
                       placeholder="e.g., 900px, 70%"
                     />
                   </div>
@@ -504,7 +474,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                       type="number"
                       min="1"
                       max="10080"
-                      value={settings().sessionTimeoutMinutes}
+                      value={settingsStore.settings().sessionTimeoutMinutes}
                       onInput={(e) => updateSetting('sessionTimeoutMinutes', parseInt(e.currentTarget.value, 10) || 60)}
                     />
                     <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
@@ -597,7 +567,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     type="number"
                     min="1"
                     max="365"
-                    value={settings().trashExpireDays}
+                    value={settingsStore.settings().trashExpireDays}
                     onInput={(e) => updateSetting('trashExpireDays', parseInt(e.currentTarget.value) || 30)}
                   />
                   <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
@@ -609,7 +579,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="protected-paths">Protected Paths (cannot be deleted)</label>
                   <textarea
                     id="protected-paths"
-                    value={settings().protectedPaths.join('\n')}
+                    value={settingsStore.settings().protectedPaths.join('\n')}
                     onInput={(e) => updateSetting('protectedPaths', e.currentTarget.value.split('\n').filter(p => p.trim()))}
                     placeholder=".git\n.github\nnode_modules"
                     rows={5}
@@ -628,7 +598,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <input
                     id="ui-font-family"
                     type="text"
-                    value={settings().uiFontFamily}
+                    value={settingsStore.settings().uiFontFamily}
                     onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
                     placeholder="e.g., MiSans, sans-serif"
                   />
@@ -640,7 +610,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <input
                     id="ui-font-size"
                     type="text"
-                    value={settings().uiFontSize}
+                    value={settingsStore.settings().uiFontSize}
                     onInput={(e) => updateSetting('uiFontSize', e.currentTarget.value)}
                     placeholder="e.g., 14px"
                   />
@@ -652,7 +622,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <input
                     id="markdown-font-family"
                     type="text"
-                    value={settings().markdownFontFamily}
+                    value={settingsStore.settings().markdownFontFamily}
                     onInput={(e) => updateSetting('markdownFontFamily', e.currentTarget.value)}
                     placeholder="e.g., Georgia, serif"
                   />
@@ -664,7 +634,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <input
                     id="markdown-font-size"
                     type="text"
-                    value={settings().markdownFontSize}
+                    value={settingsStore.settings().markdownFontSize}
                     onInput={(e) => updateSetting('markdownFontSize', e.currentTarget.value)}
                     placeholder="e.g., 16px"
                   />
