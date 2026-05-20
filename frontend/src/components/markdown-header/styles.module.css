@@ -427,7 +427,7 @@
   padding-left: 4px;
   padding-right: 4px;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   background: var(--color-topbar-bg, var(--color-bg));
 }
@@ -473,7 +473,8 @@
 .mobileTabsSection {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .mobileTitleBar .tabItem {
@@ -511,6 +512,7 @@
   .mobileTitleSection {
     order: 1;
     flex: 1 1 auto;
+    min-width: 0;
   }
 
   .mobileTabsSection {
