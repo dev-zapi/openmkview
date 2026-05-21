@@ -23,6 +23,7 @@ describe('GlobalDialogs', () => {
         onProjectOpened={() => {}}
         onColorChange={() => {}}
         onCloseColorPicker={() => {}}
+        onCloseProject={() => {}}
         onCloseProjectEditDialog={() => {}}
         onProjectSave={() => {}}
         onCloseTrashDialog={() => {}}
@@ -52,6 +53,7 @@ describe('GlobalDialogs', () => {
         onProjectOpened={() => {}}
         onColorChange={() => {}}
         onCloseColorPicker={() => {}}
+        onCloseProject={() => {}}
         onCloseProjectEditDialog={() => {}}
         onProjectSave={() => {}}
         onCloseTrashDialog={() => {}}

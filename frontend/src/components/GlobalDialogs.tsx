@@ -23,6 +23,7 @@ interface GlobalDialogsProps {
   onProjectOpened: (project: import('../types/openProject').RecentProject) => void;
   onColorChange: (color: string) => void;
   onCloseColorPicker: () => void;
+  onCloseProject: () => void;
   onCloseProjectEditDialog: () => void;
   onProjectSave: (project: Project) => void;
   onCloseTrashDialog: () => void;
@@ -67,6 +68,7 @@ export const GlobalDialogs: Component<GlobalDialogsProps> = (props) => {
             currentColor={props.projects.find((project) => project.id === props.colorPickerProjectId)?.color}
             onColorChange={props.onColorChange}
             onClose={props.onCloseColorPicker}
+            onCloseProject={props.onCloseProject}
           />
         </div>
       </Show>

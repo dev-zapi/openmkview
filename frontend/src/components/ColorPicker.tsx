@@ -4,6 +4,7 @@ interface ColorPickerProps {
   currentColor?: string;
   onColorChange: (color: string) => void;
   onClose: () => void;
+  onCloseProject?: () => void;
 }
 
 const PRESET_COLORS = [
@@ -56,6 +57,11 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
     }
   };
 
+  const handleCloseProject = () => {
+    props.onCloseProject?.();
+    props.onClose();
+  };
+
   return (
     <div class="color-picker">
       <div class="color-picker-header">
@@ -102,6 +108,15 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
       <Show when={!showCustom()}>
         <button class="color-picker-custom-toggle" onClick={() => setShowCustom(true)}>
           Custom Color
+        </button>
+      </Show>
+
+      <Show when={props.onCloseProject}>
+        <div class="color-picker-divider">
+          <span></span>
+        </div>
+        <button class="color-picker-close-project" onClick={handleCloseProject}>
+          Close Project
         </button>
       </Show>
     </div>
