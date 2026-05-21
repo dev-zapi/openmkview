@@ -50,12 +50,13 @@
 .color-picker-presets {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 6px;
+  gap: 4px;
 }
 
 .color-picker-preset {
-  width: 26px;
-  height: 26px;
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 0;
   border: 2px solid var(--color-border);
   border-radius: 6px;
   cursor: pointer;
