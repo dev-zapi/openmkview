@@ -113,6 +113,9 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .color-picker-native {
@@ -123,6 +126,7 @@
   cursor: pointer;
   padding: 0;
   background: transparent;
+  flex-shrink: 0;
 }
 
 .color-picker-native::-webkit-color-swatch-wrapper {
@@ -161,6 +165,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
+  flex-shrink: 0;
 }
 
 .color-picker-apply:hover {
