@@ -17,20 +17,16 @@ export const useProject = () => {
     const y = rect.top;
 
     const pickerWidth = 280;
-    const pickerHeight = 320;
     const viewportPadding = 8;
     const maxX = Math.max(viewportPadding, window.innerWidth - pickerWidth - viewportPadding);
-    const maxY = Math.max(viewportPadding, window.innerHeight - pickerHeight - viewportPadding);
     const nextX = x + pickerWidth > window.innerWidth - viewportPadding
       ? rect.left - pickerWidth - 8
       : x;
-    const nextY = y + pickerHeight > window.innerHeight - viewportPadding
-      ? window.innerHeight - pickerHeight - viewportPadding
-      : y;
+    const nextY = Math.max(viewportPadding, y);
 
     return {
       x: Math.min(Math.max(nextX, viewportPadding), maxX),
-      y: Math.min(Math.max(nextY, viewportPadding), maxY),
+      y: nextY,
     };
   };
 

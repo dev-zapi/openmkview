@@ -149,11 +149,6 @@ describe('useProject', () => {
       configurable: true,
       value: 360,
     });
-    Object.defineProperty(window, 'innerHeight', {
-      writable: true,
-      configurable: true,
-      value: 260,
-    });
 
     openColorPicker(
       {
@@ -166,7 +161,7 @@ describe('useProject', () => {
       7
     );
 
-    expect(appStore.colorPickerPosition()).toEqual({ x: 8, y: 8 });
+    expect(appStore.colorPickerPosition()).toEqual({ x: 8, y: 240 });
   });
 
   it('opens color picker from explicit coordinates', () => {
@@ -186,15 +181,10 @@ describe('useProject', () => {
       configurable: true,
       value: 320,
     });
-    Object.defineProperty(window, 'innerHeight', {
-      writable: true,
-      configurable: true,
-      value: 280,
-    });
 
     openColorPickerAt(9, { left: 220, right: 260, top: 260 });
 
-    expect(appStore.colorPickerPosition()).toEqual({ x: 8, y: 8 });
+    expect(appStore.colorPickerPosition()).toEqual({ x: 8, y: 260 });
   });
 
   it('returns false when switching projects is cancelled by dirty editor confirmation', async () => {
