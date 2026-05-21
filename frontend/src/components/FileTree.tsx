@@ -146,7 +146,7 @@ function renderContextMenu(
     background: var(--color-bg, #fff);
     border: 1px solid var(--color-border, #d0d0d0);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
     min-width: 160px;
     width: ${menuWidth}px;
     box-sizing: border-box;
