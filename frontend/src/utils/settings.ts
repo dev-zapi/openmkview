@@ -1,4 +1,4 @@
-import type { Settings, ThemeMode, MarkdownWidthSetting } from '../types/app';
+import type { Settings, ServerSettings, ThemeMode, MarkdownWidthSetting } from '../types/app';
 import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO } from '../types/app';
 
 const SETTINGS_KEY = 'openmkview-settings';
@@ -69,6 +69,28 @@ export const normalizeSettings = (settings: (Partial<Settings> & Record<string, 
       typeof s.sessionTimeoutMinutes === 'number' && s.sessionTimeoutMinutes > 0
         ? s.sessionTimeoutMinutes
         : DEFAULT_SETTINGS.sessionTimeoutMinutes,
+  };
+};
+
+export const extractServerSettings = (settings: Settings): ServerSettings => {
+  return {
+    markdownWidth: settings.markdownWidth,
+    uiFontFamily: settings.uiFontFamily,
+    uiFontSize: settings.uiFontSize,
+    markdownFontFamily: settings.markdownFontFamily,
+    markdownFontSize: settings.markdownFontSize,
+    codeFontFamily: settings.codeFontFamily,
+    codeFontSize: settings.codeFontSize,
+    protectedPaths: settings.protectedPaths,
+    trashExpireDays: settings.trashExpireDays,
+    sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
+  };
+};
+
+export const mergeServerSettings = (current: Settings, server: ServerSettings): Settings => {
+  return {
+    ...current,
+    ...server,
   };
 };
 

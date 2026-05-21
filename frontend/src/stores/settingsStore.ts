@@ -1,7 +1,7 @@
 import { createSignal, createEffect } from 'solid-js';
-import type { Settings, ThemeMode } from '../types/app';
+import type { Settings, ThemeMode, ServerSettings } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
-import { loadSettings, saveSettings, normalizeSettings } from '../utils/settings';
+import { loadSettings, saveSettings, normalizeSettings, extractServerSettings, mergeServerSettings } from '../utils/settings';
 import { applyTheme, getEffectiveThemeType, getSystemTheme } from '../utils/theme';
 import { applyFontSettings } from '../utils/settings';
 
@@ -48,19 +48,19 @@ export const settingsStore = {
       throw new Error(`Failed to load settings: ${res.status} ${res.statusText}`);
     }
 
-    const data = await res.json();
-    const normalized = normalizeSettings(data);
-    saveSettings(normalized);
-    setSettings(normalized);
-    return normalized;
+    const data = await res.json() as ServerSettings;
+    const merged = mergeServerSettings(settings(), data);
+    saveSettings(merged);
+    setSettings(merged);
+    return merged;
   },
 
   async saveServerSettings(nextSettings: Settings) {
-    const normalized = normalizeSettings(nextSettings);
+    const serverSettings = extractServerSettings(nextSettings);
     const res = await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(normalized),
+      body: JSON.stringify(serverSettings),
     });
 
     if (!res.ok) {
@@ -68,10 +68,11 @@ export const settingsStore = {
       throw new Error(errorData.error || `Failed to save settings: ${res.status}`);
     }
 
-    const data = normalizeSettings(await res.json());
-    saveSettings(data);
-    setSettings(data);
-    return data;
+    const data = await res.json() as ServerSettings;
+    const merged = mergeServerSettings(nextSettings, data);
+    saveSettings(merged);
+    setSettings(merged);
+    return merged;
   },
 
   applyThemeSettings() {

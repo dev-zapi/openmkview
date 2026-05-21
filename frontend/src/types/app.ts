@@ -13,20 +13,23 @@ export interface MarkdownWidthSetting {
   fixedWidth: string;
 }
 
-export interface Settings {
+export interface ServerSettings {
   markdownWidth: MarkdownWidthSetting;
-  themeMode: ThemeMode;
-  lightTheme: string;
-  darkTheme: string;
   uiFontFamily: string;
-  markdownFontFamily: string;
-  codeFontFamily: string;
   uiFontSize: string;
+  markdownFontFamily: string;
   markdownFontSize: string;
+  codeFontFamily: string;
   codeFontSize: string;
   protectedPaths: string[];
   trashExpireDays: number;
   sessionTimeoutMinutes: number;
+}
+
+export interface Settings extends ServerSettings {
+  themeMode: ThemeMode;
+  lightTheme: string;
+  darkTheme: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

@@ -60,8 +60,6 @@ pub struct SystemSettings {
     pub code_font_family: String,
     #[serde(rename = "codeFontSize", default = "default_font_size")]
     pub code_font_size: String,
-    #[serde(rename = "tableWidth", default)]
-    pub table_width: TableWidthMode,
     #[serde(rename = "protectedPaths", default = "default_protected_paths")]
     pub protected_paths: Vec<String>,
     #[serde(rename = "trashExpireDays", default = "default_trash_expire_days")]
@@ -91,12 +89,4 @@ pub enum WidthMode {
     #[default]
     Full,
     Fixed,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum TableWidthMode {
-    Auto,
-    #[default]
-    Full,
 }
