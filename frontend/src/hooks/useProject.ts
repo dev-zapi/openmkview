@@ -16,8 +16,8 @@ export const useProject = () => {
     const x = rect.right + 8;
     const y = rect.top;
 
-    const pickerWidth = 320;
-    const pickerHeight = 380;
+    const pickerWidth = 280;
+    const pickerHeight = 320;
     const viewportPadding = 8;
     const maxX = Math.max(viewportPadding, window.innerWidth - pickerWidth - viewportPadding);
     const maxY = Math.max(viewportPadding, window.innerHeight - pickerHeight - viewportPadding);
