@@ -54,8 +54,8 @@
   background: var(--color-code-bg);
   padding: 0.2em 0.4em;
   border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-family: var(--code-font);
+  font-size: var(--code-size);
 }
 
 .markdown-view pre code {
@@ -526,8 +526,8 @@
 
 .shiki code {
   display: block;
-  font-family: var(--font-mono);
-  font-size: 14px;
+  font-family: var(--code-font);
+  font-size: var(--code-size);
   line-height: 1.6;
 }
 
@@ -559,8 +559,8 @@
 }
 
 .source-highlighted code {
-  font-family: var(--font-mono);
-  font-size: 14px;
+  font-family: var(--code-font);
+  font-size: var(--code-size);
   line-height: 1.6;
 }
 

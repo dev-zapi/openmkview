@@ -29,6 +29,8 @@ pub struct SystemSettings {
     pub ui_font: FontSetting,
     #[serde(rename = "markdownFont", default)]
     pub markdown_font: FontSetting,
+    #[serde(rename = "codeFont", default)]
+    pub code_font: FontSetting,
     #[serde(rename = "tableWidth", default)]
     pub table_width: TableWidthMode,
     #[serde(rename = "protectedPaths", default = "default_protected_paths")]

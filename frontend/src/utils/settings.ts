@@ -125,4 +125,6 @@ export const applyFontSettings = (settings: Settings): void => {
   document.body.style.fontSize = settings.uiFontSize;
   document.documentElement.style.setProperty('--markdown-font', settings.markdownFontFamily);
   document.documentElement.style.setProperty('--markdown-size', settings.markdownFontSize);
+  document.documentElement.style.setProperty('--code-font', settings.codeFontFamily);
+  document.documentElement.style.setProperty('--code-size', settings.codeFontSize);
 };

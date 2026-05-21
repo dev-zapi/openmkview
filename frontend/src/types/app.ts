@@ -20,8 +20,10 @@ export interface Settings {
   darkTheme: string;
   uiFontFamily: string;
   markdownFontFamily: string;
+  codeFontFamily: string;
   uiFontSize: string;
   markdownFontSize: string;
+  codeFontSize: string;
   protectedPaths: string[];
   trashExpireDays: number;
   sessionTimeoutMinutes: number;
@@ -34,8 +36,10 @@ export const DEFAULT_SETTINGS: Settings = {
   darkTheme: 'dark-default',
   uiFontFamily: 'MiSans, sans-serif',
   markdownFontFamily: 'Georgia, "Noto Serif", serif',
+  codeFontFamily: '"JetBrains Mono", ui-monospace, Consolas, monospace',
   uiFontSize: '14px',
   markdownFontSize: '16px',
+  codeFontSize: '14px',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   trashExpireDays: 30,
   sessionTimeoutMinutes: 60,

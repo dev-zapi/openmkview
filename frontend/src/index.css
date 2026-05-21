@@ -30,6 +30,10 @@
   /* Markdown Font Variables */
   --markdown-font: Georgia, 'Noto Serif', serif;
   --markdown-size: 16px;
+  
+  /* Code Font Variables */
+  --code-font: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --code-size: 14px;
 }
 
 /* Dark mode colors */

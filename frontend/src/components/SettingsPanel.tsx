@@ -51,6 +51,13 @@ const markdownFontPresets: PresetOption[] = [
   { label: 'Monospace', value: '"JetBrains Mono", monospace' },
 ];
 
+const codeFontPresets: PresetOption[] = [
+  { label: 'JetBrains Mono', value: '"JetBrains Mono", ui-monospace, Consolas, monospace' },
+  { label: 'Fira Code', value: '"Fira Code", "JetBrains Mono", monospace' },
+  { label: 'Consolas', value: 'Consolas, "Courier New", monospace' },
+  { label: 'Monospace', value: 'monospace' },
+];
+
 const uiFontSizePresets: PresetOption[] = [
   { label: '12px', value: '12px' },
   { label: '14px', value: '14px' },
@@ -64,6 +71,14 @@ const markdownFontSizePresets: PresetOption[] = [
   { label: '16px', value: '16px' },
   { label: '18px', value: '18px' },
   { label: '20px', value: '20px' },
+];
+
+const codeFontSizePresets: PresetOption[] = [
+  { label: '12px', value: '12px' },
+  { label: '13px', value: '13px' },
+  { label: '14px', value: '14px' },
+  { label: '15px', value: '15px' },
+  { label: '16px', value: '16px' },
 ];
 
 const SettingsPanel: Component<SettingsPanelProps> = (props) => {
@@ -639,6 +654,30 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     placeholder="e.g., 16px"
                   />
                   {renderPresetButtons('markdownFontSize', markdownFontSizePresets, 'size-presets')}
+                </div>
+
+                <div class="settings-item">
+                  <label for="code-font-family">Code Block Font</label>
+                  <input
+                    id="code-font-family"
+                    type="text"
+                    value={settingsStore.settings().codeFontFamily}
+                    onInput={(e) => updateSetting('codeFontFamily', e.currentTarget.value)}
+                    placeholder="e.g., JetBrains Mono, monospace"
+                  />
+                  {renderPresetButtons('codeFontFamily', codeFontPresets, 'font-presets')}
+                </div>
+
+                <div class="settings-item">
+                  <label for="code-font-size">Code Block Font Size</label>
+                  <input
+                    id="code-font-size"
+                    type="text"
+                    value={settingsStore.settings().codeFontSize}
+                    onInput={(e) => updateSetting('codeFontSize', e.currentTarget.value)}
+                    placeholder="e.g., 14px"
+                  />
+                  {renderPresetButtons('codeFontSize', codeFontSizePresets, 'size-presets')}
                 </div>
               </div>
             </div>
