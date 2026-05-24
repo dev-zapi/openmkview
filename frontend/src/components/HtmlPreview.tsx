@@ -223,7 +223,7 @@ const HtmlPreview: Component<HtmlPreviewProps> = (props) => {
         ref={iframeRef}
         class="html-preview-frame"
         srcdoc={srcDoc()}
-        sandbox="allow-scripts"
+        sandbox="allow-scripts allow-same-origin"
         style={{ height: iframeHeight() }}
         onLoad={sendSearchRequest}
         title="HTML preview"
