@@ -57,6 +57,18 @@ mark.search-match-current { background: rgba(59, 130, 246, 0.35); box-shadow: 0 
     postToParent({ type: 'resize', height });
   };
 
+  document.addEventListener('click', (e) => {
+    const anchor = e.target.closest('a[href^="#"]');
+    if (!anchor) return;
+    const id = anchor.getAttribute('href').slice(1);
+    if (!id) return;
+    const target = document.getElementById(id) || document.querySelector(`a[name="${CSS.escape(id)}"]`);
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(postHeight, 500);
+  });
+
   const shouldSkipTextNode = (node) => {
     const parent = node.parentElement;
     return !parent || parent.closest(\`mark[\${SEARCH_MARK_ATTR}]\`) || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName);
@@ -154,7 +166,7 @@ mark.search-match-current { background: rgba(59, 130, 246, 0.35); box-shadow: 0 
 
 const HtmlPreview: Component<HtmlPreviewProps> = (props) => {
   let iframeRef: HTMLIFrameElement | undefined;
-  const [iframeHeight, setIframeHeight] = createSignal('100%');
+  const [iframeHeight, setIframeHeight] = createSignal('400px');
 
   const srcDoc = createMemo(() => rewriteRelativeResourceUrls(props.content, props.currentFilePath, props.projectId));
 
@@ -169,7 +181,7 @@ const HtmlPreview: Component<HtmlPreviewProps> = (props) => {
 
   createEffect(() => {
     srcDoc();
-    setIframeHeight('100%');
+    setIframeHeight('400px');
     window.setTimeout(sendSearchRequest, 0);
   });
 
@@ -210,7 +222,7 @@ const HtmlPreview: Component<HtmlPreviewProps> = (props) => {
         class="html-preview-frame"
         srcdoc={srcDoc()}
         sandbox="allow-scripts"
-        style={{ height: `max(100%, ${iframeHeight()})` }}
+        style={{ height: iframeHeight() }}
         onLoad={sendSearchRequest}
         title="HTML preview"
       />

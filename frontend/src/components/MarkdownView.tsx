@@ -1,5 +1,6 @@
 import { Component, createSignal, createEffect, createMemo, onCleanup, Show } from 'solid-js';
 import { Marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import type { Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
@@ -87,22 +88,30 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           },
           image({ href, title, text }) {
             let imageUrl = href || '';
-            
+
             if (href && !href.startsWith('http') && !href.startsWith('data:') && !href.startsWith('//')) {
               if (props.currentFilePath && props.projectId) {
                 const absolutePath = resolveImagePath(props.currentFilePath, href);
                 imageUrl = `/api/files/raw?path=${encodeURIComponent(absolutePath)}&project_id=${props.projectId}`;
               }
             }
-            
+
             const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
             const altText = text || '';
-            return `<img src="${imageUrl}" alt="${escapeHtml(altText)}"${titleAttr} />`;
+            return `<img src="${imageUrl}" alt="${escapeHtml(altText)}"${titleAttr} loading="lazy" decoding="async" />`;
           },
         },
       });
 
       let html = await marked.parse(content) as string;
+
+      html = DOMPurify.sanitize(html, {
+        ADD_ATTR: ['target', 'loading', 'decoding'],
+        ADD_TAGS: ['mark'],
+      });
+
+      html = html.replace(/<table>/g, '<div class="table-wrapper"><table>')
+        .replace(/<\/table>/g, '</table></div>');
 
       const codeBlockRegex = /<pre class="shiki-code-block" data-lang="([^"]*)"><code class="language-[^"]*">([\s\S]*?)<\/code><\/pre>/g;
       const codeBlocks: { lang: string; code: string }[] = [];
