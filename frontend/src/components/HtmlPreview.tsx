@@ -60,14 +60,16 @@ mark.search-match-current { background: rgba(59, 130, 246, 0.35); box-shadow: 0 
   document.addEventListener('click', (e) => {
     const anchor = e.target.closest('a[href^="#"]');
     if (!anchor) return;
+    e.preventDefault();
     const id = anchor.getAttribute('href').slice(1);
     if (!id) return;
-    const target = document.getElementById(id) || document.querySelector(\`a[name="\${CSS.escape(id)}"]\`);
+    const target = document.getElementById(id);
     if (!target) return;
-    e.preventDefault();
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(postHeight, 500);
-  });
+    try {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(postHeight, 500);
+    } catch {}
+  }, true);
 
   const shouldSkipTextNode = (node) => {
     const parent = node.parentElement;
