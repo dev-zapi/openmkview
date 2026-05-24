@@ -64,7 +64,7 @@ impl FileService {
 
         let ext_str = ext.as_deref().unwrap_or("");
 
-        if !Self::is_allowed_file_type(ext_str) {
+        if !Self::is_allowed_file_type(ext_str) && !Self::is_document_file_type(ext_str) {
             return Err(AppError::BadRequest("File type not allowed".into()));
         }
 
@@ -74,7 +74,14 @@ impl FileService {
         }
 
         let content = std::fs::read(&resolved)?;
-        let mime_type = Self::get_mime_type(ext_str).to_string();
+        let mime_type = if Self::is_document_file_type(ext_str) {
+            match ext_str {
+                "html" | "htm" => "text/html",
+                _ => "text/plain",
+            }.to_string()
+        } else {
+            Self::get_mime_type(ext_str).to_string()
+        };
         let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
 
         Ok((content, mime_type, file_name))
