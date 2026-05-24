@@ -57,20 +57,6 @@ mark.search-match-current { background: rgba(59, 130, 246, 0.35); box-shadow: 0 
     postToParent({ type: 'resize', height });
   };
 
-  document.addEventListener('click', (e) => {
-    const anchor = e.target.closest('a[href^="#"]');
-    if (!anchor) return;
-    e.preventDefault();
-    const id = anchor.getAttribute('href').slice(1);
-    if (!id) return;
-    const target = document.getElementById(id);
-    if (!target) return;
-    try {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setTimeout(postHeight, 500);
-    } catch {}
-  }, true);
-
   const shouldSkipTextNode = (node) => {
     const parent = node.parentElement;
     return !parent || parent.closest(\`mark[\${SEARCH_MARK_ATTR}]\`) || ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName);
@@ -223,7 +209,7 @@ const HtmlPreview: Component<HtmlPreviewProps> = (props) => {
         ref={iframeRef}
         class="html-preview-frame"
         srcdoc={srcDoc()}
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts"
         style={{ height: iframeHeight() }}
         onLoad={sendSearchRequest}
         title="HTML preview"
