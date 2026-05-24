@@ -218,7 +218,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
 
     model = new PierreTree({
       paths,
-      initialExpansion: 'open',
+      initialExpansion: 'closed',
       flattenEmptyDirectories: true,
       search: true,
       composition: {
