@@ -78,7 +78,8 @@ impl FileService {
             match ext_str {
                 "html" | "htm" => "text/html",
                 _ => "text/plain",
-            }.to_string()
+            }
+            .to_string()
         } else {
             Self::get_mime_type(ext_str).to_string()
         };

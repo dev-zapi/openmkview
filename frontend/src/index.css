@@ -1243,17 +1243,7 @@ textarea {
 .content-main {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  transition: padding 0.3s ease;
-}
-
-@media (min-width: 769px) {
-  .content-main:has(> .source-view),
-  .content-main:has(> .edit-view),
-  .content-main:has(> .html-preview-wrapper),
-  .content-main:has(> .diff-wrapper) {
-    padding: 0;
-  }
+  padding: 0;
 }
 
 /* Content tab fade transition */
@@ -1983,15 +1973,6 @@ textarea {
   /* Adjust main content area */
   .main {
     width: 100%;
-  }
-
-  /* Reduce padding on mobile */
-  .content-main {
-    padding: 16px;
-  }
-
-  .content-main:has(> .diff-wrapper) {
-    padding: 0;
   }
 
   /* Make header more compact */
