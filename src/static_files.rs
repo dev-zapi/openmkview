@@ -1,6 +1,6 @@
 use actix_web::{HttpRequest, HttpResponse, HttpResponseBuilder, Result};
 
-const CSP_HEADER: &str = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'";
+const CSP_HEADER: &str = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'";
 
 fn add_csp(response: &mut HttpResponseBuilder) {
     response.insert_header(("Content-Security-Policy", CSP_HEADER));

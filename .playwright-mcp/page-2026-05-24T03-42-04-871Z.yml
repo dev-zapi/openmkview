@@ -1,0 +1,49 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - button "O" [ref=e6] [cursor=pointer]:
+          - generic [ref=e7]: O
+        - button "M" [ref=e8] [cursor=pointer]:
+          - generic [ref=e9]: M
+        - button "A" [ref=e10] [cursor=pointer]:
+          - generic [ref=e11]: A
+      - button "Open Project" [active] [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+      - generic [ref=e14]:
+        - 'button "Theme: system (click to toggle)" [ref=e15] [cursor=pointer]':
+          - img [ref=e16]
+        - button "Settings" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+    - main [ref=e22]:
+      - generic [ref=e27]:
+        - heading "OpenMKView" [level=1] [ref=e28]
+        - paragraph [ref=e29]: Click "Open Project" or the + button on the left to start
+      - generic:
+        - heading "Outline" [level=3] [ref=e31]:
+          - img [ref=e32]
+          - text: Outline
+        - generic [ref=e34]:
+          - img [ref=e35]
+          - paragraph [ref=e38]: No headings found
+  - dialog "Open project" [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - heading "Open project" [level=2] [ref=e42]
+        - button "Close" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+      - generic [ref=e47]:
+        - generic [ref=e50]:
+          - img
+          - textbox "Search folders" [ref=e51]
+        - generic [ref=e52]:
+          - heading "Recent projects" [level=3] [ref=e54]
+          - button "📁 /Users/demo/projects/openmkview" [ref=e55] [cursor=pointer]:
+            - generic [ref=e56]: 📁
+            - generic [ref=e57]: /Users/demo/projects/openmkview
+          - button "📁 /Users/demo/projects/my-docs" [ref=e58] [cursor=pointer]:
+            - generic [ref=e59]: 📁
+            - generic [ref=e60]: /Users/demo/projects/my-docs
+          - button "📁 /Users/demo/projects/awesome-project" [ref=e61] [cursor=pointer]:
+            - generic [ref=e62]: 📁
+            - generic [ref=e63]: /Users/demo/projects/awesome-project

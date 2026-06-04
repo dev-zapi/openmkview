@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - 'heading "Full scenario: sandbox + injected click handler" [level=1] [ref=e2]'
+  - iframe [ref=e3]: </body></html>">:
+    - generic [active] [ref=f7e1]:
+      - navigation [ref=f7e2]:
+        - link "Section 1" [ref=f7e3] [cursor=pointer]:
+          - /url: "#s1"
+        - text: "|"
+        - link "Section 2" [ref=f7e4] [cursor=pointer]:
+          - /url: "#s2"
+        - text: "|"
+        - link "Section 3" [ref=f7e5] [cursor=pointer]:
+          - /url: "#s3"
+      - generic [ref=f7e6]:
+        - heading "Section 1" [level=2] [ref=f7e7]
+        - paragraph [ref=f7e8]: Scroll here via anchor click
+      - generic [ref=f7e10]:
+        - heading "Section 2" [level=2] [ref=f7e11]
+        - paragraph [ref=f7e12]: Second section
+      - generic [ref=f7e14]:
+        - heading "Section 3" [level=2] [ref=f7e15]
+        - paragraph [ref=f7e16]: Third section
+  - paragraph [ref=e4]: Clicking Section 2 link...
