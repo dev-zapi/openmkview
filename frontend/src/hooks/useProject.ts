@@ -74,9 +74,9 @@ export const useProject = () => {
       
       const projects = projectStore.state.projects;
       if (projectStore.state.activeProject?.id === projectId) {
-        projectStore.setActiveProject(null);
-        fileStore.setFileTree([]);
         fileStore.closeFile();
+        fileStore.setFileTree([]);
+        projectStore.setActiveProject(null);
         navigateToHome();
         if (projects.length > 0) {
           await switchProject(projects[0]);
