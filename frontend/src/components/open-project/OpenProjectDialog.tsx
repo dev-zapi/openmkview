@@ -173,7 +173,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
               />
               
               {/* Error Message */}
-              <Show when={() => hook.state.error}>
+              <Show when={hook.state.error}>
                 <div class="error-message">
                   {hook.state.error}
                 </div>
@@ -181,7 +181,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             </div>
 
             {/* List Items Container - Scrollable */}
-            <Show when={() => allListItems().length > 0}>
+            <Show when={allListItems().length > 0}>
               <div class="folder-list-container">
                 <For each={allListItems()}>
                   {(item, index) => (
@@ -201,7 +201,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             </Show>
 
             {/* Loading State */}
-            <Show when={() => hook.isLoadingRecent() && allListItems().length === 0}>
+            <Show when={hook.isLoadingRecent() && allListItems().length === 0}>
               <div class="loading-text">Loading...</div>
             </Show>
           </div>

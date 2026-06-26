@@ -3,7 +3,7 @@
  * 管理对话框状态、搜索查询和项目打开流程
  */
 
-import { createSignal, createResource, createEffect, createMemo, batch, onCleanup } from 'solid-js';
+import { createSignal, createResource, createEffect, batch, onCleanup } from 'solid-js';
 import type {
   OpenProjectState,
   PathCandidate,
@@ -117,10 +117,10 @@ export function useOpenProject(
     { initialValue: [] }
   );
 
-  // 派生状态 - 使用 createMemo 确保响应式追踪
-  const recentProjects = createMemo(() => recentProjectsResource()?.projects ?? []);
+  // 派生状态 - 使用 getter 函数
+  const recentProjects = () => recentProjectsResource()?.projects ?? [];
   const isLoadingRecent = () => recentProjectsResource.loading;
-  const searchResults = createMemo(() => searchResultsResource() || []);
+  const searchResults = () => searchResultsResource() || [];
   const isSearching = () => searchResultsResource.loading;
 
   /**
