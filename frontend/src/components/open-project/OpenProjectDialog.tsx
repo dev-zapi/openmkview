@@ -181,26 +181,28 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             </div>
 
             {/* List Items Container - Scrollable */}
-            <div class="folder-list-container">
-              <For each={allListItems()}>
-                {(item, index) => (
-                  <FolderItem
-                    item={item}
-                    index={index()}
-                    selectedIndex={selectedIndex()}
-                    showRecentTitle={item.type === 'recent' && (index() === 0 || allListItems()[index() - 1]?.type !== 'recent')}
-                    showQuickAccessTitle={false}
-                    showSearchTitle={item.type === 'searchResult' && (index() === 0 || allListItems()[index() - 1]?.type !== 'searchResult')}
-                    onClick={(path) => hook.openProjectByPath(path)}
-                    onKeyDown={handleListItemKeyDown}
-                  />
-                )}
-              </For>
+            <Show when={allListItems().length > 0 || hook.isLoadingRecent()}>
+              <div class="folder-list-container">
+                <For each={allListItems()}>
+                  {(item, index) => (
+                    <FolderItem
+                      item={item}
+                      index={index()}
+                      selectedIndex={selectedIndex()}
+                      showRecentTitle={item.type === 'recent' && (index() === 0 || allListItems()[index() - 1]?.type !== 'recent')}
+                      showQuickAccessTitle={false}
+                      showSearchTitle={item.type === 'searchResult' && (index() === 0 || allListItems()[index() - 1]?.type !== 'searchResult')}
+                      onClick={(path) => hook.openProjectByPath(path)}
+                      onKeyDown={handleListItemKeyDown}
+                    />
+                  )}
+                </For>
 
-              <Show when={hook.isLoadingRecent()}>
-                <div class="loading-text">Loading...</div>
-              </Show>
-            </div>
+                <Show when={hook.isLoadingRecent()}>
+                  <div class="loading-text">Loading...</div>
+                </Show>
+              </div>
+            </Show>
           </div>
         </div>
       </div>
