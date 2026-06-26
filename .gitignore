@@ -47,5 +47,7 @@ test-results/
 plan/
 !plan/
 node_modules/
-.opencode/
+.opencode/*
+!.opencode/skills/
+!.opencode/skills/**
 .playwright-cli/
