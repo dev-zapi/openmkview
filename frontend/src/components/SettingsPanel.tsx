@@ -208,7 +208,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       const response = await fetch('/api/version');
       const data = await response.json();
       setVersion(data.version);
-      setBuildTime(data.build_time);
+      const utcTime = data.build_time;
+      const localTime = new Date(utcTime).toLocaleString();
+      setBuildTime(localTime);
     } catch (e) {
       console.error('Failed to load version:', e);
     }
