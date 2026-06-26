@@ -68,18 +68,21 @@ export const useProject = () => {
   const closeProject = async (projectId: number) => {
     if (!confirmDiscardIfDirty()) return;
 
+    const isActiveProject = projectStore.state.activeProject?.id === projectId;
+
     try {
       await api.closeProject(projectId);
       projectStore.removeProject(projectId);
       
-      const projects = projectStore.state.projects;
-      if (projectStore.state.activeProject?.id === projectId) {
-        fileStore.closeFile();
-        fileStore.setFileTree([]);
-        projectStore.setActiveProject(null);
-        navigateToHome();
-        if (projects.length > 0) {
-          await switchProject(projects[0]);
+      if (isActiveProject) {
+        const remainingProjects = projectStore.state.projects;
+        if (remainingProjects.length > 0) {
+          await switchProject(remainingProjects[0]);
+        } else {
+          fileStore.closeFile();
+          fileStore.setFileTree([]);
+          projectStore.setActiveProject(null);
+          navigateToHome();
         }
       }
     } catch (error) {
