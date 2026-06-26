@@ -181,7 +181,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             </div>
 
             {/* List Items Container - Scrollable */}
-            <Show when={allListItems().length > 0 || hook.isLoadingRecent()}>
+            <Show when={allListItems().length > 0}>
               <div class="folder-list-container">
                 <For each={allListItems()}>
                   {(item, index) => (
@@ -197,11 +197,12 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
                     />
                   )}
                 </For>
-
-                <Show when={hook.isLoadingRecent()}>
-                  <div class="loading-text">Loading...</div>
-                </Show>
               </div>
+            </Show>
+
+            {/* Loading State */}
+            <Show when={hook.isLoadingRecent() && allListItems().length === 0}>
+              <div class="loading-text">Loading...</div>
             </Show>
           </div>
         </div>
