@@ -1,4 +1,4 @@
-.PHONY: all frontend backend build install install-service uninstall uninstall-service clean run dev test help
+.PHONY: all frontend backend build install install-service uninstall uninstall-service restart clean run dev test help
 
 NAME := openmkview
 VERSION := $(shell cargo metadata --no-deps --format-version 1 2>/dev/null | jq -r '.packages[0].version' 2>/dev/null || echo "0.2.0")
@@ -52,6 +52,10 @@ uninstall-service:
 	@systemctl --user daemon-reload
 	@echo "Uninstalled systemd user service"
 
+restart:
+	@systemctl --user restart $(NAME)
+	@echo "Service $(NAME) restarted"
+
 clean:
 	cargo clean
 	rm -rf dist
@@ -80,6 +84,7 @@ help:
 	@echo "                  START=1 to enable and start service"
 	@echo "  uninstall       Remove binary via cargo uninstall"
 	@echo "  uninstall-service Remove systemd user service"
+	@echo "  restart         Restart systemd user service"
 	@echo "  clean           Remove build artifacts"
 	@echo "  run             Run the server (development)"
 	@echo "  dev             Run frontend dev server"
