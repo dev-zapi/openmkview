@@ -638,8 +638,8 @@ body {
   position: absolute;
   inset: 6px;
   border-radius: 10px;
-  border: 1.5px solid var(--color-border);
-  opacity: 1;
+  border: 1.5px solid var(--color-text);
+  opacity: 0.4;
 }
 
 .activity-bar-projects button.project-color-hint .project-initial,

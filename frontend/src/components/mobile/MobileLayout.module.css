@@ -184,8 +184,8 @@
   position: absolute;
   inset: 7px;
   border-radius: 10px;
-  border: 1.5px solid var(--color-border);
-  opacity: 1;
+  border: 1.5px solid var(--color-text);
+  opacity: 0.4;
 }
 
 .activityBarButtonHint :global(.project-initial),
