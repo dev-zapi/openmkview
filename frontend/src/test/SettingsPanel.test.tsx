@@ -162,7 +162,7 @@ describe('SettingsPanel', () => {
         return { ok: true, json: async () => ({ themes: [] }) } as Response;
       }
       if (url === '/api/version') {
-        return { ok: true, json: async () => ({ version: 'test' }) } as Response;
+        return { ok: true, json: async () => ({ version: 'test', build_time: '2026-01-01 12:00:00' }) } as Response;
       }
       if (url === '/api/settings') {
         return { ok: true, json: async () => customSettings } as Response;

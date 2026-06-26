@@ -93,6 +93,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [passkeyError, setPasskeyError] = createSignal<string | null>(null);
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   const [version, setVersion] = createSignal<string>("");
+  const [buildTime, setBuildTime] = createSignal<string>("");
   let observer: IntersectionObserver | null = null;
   let observerTimer: number | undefined;
   let contentRef: HTMLDivElement | undefined;
@@ -207,6 +208,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       const response = await fetch('/api/version');
       const data = await response.json();
       setVersion(data.version);
+      setBuildTime(data.build_time);
     } catch (e) {
       console.error('Failed to load version:', e);
     }
@@ -685,7 +687,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
           <div class="settings-panel-footer">
             <Show when={version()}>
-              <span class="settings-version">{version()}</span>
+              <div class="settings-version-info">
+                <span class="settings-version">{version()}</span>
+                <Show when={buildTime()}>
+                  <span class="settings-build-time">Build Time: {buildTime()}</span>
+                </Show>
+              </div>
             </Show>
             <button class="settings-save-btn" onClick={handleSave}>
               {saved() ? '✓ Saved!' : 'Save Settings'}
