@@ -34,7 +34,7 @@ fn main() {
             let minutes = (secs % 3600) / 60;
             let seconds = secs % 60;
             format!(
-                "{}-{:02}-{:02} {:02}:{:02}:{:02}",
+                "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
                 years, months, day, hours, minutes, seconds
             )
         })

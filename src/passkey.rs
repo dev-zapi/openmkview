@@ -671,7 +671,7 @@ fn summarize_credentials(store: &StoredSitePasskeys) -> Vec<PasskeyCredentialSum
             last_used_at: item.last_used_at,
         })
         .collect();
-    credentials.sort_by(|left, right| right.created_at.cmp(&left.created_at));
+    credentials.sort_by_key(|right| std::cmp::Reverse(right.created_at));
     credentials
 }
 
