@@ -10,6 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
   /** 是否为开发模式 */
   readonly VITE_DEV_MODE: string;
+  /** 前端构建时间 */
+  readonly VITE_FRONTEND_BUILD_TIME: string;
 }
 
 interface ImportMeta {

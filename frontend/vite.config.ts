@@ -7,8 +7,12 @@ export default defineConfig(({ mode }) => {
   // 在开发模式下默认启用 mock
   const isDev = mode === 'development';
   const mockEnabled = process.env.VITE_MOCK_ENABLED !== 'false' && isDev;
+  const frontendBuildTime = new Date().toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
 
   return {
+    define: {
+      'import.meta.env.VITE_FRONTEND_BUILD_TIME': JSON.stringify(frontendBuildTime),
+    },
     plugins: [
       solid(),
       tailwindcss(),

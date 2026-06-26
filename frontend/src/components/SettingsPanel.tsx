@@ -208,8 +208,8 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       const response = await fetch('/api/version');
       const data = await response.json();
       setVersion(data.version);
-      const utcTime = data.build_time;
-      const localTime = new Date(utcTime).toLocaleString();
+      const frontendBuildTime = import.meta.env.VITE_FRONTEND_BUILD_TIME;
+      const localTime = new Date(frontendBuildTime).toLocaleString();
       setBuildTime(localTime);
     } catch (e) {
       console.error('Failed to load version:', e);
