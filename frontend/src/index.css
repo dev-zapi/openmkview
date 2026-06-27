@@ -633,15 +633,6 @@ body {
   color: var(--color-text-h);
 }
 
-.activity-bar-projects button.project-color-hint::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 10px;
-  border: 1.5px solid var(--color-text);
-  opacity: 0.7;
-}
-
 .activity-bar-projects button.project-color-hint .project-initial,
 .activity-bar-projects button.project-color-hint .project-favicon {
   color: var(--color-text-h);
