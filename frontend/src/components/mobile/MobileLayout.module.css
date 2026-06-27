@@ -88,8 +88,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 56px;
-  padding: 0 8px;
+  width: 52px;
+  padding: 0 6px;
   background: var(--color-bg-subtle);
   border-right: 1px solid var(--color-border);
   flex-shrink: 0;
@@ -121,11 +121,12 @@
 }
 
 .activityBarButton {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   margin-bottom: 8px;
   background: transparent;
-  border: none;
+  border: 1.5px solid var(--color-border);
+  opacity: 0.7;
   color: var(--color-text);
   cursor: pointer;
   border-radius: 8px;
