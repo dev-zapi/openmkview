@@ -140,20 +140,11 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
                   class={styles.activityBarButton}
                   classList={{
                     [styles.activityBarButtonActive]: isActive(),
-                    [styles.activityBarButtonColored]: Boolean(projectColor()) && isActive(),
-                    [styles.activityBarButtonHint]: Boolean(projectColor()) && !isActive(),
                   }}
                   title={project.name}
                   aria-label={project.name}
                   onClick={() => handleProjectClick(project)}
-                  style={projectColor()
-                    ? (isActive()
-                        ? activeStyle()
-                        : {
-                            '--project-color': projectColor(),
-                            background: 'transparent',
-                          })
-                    : undefined}
+                  style={projectColor() ? activeStyle() : undefined}
                 >
                   {props.renderProjectIcon(project)}
                 </button>

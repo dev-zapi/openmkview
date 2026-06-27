@@ -29,18 +29,10 @@ export const ActivityBar: Component<ActivityBarProps> = (props) => {
             return (
               <button
                 class={isActive() ? 'active' : ''}
-                classList={{ 'has-project-color': Boolean(projectColor()) && isActive(), 'project-color-hint': Boolean(projectColor()) && !isActive() }}
                 title={project.name}
                 onClick={() => props.onProjectClick(project)}
                 onContextMenu={(event) => props.onProjectContextMenu(event, project.id)}
-                style={projectColor()
-                  ? (isActive()
-                      ? activeStyle()
-                      : {
-                          '--project-color': projectColor(),
-                          background: 'transparent',
-                        })
-                  : undefined}
+                style={projectColor() ? activeStyle() : undefined}
               >
                 {props.renderProjectIcon(project)}
               </button>

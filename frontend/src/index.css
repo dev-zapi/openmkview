@@ -573,7 +573,7 @@ body {
   margin-bottom: 8px;
   background: transparent;
   border: 1.5px solid var(--color-border);
-  opacity: 0.5;
+  opacity: 0.7;
   color: var(--color-text);
   cursor: pointer;
   border-radius: 8px;
@@ -583,19 +583,6 @@ body {
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-}
-
-.activity-bar-projects button::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 0;
-  background: var(--color-accent);
-  border-radius: 0 2px 2px 0;
-  transition: height 0.2s ease;
 }
 
 .activity-bar-projects button:hover {
@@ -609,57 +596,6 @@ body {
   color: var(--color-accent);
   border: 2px solid var(--color-accent);
   opacity: 1;
-}
-
-.activity-bar-projects button.active::after {
-  height: 24px;
-}
-
-.activity-bar-projects button.has-project-color {
-  color: white;
-  font-weight: 600;
-}
-
-.activity-bar-projects button.active.has-project-color:hover {
-  filter: brightness(1.1);
-}
-
-.activity-bar-projects button.has-project-color .project-initial {
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.activity-bar-projects button.project-color-hint {
-  color: var(--color-text-h);
-}
-
-.activity-bar-projects button.project-color-hint .project-initial,
-.activity-bar-projects button.project-color-hint .project-favicon {
-  color: var(--color-text-h);
-  text-shadow: none;
-}
-
-.activity-bar-projects button.project-color-hint .project-initial::after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--project-color, var(--color-accent));
-  box-shadow: 0 0 0 2px var(--color-bg-subtle);
-}
-
-.activity-bar-projects button.project-color-hint .project-favicon {
-  border-radius: 999px;
-  box-shadow: 0 0 0 2px var(--project-color, var(--color-accent));
-}
-
-.activity-bar-projects button.project-color-hint .project-initial,
-.activity-bar-projects button.project-color-hint .project-favicon {
-  position: relative;
-  z-index: 1;
 }
 
 /* Activity bar item transition animation */
