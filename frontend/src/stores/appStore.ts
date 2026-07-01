@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import type { TabType } from '../components/markdown-header/ViewTabs';
+import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
 
 const [activeTab, setActiveTab] = createSignal<TabType>('preview');
 const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
@@ -8,6 +9,8 @@ const [settingsOpen, setSettingsOpen] = createSignal(false);
 const [isMobile, setIsMobile] = createSignal(false);
 const [sidebarWidth, setSidebarWidth] = createSignal(280);
 const [isDragging, setIsDragging] = createSignal(false);
+const [outlineWidth, setOutlineWidth] = createSignal(DEFAULT_OUTLINE_WIDTH);
+const [isOutlineDragging, setIsOutlineDragging] = createSignal(false);
 const [openProjectDialogOpen, setOpenProjectDialogOpen] = createSignal(false);
 const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
 const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
@@ -30,6 +33,10 @@ export const appStore = {
   setSidebarWidth,
   isDragging,
   setIsDragging,
+  outlineWidth,
+  setOutlineWidth,
+  isOutlineDragging,
+  setIsOutlineDragging,
   openProjectDialogOpen,
   setOpenProjectDialogOpen,
   colorPickerOpen,
@@ -88,6 +95,10 @@ export const appStore = {
 
   closeTrashDialog() {
     setTrashDialogOpen(false);
+  },
+
+  initOutlineWidth(width: number) {
+    setOutlineWidth(width);
   },
 
   checkMobile() {
