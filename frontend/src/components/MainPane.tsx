@@ -46,6 +46,9 @@ interface MainPaneProps {
   onCloseOutline: () => void;
   showHeader?: boolean;
   showOutline?: boolean;
+  outlineWidth: number;
+  outlineTransition?: string;
+  onOutlineStartDragging: () => void;
 }
 
 export const MainPane: Component<MainPaneProps> = (props) => {
@@ -143,6 +146,9 @@ export const MainPane: Component<MainPaneProps> = (props) => {
           headings={props.headings}
           isOpen={props.isOutlineOpen}
           onClose={props.onCloseOutline}
+          outlineWidth={props.outlineWidth}
+          transition={props.outlineTransition}
+          onStartDragging={props.onOutlineStartDragging}
         />
       </Show>
     </main>
