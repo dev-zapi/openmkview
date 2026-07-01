@@ -7,6 +7,7 @@ import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
 import type { Project, FileContent, FileType, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
+import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
 import type { TabType } from '../components/markdown-header';
 import styles from '../components/mobile/MobileLayout.module.css';
 
@@ -59,6 +60,9 @@ interface MobileLayoutWrapperProps {
   onCloseDiff: () => void;
   renderProjectIcon: (project: Project) => JSX.Element;
   getProjectStyle: (project: Project) => Record<string, string>;
+  outlineWidth?: number;
+  outlineTransition?: string;
+  onOutlineStartDragging?: () => void;
 }
 
 export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) => {
@@ -255,6 +259,9 @@ onClick={() => {
           onClose={() => mobileLayoutStore.closeRightDrawer()}
           showCloseButton={true}
           onHeadingClick={() => mobileLayoutStore.closeRightDrawer()}
+          outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
+          transition={props.outlineTransition}
+          onStartDragging={props.onOutlineStartDragging ?? (() => {})}
         />
       }
       headerContent={
@@ -339,6 +346,9 @@ onClick={() => {
            diffMode="unified"
            welcomeMessage="Tap the menu button to browse files"
            applyFadeClass={false}
+           outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
+           outlineTransition={props.outlineTransition}
+           onOutlineStartDragging={props.onOutlineStartDragging ?? (() => {})}
            onTabChange={props.onTabChange}
            onOutlineToggle={props.onOutlineToggle}
            onSearchClick={props.onSearchClick}
