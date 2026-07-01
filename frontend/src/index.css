@@ -1365,6 +1365,10 @@ textarea {
   border-left: none;
 }
 
+.outline-panel-hidden .outline-resize-handle {
+  display: none;
+}
+
 /* Outline panel resize handle */
 .outline-resize-handle {
   position: absolute;

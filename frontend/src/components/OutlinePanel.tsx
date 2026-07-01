@@ -64,7 +64,7 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
   return (
     <div 
       class={`outline-panel ${props.isOpen ? '' : 'outline-panel-hidden'}`}
-      style={{ width: `${props.outlineWidth}px`, transition: props.transition }}
+      style={{ width: props.isOpen ? `${props.outlineWidth}px` : '0px', transition: props.transition }}
     >
       <div class="outline-panel-header">
         <h3>
