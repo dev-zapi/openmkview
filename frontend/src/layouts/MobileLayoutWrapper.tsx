@@ -260,7 +260,7 @@ onClick={() => {
           showCloseButton={true}
           onHeadingClick={() => mobileLayoutStore.closeRightDrawer()}
           outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
-          transition={props.outlineTransition}
+          transition={props.outlineTransition ?? ''}
           onStartDragging={props.onOutlineStartDragging ?? (() => {})}
         />
       }
@@ -346,9 +346,9 @@ onClick={() => {
            diffMode="unified"
            welcomeMessage="Tap the menu button to browse files"
            applyFadeClass={false}
-           outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
-           outlineTransition={props.outlineTransition}
-           onOutlineStartDragging={props.onOutlineStartDragging ?? (() => {})}
+            outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
+            outlineTransition={props.outlineTransition ?? ''}
+            onOutlineStartDragging={props.onOutlineStartDragging ?? (() => {})}
            onTabChange={props.onTabChange}
            onOutlineToggle={props.onOutlineToggle}
            onSearchClick={props.onSearchClick}

@@ -47,7 +47,7 @@ interface MainPaneProps {
   showHeader?: boolean;
   showOutline?: boolean;
   outlineWidth: number;
-  outlineTransition?: string;
+  outlineTransition: string;
   onOutlineStartDragging: () => void;
 }
 

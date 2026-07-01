@@ -8,7 +8,7 @@ interface OutlinePanelProps {
   onHeadingClick?: (id: string) => void;
   showCloseButton?: boolean;
   outlineWidth: number;
-  transition?: string;
+  transition: string;
   onStartDragging: () => void;
 }
 

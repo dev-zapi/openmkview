@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal, createMemo, onMount } from 'solid-js';
+import { Component, createEffect, createSignal, createMemo } from 'solid-js';
 import { DesktopLayout, MobileLayoutWrapper } from './layouts';
 import { GlobalDialogs } from './components/GlobalDialogs';
 import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
@@ -26,11 +26,8 @@ const App: Component = () => {
   const [editorSearchRequestKey, setEditorSearchRequestKey] = createSignal(0);
   const [searchScopeKey, setSearchScopeKey] = createSignal('');
 
-  // Initialize outline width from saved settings
-  onMount(() => {
-    const savedOutlineWidth = loadOutlineWidth();
-    appStore.initOutlineWidth(savedOutlineWidth);
-  });
+  const savedOutlineWidth = loadOutlineWidth();
+  appStore.initOutlineWidth(savedOutlineWidth);
 
   const isDocumentFile = () => {
     const fileType = fileStore.currentFileType();

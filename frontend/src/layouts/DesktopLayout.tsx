@@ -35,7 +35,7 @@ interface DesktopLayoutProps {
   sidebarTransition: string;
   gitPanelOpen: boolean;
   outlineWidth: number;
-  outlineTransition?: string;
+  outlineTransition: string;
   onOutlineStartDragging: () => void;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
