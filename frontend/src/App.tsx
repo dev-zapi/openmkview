@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal, createMemo } from 'solid-js';
+import { Component, createEffect, createSignal, createMemo, onMount } from 'solid-js';
 import { DesktopLayout, MobileLayoutWrapper } from './layouts';
 import { GlobalDialogs } from './components/GlobalDialogs';
 import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
@@ -9,7 +9,7 @@ import { appStore } from './stores/appStore';
 import { settingsStore } from './stores/settingsStore';
 import type { Project } from './types';
 import { mobileLayoutStore } from './components/mobile';
-import { getMarkdownStyle } from './utils/settings';
+import { getMarkdownStyle, loadOutlineWidth } from './utils/settings';
 import './styles/global.css';
 import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
@@ -25,6 +25,12 @@ const App: Component = () => {
   const [currentSearchResult, setCurrentSearchResult] = createSignal(0);
   const [editorSearchRequestKey, setEditorSearchRequestKey] = createSignal(0);
   const [searchScopeKey, setSearchScopeKey] = createSignal('');
+
+  // Initialize outline width from saved settings
+  onMount(() => {
+    const savedOutlineWidth = loadOutlineWidth();
+    appStore.initOutlineWidth(savedOutlineWidth);
+  });
 
   const isDocumentFile = () => {
     const fileType = fileStore.currentFileType();
@@ -79,6 +85,7 @@ const App: Component = () => {
 
   const theme = settingsStore.effectiveTheme;
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
+  const outlineTransition = layoutHook.getOutlineTransitionStyle();
 
   const handleSearchClick = () => {
     if (!isDocumentFile()) {
@@ -211,6 +218,9 @@ onCloseProject={handleProjectClose}
           sidebarWidth={appStore.sidebarWidth()}
           sidebarTransition={layoutHook.getSidebarTransitionStyle()}
           gitPanelOpen={appStore.gitPanelOpen()}
+          outlineWidth={appStore.outlineWidth()}
+          outlineTransition={outlineTransition}
+          onOutlineStartDragging={layoutHook.startOutlineDragging}
           onProjectClick={(project) => void projectHook.switchProject(project)}
           onProjectContextMenu={projectHook.openColorPicker}
           onOpenProject={projectHook.openProject}
