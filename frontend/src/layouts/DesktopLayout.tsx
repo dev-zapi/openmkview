@@ -34,6 +34,9 @@ interface DesktopLayoutProps {
   sidebarWidth: number;
   sidebarTransition: string;
   gitPanelOpen: boolean;
+  outlineWidth: number;
+  outlineTransition?: string;
+  onOutlineStartDragging: () => void;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
   onOpenProject: () => void;
@@ -123,6 +126,9 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         diffMode="split"
         welcomeMessage={'Click "Open Project" or the + button on the left to start'}
         applyFadeClass={true}
+        outlineWidth={props.outlineWidth}
+        outlineTransition={props.outlineTransition}
+        onOutlineStartDragging={props.onOutlineStartDragging}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         onSearchClick={props.onSearchClick}
