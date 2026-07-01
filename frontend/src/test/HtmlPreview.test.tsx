@@ -3,18 +3,18 @@ import { render } from '@solidjs/testing-library';
 import HtmlPreview from '../components/HtmlPreview';
 
 describe('HtmlPreview', () => {
-  it('renders html content in sandboxed iframe', () => {
+  it('renders html content in inline div when projectId is not provided', () => {
     const { container } = render(() => (
       <HtmlPreview content="<h1>Hello</h1>" currentFilePath="index.html" />
     ));
 
-    const iframe = container.querySelector('iframe');
-    expect(iframe).toBeTruthy();
-    expect(iframe?.getAttribute('sandbox')).toBe('allow-scripts');
-    expect(iframe?.getAttribute('srcdoc')).toContain('<h1>Hello</h1>');
+    // When projectId is not provided, component renders inline div, not iframe
+    const inlineDiv = container.querySelector('.html-preview-inline');
+    expect(inlineDiv).toBeTruthy();
+    expect(inlineDiv?.innerHTML).toContain('<h1>Hello</h1>');
   });
 
-  it('rewrites relative resource urls through raw file endpoint', () => {
+  it('renders iframe with src url when projectId is provided', () => {
     const { container } = render(() => (
       <HtmlPreview
         content={'<img src="./images/logo.png"><link rel="stylesheet" href="style.css">'}
@@ -23,8 +23,9 @@ describe('HtmlPreview', () => {
       />
     ));
 
-    const srcdoc = container.querySelector('iframe')?.getAttribute('srcdoc') || '';
-    expect(srcdoc).toContain('/api/files/raw?relativePath=docs%2Fimages%2Flogo.png&amp;project_id=7');
-    expect(srcdoc).toContain('/api/files/raw?relativePath=docs%2Fstyle.css&amp;project_id=7');
+    // When projectId is provided, component renders iframe with src attribute
+    const iframe = container.querySelector('iframe');
+    expect(iframe).toBeTruthy();
+    expect(iframe?.getAttribute('src')).toContain('/api/files/raw?relativePath=docs%2Findex.html&project_id=7');
   });
 });

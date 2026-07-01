@@ -88,15 +88,16 @@ describe('ActivityBar', () => {
     expect(alphaButton.classList.contains('active')).toBe(true);
     expect(betaButton.classList.contains('active')).toBe(false);
     expect(alphaButton.getAttribute('style')).toContain('background: rgb(255, 0, 0)');
+    // Beta button has no color, so no style attribute
+    expect(betaButton.getAttribute('style')).toBe(null);
 
     setActiveProject(projects[1]);
 
     const alphaButtonAfterSwitch = screen.getByTitle('Alpha');
 
     expect(alphaButtonAfterSwitch.classList.contains('active')).toBe(false);
-    expect(alphaButtonAfterSwitch.classList.contains('project-color-hint')).toBe(true);
-    expect(alphaButtonAfterSwitch.style.getPropertyValue('--project-color')).toBe('#ff0000');
-    expect(alphaButtonAfterSwitch.style.background).toBe('transparent');
+    // Alpha still has color, so style attribute remains (applied regardless of active state)
+    expect(alphaButtonAfterSwitch.getAttribute('style')).toContain('background: rgb(255, 0, 0)');
     expect(betaButton.classList.contains('active')).toBe(true);
   });
 });

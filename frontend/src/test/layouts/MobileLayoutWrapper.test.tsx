@@ -201,9 +201,11 @@ describe('MobileLayoutWrapper', () => {
     expect(screen.getByTestId('mobile-sidebar-title').textContent).toBe('Demo');
     expect(demoButton.className).toContain('activityBarButtonActive');
     expect(demoButton.getAttribute('style')).toContain('background: rgb(194, 24, 91)');
-    expect(workspaceButton.className).toContain('activityBarButtonHint');
-    expect(workspaceButton.style.getPropertyValue('--project-color')).toBe('#ff6b6b');
-    expect(workspaceButton.style.background).toBe('transparent');
+    // After refactor, non-active buttons have no special classes (simplified border styling)
+    // Workspace button has color, so it still has style attribute (applied regardless of active state)
+    expect(workspaceButton.className).toContain('activityBarButton');
+    expect(workspaceButton.className).not.toContain('activityBarButtonActive');
+    expect(workspaceButton.getAttribute('style')).toContain('background: rgb(255, 107, 107)');
 
     setActiveProject(alternateProject);
 
@@ -212,10 +214,11 @@ describe('MobileLayoutWrapper', () => {
     const demoButtonAfterSwitch = screen.getByLabelText('Demo');
     const workspaceButtonAfterSwitch = screen.getByLabelText('Workspace');
 
-    expect(demoButtonAfterSwitch.className).toContain('activityBarButtonHint');
+    // After refactor, non-active buttons have no special classes
+    // Demo button still has color, so style attribute remains
+    expect(demoButtonAfterSwitch.className).toContain('activityBarButton');
     expect(demoButtonAfterSwitch.className).not.toContain('activityBarButtonActive');
-    expect(demoButtonAfterSwitch.style.getPropertyValue('--project-color')).toBe('#c2185b');
-    expect(demoButtonAfterSwitch.style.background).toBe('transparent');
+    expect(demoButtonAfterSwitch.getAttribute('style')).toContain('background: rgb(194, 24, 91)');
     expect(workspaceButtonAfterSwitch.className).toContain('activityBarButtonActive');
     expect(workspaceButtonAfterSwitch.getAttribute('style')).toContain('background: rgb(255, 107, 107)');
   });
