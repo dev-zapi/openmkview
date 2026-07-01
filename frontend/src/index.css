@@ -1347,9 +1347,7 @@ textarea {
 }
 
 /* Overlay and Panel Base - Separate settings from drawer panels */
-.git-panel,
 .outline-panel {
-  width: 280px;
   height: 100%;
   background: var(--color-bg);
   border-left: 1px solid var(--color-border);
@@ -1357,6 +1355,7 @@ textarea {
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
 }
 
@@ -1364,6 +1363,23 @@ textarea {
   width: 0;
   opacity: 0;
   border-left: none;
+}
+
+/* Outline panel resize handle */
+.outline-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+  z-index: 10;
+}
+
+.outline-resize-handle:hover {
+  background: var(--color-accent);
 }
 
 .outline-panel-header {
