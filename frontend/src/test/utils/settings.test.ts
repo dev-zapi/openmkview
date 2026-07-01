@@ -5,10 +5,13 @@ import {
   loadSidebarWidth,
   saveSidebarWidth,
   getValidatedSidebarWidth,
+  loadOutlineWidth,
+  saveOutlineWidth,
+  getValidatedOutlineWidth,
   getMarkdownStyle,
   applyFontSettings,
 } from '../../utils/settings';
-import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH } from '../../types/app';
+import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH } from '../../types/app';
 import type { Settings } from '../../types/app';
 
 describe('settings utils', () => {
@@ -115,6 +118,54 @@ describe('settings utils', () => {
     it('returns maximum width when input is too large', () => {
       const maxWidth = 1920 * 0.4;
       expect(getValidatedSidebarWidth(1000)).toBe(maxWidth);
+    });
+  });
+
+  describe('loadOutlineWidth', () => {
+    it('returns default width when localStorage is empty', () => {
+      expect(loadOutlineWidth()).toBe(DEFAULT_OUTLINE_WIDTH);
+    });
+
+    it('returns saved width when valid', () => {
+      localStorage.setItem('outline-panel-width', '300');
+      expect(loadOutlineWidth()).toBe(300);
+    });
+
+    it('returns default width when saved width is too small', () => {
+      localStorage.setItem('outline-panel-width', '100');
+      expect(loadOutlineWidth()).toBe(DEFAULT_OUTLINE_WIDTH);
+    });
+
+    it('returns default width when saved width is too large', () => {
+      localStorage.setItem('outline-panel-width', '1000');
+      expect(loadOutlineWidth()).toBe(DEFAULT_OUTLINE_WIDTH);
+    });
+
+    it('returns default width on parse error', () => {
+      localStorage.setItem('outline-panel-width', 'invalid');
+      expect(loadOutlineWidth()).toBe(DEFAULT_OUTLINE_WIDTH);
+    });
+  });
+
+  describe('saveOutlineWidth', () => {
+    it('saves width to localStorage', () => {
+      saveOutlineWidth(300);
+      expect(localStorage.getItem('outline-panel-width')).toBe('300');
+    });
+  });
+
+  describe('getValidatedOutlineWidth', () => {
+    it('returns width within valid range', () => {
+      expect(getValidatedOutlineWidth(300)).toBe(300);
+    });
+
+    it('returns minimum width when input is too small', () => {
+      expect(getValidatedOutlineWidth(100)).toBe(MIN_OUTLINE_WIDTH);
+    });
+
+    it('returns maximum width when input is too large', () => {
+      const maxWidth = 1920 * 0.4;
+      expect(getValidatedOutlineWidth(1000)).toBe(maxWidth);
     });
   });
 
