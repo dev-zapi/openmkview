@@ -7,6 +7,9 @@ interface OutlinePanelProps {
   onClose: () => void;
   onHeadingClick?: (id: string) => void;
   showCloseButton?: boolean;
+  outlineWidth: number;
+  transition?: string;
+  onStartDragging: () => void;
 }
 
 const OutlinePanel: Component<OutlinePanelProps> = (props) => {
@@ -59,7 +62,10 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
   };
 
   return (
-    <div class={`outline-panel ${props.isOpen ? '' : 'outline-panel-hidden'}`}>
+    <div 
+      class={`outline-panel ${props.isOpen ? '' : 'outline-panel-hidden'}`}
+      style={{ width: `${props.outlineWidth}px`, transition: props.transition }}
+    >
       <div class="outline-panel-header">
         <h3>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -115,6 +121,8 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
           </For>
         </Show>
       </div>
+      
+      <div class="outline-resize-handle" onMouseDown={props.onStartDragging} />
     </div>
   );
 };
