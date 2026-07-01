@@ -1,7 +1,12 @@
 import { onMount, onCleanup } from 'solid-js';
 import { appStore } from '../stores/appStore';
 import { settingsStore } from '../stores/settingsStore';
-import { saveSidebarWidth, getValidatedSidebarWidth } from '../utils/settings';
+import { 
+  saveSidebarWidth, 
+  getValidatedSidebarWidth,
+  saveOutlineWidth,
+  getValidatedOutlineWidth 
+} from '../utils/settings';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
 
 export const useLayout = () => {
@@ -12,11 +17,21 @@ export const useLayout = () => {
         appStore.setSidebarWidth(newWidth);
         saveSidebarWidth(newWidth);
       }
+      if (appStore.isOutlineDragging()) {
+        const newWidth = getValidatedOutlineWidth(window.innerWidth - e.clientX);
+        appStore.setOutlineWidth(newWidth);
+        saveOutlineWidth(newWidth);
+      }
     };
 
     const handleMouseUp = () => {
       if (appStore.isDragging()) {
         appStore.setIsDragging(false);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+      if (appStore.isOutlineDragging()) {
+        appStore.setIsOutlineDragging(false);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
       }
@@ -30,6 +45,14 @@ export const useLayout = () => {
       if (currentWidth > maxWidth) {
         appStore.setSidebarWidth(maxWidth);
         saveSidebarWidth(maxWidth);
+      }
+      
+      // Validate outline width against new max
+      const outlineMaxWidth = window.innerWidth * 0.4;
+      const currentOutlineWidth = appStore.outlineWidth();
+      if (currentOutlineWidth > outlineMaxWidth) {
+        appStore.setOutlineWidth(outlineMaxWidth);
+        saveOutlineWidth(outlineMaxWidth);
       }
     };
 
@@ -50,6 +73,12 @@ export const useLayout = () => {
     document.body.style.userSelect = 'none';
   };
 
+  const startOutlineDragging = () => {
+    appStore.setIsOutlineDragging(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   const handleMobileOutlineToggle = () => {
     if (appStore.isMobile()) {
       mobileLayoutStore.toggleRightDrawer();
@@ -62,11 +91,17 @@ export const useLayout = () => {
     return appStore.isDragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
   };
 
+  const getOutlineTransitionStyle = () => {
+    return appStore.isOutlineDragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+  };
+
   return {
     setupResizeHandlers,
     startDragging,
+    startOutlineDragging,
     handleMobileOutlineToggle,
     getSidebarTransitionStyle,
+    getOutlineTransitionStyle,
   };
 };
 
