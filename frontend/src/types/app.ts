@@ -76,3 +76,7 @@ export interface PasskeyCeremonyStart<T = unknown> {
 export const DEFAULT_SIDEBAR_WIDTH = 280;
 export const MIN_SIDEBAR_WIDTH = 200;
 export const MAX_SIDEBAR_WIDTH_RATIO = 0.4;
+
+export const DEFAULT_OUTLINE_WIDTH = 280;
+export const MIN_OUTLINE_WIDTH = 200;
+export const MAX_OUTLINE_WIDTH_RATIO = 0.4;
