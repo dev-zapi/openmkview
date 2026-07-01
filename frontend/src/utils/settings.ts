@@ -1,8 +1,9 @@
 import type { Settings, ServerSettings, ThemeMode, MarkdownWidthSetting } from '../types/app';
-import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO } from '../types/app';
+import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH_RATIO } from '../types/app';
 
 const SETTINGS_KEY = 'openmkview-settings';
 const SIDEBAR_WIDTH_KEY = 'filetree-sidebar-width';
+const OUTLINE_WIDTH_KEY = 'outline-panel-width';
 
 const isThemeMode = (value: unknown): value is ThemeMode => {
   return value === 'light' || value === 'dark' || value === 'system';
@@ -129,6 +130,35 @@ export const saveSidebarWidth = (width: number): void => {
 export const getValidatedSidebarWidth = (width: number): number => {
   const maxWidth = window.innerWidth * MAX_SIDEBAR_WIDTH_RATIO;
   return Math.max(MIN_SIDEBAR_WIDTH, Math.min(maxWidth, width));
+};
+
+export const loadOutlineWidth = (): number => {
+  try {
+    const saved = localStorage.getItem(OUTLINE_WIDTH_KEY);
+    if (saved) {
+      const width = parseInt(saved, 10);
+      const maxWidth = window.innerWidth * MAX_OUTLINE_WIDTH_RATIO;
+      if (width >= MIN_OUTLINE_WIDTH && width <= maxWidth) {
+        return width;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load outline width:', e);
+  }
+  return DEFAULT_OUTLINE_WIDTH;
+};
+
+export const saveOutlineWidth = (width: number): void => {
+  try {
+    localStorage.setItem(OUTLINE_WIDTH_KEY, String(width));
+  } catch (e) {
+    console.error('Failed to save outline width:', e);
+  }
+};
+
+export const getValidatedOutlineWidth = (width: number): number => {
+  const maxWidth = window.innerWidth * MAX_OUTLINE_WIDTH_RATIO;
+  return Math.max(MIN_OUTLINE_WIDTH, Math.min(maxWidth, width));
 };
 
 export const getMarkdownStyle = (settings: Settings): Record<string, string> => {
