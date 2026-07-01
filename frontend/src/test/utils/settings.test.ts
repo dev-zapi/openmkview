@@ -11,7 +11,7 @@ import {
   getMarkdownStyle,
   applyFontSettings,
 } from '../../utils/settings';
-import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH } from '../../types/app';
+import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH_RATIO } from '../../types/app';
 import type { Settings } from '../../types/app';
 
 describe('settings utils', () => {
@@ -116,7 +116,7 @@ describe('settings utils', () => {
     });
 
     it('returns maximum width when input is too large', () => {
-      const maxWidth = 1920 * 0.4;
+      const maxWidth = 1920 * MAX_SIDEBAR_WIDTH_RATIO;
       expect(getValidatedSidebarWidth(1000)).toBe(maxWidth);
     });
   });
@@ -164,7 +164,7 @@ describe('settings utils', () => {
     });
 
     it('returns maximum width when input is too large', () => {
-      const maxWidth = 1920 * 0.4;
+      const maxWidth = 1920 * MAX_OUTLINE_WIDTH_RATIO;
       expect(getValidatedOutlineWidth(1000)).toBe(maxWidth);
     });
   });
