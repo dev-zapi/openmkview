@@ -1,6 +1,24 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { escapeHtml } from '../utils/html';
 
+// Theme name mapping (settings use 'slack' but Shiki uses 'slack-dark')
+const THEME_MAP: Record<string, string> = {
+  'github-light': 'github-light',
+  'github-dark': 'github-dark',
+  'vitesse-light': 'vitesse-light',
+  'vitesse-dark': 'vitesse-dark',
+  'min-light': 'min-light',
+  'min-dark': 'min-dark',
+  'solarized-light': 'solarized-light',
+  'solarized-dark': 'solarized-dark',
+  'one-dark-pro': 'one-dark-pro',
+  'nord': 'nord',
+  'dracula': 'dracula',
+  'monokai': 'monokai',
+  'slack': 'slack-dark',
+};
+
+// Default themes for fallback
 const LIGHT_THEME = 'github-light';
 const DARK_THEME = 'github-dark';
 
@@ -10,6 +28,7 @@ interface HighlightRequest {
   code: string;
   lang: string;
   theme: 'light' | 'dark';
+  codeTheme: string; // The actual theme setting value from settings
 }
 
 interface HighlightResponse {
@@ -37,8 +56,21 @@ async function initHighlighter(): Promise<void> {
 
   highlighter = await createHighlighterCore({
     themes: [
+      // Light themes
       import('shiki/themes/github-light.mjs'),
+      import('shiki/themes/vitesse-light.mjs'),
+      import('shiki/themes/min-light.mjs'),
+      import('shiki/themes/solarized-light.mjs'),
+      // Dark themes
       import('shiki/themes/github-dark.mjs'),
+      import('shiki/themes/vitesse-dark.mjs'),
+      import('shiki/themes/min-dark.mjs'),
+      import('shiki/themes/one-dark-pro.mjs'),
+      import('shiki/themes/nord.mjs'),
+      import('shiki/themes/dracula.mjs'),
+      import('shiki/themes/solarized-dark.mjs'),
+      import('shiki/themes/monokai.mjs'),
+      import('shiki/themes/slack-dark.mjs'),
     ],
     langs: [
       import('@shikijs/langs/javascript'),
@@ -75,7 +107,9 @@ async function handleHighlight(request: HighlightRequest): Promise<HighlightResp
     await initHighlighter();
   }
 
-  const themeName = request.theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+  // Use the codeTheme from the request, mapped to Shiki theme name
+  // Fallback to default themes if codeTheme is not provided or not in map
+  const themeName = THEME_MAP[request.codeTheme] || (request.theme === 'dark' ? DARK_THEME : LIGHT_THEME);
   let lang = request.lang.toLowerCase();
 
   if (!highlighter!.getLoadedLanguages().includes(lang)) {

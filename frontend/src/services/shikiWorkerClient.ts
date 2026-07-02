@@ -1,4 +1,5 @@
 import type { HighlightOptions, HighlightResult } from './shikiService';
+import { settingsStore } from '../stores/settingsStore';
 
 type WorkerMessage = {
   id: number;
@@ -6,6 +7,7 @@ type WorkerMessage = {
   code: string;
   lang: string;
   theme: 'light' | 'dark';
+  codeTheme: string;
 };
 
 type WorkerResponse = {
@@ -63,13 +65,20 @@ export async function highlightCodeWorker(options: HighlightOptions): Promise<Hi
     const id = ++requestId;
     pendingRequests.set(id, { resolve, reject });
 
+    // Determine which theme setting to use based on mode
+    const effectiveThemeType = options.theme || settingsStore.effectiveTheme;
+    const codeTheme = effectiveThemeType === 'dark' 
+      ? settingsStore.settings().codeBlockThemeDark 
+      : settingsStore.settings().codeBlockThemeLight;
+
     const w = getWorker();
     w.postMessage({
       id,
       type: 'highlight',
       code: options.code,
       lang: options.lang,
-      theme: options.theme || 'light',
+      theme: effectiveThemeType,
+      codeTheme,
     } as WorkerMessage);
 
     setTimeout(() => {

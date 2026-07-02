@@ -1,7 +1,22 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import { settingsStore } from '../stores/settingsStore';
 
-const LIGHT_THEME = 'github-light';
-const DARK_THEME = 'github-dark';
+// Theme name mapping (settings use 'slack' but Shiki uses 'slack-dark')
+const THEME_MAP: Record<string, string> = {
+  'github-light': 'github-light',
+  'github-dark': 'github-dark',
+  'vitesse-light': 'vitesse-light',
+  'vitesse-dark': 'vitesse-dark',
+  'min-light': 'min-light',
+  'min-dark': 'min-dark',
+  'solarized-light': 'solarized-light',
+  'solarized-dark': 'solarized-dark',
+  'one-dark-pro': 'one-dark-pro',
+  'nord': 'nord',
+  'dracula': 'dracula',
+  'monokai': 'monokai',
+  'slack': 'slack-dark',
+};
 
 let highlighterInstance: HighlighterCore | null = null;
 let initPromise: Promise<HighlighterCore> | null = null;
@@ -22,8 +37,21 @@ async function getHighlighter(): Promise<HighlighterCore> {
 
     const highlighter = await createHighlighterCore({
       themes: [
+        // Light themes
         import('shiki/themes/github-light.mjs'),
+        import('shiki/themes/vitesse-light.mjs'),
+        import('shiki/themes/min-light.mjs'),
+        import('shiki/themes/solarized-light.mjs'),
+        // Dark themes
         import('shiki/themes/github-dark.mjs'),
+        import('shiki/themes/vitesse-dark.mjs'),
+        import('shiki/themes/min-dark.mjs'),
+        import('shiki/themes/one-dark-pro.mjs'),
+        import('shiki/themes/nord.mjs'),
+        import('shiki/themes/dracula.mjs'),
+        import('shiki/themes/solarized-dark.mjs'),
+        import('shiki/themes/monokai.mjs'),
+        import('shiki/themes/slack-dark.mjs'),
       ],
       langs: [
         import('@shikijs/langs/javascript'),
@@ -71,7 +99,20 @@ export interface HighlightResult {
 
 export async function highlightCode(options: HighlightOptions): Promise<HighlightResult> {
   const highlighter = await getHighlighter();
-  const theme = options.theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+  
+  // Determine which theme to use based on mode and settings
+  const effectiveThemeType = settingsStore.effectiveTheme;
+  const themeSetting = effectiveThemeType === 'dark' 
+    ? settingsStore.settings().codeBlockThemeDark 
+    : settingsStore.settings().codeBlockThemeLight;
+  
+  // Map to Shiki theme name, fallback to github
+  const theme = THEME_MAP[themeSetting] || (effectiveThemeType === 'dark' ? 'github-dark' : 'github-light');
+  
+  // Override with options.theme if explicitly provided
+  const useTheme = options.theme 
+    ? THEME_MAP[options.theme === 'dark' ? settingsStore.settings().codeBlockThemeDark : settingsStore.settings().codeBlockThemeLight] || (options.theme === 'dark' ? 'github-dark' : 'github-light')
+    : theme;
 
   let lang = options.lang.toLowerCase();
   if (!highlighter.getLoadedLanguages().includes(lang)) {
@@ -80,7 +121,7 @@ export async function highlightCode(options: HighlightOptions): Promise<Highligh
 
   const html = highlighter.codeToHtml(options.code, {
     lang,
-    theme,
+    theme: useTheme,
   });
 
   return { html };
@@ -93,7 +134,11 @@ export async function highlightCodeWithTransformers(
   transformers: any[] = []
 ): Promise<string> {
   const highlighter = await getHighlighter();
-  const themeName = theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+  
+  const themeSetting = theme === 'dark' 
+    ? settingsStore.settings().codeBlockThemeDark 
+    : settingsStore.settings().codeBlockThemeLight;
+  const themeName = THEME_MAP[themeSetting] || (theme === 'dark' ? 'github-dark' : 'github-light');
 
   let normalizedLang = lang.toLowerCase();
   if (!highlighter.getLoadedLanguages().includes(normalizedLang)) {
@@ -115,7 +160,10 @@ export async function loadLanguage(lang: string): Promise<void> {
 }
 
 export async function getTheme(theme: 'light' | 'dark'): Promise<string> {
-  return theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+  const themeSetting = theme === 'dark' 
+    ? settingsStore.settings().codeBlockThemeDark 
+    : settingsStore.settings().codeBlockThemeLight;
+  return THEME_MAP[themeSetting] || (theme === 'dark' ? 'github-dark' : 'github-light');
 }
 
 export function getHighlighterInstance(): HighlighterCore | null {
