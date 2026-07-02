@@ -107,7 +107,7 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
           <For each={props.headings}>
             {(heading) => (
               <div
-                class="outline-item outline-item-animate"
+                class="outline-item"
                 style={getIndentStyle(heading.depth)}
                 onClick={(e) => handleClick(heading.id, e)}
                 title={heading.text}
