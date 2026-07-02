@@ -62,6 +62,25 @@ const App: Component = () => {
     }
   });
 
+  createEffect(() => {
+    const currentFile = fileStore.currentFile();
+    const outlineOpen = appStore.outlineOpen();
+    
+    if (!currentFile) {
+      if (outlineOpen) {
+        appStore.setOutlineOpen(false);
+      }
+      return;
+    }
+    
+    const fileTypeCategory = getFileTypeCategory(currentFile.fileName);
+    const shouldBeOpen = appStore.getOutlineOpenForFileType(fileTypeCategory);
+    
+    if (shouldBeOpen !== outlineOpen) {
+      appStore.setOutlineOpen(shouldBeOpen);
+    }
+  });
+
   const renderProjectIcon = (project: Project) => {
     const icon = projectHook.renderProjectIconContent(project);
     if (icon.type === 'image') {
