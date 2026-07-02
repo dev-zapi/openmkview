@@ -87,15 +87,172 @@ OpenMKView is a powerful Markdown viewing tool that supports:
 ### Code Example
 
 \`\`\`typescript
+import { EventEmitter } from 'events';
+import type { Request, Response, NextFunction } from 'express';
+
+// Generic repository interface
+interface Repository<T extends { id: number }> {
+  findAll(): Promise<T[]>;
+  findById(id: number): Promise<T | null>;
+  create(entity: Omit<T, 'id'>): Promise<T>;
+  update(id: number, entity: Partial<T>): Promise<T | null>;
+  delete(id: number): Promise<boolean>;
+}
+
 interface User {
   id: number;
   name: string;
   email: string;
+  role: 'admin' | 'user' | 'guest';
+  createdAt: Date;
+  metadata?: Record<string, unknown>;
 }
 
-function greet(user: User): string {
-  return \`Hello, \${user.name}!\`;
+// Abstract base class with generics
+abstract class BaseService<T extends { id: number }> extends EventEmitter {
+  protected repository: Repository<T>;
+  private readonly logger: Console;
+
+  constructor(repository: Repository<T>) {
+    super();
+    this.repository = repository;
+    this.logger = console;
+  }
+
+  async getAll(): Promise<T[]> {
+    try {
+      const items = await this.repository.findAll();
+      this.emit('fetched', items.length);
+      return items;
+    } catch (error) {
+      this.logger.error('Failed to fetch items:', error);
+      throw error;
+    }
+  }
+
+  abstract validate(entity: Partial<T>): boolean;
 }
+
+// Concrete implementation
+class UserService extends BaseService<User> {
+  private readonly cache = new Map<number, User>();
+
+  constructor(repository: Repository<User>) {
+    super(repository);
+  }
+
+  validate(entity: Partial<User>): boolean {
+    if (!entity.name || entity.name.trim().length < 2) return false;
+    if (!entity.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entity.email)) return false;
+    return true;
+  }
+
+  async createUser(data: Omit<User, 'id' | 'createdAt'>): Promise<User> {
+    if (!this.validate(data)) {
+      throw new Error('Invalid user data');
+    }
+
+    const user = await this.repository.create({
+      ...data,
+      createdAt: new Date(),
+    });
+
+    this.cache.set(user.id, user);
+    return user;
+  }
+
+  async getUserById(id: number): Promise<User | null> {
+    if (this.cache.has(id)) {
+      return this.cache.get(id)!;
+    }
+
+    const user = await this.repository.findById(id);
+    if (user) {
+      this.cache.set(id, user);
+    }
+    return user;
+  }
+
+  clearCache(): void {
+    this.cache.clear();
+    this.emit('cache-cleared');
+  }
+}
+
+// Express middleware
+function authMiddleware(roles: User['role'][] = ['user']) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const user = req.user as User | undefined;
+
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (!roles.includes(user.role)) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    next();
+  };
+}
+
+// Async utility with error handling
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: { maxAttempts?: number; delay?: number } = {}
+): Promise<T> {
+  const { maxAttempts = 3, delay = 1000 } = options;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxAttempts) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+    }
+  }
+
+  throw new Error('Unreachable');
+}
+
+// Enum and type utilities
+enum HttpStatus {
+  OK = 200,
+  Created = 201,
+  BadRequest = 400,
+  Unauthorized = 401,
+  Forbidden = 403,
+  NotFound = 404,
+  InternalServerError = 500,
+}
+
+type ApiResponse<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+  timestamp: string;
+};
+
+function createResponse<T>(data: T): ApiResponse<T> {
+  return {
+    success: true,
+    data,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+// Export
+export {
+  UserService,
+  authMiddleware,
+  withRetry,
+  HttpStatus,
+  createResponse,
+  type ApiResponse,
+  type Repository,
+};
 \`\`\`
 
 ### Table Example
