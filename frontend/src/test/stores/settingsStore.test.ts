@@ -16,6 +16,8 @@ const mockDefaultSettings = vi.hoisted(() => ({
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   trashExpireDays: 30,
   sessionTimeoutMinutes: 60,
+  codeBlockThemeLight: 'github-light',
+  codeBlockThemeDark: 'github-dark',
 }));
 
 vi.mock('../../utils/settings', () => ({

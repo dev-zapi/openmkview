@@ -1,22 +1,6 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { settingsStore } from '../stores/settingsStore';
-
-// Theme name mapping (settings use 'slack' but Shiki uses 'slack-dark')
-const THEME_MAP: Record<string, string> = {
-  'github-light': 'github-light',
-  'github-dark': 'github-dark',
-  'vitesse-light': 'vitesse-light',
-  'vitesse-dark': 'vitesse-dark',
-  'min-light': 'min-light',
-  'min-dark': 'min-dark',
-  'solarized-light': 'solarized-light',
-  'solarized-dark': 'solarized-dark',
-  'one-dark-pro': 'one-dark-pro',
-  'nord': 'nord',
-  'dracula': 'dracula',
-  'monokai': 'monokai',
-  'slack': 'slack-dark',
-};
+import { THEME_MAP, getEffectiveCodeTheme } from '../utils/codeThemes';
 
 let highlighterInstance: HighlighterCore | null = null;
 let initPromise: Promise<HighlighterCore> | null = null;
@@ -99,19 +83,13 @@ export interface HighlightResult {
 
 export async function highlightCode(options: HighlightOptions): Promise<HighlightResult> {
   const highlighter = await getHighlighter();
+  const settings = settingsStore.settings();
   
-  // Determine which theme to use based on mode and settings
   const effectiveThemeType = settingsStore.effectiveTheme;
-  const themeSetting = effectiveThemeType === 'dark' 
-    ? settingsStore.settings().codeBlockThemeDark 
-    : settingsStore.settings().codeBlockThemeLight;
+  const theme = getEffectiveCodeTheme(effectiveThemeType, settings.codeBlockThemeLight, settings.codeBlockThemeDark);
   
-  // Map to Shiki theme name, fallback to github
-  const theme = THEME_MAP[themeSetting] || (effectiveThemeType === 'dark' ? 'github-dark' : 'github-light');
-  
-  // Override with options.theme if explicitly provided
   const useTheme = options.theme 
-    ? THEME_MAP[options.theme === 'dark' ? settingsStore.settings().codeBlockThemeDark : settingsStore.settings().codeBlockThemeLight] || (options.theme === 'dark' ? 'github-dark' : 'github-light')
+    ? getEffectiveCodeTheme(options.theme, settings.codeBlockThemeLight, settings.codeBlockThemeDark)
     : theme;
 
   let lang = options.lang.toLowerCase();
@@ -134,11 +112,9 @@ export async function highlightCodeWithTransformers(
   transformers: any[] = []
 ): Promise<string> {
   const highlighter = await getHighlighter();
+  const settings = settingsStore.settings();
   
-  const themeSetting = theme === 'dark' 
-    ? settingsStore.settings().codeBlockThemeDark 
-    : settingsStore.settings().codeBlockThemeLight;
-  const themeName = THEME_MAP[themeSetting] || (theme === 'dark' ? 'github-dark' : 'github-light');
+  const themeName = getEffectiveCodeTheme(theme, settings.codeBlockThemeLight, settings.codeBlockThemeDark);
 
   let normalizedLang = lang.toLowerCase();
   if (!highlighter.getLoadedLanguages().includes(normalizedLang)) {
@@ -160,10 +136,8 @@ export async function loadLanguage(lang: string): Promise<void> {
 }
 
 export async function getTheme(theme: 'light' | 'dark'): Promise<string> {
-  const themeSetting = theme === 'dark' 
-    ? settingsStore.settings().codeBlockThemeDark 
-    : settingsStore.settings().codeBlockThemeLight;
-  return THEME_MAP[themeSetting] || (theme === 'dark' ? 'github-dark' : 'github-light');
+  const settings = settingsStore.settings();
+  return getEffectiveCodeTheme(theme, settings.codeBlockThemeLight, settings.codeBlockThemeDark);
 }
 
 export function getHighlighterInstance(): HighlighterCore | null {

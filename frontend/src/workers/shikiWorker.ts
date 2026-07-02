@@ -1,22 +1,10 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { escapeHtml } from '../utils/html';
+import { THEME_MAP } from '../utils/codeThemes';
 
-// Theme name mapping (settings use 'slack' but Shiki uses 'slack-dark')
-const THEME_MAP: Record<string, string> = {
-  'github-light': 'github-light',
-  'github-dark': 'github-dark',
-  'vitesse-light': 'vitesse-light',
-  'vitesse-dark': 'vitesse-dark',
-  'min-light': 'min-light',
-  'min-dark': 'min-dark',
-  'solarized-light': 'solarized-light',
-  'solarized-dark': 'solarized-dark',
-  'one-dark-pro': 'one-dark-pro',
-  'nord': 'nord',
-  'dracula': 'dracula',
-  'monokai': 'monokai',
-  'slack': 'slack-dark',
-};
+// Note: Theme imports below must match shikiService.ts theme imports.
+// Both service and worker load themes separately as they run in different contexts
+// (main thread vs worker thread). Duplication is intentional and necessary.
 
 // Default themes for fallback
 const LIGHT_THEME = 'github-light';
