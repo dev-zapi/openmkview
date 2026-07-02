@@ -10,7 +10,7 @@
   --color-bg-tertiary: #e0e0e0;
   --color-border: #d0d0d0;
   --color-border-strong: #b0b0b0;
-  --color-code-bg: #e8e8e8;
+  --color-code-bg: #f6f8fa;
   --color-hover-bg: rgba(0, 0, 0, 0.06);
   --color-active-bg: rgba(0, 0, 0, 0.1);
   --color-accent: #333333;
@@ -94,7 +94,7 @@
   --color-bg-tertiary: #e0e0e0;
   --color-border: #d0d0d0;
   --color-border-strong: #b0b0b0;
-  --color-code-bg: #e8e8e8;
+  --color-code-bg: #f6f8fa;
   --color-hover-bg: rgba(0, 0, 0, 0.06);
   --color-active-bg: rgba(0, 0, 0, 0.1);
   --color-accent: #333333;
@@ -119,7 +119,7 @@
   --color-bg-tertiary: #e8dcc8;
   --color-border: #d4c4a8;
   --color-border-strong: #c4b498;
-  --color-code-bg: #f5ecd5;
+  --color-code-bg: #fdf8ec;
   --color-hover-bg: rgba(180, 140, 80, 0.08);
   --color-active-bg: rgba(180, 140, 80, 0.12);
   --color-accent: #8b5a2b;
@@ -142,7 +142,7 @@
   --color-bg-tertiary: #d8e4ec;
   --color-border: #c8d4e0;
   --color-border-strong: #a8b8c8;
-  --color-code-bg: #e8f0f8;
+  --color-code-bg: #f0f6fc;
   --color-hover-bg: rgba(60, 120, 180, 0.08);
   --color-active-bg: rgba(60, 120, 180, 0.12);
   --color-accent: #2a5a8a;
