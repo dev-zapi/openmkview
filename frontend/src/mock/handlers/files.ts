@@ -42,15 +42,15 @@ export async function handleFilesApi(
 
   // GET /api/files/content - Get file content
   if (req.method === 'GET' && pathname === '/api/files/content') {
-    const path = searchParams.get('path');
+    const relativePath = searchParams.get('relativePath');
     const projectId = searchParams.get('project_id');
 
-    if (path && projectId) {
-      const content = getMockFileContent(path) || generateDefaultFileContent(path);
+    if (relativePath && projectId) {
+      const content = getMockFileContent(relativePath) || generateDefaultFileContent(relativePath);
       sendJson(res, content);
       return true;
     }
-    sendJson(res, { error: 'Missing path or project_id' }, 400);
+    sendJson(res, { error: 'Missing relativePath or project_id' }, 400);
     return true;
   }
 
