@@ -1,6 +1,8 @@
 import { createSignal } from 'solid-js';
 import type { TabType } from '../components/markdown-header/ViewTabs';
 import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
+import { loadOutlineOpenByFileType, saveOutlineOpenByFileType } from '../utils/settings';
+import type { OutlineOpenByFileType } from '../utils/settings';
 
 const [activeTab, setActiveTab] = createSignal<TabType>('preview');
 const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
@@ -17,6 +19,7 @@ const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | nu
 const [colorPickerPosition, setColorPickerPosition] = createSignal({ x: 0, y: 0 });
 const [projectEditDialogOpen, setProjectEditDialogOpen] = createSignal(false);
 const [trashDialogOpen, setTrashDialogOpen] = createSignal(false);
+const [outlineOpenByFileType, setOutlineOpenByFileTypeState] = createSignal<OutlineOpenByFileType>(loadOutlineOpenByFileType());
 
 export const appStore = {
   activeTab,
@@ -103,6 +106,18 @@ export const appStore = {
 
   checkMobile() {
     setIsMobile(window.innerWidth < 768);
+  },
+
+  getOutlineOpenForFileType(fileType: 'markdown' | 'html' | 'other'): boolean {
+    return outlineOpenByFileType()[fileType];
+  },
+
+  setOutlineOpenForFileType(fileType: 'markdown' | 'html' | 'other', open: boolean): void {
+    setOutlineOpenByFileTypeState(prev => {
+      const updated = { ...prev, [fileType]: open };
+      saveOutlineOpenByFileType(updated);
+      return updated;
+    });
   },
 };
 

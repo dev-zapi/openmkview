@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { appStore } from '../../stores/appStore';
+import { loadOutlineOpenByFileType, saveOutlineOpenByFileType } from '../../utils/settings';
 
 describe('appStore', () => {
   beforeEach(() => {
@@ -121,6 +122,54 @@ describe('appStore', () => {
     it('can open trash dialog', () => {
       appStore.openTrashDialog();
       expect(appStore.trashDialogOpen()).toBe(true);
+    });
+  });
+});
+
+describe('appStore outline by filetype', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    // Reset all file types to false
+    appStore.setOutlineOpenForFileType('markdown', false);
+    appStore.setOutlineOpenForFileType('html', false);
+    appStore.setOutlineOpenForFileType('other', false);
+  });
+
+  describe('getOutlineOpenForFileType', () => {
+    it('should return false for markdown by default', () => {
+      expect(appStore.getOutlineOpenForFileType('markdown')).toBe(false);
+    });
+
+    it('should return false for html by default', () => {
+      expect(appStore.getOutlineOpenForFileType('html')).toBe(false);
+    });
+
+    it('should return false for other by default', () => {
+      expect(appStore.getOutlineOpenForFileType('other')).toBe(false);
+    });
+
+    it('should return true after setting markdown to true', () => {
+      appStore.setOutlineOpenForFileType('markdown', true);
+      expect(appStore.getOutlineOpenForFileType('markdown')).toBe(true);
+    });
+  });
+
+  describe('setOutlineOpenForFileType', () => {
+    it('should update state and save to localStorage', () => {
+      appStore.setOutlineOpenForFileType('html', true);
+      expect(appStore.getOutlineOpenForFileType('html')).toBe(true);
+
+      const saved = localStorage.getItem('outline-open-by-filetype');
+      expect(saved).toBe(JSON.stringify({ markdown: false, html: true, other: false }));
+    });
+
+    it('should not affect other file types', () => {
+      appStore.setOutlineOpenForFileType('markdown', true);
+      appStore.setOutlineOpenForFileType('html', true);
+
+      expect(appStore.getOutlineOpenForFileType('markdown')).toBe(true);
+      expect(appStore.getOutlineOpenForFileType('html')).toBe(true);
+      expect(appStore.getOutlineOpenForFileType('other')).toBe(false);
     });
   });
 });
