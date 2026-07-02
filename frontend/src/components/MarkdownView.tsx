@@ -27,12 +27,13 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const [renderedHtml, setRenderedHtml] = createSignal<string>('');
   const [isRendering, setIsRendering] = createSignal(false);
   let searchMatches: HTMLElement[] = [];
+  let renderTimer: ReturnType<typeof setTimeout> | undefined;
 
   const parsed = createMemo(() => parseFrontmatter(props.content));
   const frontmatterData = () => parsed().data;
   const markdownBody = () => parsed().content;
 
-  const addCodeBlockHeaders = (container: HTMLElement, theme: 'light' | 'dark') => {
+  const addCodeBlockHeaders = (container: HTMLElement) => {
     const preElements = container.querySelectorAll('pre');
     
     preElements.forEach((pre) => {
@@ -76,7 +77,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             copyBtn.textContent = '📋 复制';
             copyBtn.classList.remove('copied');
           }, 2000);
-        } catch {
+        } catch (error) {
+          console.error('Failed to copy code:', error);
           copyBtn.textContent = '复制失败';
           copyBtn.classList.add('failed');
           setTimeout(() => {
@@ -206,10 +208,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
       setRenderedHtml(html);
 
-      setTimeout(() => {
+      renderTimer = setTimeout(() => {
         if (containerRef) {
           // Add code block headers
-          addCodeBlockHeaders(containerRef, props.theme || 'light');
+          addCodeBlockHeaders(containerRef);
           
           // Extract headings (existing logic)
           if (props.onHeadingsExtracted) {
@@ -251,7 +253,11 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
   });
 
-  onCleanup(() => {});
+  onCleanup(() => {
+    if (renderTimer) {
+      clearTimeout(renderTimer);
+    }
+  });
 
   return (
     <div
