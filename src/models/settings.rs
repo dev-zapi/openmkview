@@ -41,6 +41,14 @@ fn default_markdown_font_size() -> String {
     "16px".to_string()
 }
 
+fn default_code_theme_light() -> String {
+    "github-light".to_string()
+}
+
+fn default_code_theme_dark() -> String {
+    "github-dark".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SystemSettings {
     #[serde(rename = "markdownWidth", default)]
@@ -60,6 +68,10 @@ pub struct SystemSettings {
     pub code_font_family: String,
     #[serde(rename = "codeFontSize", default = "default_font_size")]
     pub code_font_size: String,
+    #[serde(rename = "codeBlockThemeLight", default = "default_code_theme_light")]
+    pub code_block_theme_light: String,
+    #[serde(rename = "codeBlockThemeDark", default = "default_code_theme_dark")]
+    pub code_block_theme_dark: String,
     #[serde(rename = "protectedPaths", default = "default_protected_paths")]
     pub protected_paths: Vec<String>,
     #[serde(rename = "trashExpireDays", default = "default_trash_expire_days")]
