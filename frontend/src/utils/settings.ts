@@ -4,6 +4,19 @@ import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR
 const SETTINGS_KEY = 'openmkview-settings';
 const SIDEBAR_WIDTH_KEY = 'filetree-sidebar-width';
 const OUTLINE_WIDTH_KEY = 'outline-panel-width';
+const OUTLINE_OPEN_BY_FILETYPE_KEY = 'outline-open-by-filetype';
+
+export interface OutlineOpenByFileType {
+  markdown: boolean;
+  html: boolean;
+  other: boolean;
+}
+
+const DEFAULT_OUTLINE_OPEN_STATE: OutlineOpenByFileType = {
+  markdown: false,
+  html: false,
+  other: false,
+};
 
 const isThemeMode = (value: unknown): value is ThemeMode => {
   return value === 'light' || value === 'dark' || value === 'system';
@@ -179,4 +192,29 @@ export const applyFontSettings = (settings: Settings): void => {
   document.documentElement.style.setProperty('--markdown-size', settings.markdownFontSize);
   document.documentElement.style.setProperty('--code-font', settings.codeFontFamily);
   document.documentElement.style.setProperty('--code-size', settings.codeFontSize);
+};
+
+export const loadOutlineOpenByFileType = (): OutlineOpenByFileType => {
+  try {
+    const saved = localStorage.getItem(OUTLINE_OPEN_BY_FILETYPE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        markdown: parsed.markdown ?? false,
+        html: parsed.html ?? false,
+        other: parsed.other ?? false,
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load outline open state by filetype:', e);
+  }
+  return DEFAULT_OUTLINE_OPEN_STATE;
+};
+
+export const saveOutlineOpenByFileType = (state: OutlineOpenByFileType): void => {
+  try {
+    localStorage.setItem(OUTLINE_OPEN_BY_FILETYPE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Failed to save outline open state by filetype:', e);
+  }
 };

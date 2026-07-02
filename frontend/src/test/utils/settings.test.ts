@@ -10,6 +10,8 @@ import {
   getValidatedOutlineWidth,
   getMarkdownStyle,
   applyFontSettings,
+  loadOutlineOpenByFileType,
+  saveOutlineOpenByFileType,
 } from '../../utils/settings';
 import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH_RATIO } from '../../types/app';
 import type { Settings } from '../../types/app';
@@ -199,6 +201,62 @@ describe('settings utils', () => {
       expect(document.body.style.fontSize).toBe('16px');
       expect(document.documentElement.style.getPropertyValue('--markdown-font')).toBe('Georgia');
       expect(document.documentElement.style.getPropertyValue('--markdown-size')).toBe('18px');
+    });
+  });
+
+  describe('loadOutlineOpenByFileType', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('should return default state when localStorage is empty', () => {
+      const result = loadOutlineOpenByFileType();
+      expect(result).toEqual({
+        markdown: false,
+        html: false,
+        other: false,
+      });
+    });
+
+    it('should load state from localStorage', () => {
+      const savedState = { markdown: true, html: false, other: false };
+      localStorage.setItem('outline-open-by-filetype', JSON.stringify(savedState));
+      const result = loadOutlineOpenByFileType();
+      expect(result).toEqual(savedState);
+    });
+
+    it('should handle partial state with defaults', () => {
+      const partialState = { markdown: true };
+      localStorage.setItem('outline-open-by-filetype', JSON.stringify(partialState));
+      const result = loadOutlineOpenByFileType();
+      expect(result).toEqual({
+        markdown: true,
+        html: false,
+        other: false,
+      });
+    });
+
+    it('should handle JSON parse errors gracefully', () => {
+      localStorage.setItem('outline-open-by-filetype', 'invalid-json');
+      const result = loadOutlineOpenByFileType();
+      expect(result).toEqual({
+        markdown: false,
+        html: false,
+        other: false,
+      });
+    });
+  });
+
+  describe('saveOutlineOpenByFileType', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('should save state to localStorage', () => {
+      const state = { markdown: true, html: false, other: false };
+      saveOutlineOpenByFileType(state);
+      const saved = localStorage.getItem('outline-open-by-filetype');
+      expect(saved).toBe(JSON.stringify(state));
     });
   });
 });
