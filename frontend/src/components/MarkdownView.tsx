@@ -45,9 +45,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       // Create header container
       const header = document.createElement('div');
       header.className = `code-block-header`;
-      if (theme === 'dark') {
-        header.setAttribute('data-theme', 'dark');
-      }
       
       // Create language tag
       const langTag = document.createElement('span');
@@ -259,7 +256,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   return (
     <div
       ref={containerRef}
-      class={`markdown-view ${props.class || ''} ${isRendering() ? 'rendering' : ''}`}
+      class={`markdown-view ${props.class || ''} ${isRendering() ? 'rendering' : ''} ${props.theme === 'dark' ? 'dark' : ''}`}
+      data-theme={props.theme}
     >
       <Show when={isRendering()}>
         <div class="markdown-loading-overlay">
