@@ -81,6 +81,25 @@ const codeFontSizePresets: PresetOption[] = [
   { label: '16px', value: '16px' },
 ];
 
+const codeThemeLightPresets: PresetOption[] = [
+  { label: 'GitHub Light', value: 'github-light' },
+  { label: 'Vitesse Light', value: 'vitesse-light' },
+  { label: 'Min Light', value: 'min-light' },
+  { label: 'Solarized Light', value: 'solarized-light' },
+];
+
+const codeThemeDarkPresets: PresetOption[] = [
+  { label: 'GitHub Dark', value: 'github-dark' },
+  { label: 'Vitesse Dark', value: 'vitesse-dark' },
+  { label: 'Min Dark', value: 'min-dark' },
+  { label: 'One Dark Pro', value: 'one-dark-pro' },
+  { label: 'Nord', value: 'nord' },
+  { label: 'Dracula', value: 'dracula' },
+  { label: 'Solarized Dark', value: 'solarized-dark' },
+  { label: 'Monokai', value: 'monokai' },
+  { label: 'Slack', value: 'slack' },
+];
+
 const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [saved, setSaved] = createSignal(false);
   const [themes, setThemes] = createSignal<Theme[]>([]);
@@ -429,6 +448,32 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   >
                     <For each={darkThemes()}>
                       {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
+                    </For>
+                  </select>
+                </div>
+
+                <div class="settings-item">
+                  <label for="code-theme-light">Code Theme (Light)</label>
+                  <select
+                    id="code-theme-light"
+                    value={settingsStore.settings().codeBlockThemeLight}
+                    onChange={(e) => updateSetting('codeBlockThemeLight', e.currentTarget.value)}
+                  >
+                    <For each={codeThemeLightPresets}>
+                      {(theme) => <option value={theme.value}>{theme.label}</option>}
+                    </For>
+                  </select>
+                </div>
+
+                <div class="settings-item">
+                  <label for="code-theme-dark">Code Theme (Dark)</label>
+                  <select
+                    id="code-theme-dark"
+                    value={settingsStore.settings().codeBlockThemeDark}
+                    onChange={(e) => updateSetting('codeBlockThemeDark', e.currentTarget.value)}
+                  >
+                    <For each={codeThemeDarkPresets}>
+                      {(theme) => <option value={theme.value}>{theme.label}</option>}
                     </For>
                   </select>
                 </div>
