@@ -81,6 +81,7 @@ Full Git client built right in — no terminal needed:
 
 - Configurable **Markdown content width** — full-width or fixed (e.g., `70%`, `800px`, `900px`)
 - Configurable **table width mode** — auto-fit or full-width
+- **Customizable code themes** — Choose from 13 Shiki themes for code block highlighting (GitHub, Vitesse, One Dark Pro, Nord, Dracula, Solarized, Monokai, Min, Slack)
 - Settings persisted in SQLite database
 
 ---
