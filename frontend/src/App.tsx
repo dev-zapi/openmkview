@@ -14,6 +14,17 @@ import './styles/global.css';
 import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
 
+function getFileTypeCategory(fileName: string): 'markdown' | 'html' | 'other' {
+  const lowerName = fileName.toLowerCase();
+  if (lowerName.endsWith('.md') || lowerName.endsWith('.markdown')) {
+    return 'markdown';
+  }
+  if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
+    return 'html';
+  }
+  return 'other';
+}
+
 const App: Component = () => {
   const projectHook = useProject();
   const fileHook = useFile();
