@@ -10,20 +10,10 @@ import { settingsStore } from './stores/settingsStore';
 import type { Project } from './types';
 import { mobileLayoutStore } from './components/mobile';
 import { getMarkdownStyle, loadOutlineWidth } from './utils/settings';
+import { getFileTypeCategory } from './utils/fileType';
 import './styles/global.css';
 import './components/ColorPicker.css';
 import './components/ProjectEditDialog.css';
-
-function getFileTypeCategory(fileName: string): 'markdown' | 'html' | 'other' {
-  const lowerName = fileName.toLowerCase();
-  if (lowerName.endsWith('.md') || lowerName.endsWith('.markdown')) {
-    return 'markdown';
-  }
-  if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
-    return 'html';
-  }
-  return 'other';
-}
 
 const App: Component = () => {
   const projectHook = useProject();
