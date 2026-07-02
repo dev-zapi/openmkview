@@ -32,6 +32,69 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const frontmatterData = () => parsed().data;
   const markdownBody = () => parsed().content;
 
+  const addCodeBlockHeaders = (container: HTMLElement, theme: 'light' | 'dark') => {
+    const preElements = container.querySelectorAll('pre');
+    
+    preElements.forEach((pre) => {
+      // Prevent duplicate headers
+      if (pre.querySelector('.code-block-header')) return;
+      
+      // Get language from data-lang attribute
+      const lang = pre.getAttribute('data-lang') || 'text';
+      
+      // Create header container
+      const header = document.createElement('div');
+      header.className = `code-block-header`;
+      if (theme === 'dark') {
+        header.setAttribute('data-theme', 'dark');
+      }
+      
+      // Create language tag
+      const langTag = document.createElement('span');
+      langTag.className = 'code-lang-tag';
+      langTag.textContent = lang;
+      
+      // Create copy button
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-button';
+      copyBtn.textContent = '📋 复制';
+      
+      copyBtn.onclick = async () => {
+        const code = pre.querySelector('code')?.textContent || '';
+        try {
+          if (navigator.clipboard) {
+            await navigator.clipboard.writeText(code);
+          } else {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+          }
+          copyBtn.textContent = '已复制';
+          copyBtn.classList.add('copied');
+          setTimeout(() => {
+            copyBtn.textContent = '📋 复制';
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        } catch {
+          copyBtn.textContent = '复制失败';
+          copyBtn.classList.add('failed');
+          setTimeout(() => {
+            copyBtn.textContent = '📋 复制';
+            copyBtn.classList.remove('failed');
+          }, 2000);
+        }
+      };
+      
+      header.appendChild(langTag);
+      header.appendChild(copyBtn);
+      pre.appendChild(header);
+    });
+  };
+
   const extractHeadingsFromHtml = (): Heading[] => {
     if (!containerRef) return [];
 
@@ -147,9 +210,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       setRenderedHtml(html);
 
       setTimeout(() => {
-        if (containerRef && props.onHeadingsExtracted) {
-          const headings = extractHeadingsFromHtml();
-          props.onHeadingsExtracted?.(headings);
+        if (containerRef) {
+          // Add code block headers
+          addCodeBlockHeaders(containerRef, props.theme || 'light');
+          
+          // Extract headings (existing logic)
+          if (props.onHeadingsExtracted) {
+            const headings = extractHeadingsFromHtml();
+            props.onHeadingsExtracted?.(headings);
+          }
         }
       }, 0);
     } catch (error) {
