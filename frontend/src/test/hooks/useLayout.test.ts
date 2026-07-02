@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useLayout } from '../../hooks/useLayout';
 import { appStore } from '../../stores/appStore';
 import { mobileLayoutStore } from '../../stores/mobileLayoutStore';
+import { fileStore } from '../../stores/fileStore';
 
 describe('useLayout', () => {
   beforeEach(() => {
@@ -10,6 +11,13 @@ describe('useLayout', () => {
     appStore.setIsMobile(false);
     appStore.setOutlineOpen(false);
     mobileLayoutStore.closeAllDrawers();
+    
+    // Set a mock file for outline toggle tests
+    fileStore.setCurrentFile({
+      fileName: 'test.md',
+      content: '# Test',
+      path: 'test.md'
+    });
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -20,6 +28,7 @@ describe('useLayout', () => {
   afterEach(() => {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
+    fileStore.setCurrentFile(null);
     vi.restoreAllMocks();
   });
 

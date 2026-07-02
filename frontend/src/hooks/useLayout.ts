@@ -8,6 +8,8 @@ import {
   getValidatedOutlineWidth 
 } from '../utils/settings';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
+import { fileStore } from '../stores/fileStore';
+import { getFileTypeCategory } from '../utils/fileType';
 
 export const useLayout = () => {
   const setupResizeHandlers = () => {
@@ -83,7 +85,14 @@ export const useLayout = () => {
     if (appStore.isMobile()) {
       mobileLayoutStore.toggleRightDrawer();
     } else {
-      appStore.toggleOutline();
+      const currentFile = fileStore.currentFile();
+      if (!currentFile) return;
+      
+      const fileTypeCategory = getFileTypeCategory(currentFile.fileName);
+      const newState = !appStore.outlineOpen();
+      
+      appStore.setOutlineOpen(newState);
+      appStore.setOutlineOpenForFileType(fileTypeCategory, newState);
     }
   };
 
