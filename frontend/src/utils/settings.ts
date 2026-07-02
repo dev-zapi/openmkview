@@ -95,6 +95,8 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     markdownFontSize: settings.markdownFontSize,
     codeFontFamily: settings.codeFontFamily,
     codeFontSize: settings.codeFontSize,
+    codeBlockThemeLight: settings.codeBlockThemeLight,
+    codeBlockThemeDark: settings.codeBlockThemeDark,
     protectedPaths: settings.protectedPaths,
     trashExpireDays: settings.trashExpireDays,
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
