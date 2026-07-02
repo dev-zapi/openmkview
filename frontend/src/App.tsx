@@ -100,7 +100,7 @@ const App: Component = () => {
     return projectHook.switchProject(project);
   };
 
-  const theme = settingsStore.effectiveTheme;
+  const theme = createMemo(() => settingsStore.effectiveTheme);
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
   const outlineTransition = layoutHook.getOutlineTransitionStyle();
 
@@ -171,7 +171,7 @@ const App: Component = () => {
           isDirty={editorStore.isDirty()}
           saving={editorStore.saving()}
           settings={settingsStore.settings()}
-          theme={theme}
+          theme={theme()}
           themeMode={settingsStore.settings().themeMode}
           markdownStyle={markdownStyle()}
           isSearchOpen={isSearchOpen()}
@@ -224,7 +224,7 @@ onCloseProject={handleProjectClose}
           isDirty={editorStore.isDirty()}
           saving={editorStore.saving()}
           settings={settingsStore.settings()}
-          theme={theme}
+          theme={theme()}
           markdownStyle={markdownStyle()}
           isSearchOpen={isSearchOpen()}
           searchQuery={searchQuery()}
