@@ -2,7 +2,7 @@ import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { escapeHtml } from '../utils/html';
 
 const LIGHT_THEME = 'github-light';
-const DARK_THEME = 'github-dark-high-contrast';
+const DARK_THEME = 'github-dark';
 
 interface HighlightRequest {
   id: number;
@@ -38,7 +38,7 @@ async function initHighlighter(): Promise<void> {
   highlighter = await createHighlighterCore({
     themes: [
       import('shiki/themes/github-light.mjs'),
-      import('shiki/themes/github-dark-high-contrast.mjs'),
+      import('shiki/themes/github-dark.mjs'),
     ],
     langs: [
       import('@shikijs/langs/javascript'),

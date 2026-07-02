@@ -1,7 +1,7 @@
 import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 
 const LIGHT_THEME = 'github-light';
-const DARK_THEME = 'github-dark-high-contrast';
+const DARK_THEME = 'github-dark';
 
 let highlighterInstance: HighlighterCore | null = null;
 let initPromise: Promise<HighlighterCore> | null = null;
@@ -23,7 +23,7 @@ async function getHighlighter(): Promise<HighlighterCore> {
     const highlighter = await createHighlighterCore({
       themes: [
         import('shiki/themes/github-light.mjs'),
-        import('shiki/themes/github-dark-high-contrast.mjs'),
+        import('shiki/themes/github-dark.mjs'),
       ],
       langs: [
         import('@shikijs/langs/javascript'),
@@ -83,10 +83,7 @@ export async function highlightCode(options: HighlightOptions): Promise<Highligh
     theme,
   });
 
-  // Add data-lang attribute to the generated pre element
-  const htmlWithLang = html.replace('<pre class="shiki"', `<pre class="shiki" data-lang="${options.lang}"`);
-
-  return { html: htmlWithLang };
+  return { html };
 }
 
 export async function highlightCodeWithTransformers(
