@@ -24,6 +24,8 @@ export interface ServerSettings {
   protectedPaths: string[];
   trashExpireDays: number;
   sessionTimeoutMinutes: number;
+  codeBlockThemeLight: string;
+  codeBlockThemeDark: string;
 }
 
 export interface Settings extends ServerSettings {
@@ -46,6 +48,8 @@ export const DEFAULT_SETTINGS: Settings = {
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   trashExpireDays: 30,
   sessionTimeoutMinutes: 60,
+  codeBlockThemeLight: 'github-light',
+  codeBlockThemeDark: 'github-dark',
 };
 
 export interface AuthStatus {
