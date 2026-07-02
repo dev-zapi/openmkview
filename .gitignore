@@ -51,3 +51,4 @@ node_modules/
 !.opencode/skills/
 !.opencode/skills/**
 .playwright-cli/
+.superpowers/
