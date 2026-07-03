@@ -693,7 +693,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -701,7 +701,7 @@
 }
 
 .dark-theme .markdown-loading-overlay {
-  background: rgba(26, 26, 26, 0.8);
+  background: transparent;
 }
 
 .markdown-loading-spinner {
