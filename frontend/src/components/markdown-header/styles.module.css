@@ -512,20 +512,18 @@
 
 @media (max-width: 480px) {
   .mobileTitleBar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .mobileTitleSection {
     order: 1;
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
   }
 
   .mobileTabsSection {
     order: 3;
-    flex: 1 1 100%;
-    justify-content: center;
-    padding: 2px 0 4px;
+    flex-shrink: 0;
   }
 
   .documentRight.overflowMenuRoot {
