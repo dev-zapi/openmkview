@@ -192,14 +192,14 @@ describe('useProject', () => {
     const targetProject = { ...project, id: 2, name: 'beta' };
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     editorStore.initialize('old');
-    editorStore.updateContent('new');
+    editorStore.setDirty(true);
 
     appStore.setActiveTab('edit');
     projectStore.setActiveProject(project);
 
     await expect(switchProject(targetProject)).resolves.toBe(false);
     expect(projectStore.state.activeProject).toEqual(project);
-    expect(editorStore.editContent()).toBe('new');
+    expect(editorStore.originalContent()).toBe('old');
     expect(editorStore.isDirty()).toBe(true);
   });
 });

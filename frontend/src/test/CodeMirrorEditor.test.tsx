@@ -13,35 +13,35 @@ describe('CodeMirrorEditor', () => {
 
   it('renders editor container', () => {
     const { container } = render(() => (
-      <CodeMirrorEditor content="# Hello World" fileName="test.md" />
+      <CodeMirrorEditor initialContent="# Hello World" fileName="test.md" />
     ));
     expect(container.querySelector('.codemirror-editor-container')).toBeTruthy();
   });
 
   it('renders status bar with file name', () => {
     render(() => (
-      <CodeMirrorEditor content="# Test" fileName="example.md" />
+      <CodeMirrorEditor initialContent="# Test" fileName="example.md" />
     ));
     expect(screen.getByText('example.md')).toBeTruthy();
   });
 
   it('shows Untitled when no file name provided', () => {
     render(() => (
-      <CodeMirrorEditor content="# Test" />
+      <CodeMirrorEditor initialContent="# Test" />
     ));
     expect(screen.getByText('Untitled')).toBeTruthy();
   });
 
   it('shows dirty badge when isDirty is true', () => {
     render(() => (
-      <CodeMirrorEditor content="# Test" isDirty={true} />
+      <CodeMirrorEditor initialContent="# Test" isDirty={true} />
     ));
     expect(screen.getByText('Modified')).toBeTruthy();
   });
 
   it('does not show dirty badge when isDirty is false', () => {
     const { container } = render(() => (
-      <CodeMirrorEditor content="# Test" isDirty={false} />
+      <CodeMirrorEditor initialContent="# Test" isDirty={false} />
     ));
     const dirtyBadge = container.querySelector('.dirty-badge');
     expect(dirtyBadge).toBeFalsy();
@@ -49,19 +49,19 @@ describe('CodeMirrorEditor', () => {
 
   it('shows save hint', () => {
     render(() => (
-      <CodeMirrorEditor content="# Test" />
+      <CodeMirrorEditor initialContent="# Test" />
     ));
     expect(screen.getByText('Ctrl+S to save')).toBeTruthy();
   });
 
-  it('calls onContentChange when content changes', async () => {
-    const onContentChange = vi.fn();
+  it('calls onDirtyChange when content changes', async () => {
+    const onDirtyChange = vi.fn();
     const { container } = render(() => (
-      <CodeMirrorEditor content="# Test" onContentChange={onContentChange} />
+      <CodeMirrorEditor initialContent="# Test" onDirtyChange={onDirtyChange} />
     ));
-    
+
     await vi.runAllTimersAsync();
-    
+
     const editorContent = container.querySelector('.cm-content');
     if (editorContent) {
       fireEvent.input(editorContent, { target: { innerText: '# Updated' } });
@@ -71,11 +71,11 @@ describe('CodeMirrorEditor', () => {
   it('calls onSave when Ctrl+S is pressed', async () => {
     const onSave = vi.fn();
     const { container } = render(() => (
-      <CodeMirrorEditor content="# Test" onSave={onSave} />
+      <CodeMirrorEditor initialContent="# Test" onSave={onSave} />
     ));
-    
+
     await vi.runAllTimersAsync();
-    
+
     const editorEl = container.querySelector('.codemirror-editor-container');
     if (editorEl) {
       fireEvent.keyDown(editorEl, { key: 's', ctrlKey: true });

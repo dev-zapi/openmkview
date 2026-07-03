@@ -167,7 +167,7 @@ const App: Component = () => {
           activeTab={appStore.activeTab()}
           headings={fileStore.extractedHeadings()}
           loading={fileStore.loading()}
-          editContent={editorStore.editContent()}
+          initialContent={editorStore.originalContent()}
           isDirty={editorStore.isDirty()}
           saving={editorStore.saving()}
           settings={settingsStore.settings()}
@@ -201,7 +201,8 @@ onCloseProject={handleProjectClose}
           onSearchPrev={handleSearchPrev}
           onSearchResultsChange={handleSearchResultsChange}
           onHeadingsExtracted={editorHook.handleHeadingsExtracted}
-          onContentChange={editorHook.handleContentChange}
+          onDirtyChange={editorHook.handleDirtyChange}
+          registerContentGetter={editorHook.registerContentGetter}
           onSave={() => void editorHook.saveFile()}
           onCloseDiff={fileHook.closeDiff}
           renderProjectIcon={renderProjectIcon}
@@ -220,7 +221,7 @@ onCloseProject={handleProjectClose}
           outlineOpen={appStore.outlineOpen()}
           headings={fileStore.extractedHeadings()}
           loading={fileStore.loading()}
-          editContent={editorStore.editContent()}
+          initialContent={editorStore.originalContent()}
           isDirty={editorStore.isDirty()}
           saving={editorStore.saving()}
           settings={settingsStore.settings()}
@@ -263,7 +264,8 @@ onCloseProject={handleProjectClose}
           onSearchPrev={handleSearchPrev}
           onSearchResultsChange={handleSearchResultsChange}
           onHeadingsExtracted={editorHook.handleHeadingsExtracted}
-          onContentChange={editorHook.handleContentChange}
+          onDirtyChange={editorHook.handleDirtyChange}
+          registerContentGetter={editorHook.registerContentGetter}
           onSave={() => void editorHook.saveFile()}
           onCloseDiff={fileHook.closeDiff}
           onCloseOutline={() => appStore.setOutlineOpen(false)}

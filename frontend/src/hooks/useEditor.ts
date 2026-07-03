@@ -5,7 +5,17 @@ import { projectStore } from '../stores/projectStore';
 import { appStore } from '../stores/appStore';
 import type { TabType } from '../components/markdown-header/ViewTabs';
 
+let getEditorContent: (() => string) | null = null;
+
 export const useEditor = () => {
+  const registerContentGetter = (getter: () => string) => {
+    getEditorContent = getter;
+  };
+
+  const handleDirtyChange = (isDirty: boolean) => {
+    editorStore.setDirty(isDirty);
+  };
+
   const confirmDiscardIfDirty = (): boolean => {
     if (editorStore.isDirty() && appStore.activeTab() === 'edit') {
       const confirmed = confirm('You have unsaved changes. Do you want to continue?');
@@ -14,27 +24,25 @@ export const useEditor = () => {
     return true;
   };
 
-  const handleContentChange = (newContent: string) => {
-    editorStore.updateContent(newContent);
-  };
-
   const saveFile = async () => {
     const project = projectStore.state.activeProject;
     const file = fileStore.currentFile();
     if (!project || !file || !editorStore.isDirty()) return;
+
+    const content = getEditorContent?.() || '';
 
     editorStore.startSaving();
     try {
       const expectedModifiedAt = file.lastModified;
       const response = await api.saveFileContent(
         file.path,
-        editorStore.editContent(),
+        content,
         project.id,
         expectedModifiedAt
       );
-      
+
       if (response.success) {
-        editorStore.markSaved();
+        editorStore.markSaved(content);
         const updatedFile = await api.getFileContent(file.path, project.id);
         fileStore.setCurrentFile(updatedFile);
       }
@@ -65,8 +73,9 @@ export const useEditor = () => {
   };
 
   return {
+    registerContentGetter,
+    handleDirtyChange,
     confirmDiscardIfDirty,
-    handleContentChange,
     saveFile,
     changeTab,
     handleHeadingsExtracted,

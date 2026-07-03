@@ -19,7 +19,7 @@ export interface FileContentViewProps {
   activeProjectId: number | undefined;
   imagePreviewUrl: string | null;
   imageFileName: string;
-  editContent: string;
+  initialContent: string;
   isDirty: boolean;
   settings: Settings;
   theme: 'light' | 'dark';
@@ -32,7 +32,8 @@ export interface FileContentViewProps {
   searchRequestKey: number;
   onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
-  onContentChange: (content: string) => void;
+  onDirtyChange: (isDirty: boolean) => void;
+  registerContentGetter: (getter: () => string) => void;
   onSave: () => void;
   onCloseDiff: () => void;
 }
@@ -128,11 +129,12 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
       <Show when={!props.loading && props.currentFile && props.activeTab === 'edit'}>
         <div class={`edit-view ${fadeClass}`}>
           <CodeMirrorEditor
-            content={props.editContent}
+            initialContent={props.initialContent}
             fileName={props.currentFile!.fileName}
             theme={props.theme}
-            onContentChange={props.onContentChange}
             onSave={props.onSave}
+            onDirtyChange={props.onDirtyChange}
+            registerContentGetter={props.registerContentGetter}
             isDirty={props.isDirty}
             searchRequestKey={props.searchRequestKey}
           />

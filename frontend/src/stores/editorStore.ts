@@ -1,43 +1,29 @@
 import { createSignal } from 'solid-js';
 
-const [editContent, setEditContent] = createSignal<string>('');
 const [originalContent, setOriginalContent] = createSignal<string>('');
 const [isDirty, setIsDirty] = createSignal<boolean>(false);
 const [saving, setSaving] = createSignal<boolean>(false);
 
 export const editorStore = {
-  editContent,
-  setEditContent,
   originalContent,
-  setOriginalContent,
   isDirty,
-  setIsDirty,
   saving,
-  setSaving,
 
   initialize(content: string) {
-    setEditContent(content);
     setOriginalContent(content);
     setIsDirty(false);
   },
 
-  updateContent(newContent: string) {
-    setEditContent(newContent);
-    setIsDirty(newContent !== originalContent());
+  setDirty(dirty: boolean) {
+    setIsDirty(dirty);
   },
 
-  markSaved(content?: string) {
-    if (content) {
-      setEditContent(content);
-      setOriginalContent(content);
-    } else {
-      setOriginalContent(editContent());
-    }
+  markSaved(content: string) {
+    setOriginalContent(content);
     setIsDirty(false);
   },
 
   discardChanges() {
-    setEditContent(originalContent());
     setIsDirty(false);
   },
 
@@ -50,7 +36,6 @@ export const editorStore = {
   },
 
   reset() {
-    setEditContent('');
     setOriginalContent('');
     setIsDirty(false);
     setSaving(false);

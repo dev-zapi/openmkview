@@ -34,10 +34,10 @@ describe('useFile', () => {
     const { confirmDiscardIfDirty } = useFile();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     editorStore.initialize('old');
-    editorStore.updateContent('new');
+    editorStore.setDirty(true);
 
     expect(confirmDiscardIfDirty()).toBe(true);
-    expect(editorStore.editContent()).toBe('old');
+    expect(editorStore.originalContent()).toBe('old');
     expect(editorStore.isDirty()).toBe(false);
   });
 
@@ -45,10 +45,10 @@ describe('useFile', () => {
     const { confirmDiscardIfDirty } = useFile();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     editorStore.initialize('old');
-    editorStore.updateContent('new');
+    editorStore.setDirty(true);
 
     expect(confirmDiscardIfDirty()).toBe(false);
-    expect(editorStore.editContent()).toBe('new');
+    expect(editorStore.originalContent()).toBe('old');
     expect(editorStore.isDirty()).toBe(true);
   });
 

@@ -21,7 +21,7 @@ interface MobileLayoutWrapperProps {
   activeTab: TabType;
   headings: Heading[];
   loading: boolean;
-  editContent: string;
+  initialContent: string;
   isDirty: boolean;
   saving: boolean;
   settings: Settings;
@@ -55,7 +55,8 @@ interface MobileLayoutWrapperProps {
   onSearchPrev: () => void;
   onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
-  onContentChange: (content: string) => void;
+  onDirtyChange: (isDirty: boolean) => void;
+  registerContentGetter: (getter: () => string) => void;
   onSave: () => void;
   onCloseDiff: () => void;
   renderProjectIcon: (project: Project) => JSX.Element;
@@ -332,39 +333,40 @@ onClick={() => {
           headings={[]}
           loading={props.loading}
           activeProjectId={props.activeProject?.id}
-          editContent={props.editContent}
+          initialContent={props.initialContent}
           isDirty={props.isDirty}
           saving={props.saving}
-           settings={props.settings}
-           theme={props.theme}
-           markdownStyle={props.markdownStyle}
-           isSearchOpen={props.isSearchOpen}
-           searchQuery={props.searchQuery}
-           searchResultCount={props.searchResultCount}
-           currentSearchResult={props.currentSearchResult}
-           searchRequestKey={props.searchRequestKey}
-           diffMode="unified"
-           welcomeMessage="Tap the menu button to browse files"
-           applyFadeClass={false}
-            outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
-            outlineTransition={props.outlineTransition ?? ''}
-            onOutlineStartDragging={props.onOutlineStartDragging ?? (() => {})}
-           onTabChange={props.onTabChange}
-           onOutlineToggle={props.onOutlineToggle}
-           onSearchClick={props.onSearchClick}
-           onSearchClose={props.onSearchClose}
-           onSearchQueryChange={props.onSearchQueryChange}
-           onSearchNext={props.onSearchNext}
-           onSearchPrev={props.onSearchPrev}
-           onSearchResultsChange={props.onSearchResultsChange}
-           onHeadingsExtracted={props.onHeadingsExtracted}
-           onContentChange={props.onContentChange}
-           onSave={props.onSave}
-          onCloseDiff={props.onCloseDiff}
-          onCloseOutline={() => mobileLayoutStore.closeRightDrawer()}
-          showHeader={false}
-          showOutline={false}
-        />
+            settings={props.settings}
+            theme={props.theme}
+            markdownStyle={props.markdownStyle}
+            isSearchOpen={props.isSearchOpen}
+            searchQuery={props.searchQuery}
+            searchResultCount={props.searchResultCount}
+            currentSearchResult={props.currentSearchResult}
+            searchRequestKey={props.searchRequestKey}
+            diffMode="unified"
+            welcomeMessage="Tap the menu button to browse files"
+            applyFadeClass={false}
+             outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
+             outlineTransition={props.outlineTransition ?? ''}
+             onOutlineStartDragging={props.onOutlineStartDragging ?? (() => {})}
+            onTabChange={props.onTabChange}
+            onOutlineToggle={props.onOutlineToggle}
+            onSearchClick={props.onSearchClick}
+            onSearchClose={props.onSearchClose}
+            onSearchQueryChange={props.onSearchQueryChange}
+            onSearchNext={props.onSearchNext}
+            onSearchPrev={props.onSearchPrev}
+            onSearchResultsChange={props.onSearchResultsChange}
+            onHeadingsExtracted={props.onHeadingsExtracted}
+            onDirtyChange={props.onDirtyChange}
+            registerContentGetter={props.registerContentGetter}
+            onSave={props.onSave}
+           onCloseDiff={props.onCloseDiff}
+           onCloseOutline={() => mobileLayoutStore.closeRightDrawer()}
+           showHeader={false}
+           showOutline={false}
+         />
       </div>
       </MobileLayout>
       <Show when={topBarMenuOpen() && props.activeProject}>

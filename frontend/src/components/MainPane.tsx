@@ -17,7 +17,7 @@ interface MainPaneProps {
   headings: Heading[];
   loading: boolean;
   activeProjectId?: number;
-  editContent: string;
+  initialContent: string;
   isDirty: boolean;
   saving: boolean;
   settings: Settings;
@@ -40,7 +40,8 @@ interface MainPaneProps {
   onSearchPrev: () => void;
   onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
-  onContentChange: (content: string) => void;
+  onDirtyChange: (isDirty: boolean) => void;
+  registerContentGetter: (getter: () => string) => void;
   onSave: () => void;
   onCloseDiff: () => void;
   onCloseOutline: () => void;
@@ -119,7 +120,7 @@ export const MainPane: Component<MainPaneProps> = (props) => {
                 activeProjectId={props.activeProjectId}
                 imagePreviewUrl={props.imagePreviewUrl}
                 imageFileName={props.imageFileName}
-                editContent={props.editContent}
+                initialContent={props.initialContent}
                 isDirty={props.isDirty}
                 settings={props.settings}
                 theme={props.theme}
@@ -132,7 +133,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
                 searchRequestKey={props.searchRequestKey}
                 onSearchResultsChange={props.onSearchResultsChange}
                 onHeadingsExtracted={props.onHeadingsExtracted}
-                onContentChange={props.onContentChange}
+                onDirtyChange={props.onDirtyChange}
+                registerContentGetter={props.registerContentGetter}
                 onSave={props.onSave}
                 onCloseDiff={props.onCloseDiff}
               />

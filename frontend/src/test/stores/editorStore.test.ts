@@ -7,8 +7,7 @@ describe('editorStore', () => {
   });
 
   describe('initialization', () => {
-    it('has empty initial content', () => {
-      expect(editorStore.editContent()).toBe('');
+    it('has empty original content', () => {
       expect(editorStore.originalContent()).toBe('');
     });
 
@@ -22,9 +21,8 @@ describe('editorStore', () => {
   });
 
   describe('initialize', () => {
-    it('sets both edit and original content', () => {
+    it('sets original content', () => {
       editorStore.initialize('# Hello World');
-      expect(editorStore.editContent()).toBe('# Hello World');
       expect(editorStore.originalContent()).toBe('# Hello World');
     });
 
@@ -34,23 +32,15 @@ describe('editorStore', () => {
     });
   });
 
-  describe('updateContent', () => {
-    it('updates edit content', () => {
-      editorStore.initialize('original');
-      editorStore.updateContent('modified');
-      expect(editorStore.editContent()).toBe('modified');
-    });
-
-    it('marks dirty when content differs from original', () => {
-      editorStore.initialize('original');
-      editorStore.updateContent('modified');
+  describe('setDirty', () => {
+    it('sets dirty to true', () => {
+      editorStore.setDirty(true);
       expect(editorStore.isDirty()).toBe(true);
     });
 
-    it('clears dirty when content matches original', () => {
-      editorStore.initialize('original');
-      editorStore.updateContent('modified');
-      editorStore.updateContent('original');
+    it('sets dirty to false', () => {
+      editorStore.setDirty(true);
+      editorStore.setDirty(false);
       expect(editorStore.isDirty()).toBe(false);
     });
   });
@@ -58,38 +48,22 @@ describe('editorStore', () => {
   describe('markSaved', () => {
     it('clears dirty state', () => {
       editorStore.initialize('original');
-      editorStore.updateContent('modified');
-      editorStore.markSaved();
+      editorStore.setDirty(true);
+      editorStore.markSaved('modified');
       expect(editorStore.isDirty()).toBe(false);
     });
 
-    it('updates original content when provided', () => {
+    it('updates original content', () => {
       editorStore.initialize('original');
-      editorStore.updateContent('modified');
       editorStore.markSaved('new saved content');
       expect(editorStore.originalContent()).toBe('new saved content');
-      expect(editorStore.editContent()).toBe('new saved content');
-    });
-
-    it('uses current edit content when not provided', () => {
-      editorStore.initialize('original');
-      editorStore.updateContent('modified');
-      editorStore.markSaved();
-      expect(editorStore.originalContent()).toBe('modified');
     });
   });
 
   describe('discardChanges', () => {
-    it('restores original content', () => {
-      editorStore.initialize('original');
-      editorStore.updateContent('modified');
-      editorStore.discardChanges();
-      expect(editorStore.editContent()).toBe('original');
-    });
-
     it('clears dirty state', () => {
       editorStore.initialize('original');
-      editorStore.updateContent('modified');
+      editorStore.setDirty(true);
       editorStore.discardChanges();
       expect(editorStore.isDirty()).toBe(false);
     });
@@ -111,10 +85,9 @@ describe('editorStore', () => {
   describe('reset', () => {
     it('clears all state', () => {
       editorStore.initialize('content');
-      editorStore.updateContent('modified');
+      editorStore.setDirty(true);
       editorStore.startSaving();
       editorStore.reset();
-      expect(editorStore.editContent()).toBe('');
       expect(editorStore.originalContent()).toBe('');
       expect(editorStore.isDirty()).toBe(false);
       expect(editorStore.saving()).toBe(false);

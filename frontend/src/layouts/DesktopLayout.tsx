@@ -19,7 +19,7 @@ interface DesktopLayoutProps {
   outlineOpen: boolean;
   headings: Heading[];
   loading: boolean;
-  editContent: string;
+  initialContent: string;
   isDirty: boolean;
   saving: boolean;
   settings: Settings;
@@ -62,7 +62,8 @@ interface DesktopLayoutProps {
   onSearchPrev: () => void;
   onSearchResultsChange: (count: number) => void;
   onHeadingsExtracted: (headings: Heading[]) => void;
-  onContentChange: (content: string) => void;
+  onDirtyChange: (isDirty: boolean) => void;
+  registerContentGetter: (getter: () => string) => void;
   onSave: () => void;
   onCloseDiff: () => void;
   onCloseOutline: () => void;
@@ -112,7 +113,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         headings={props.headings}
         loading={props.loading}
         activeProjectId={props.activeProject?.id}
-        editContent={props.editContent}
+        initialContent={props.initialContent}
         isDirty={props.isDirty}
         saving={props.saving}
         settings={props.settings}
@@ -138,7 +139,8 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         onSearchPrev={props.onSearchPrev}
         onSearchResultsChange={props.onSearchResultsChange}
         onHeadingsExtracted={props.onHeadingsExtracted}
-        onContentChange={props.onContentChange}
+        onDirtyChange={props.onDirtyChange}
+        registerContentGetter={props.registerContentGetter}
         onSave={props.onSave}
         onCloseDiff={props.onCloseDiff}
         onCloseOutline={props.onCloseOutline}

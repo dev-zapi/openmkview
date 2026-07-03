@@ -1,6 +1,6 @@
 import { Component, onMount, onCleanup, createEffect } from 'solid-js';
 import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorState, type Extension } from '@codemirror/state';
 import { html } from '@codemirror/lang-html';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -12,11 +12,12 @@ import { basicSetup } from 'codemirror';
 import './CodeMirrorEditor.css';
 
 export interface CodeMirrorEditorProps {
-  content: string;
+  initialContent: string;
   fileName?: string;
   theme?: 'light' | 'dark';
-  onContentChange?: (content: string) => void;
   onSave?: () => void | Promise<void>;
+  onDirtyChange?: (isDirty: boolean) => void;
+  registerContentGetter?: (getter: () => string) => void;
   isDirty?: boolean;
   searchRequestKey?: number;
 }
@@ -24,8 +25,18 @@ export interface CodeMirrorEditorProps {
 export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorContainer: HTMLDivElement | undefined;
   let editorView: EditorView | undefined;
-  let lastContent: string = props.content;
+  let editorExtensions: Extension[] = [];
   let lastSearchRequestKey = props.searchRequestKey;
+
+  const getCurrentContent = () => {
+    return editorView?.state.doc.toString() || '';
+  };
+
+  const checkDirty = () => {
+    const current = getCurrentContent();
+    const isDirty = current !== props.initialContent;
+    props.onDirtyChange?.(isDirty);
+  };
 
   const languageExtension = () => {
     const ext = props.fileName?.split('.').pop()?.toLowerCase();
@@ -40,7 +51,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     });
   };
 
-  const createEditor = () => {
+  const createEditor = (content?: string) => {
     if (!editorContainer) return;
 
     const saveKeybinding = keymap.of([
@@ -56,9 +67,8 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     ]);
 
     const updateListener = EditorView.updateListener.of((update: any) => {
-      if (update.docChanged && props.onContentChange) {
-        const newContent = update.state.doc.toString();
-        props.onContentChange(newContent);
+      if (update.docChanged) {
+        checkDirty();
       }
     });
 
@@ -69,8 +79,8 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       },
       '.cm-content': {
         caretColor: 'var(--color-text-h)',
-        fontFamily: 'var(--code-font, "JetBrains Mono", ui-monospace, Consolas, monospace)',
-        fontSize: 'var(--code-size, 14px)',
+        fontFamily: 'var(--markdown-font, Georgia, "Noto Serif", serif)',
+        fontSize: 'var(--markdown-size, 16px)',
       },
       '.cm-cursor': {
         borderLeftColor: 'var(--color-text-h)',
@@ -91,7 +101,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       },
     });
 
-    const extensions = [
+    editorExtensions = [
       basicSetup,
       history(),
       languageExtension(),
@@ -102,9 +112,10 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       EditorView.lineWrapping,
     ];
 
+    const docContent = content ?? props.initialContent;
     const state = EditorState.create({
-      doc: props.content,
-      extensions,
+      doc: docContent,
+      extensions: editorExtensions,
     });
 
     editorView = new EditorView({
@@ -113,24 +124,12 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     });
   };
 
-  const updateContent = (newContent: string) => {
-    if (!editorView || newContent === lastContent) return;
-
-    const currentContent = editorView.state.doc.toString();
-    if (currentContent === newContent) return;
-
-    editorView.dispatch({
-      changes: {
-        from: 0,
-        to: editorView.state.doc.length,
-        insert: newContent,
-      },
-    });
-    lastContent = newContent;
-  };
-
   onMount(() => {
     createEditor();
+
+    if (props.registerContentGetter) {
+      props.registerContentGetter(getCurrentContent);
+    }
   });
 
   onCleanup(() => {
@@ -141,15 +140,23 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   });
 
   createEffect(() => {
-    if (props.content && editorView) {
-      updateContent(props.content);
+    if (!editorView) return;
+    const newContent = props.initialContent;
+
+    const currentContent = editorView.state.doc.toString();
+    if (currentContent !== newContent) {
+      editorView.setState(EditorState.create({
+        doc: newContent,
+        extensions: editorExtensions,
+      }));
     }
   });
 
   createEffect(() => {
     if (editorView && props.theme) {
+      const currentContent = getCurrentContent();
       editorView.destroy();
-      createEditor();
+      createEditor(currentContent);
     }
   });
 

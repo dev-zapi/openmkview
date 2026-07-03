@@ -17,14 +17,17 @@ describe('useEditor', () => {
     vi.restoreAllMocks();
   });
 
-  it('updates editor content and dirty state', () => {
-    const { handleContentChange } = useEditor();
-    editorStore.initialize('original');
+  it('registers content getter and handles dirty changes', () => {
+    const { registerContentGetter, handleDirtyChange } = useEditor();
 
-    handleContentChange('changed');
+    let capturedContent = '';
+    registerContentGetter(() => capturedContent);
 
-    expect(editorStore.editContent()).toBe('changed');
+    expect(editorStore.isDirty()).toBe(false);
+    handleDirtyChange(true);
     expect(editorStore.isDirty()).toBe(true);
+    handleDirtyChange(false);
+    expect(editorStore.isDirty()).toBe(false);
   });
 
   it('changes tab immediately when editor is clean', () => {
@@ -40,7 +43,7 @@ describe('useEditor', () => {
     const confirmMock = vi.spyOn(window, 'confirm').mockReturnValue(false);
     appStore.setActiveTab('edit');
     editorStore.initialize('original');
-    editorStore.updateContent('changed');
+    editorStore.setDirty(true);
 
     changeTab('preview');
 
@@ -53,7 +56,7 @@ describe('useEditor', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     appStore.setActiveTab('edit');
     editorStore.initialize('original');
-    editorStore.updateContent('changed');
+    editorStore.setDirty(true);
 
     changeTab('preview');
 
