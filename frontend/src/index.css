@@ -1971,7 +1971,7 @@ textarea {
 
   /* Markdown wrapper on mobile */
   .markdown-wrapper {
-    padding: 0;
+    padding: 16px;
   }
 
   /* Source view on mobile */
