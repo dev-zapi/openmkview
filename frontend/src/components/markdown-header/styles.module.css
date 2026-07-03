@@ -427,9 +427,10 @@
   padding-left: 4px;
   padding-right: 4px;
   gap: 4px;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap !important;
   align-items: center;
   background: var(--color-topbar-bg, var(--color-bg));
+  justify-content: flex-start !important;
 }
 
 .mobileMenuButton {
