@@ -548,13 +548,15 @@
 
 /* Code block header - light theme */
 .code-block-header {
-  position: absolute;
+  position: sticky;
   top: 8px;
   right: 12px;
   display: flex;
   gap: 8px;
   align-items: center;
   z-index: 10;
+  float: right;
+  margin: -8px -12px 8px 8px;
 }
 
 .code-lang-tag {
