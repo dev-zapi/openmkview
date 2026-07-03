@@ -69,8 +69,8 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       },
       '.cm-content': {
         caretColor: 'var(--color-text-h)',
-        fontFamily: 'var(--markdown-font, Georgia, "Noto Serif", serif)',
-        fontSize: 'var(--markdown-size, 16px)',
+        fontFamily: 'var(--code-font, "JetBrains Mono", ui-monospace, Consolas, monospace)',
+        fontSize: 'var(--code-size, 14px)',
       },
       '.cm-cursor': {
         borderLeftColor: 'var(--color-text-h)',
