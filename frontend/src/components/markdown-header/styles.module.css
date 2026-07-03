@@ -458,7 +458,14 @@
   gap: 6px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobileTitleSection::-webkit-scrollbar {
+  display: none;
 }
 
 .mobileTitleSection .fileName {
@@ -466,8 +473,7 @@
   font-weight: 600;
   color: var(--color-text-h);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .mobileTabsSection {
