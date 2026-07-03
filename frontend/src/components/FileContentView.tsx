@@ -42,10 +42,6 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
 
   return (
     <>
-      <Show when={props.loading}>
-        <div class="loading">Loading...</div>
-      </Show>
-
       <Show when={!props.loading && !props.currentFile && props.activeTab === 'preview' && props.currentFileType === 'markdown'}>
         <div class="welcome">
           <h1>OpenMKView</h1>
