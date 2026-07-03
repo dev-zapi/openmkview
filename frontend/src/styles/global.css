@@ -648,7 +648,7 @@
 
 .source-highlighted pre {
   margin: 0;
-  padding: 16px;
+  padding: 0;
   background: transparent !important;
 }
 
@@ -770,7 +770,7 @@
 }
 
 .diff-fallback {
-  padding: 16px;
+  padding: 0;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.5;

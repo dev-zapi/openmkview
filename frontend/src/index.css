@@ -1262,6 +1262,7 @@ textarea {
 /* Markdown Wrapper */
 .markdown-wrapper {
   max-width: 100%;
+  padding: 16px;
 }
 
 .html-preview-wrapper {
