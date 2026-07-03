@@ -46,7 +46,7 @@
   background: var(--color-code-bg);
   padding: 16px;
   border-radius: 8px;
-  overflow-x: auto;
+  overflow: visible;
   margin-bottom: 1em;
   border: 1px solid var(--color-border);
 }
@@ -60,6 +60,8 @@
 }
 
 .markdown-view pre code {
+  display: block;
+  overflow-x: auto;
   background: transparent;
   padding: 0;
   border-radius: 0;
@@ -548,16 +550,13 @@
 
 /* Code block header - light theme */
 .code-block-header {
-  position: sticky;
+  position: absolute;
   top: 8px;
+  right: 12px;
   display: flex;
   gap: 8px;
   align-items: center;
   z-index: 10;
-  width: fit-content;
-  margin-left: auto;
-  margin-right: 12px;
-  margin-bottom: 8px;
 }
 
 .code-lang-tag {
