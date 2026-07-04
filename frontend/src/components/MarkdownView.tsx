@@ -2,10 +2,11 @@ import { Component, createSignal, createEffect, createMemo, onCleanup, Show } fr
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { highlightCode, getHighlighter } from '../services/shikiService';
+import { renderDiagram, type DiagramType } from '../services/diagramService';
 import type { Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
-import { generateHeadingId, resolveImagePath } from '../utils/markdown';
+import { generateHeadingId, resolveImagePath, isDiagramLanguage, encodeDiagramCode, decodeDiagramCode } from '../utils/markdown';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 import FrontmatterPanel from './FrontmatterPanel';
 
@@ -119,6 +120,43 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     return headings;
   };
 
+  const setupDiagramObservers = () => {
+    if (!containerRef) return;
+
+    const placeholders = containerRef.querySelectorAll('.diagram-placeholder');
+    
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const placeholder = entry.target as HTMLDivElement;
+            const type = placeholder.getAttribute('data-type') as DiagramType;
+            const encodedCode = placeholder.getAttribute('data-code') || '';
+            const theme = placeholder.getAttribute('data-theme') as 'light' | 'dark';
+            
+            try {
+              const code = decodeDiagramCode(encodedCode);
+              const svg = await renderDiagram(type, code, theme);
+              
+              placeholder.innerHTML = `<div class="diagram-content">${svg}</div>`;
+              placeholder.classList.add('rendered');
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : '渲染失败';
+              placeholder.innerHTML = `<div class="diagram-error">${errorMessage}</div>`;
+            }
+            
+            observer.unobserve(placeholder);
+          }
+        }
+      },
+      { rootMargin: '100px 0px' }
+    );
+
+    placeholders.forEach((placeholder) => {
+      observer.observe(placeholder);
+    });
+  };
+
   const renderMarkdown = async () => {
     const content = markdownBody();
     if (!content) {
@@ -146,6 +184,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           },
           code({ text, lang }) {
             const language = lang || 'text';
+            
+            // Check if this is a diagram language
+            if (isDiagramLanguage(language)) {
+              const encodedCode = encodeDiagramCode(text);
+              return `
+                <div class="diagram-placeholder" 
+                     data-type="${language}" 
+                     data-code="${encodedCode}"
+                     data-theme="${props.theme}">
+                  <div class="diagram-loading">Loading...</div>
+                </div>
+              `;
+            }
+            
             return `<pre class="shiki-code-block" data-lang="${language}"><code class="language-${language}">${escapeHtml(text)}</code></pre>`;
           },
           image({ href, title, text }) {
@@ -168,8 +220,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       let html = await marked.parse(content) as string;
 
       html = DOMPurify.sanitize(html, {
-        ADD_ATTR: ['target', 'loading', 'decoding'],
-        ADD_TAGS: ['mark'],
+        ADD_ATTR: ['target', 'loading', 'decoding', 'data-type', 'data-code', 'data-theme'],
+        ADD_TAGS: ['mark', 'svg', 'path', 'g', 'rect', 'text', 'circle', 'line', 'polygon', 'polyline'],
       });
 
       html = html.replace(/<table>/g, '<div class="table-wrapper"><table>')
@@ -210,6 +262,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
       renderTimer = setTimeout(() => {
         if (containerRef) {
+          // Setup diagram observers
+          setupDiagramObservers();
+          
           // Add code block headers
           addCodeBlockHeaders(containerRef);
           
