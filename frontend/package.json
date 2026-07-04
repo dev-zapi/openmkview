@@ -29,6 +29,8 @@
     "dompurify": "^3.4.5",
     "marked": "^15.0.0",
     "marked-shiki": "^1.2.1",
+    "mermaid": "^11.0.0",
+    "plantuml-encoder": "^1.4.0",
     "shiki": "^1.0.0",
     "solid-js": "^1.9.11"
   },
