@@ -1,3 +1,5 @@
+import { isDiagramLanguage as checkDiagramLanguage } from '../services/diagramService';
+
 export const generateHeadingId = (text: string): string => {
   return text
     .toLowerCase()
@@ -28,4 +30,16 @@ export const resolveImagePath = (currentFilePath: string, imageHref: string): st
   }
 
   return currentDir ? `${currentDir}/${normalizedHref}` : normalizedHref;
+};
+
+export const isDiagramLanguage = (lang: string): boolean => {
+  return checkDiagramLanguage(lang);
+};
+
+export const encodeDiagramCode = (code: string): string => {
+  return btoa(unescape(encodeURIComponent(code)));
+};
+
+export const decodeDiagramCode = (encoded: string): string => {
+  return decodeURIComponent(escape(atob(encoded)));
 };
