@@ -1419,22 +1419,15 @@
   background: color-mix(in srgb, var(--color-bg) 90%, transparent);
   color: var(--color-text);
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity 0.2s ease, background 0.15s ease, border-color 0.15s ease;
   backdrop-filter: blur(4px);
   z-index: 5;
 }
 
-.diagram-wrapper:hover .diagram-zoom-trigger,
+.diagram-zoom-trigger:hover,
 .diagram-zoom-trigger:focus-visible {
-  opacity: 0.85;
-}
-
-.diagram-zoom-trigger:hover {
-  opacity: 1 !important;
-  background: var(--color-bg);
-  border-color: var(--color-accent);
-  color: var(--color-text-h);
+  opacity: 1;
 }
 
 .diagram-zoom-trigger:focus-visible {
@@ -1444,7 +1437,6 @@
 
 @media (max-width: 768px) {
   .diagram-zoom-trigger {
-    opacity: 0.7;
     width: 32px;
     height: 32px;
   }
