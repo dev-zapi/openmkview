@@ -24,14 +24,16 @@
     "@pierre/diffs": "^1.1.0",
     "@pierre/theme": "^0.0.24",
     "@pierre/trees": "^1.0.0-beta.3",
-    "@shikijs/transformers": "^1.0.0",
+    "@shikijs/langs": "^4.3.0",
+    "@shikijs/themes": "^4.3.0",
+    "@shikijs/transformers": "^4.3.0",
     "codemirror": "^6.0.1",
     "dompurify": "^3.4.5",
     "marked": "^15.0.0",
     "marked-shiki": "^1.2.1",
     "mermaid": "^11.0.0",
     "plantuml-encoder": "^1.4.0",
-    "shiki": "^1.0.0",
+    "shiki": "^4.3.0",
     "solid-js": "^1.9.11"
   },
   "devDependencies": {

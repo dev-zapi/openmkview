@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@solidjs/testing-library';
+import { render, waitFor, fireEvent } from '@solidjs/testing-library';
 import MarkdownView from '../../components/MarkdownView';
 
 // Mock fetch for PlantUML

@@ -1,6 +1,26 @@
 import type { FileContent } from '../../types';
 
 export const mockFileContents: Record<string, FileContent> = {
+  '/docs/diagrams.md': {
+    content: `# Diagrams
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B[End]
+\`\`\`
+
+\`\`\`plantuml
+@startuml
+A -> B
+@enduml
+\`\`\`
+`,
+    fileName: 'diagrams.md',
+    path: '/docs/diagrams.md',
+    fileSize: 256,
+    lastModified: new Date().toISOString(),
+  },
+
   '/README.md': {
     content: `# OpenMKView
 

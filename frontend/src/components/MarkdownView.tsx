@@ -3,6 +3,8 @@ import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
+import DiagramZoomModal from './DiagramZoomModal';
+import type { ZoomDiagramSource } from '../services/diagramZoomService';
 import type { Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
@@ -27,6 +29,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let contentRef: HTMLDivElement | undefined;
   const [renderedHtml, setRenderedHtml] = createSignal<string>('');
   const [isRendering, setIsRendering] = createSignal(false);
+  const [zoomModalOpen, setZoomModalOpen] = createSignal(false);
+  const [zoomSource, setZoomSource] = createSignal<ZoomDiagramSource | null>(null);
   let searchMatches: HTMLElement[] = [];
   let renderTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -120,6 +124,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     return headings;
   };
 
+
+  const openDiagramZoom = (placeholder: HTMLElement) => {
+    const type = placeholder.getAttribute('data-type') as DiagramType;
+    const encodedCode = placeholder.getAttribute('data-code') || '';
+    const theme = (placeholder.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+    try {
+      const code = decodeDiagramCode(encodedCode);
+      setZoomSource({ type, code, theme });
+      setZoomModalOpen(true);
+    } catch (err) {
+      console.error('Failed to decode diagram code for zoom:', err);
+    }
+  };
+
   const setupDiagramObservers = () => {
     if (!containerRef) return;
 
@@ -138,8 +156,27 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
               const code = decodeDiagramCode(encodedCode);
               const svg = await renderDiagram(type, code, theme);
               
-              placeholder.innerHTML = `<div class="diagram-content">${svg}</div>`;
+              placeholder.innerHTML = `
+                <div class="diagram-wrapper">
+                  <div class="diagram-content">${svg}</div>
+                  <button class="diagram-zoom-trigger" type="button" aria-label="放大查看">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      <line x1="11" y1="8" x2="11" y2="14"/>
+                      <line x1="8" y1="11" x2="14" y2="11"/>
+                    </svg>
+                  </button>
+                </div>
+              `;
               placeholder.classList.add('rendered');
+              const zoomBtn = placeholder.querySelector('.diagram-zoom-trigger');
+              if (zoomBtn) {
+                zoomBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  openDiagramZoom(placeholder);
+                });
+              }
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : '渲染失败';
               placeholder.innerHTML = `<div class="diagram-error">${errorMessage}</div>`;
@@ -329,6 +366,12 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         <FrontmatterPanel data={frontmatterData()} />
       )}
       <div ref={contentRef} class="markdown-content" innerHTML={renderedHtml()} />
+      <DiagramZoomModal
+        isOpen={zoomModalOpen()}
+        onClose={() => setZoomModalOpen(false)}
+        source={zoomSource()}
+        title="图表预览"
+      />
     </div>
   );
 };

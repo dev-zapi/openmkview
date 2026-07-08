@@ -156,6 +156,12 @@ export const mockFileTree: FileNode[] = [
         path: '/docs/CHANGELOG.md',
         isFolder: false,
       },
+      {
+        id: '/docs/diagrams.md',
+        name: 'diagrams.md',
+        path: '/docs/diagrams.md',
+        isFolder: false,
+      },
     ],
   },
   {

@@ -1397,6 +1397,59 @@
   height: auto;
 }
 
+
+.diagram-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.diagram-zoom-trigger {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-bg) 90%, transparent);
+  color: var(--color-text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.15s ease, border-color 0.15s ease;
+  backdrop-filter: blur(4px);
+  z-index: 5;
+}
+
+.diagram-wrapper:hover .diagram-zoom-trigger,
+.diagram-zoom-trigger:focus-visible {
+  opacity: 0.85;
+}
+
+.diagram-zoom-trigger:hover {
+  opacity: 1 !important;
+  background: var(--color-bg);
+  border-color: var(--color-accent);
+  color: var(--color-text-h);
+}
+
+.diagram-zoom-trigger:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .diagram-zoom-trigger {
+    opacity: 0.7;
+    width: 32px;
+    height: 32px;
+  }
+}
+
 /* Diagram Error Styles */
 .diagram-error {
   background: #fee2e2;

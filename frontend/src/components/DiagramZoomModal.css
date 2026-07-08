@@ -1,0 +1,200 @@
+.diagram-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.diagram-zoom-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 85vw;
+  height: 85vh;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: scaleIn 0.2s ease;
+}
+
+.diagram-zoom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diagram-zoom-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-h);
+}
+
+.diagram-zoom-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.diagram-zoom-close:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.diagram-zoom-content {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  background: var(--color-bg);
+}
+
+.diagram-zoom-content:active {
+  cursor: grabbing;
+}
+
+.diagram-zoom-transform {
+  transform-origin: center center;
+  will-change: transform;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diagram-zoom-transform svg {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.diagram-zoom-loading,
+.diagram-zoom-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--color-text);
+  font-size: 14px;
+  text-align: center;
+}
+
+.diagram-zoom-error {
+  color: var(--color-error);
+}
+
+.diagram-zoom-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.diagram-zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.diagram-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-h);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.diagram-zoom-btn:hover {
+  background: var(--color-hover-bg);
+  border-color: var(--color-accent);
+}
+
+.diagram-zoom-scale {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.diagram-zoom-reset {
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .diagram-zoom-dialog {
+    width: 100vw;
+    height: var(--app-height);
+    max-width: 100vw;
+    max-height: var(--app-height);
+    border-radius: 0;
+    border: none;
+  }
+
+  .diagram-zoom-header {
+    padding-top: calc(12px + var(--safe-top));
+  }
+
+  .diagram-zoom-controls {
+    bottom: calc(16px + var(--safe-bottom));
+    padding: 10px 14px;
+  }
+
+  .diagram-zoom-btn {
+    min-width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .diagram-zoom-scale {
+    font-size: 14px;
+  }
+}
