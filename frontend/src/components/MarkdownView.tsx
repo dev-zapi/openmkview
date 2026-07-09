@@ -287,7 +287,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             // Relative path link - resolve and mark for internal navigation
             if (props.currentFilePath) {
               const resolvedPath = resolveImagePath(props.currentFilePath, linkHref);
-              return `<a href="javascript:void(0)" data-relative-path="${escapeHtml(resolvedPath)}" class="internal-link"${titleAttr}>${linkText}</a>`;
+              return `<a href="#" data-relative-path="${escapeHtml(resolvedPath)}" class="internal-link" style="cursor:pointer"${titleAttr}>${linkText}</a>`;
             }
 
             return `<a href="${escapeHtml(linkHref)}"${titleAttr}>${linkText}</a>`;
