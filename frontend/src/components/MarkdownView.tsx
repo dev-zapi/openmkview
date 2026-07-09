@@ -22,6 +22,7 @@ interface MarkdownViewProps {
   searchQuery?: string;
   currentSearchResult?: number;
   onSearchResultsChange?: (count: number) => void;
+  onFileOpen?: (path: string) => void;
 }
 
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
@@ -194,6 +195,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     });
   };
 
+  const setupInternalLinkHandlers = (container: HTMLElement) => {
+    const internalLinks = container.querySelectorAll('a.internal-link[data-relative-path]');
+    internalLinks.forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetPath = (e.currentTarget as HTMLElement).getAttribute('data-relative-path');
+        if (targetPath && props.onFileOpen) {
+          props.onFileOpen(targetPath);
+        }
+      });
+    });
+  };
+
   const renderMarkdown = async () => {
     const content = markdownBody();
     if (!content) {
@@ -251,13 +266,39 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             const altText = text || '';
             return `<img src="${imageUrl}" alt="${escapeHtml(altText)}"${titleAttr} loading="lazy" decoding="async" />`;
           },
+          link({ href, title, text }) {
+            const linkHref = href || '';
+            const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+            const linkText = text || '';
+
+            // External links, anchors, mailto, tel, etc. - open in new tab
+            if (
+              linkHref.startsWith('http') ||
+              linkHref.startsWith('//') ||
+              linkHref.startsWith('mailto:') ||
+              linkHref.startsWith('tel:') ||
+              linkHref.startsWith('#') ||
+              linkHref.startsWith('data:')
+            ) {
+              const targetAttr = linkHref.startsWith('#') ? '' : ' target="_blank" rel="noopener noreferrer"';
+              return `<a href="${escapeHtml(linkHref)}"${targetAttr}${titleAttr}>${linkText}</a>`;
+            }
+
+            // Relative path link - resolve and mark for internal navigation
+            if (props.currentFilePath) {
+              const resolvedPath = resolveImagePath(props.currentFilePath, linkHref);
+              return `<a href="javascript:void(0)" data-relative-path="${escapeHtml(resolvedPath)}" class="internal-link"${titleAttr}>${linkText}</a>`;
+            }
+
+            return `<a href="${escapeHtml(linkHref)}"${titleAttr}>${linkText}</a>`;
+          },
         },
       });
 
       let html = await marked.parse(content) as string;
 
       html = DOMPurify.sanitize(html, {
-        ADD_ATTR: ['target', 'loading', 'decoding', 'data-type', 'data-code', 'data-theme'],
+        ADD_ATTR: ['target', 'loading', 'decoding', 'data-type', 'data-code', 'data-theme', 'data-relative-path'],
         ADD_TAGS: ['mark', 'svg', 'path', 'g', 'rect', 'text', 'circle', 'line', 'polygon', 'polyline'],
       });
 
@@ -304,6 +345,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           
           // Add code block headers
           addCodeBlockHeaders(containerRef);
+
+          // Setup internal link click handlers
+          setupInternalLinkHandlers(containerRef);
           
           // Extract headings (existing logic)
           if (props.onHeadingsExtracted) {

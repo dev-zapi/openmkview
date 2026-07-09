@@ -207,6 +207,7 @@ onCloseProject={handleProjectClose}
           onCloseDiff={fileHook.closeDiff}
           renderProjectIcon={renderProjectIcon}
           getProjectStyle={projectHook.getColorStyle}
+          onFileOpen={(path) => void fileHook.openFile(path)}
         />
       ) : (
         <DesktopLayout
@@ -270,6 +271,7 @@ onCloseProject={handleProjectClose}
           onCloseDiff={fileHook.closeDiff}
           onCloseOutline={() => appStore.setOutlineOpen(false)}
           onCloseGitPanel={() => appStore.setGitPanelOpen(false)}
+          onFileOpen={(path) => void fileHook.openFile(path)}
         />
       )}
 

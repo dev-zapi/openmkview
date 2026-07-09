@@ -36,6 +36,7 @@ export interface FileContentViewProps {
   registerContentGetter: (getter: () => string) => void;
   onSave: () => void;
   onCloseDiff: () => void;
+  onFileOpen?: (path: string) => void;
 }
 
 export const FileContentView: Component<FileContentViewProps> = (props) => {
@@ -63,6 +64,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             searchQuery={props.searchQuery}
             currentSearchResult={props.currentSearchResult}
             onSearchResultsChange={props.onSearchResultsChange}
+            onFileOpen={props.onFileOpen}
           />
         </div>
       </Show>

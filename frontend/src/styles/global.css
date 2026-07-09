@@ -88,6 +88,15 @@
   text-decoration: underline;
 }
 
+.markdown-view a.internal-link {
+  position: relative;
+  border-bottom: 1px dashed var(--color-accent);
+}
+
+.markdown-view a.internal-link:hover {
+  border-bottom-style: solid;
+}
+
 .markdown-view blockquote {
   border-left: 4px solid var(--color-accent);
   padding-left: 1em;

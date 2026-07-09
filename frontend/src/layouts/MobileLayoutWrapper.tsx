@@ -64,6 +64,7 @@ interface MobileLayoutWrapperProps {
   outlineWidth?: number;
   outlineTransition?: string;
   onOutlineStartDragging?: () => void;
+  onFileOpen?: (path: string) => void;
 }
 
 export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) => {
@@ -366,6 +367,7 @@ onClick={() => {
            onCloseOutline={() => mobileLayoutStore.closeRightDrawer()}
            showHeader={false}
            showOutline={false}
+           onFileOpen={props.onFileOpen}
          />
       </div>
       </MobileLayout>

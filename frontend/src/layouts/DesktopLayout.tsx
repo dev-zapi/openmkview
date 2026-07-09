@@ -68,6 +68,7 @@ interface DesktopLayoutProps {
   onCloseDiff: () => void;
   onCloseOutline: () => void;
   onCloseGitPanel: () => void;
+  onFileOpen?: (path: string) => void;
 }
 
 export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
@@ -144,6 +145,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         onSave={props.onSave}
         onCloseDiff={props.onCloseDiff}
         onCloseOutline={props.onCloseOutline}
+        onFileOpen={props.onFileOpen}
       />
 
       <GitPanel

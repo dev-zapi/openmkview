@@ -50,6 +50,7 @@ interface MainPaneProps {
   outlineWidth: number;
   outlineTransition: string;
   onOutlineStartDragging: () => void;
+  onFileOpen?: (path: string) => void;
 }
 
 export const MainPane: Component<MainPaneProps> = (props) => {
@@ -137,6 +138,7 @@ export const MainPane: Component<MainPaneProps> = (props) => {
                 registerContentGetter={props.registerContentGetter}
                 onSave={props.onSave}
                 onCloseDiff={props.onCloseDiff}
+                onFileOpen={props.onFileOpen}
               />
             </div>
           </div>
