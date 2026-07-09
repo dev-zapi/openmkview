@@ -86,6 +86,7 @@
 .markdown-view a {
   color: var(--color-accent);
   text-decoration: none;
+  cursor: pointer;
   transition: color 0.2s ease;
 }
 
