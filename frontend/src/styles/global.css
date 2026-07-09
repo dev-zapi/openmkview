@@ -67,10 +67,16 @@
   border-radius: 0;
 }
 
-.markdown-view ul,
+.markdown-view ul {
+  margin-bottom: 1em;
+  padding-left: 2em;
+  list-style-type: disc;
+}
+
 .markdown-view ol {
   margin-bottom: 1em;
   padding-left: 2em;
+  list-style-type: decimal;
 }
 
 .markdown-view li {
