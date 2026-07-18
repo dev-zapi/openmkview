@@ -1408,6 +1408,15 @@
   justify-content: center;
 }
 
+.diagram-source-view {
+  display: block;
+  padding: 0;
+}
+
+.diagram-source-view pre {
+  margin: 0;
+}
+
 .diagram-content svg {
   max-width: 80%;
   width: 100%;
