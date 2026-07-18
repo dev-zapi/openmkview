@@ -46,7 +46,7 @@ export function useScrollSpy(
       },
       {
         root: document.querySelector('.content-main'),
-        rootMargin: '-80px 0px -80% 0px',
+        rootMargin: '-80px 0px 0px 0px',
         threshold: 0,
       },
     );
