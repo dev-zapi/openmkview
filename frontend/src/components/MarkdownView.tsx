@@ -61,7 +61,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       // Create copy button
       const copyBtn = document.createElement('button');
       copyBtn.className = 'copy-button';
-      copyBtn.textContent = '📋 复制';
+      copyBtn.textContent = ' 复制';
       
       copyBtn.onclick = async () => {
         const code = pre.querySelector('code')?.textContent || '';
@@ -80,7 +80,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           copyBtn.textContent = '已复制';
           copyBtn.classList.add('copied');
           setTimeout(() => {
-            copyBtn.textContent = '📋 复制';
+            copyBtn.textContent = ' 复制';
             copyBtn.classList.remove('copied');
           }, 2000);
         } catch (error) {
@@ -97,6 +97,123 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       header.appendChild(langTag);
       header.appendChild(copyBtn);
       pre.appendChild(header);
+    });
+  };
+
+  const setupCodeBlocks = () => {
+    if (!containerRef) return;
+
+    const preElements = containerRef.querySelectorAll('pre.shiki-code-block');
+    
+    preElements.forEach((pre) => {
+      const lang = pre.getAttribute('data-lang') || 'text';
+      
+      if (!isDiagramLanguage(lang)) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-block-wrapper';
+      pre.parentNode?.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+
+      const encodedCode = btoa(unescape(encodeURIComponent(pre.querySelector('code')?.textContent || '')));
+      wrapper.setAttribute('data-diagram-code', encodedCode);
+      wrapper.setAttribute('data-diagram-type', lang);
+
+      const header = pre.querySelector('.code-block-header');
+      if (!header) return;
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'diagram-toggle-btn';
+      toggleBtn.type = 'button';
+      toggleBtn.setAttribute('aria-label', '切换渲染图');
+      toggleBtn.title = '查看渲染图';
+      toggleBtn.innerHTML = `
+        <svg class="icon-source" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+        <svg class="icon-render" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+      `;
+
+      const zoomBtn = document.createElement('button');
+      zoomBtn.className = 'diagram-zoom-btn';
+      zoomBtn.type = 'button';
+      zoomBtn.setAttribute('aria-label', '放大查看');
+      zoomBtn.title = '放大查看';
+      zoomBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="11" y1="8" x2="11" y2="14"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+      `;
+
+      header.insertBefore(zoomBtn, header.firstChild);
+      header.insertBefore(toggleBtn, header.firstChild);
+
+      let isSourceMode = true;
+      let renderedSvg = '';
+
+      const renderDiagramContent = async () => {
+        try {
+          const diagramCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
+          const svg = await renderDiagram(lang as DiagramType, diagramCode, props.theme || 'light');
+          renderedSvg = svg;
+          const diagramDiv = document.createElement('div');
+          diagramDiv.className = 'diagram-rendered';
+          diagramDiv.innerHTML = svg;
+          wrapper.replaceChild(diagramDiv, pre);
+          wrapper.classList.add('diagram-mode');
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '渲染失败';
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'diagram-error';
+          errorDiv.textContent = errorMessage;
+          wrapper.replaceChild(errorDiv, pre);
+        }
+      };
+
+      toggleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        isSourceMode = !isSourceMode;
+        const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+        const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+
+        if (isSourceMode) {
+          iconSource.style.display = '';
+          iconRender.style.display = 'none';
+          toggleBtn.title = '查看渲染图';
+          zoomBtn.style.display = '';
+          wrapper.classList.remove('diagram-mode');
+          wrapper.appendChild(pre);
+        } else {
+          iconSource.style.display = 'none';
+          iconRender.style.display = '';
+          toggleBtn.title = '查看源码';
+          zoomBtn.style.display = 'none';
+          if (!renderedSvg) {
+            await renderDiagramContent();
+          } else {
+            const diagramDiv = document.createElement('div');
+            diagramDiv.className = 'diagram-rendered';
+            diagramDiv.innerHTML = renderedSvg;
+            wrapper.replaceChild(diagramDiv, pre);
+            wrapper.classList.add('diagram-mode');
+          }
+        }
+      });
+
+      zoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const diagramCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
+        setZoomSource({ type: lang as DiagramType, code: diagramCode, theme: props.theme || 'light' });
+        setZoomModalOpen(true);
+      });
     });
   };
 
@@ -137,161 +254,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     } catch (err) {
       console.error('Failed to decode diagram code for zoom:', err);
     }
-  };
-
-  const setupDiagramObservers = () => {
-    if (!containerRef) return;
-
-    const placeholders = containerRef.querySelectorAll('.diagram-placeholder');
-    
-    const observer = new IntersectionObserver(
-      async (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const placeholder = entry.target as HTMLDivElement;
-            const type = placeholder.getAttribute('data-type') as DiagramType;
-            const encodedCode = placeholder.getAttribute('data-code') || '';
-            const theme = placeholder.getAttribute('data-theme') as 'light' | 'dark';
-            
-            try {
-              const code = decodeDiagramCode(encodedCode);
-              const svg = await renderDiagram(type, code, theme);
-              
-              const wrapper = document.createElement('div');
-              wrapper.className = 'diagram-wrapper';
-              wrapper.setAttribute('data-diagram-code', encodedCode);
-              wrapper.setAttribute('data-diagram-type', type);
-
-              const content = document.createElement('div');
-              content.className = 'diagram-content diagram-rendered-view';
-              content.innerHTML = svg;
-
-              const toolbar = document.createElement('div');
-              toolbar.className = 'diagram-toolbar';
-
-              const toggleBtn = document.createElement('button');
-              toggleBtn.className = 'diagram-toggle-btn';
-              toggleBtn.type = 'button';
-              toggleBtn.setAttribute('aria-label', '切换源码');
-              toggleBtn.title = '查看源码';
-              toggleBtn.innerHTML = `
-                <svg class="icon-source" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="16 18 22 12 16 6"/>
-                  <polyline points="8 6 2 12 8 18"/>
-                </svg>
-                <svg class="icon-render" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-              `;
-
-              const zoomBtn = document.createElement('button');
-              zoomBtn.className = 'diagram-zoom-trigger';
-              zoomBtn.type = 'button';
-              zoomBtn.setAttribute('aria-label', '放大查看');
-              zoomBtn.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  <line x1="11" y1="8" x2="11" y2="14"/>
-                  <line x1="8" y1="11" x2="14" y2="11"/>
-                </svg>
-              `;
-
-              toolbar.appendChild(toggleBtn);
-              toolbar.appendChild(zoomBtn);
-              wrapper.appendChild(content);
-              wrapper.appendChild(toolbar);
-              placeholder.innerHTML = '';
-              placeholder.appendChild(wrapper);
-              placeholder.classList.add('rendered');
-
-              let isSourceMode = false;
-
-              toggleBtn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                isSourceMode = !isSourceMode;
-                const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
-                const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
-
-                if (isSourceMode) {
-                  iconSource.style.display = 'none';
-                  iconRender.style.display = '';
-                  toggleBtn.title = '查看渲染图';
-                  zoomBtn.style.display = 'none';
-                  toggleBtn.classList.add('in-header');
-                  content.classList.remove('diagram-rendered-view');
-                  content.classList.add('diagram-source-view');
-                  content.style.opacity = '0';
-                  try {
-                    const diagramCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
-                    const highlighted = await highlightCode({ code: diagramCode, lang: type, theme });
-                    content.innerHTML = highlighted.html;
-                    const pre = content.querySelector('pre');
-                    if (pre) {
-                      pre.classList.add('shiki-code-block');
-                      pre.setAttribute('data-lang', type);
-                    }
-                    addCodeBlockHeaders(content);
-                    const header = content.querySelector('.code-block-header');
-                    if (header) {
-                      header.insertBefore(toggleBtn.cloneNode(true), header.firstChild);
-                    }
-                  } catch {
-                    const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
-                    content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}"><code>${escapeHtml(rawCode)}</code></pre>`;
-                    addCodeBlockHeaders(content);
-                    const header = content.querySelector('.code-block-header');
-                    if (header) {
-                      header.insertBefore(toggleBtn.cloneNode(true), header.firstChild);
-                    }
-                  }
-                  const headerToggleBtn = content.querySelector('.code-block-header .diagram-toggle-btn');
-                  if (headerToggleBtn) {
-                    headerToggleBtn.addEventListener('click', async (ev) => {
-                      ev.stopPropagation();
-                      toggleBtn.click();
-                    });
-                  }
-                  requestAnimationFrame(() => {
-                    content.style.opacity = '1';
-                  });
-                } else {
-                  iconSource.style.display = '';
-                  iconRender.style.display = 'none';
-                  toggleBtn.title = '查看源码';
-                  zoomBtn.style.display = '';
-                  toggleBtn.classList.remove('in-header');
-                  content.classList.remove('diagram-source-view');
-                  content.classList.add('diagram-rendered-view');
-                  content.style.opacity = '0';
-                  content.innerHTML = svg;
-                  requestAnimationFrame(() => {
-                    content.style.opacity = '1';
-                  });
-                }
-              });
-
-              zoomBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                openDiagramZoom(placeholder);
-              });
-            } catch (error) {
-              const errorMessage = error instanceof Error ? error.message : '渲染失败';
-              placeholder.innerHTML = `<div class="diagram-error">${errorMessage}</div>`;
-            }
-            
-            observer.unobserve(placeholder);
-          }
-        }
-      },
-      { rootMargin: '100px 0px' }
-    );
-
-    placeholders.forEach((placeholder) => {
-      observer.observe(placeholder);
-    });
   };
 
   const setupInternalLinkHandlers = (container: HTMLElement) => {
@@ -335,20 +297,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           },
           code({ text, lang }) {
             const language = lang || 'text';
-            
-            // Check if this is a diagram language
-            if (isDiagramLanguage(language)) {
-              const encodedCode = encodeDiagramCode(text);
-              return `
-                <div class="diagram-placeholder" 
-                     data-type="${language}" 
-                     data-code="${encodedCode}"
-                     data-theme="${props.theme}">
-                  <div class="diagram-loading">Loading...</div>
-                </div>
-              `;
-            }
-            
             return `<pre class="shiki-code-block" data-lang="${language}"><code class="language-${language}">${escapeHtml(text)}</code></pre>`;
           },
           image({ href, title, text }) {
@@ -439,11 +387,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
       renderTimer = setTimeout(() => {
         if (containerRef) {
-          // Setup diagram observers
-          setupDiagramObservers();
-          
-          // Add code block headers
-          addCodeBlockHeaders(containerRef);
+          // Setup code blocks (headers + diagram toggle)
+          setupCodeBlocks();
 
           // Setup internal link click handlers
           setupInternalLinkHandlers(containerRef);
