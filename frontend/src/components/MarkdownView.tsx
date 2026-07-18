@@ -157,27 +157,145 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
               const code = decodeDiagramCode(encodedCode);
               const svg = await renderDiagram(type, code, theme);
               
-              placeholder.innerHTML = `
-                <div class="diagram-wrapper">
-                  <div class="diagram-content">${svg}</div>
-                  <button class="diagram-zoom-trigger" type="button" aria-label="放大查看">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="11" cy="11" r="8"/>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                      <line x1="11" y1="8" x2="11" y2="14"/>
-                      <line x1="8" y1="11" x2="14" y2="11"/>
-                    </svg>
-                  </button>
-                </div>
+              const wrapper = document.createElement('div');
+              wrapper.className = 'diagram-wrapper';
+              wrapper.setAttribute('data-diagram-code', encodedCode);
+              wrapper.setAttribute('data-diagram-type', type);
+
+              const content = document.createElement('div');
+              content.className = 'diagram-content diagram-rendered-view';
+              content.innerHTML = svg;
+
+              const toolbar = document.createElement('div');
+              toolbar.className = 'diagram-toolbar';
+
+              const toggleBtn = document.createElement('button');
+              toggleBtn.className = 'diagram-toggle-btn';
+              toggleBtn.type = 'button';
+              toggleBtn.setAttribute('aria-label', '切换源码');
+              toggleBtn.title = '查看源码';
+              toggleBtn.innerHTML = `
+                <svg class="icon-source" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"/>
+                  <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                <svg class="icon-render" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
               `;
+
+              const zoomBtn = document.createElement('button');
+              zoomBtn.className = 'diagram-zoom-trigger';
+              zoomBtn.type = 'button';
+              zoomBtn.setAttribute('aria-label', '放大查看');
+              zoomBtn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/>
+                  <line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+              `;
+
+              toolbar.appendChild(toggleBtn);
+              toolbar.appendChild(zoomBtn);
+              wrapper.appendChild(content);
+              wrapper.appendChild(toolbar);
+              placeholder.innerHTML = '';
+              placeholder.appendChild(wrapper);
               placeholder.classList.add('rendered');
-              const zoomBtn = placeholder.querySelector('.diagram-zoom-trigger');
-              if (zoomBtn) {
-                zoomBtn.addEventListener('click', (e) => {
-                  e.stopPropagation();
-                  openDiagramZoom(placeholder);
-                });
-              }
+
+              let isSourceMode = false;
+
+              toggleBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                isSourceMode = !isSourceMode;
+                const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+                const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+
+                if (isSourceMode) {
+                  iconSource.style.display = 'none';
+                  iconRender.style.display = '';
+                  toggleBtn.title = '查看渲染图';
+                  content.classList.remove('diagram-rendered-view');
+                  content.classList.add('diagram-source-view');
+                  content.style.opacity = '0';
+                  try {
+                    const diagramCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
+                    const highlighted = await highlightCode({ code: diagramCode, lang: type, theme });
+                    content.innerHTML = highlighted.html;
+                    const pre = content.querySelector('pre');
+                    if (pre) {
+                      pre.classList.add('shiki-code-block');
+                      pre.setAttribute('data-lang', type);
+                      const header = document.createElement('div');
+                      header.className = 'code-block-header';
+                      const langTag = document.createElement('span');
+                      langTag.className = 'code-lang-tag';
+                      langTag.textContent = type;
+                      const copyBtn = document.createElement('button');
+                      copyBtn.className = 'copy-button';
+                      copyBtn.textContent = '📋 复制';
+                      copyBtn.onclick = async (ev) => {
+                        ev.stopPropagation();
+                        try {
+                          const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
+                          if (navigator.clipboard) {
+                            await navigator.clipboard.writeText(rawCode);
+                          } else {
+                            const textarea = document.createElement('textarea');
+                            textarea.value = rawCode;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textarea);
+                          }
+                          copyBtn.textContent = '已复制';
+                          copyBtn.classList.add('copied');
+                          setTimeout(() => {
+                            copyBtn.textContent = ' 复制';
+                            copyBtn.classList.remove('copied');
+                          }, 2000);
+                        } catch {
+                          copyBtn.textContent = '复制失败';
+                          copyBtn.classList.add('failed');
+                          setTimeout(() => {
+                            copyBtn.textContent = '📋 复制';
+                            copyBtn.classList.remove('failed');
+                          }, 2000);
+                        }
+                      };
+                      header.appendChild(langTag);
+                      header.appendChild(copyBtn);
+                      pre.appendChild(header);
+                    }
+                  } catch {
+                    const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
+                    content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}"><code>${escapeHtml(rawCode)}</code></pre>`;
+                  }
+                  requestAnimationFrame(() => {
+                    content.style.opacity = '1';
+                  });
+                } else {
+                  iconSource.style.display = '';
+                  iconRender.style.display = 'none';
+                  toggleBtn.title = '查看源码';
+                  content.classList.remove('diagram-source-view');
+                  content.classList.add('diagram-rendered-view');
+                  content.style.opacity = '0';
+                  content.innerHTML = svg;
+                  requestAnimationFrame(() => {
+                    content.style.opacity = '1';
+                  });
+                }
+              });
+
+              zoomBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openDiagramZoom(placeholder);
+              });
             } catch (error) {
               const errorMessage = error instanceof Error ? error.message : '渲染失败';
               placeholder.innerHTML = `<div class="diagram-error">${errorMessage}</div>`;
