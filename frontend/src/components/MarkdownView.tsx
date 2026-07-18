@@ -219,7 +219,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                   iconSource.style.display = 'none';
                   iconRender.style.display = '';
                   toggleBtn.title = '查看渲染图';
-                  toolbar.style.display = 'none';
+                  zoomBtn.style.display = 'none';
+                  toggleBtn.classList.add('in-header');
                   content.classList.remove('diagram-rendered-view');
                   content.classList.add('diagram-source-view');
                   content.style.opacity = '0';
@@ -235,7 +236,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                     addCodeBlockHeaders(content);
                     const header = content.querySelector('.code-block-header');
                     if (header) {
-                      header.insertBefore(toggleBtn, header.firstChild);
+                      header.insertBefore(toggleBtn.cloneNode(true), header.firstChild);
                     }
                   } catch {
                     const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
@@ -243,8 +244,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                     addCodeBlockHeaders(content);
                     const header = content.querySelector('.code-block-header');
                     if (header) {
-                      header.insertBefore(toggleBtn, header.firstChild);
+                      header.insertBefore(toggleBtn.cloneNode(true), header.firstChild);
                     }
+                  }
+                  const headerToggleBtn = content.querySelector('.code-block-header .diagram-toggle-btn');
+                  if (headerToggleBtn) {
+                    headerToggleBtn.addEventListener('click', async (ev) => {
+                      ev.stopPropagation();
+                      toggleBtn.click();
+                    });
                   }
                   requestAnimationFrame(() => {
                     content.style.opacity = '1';
@@ -253,7 +261,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                   iconSource.style.display = '';
                   iconRender.style.display = 'none';
                   toggleBtn.title = '查看源码';
-                  toolbar.style.display = '';
+                  zoomBtn.style.display = '';
+                  toggleBtn.classList.remove('in-header');
                   content.classList.remove('diagram-source-view');
                   content.classList.add('diagram-rendered-view');
                   content.style.opacity = '0';
