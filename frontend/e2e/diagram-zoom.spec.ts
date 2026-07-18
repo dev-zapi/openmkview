@@ -11,11 +11,18 @@ test.describe('Diagram zoom in markdown preview', () => {
   test('opens zoom modal from a rendered mermaid diagram', async ({ page }) => {
     // Wait for the markdown preview and the rendered diagram
     await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.diagram-placeholder')).toHaveCount(2, { timeout: 15000 });
+    await expect(page.locator('.code-block-wrapper')).toHaveCount(2, { timeout: 15000 });
 
-    // Open the zoom modal by clicking the zoom trigger on the first diagram
-    const zoomTrigger = page.locator('.diagram-zoom-trigger').first();
-    await zoomTrigger.click({ force: true });
+    // Click toggle button to render diagram
+    const toggleBtn = page.locator('.diagram-toggle-btn').first();
+    await toggleBtn.click({ force: true });
+
+    // Wait for diagram to render
+    await expect(page.locator('.diagram-rendered')).toBeVisible({ timeout: 15000 });
+
+    // Open the zoom modal by clicking the zoom button
+    const zoomBtn = page.locator('.diagram-zoom-btn').first();
+    await zoomBtn.click({ force: true });
 
     const overlay = page.locator('.diagram-zoom-overlay');
     await expect(overlay).toBeVisible({ timeout: 5000 });
@@ -30,5 +37,54 @@ test.describe('Diagram zoom in markdown preview', () => {
     // Close with Escape
     await page.keyboard.press('Escape');
     await expect(overlay).not.toBeVisible();
+  });
+
+  test('toggle between source and rendered diagram', async ({ page }) => {
+    // Wait for the markdown preview
+    await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
+
+    // Initially should show source code
+    const firstWrapper = page.locator('.code-block-wrapper').first();
+    await expect(firstWrapper.locator('pre.shiki-code-block')).toBeVisible();
+
+    // Click toggle to render diagram
+    const toggleBtn = page.locator('.diagram-toggle-btn').first();
+    await toggleBtn.click({ force: true });
+
+    // Should now show rendered diagram
+    await expect(firstWrapper.locator('.diagram-rendered')).toBeVisible({ timeout: 15000 });
+    await expect(firstWrapper.locator('pre.shiki-code-block')).not.toBeVisible();
+
+    // Click toggle again to go back to source
+    await toggleBtn.click({ force: true });
+
+    // Should show source code again
+    await expect(firstWrapper.locator('pre.shiki-code-block')).toBeVisible();
+    await expect(firstWrapper.locator('.diagram-rendered')).not.toBeVisible();
+  });
+
+  test('zoom button hidden in diagram mode', async ({ page }) => {
+    // Wait for the markdown preview
+    await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
+
+    // Zoom button should be visible in source mode
+    const zoomBtn = page.locator('.diagram-zoom-btn').first();
+    await expect(zoomBtn).toBeVisible();
+
+    // Click toggle to render diagram
+    const toggleBtn = page.locator('.diagram-toggle-btn').first();
+    await toggleBtn.click({ force: true });
+
+    // Wait for diagram to render
+    await expect(page.locator('.diagram-rendered')).toBeVisible({ timeout: 15000 });
+
+    // Zoom button should be hidden in diagram mode
+    await expect(zoomBtn).not.toBeVisible();
+
+    // Click toggle again to go back to source
+    await toggleBtn.click({ force: true });
+
+    // Zoom button should be visible again
+    await expect(zoomBtn).toBeVisible();
   });
 });

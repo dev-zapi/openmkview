@@ -67,7 +67,7 @@ A-->B
     ));
 
     await waitFor(() => {
-      expect(container.querySelector('.diagram-placeholder')).toBeTruthy();
+      expect(container.querySelector('.code-block-wrapper')).toBeTruthy();
     });
   });
 
@@ -93,7 +93,7 @@ A -> B
     ));
 
     await waitFor(() => {
-      expect(container.querySelector('.diagram-placeholder')).toBeTruthy();
+      expect(container.querySelector('.code-block-wrapper')).toBeTruthy();
     });
   });
 
@@ -124,8 +124,8 @@ A -> B
     ));
 
     await waitFor(() => {
-      const placeholders = container.querySelectorAll('.diagram-placeholder');
-      expect(placeholders.length).toBe(2);
+      const wrappers = container.querySelectorAll('.code-block-wrapper');
+      expect(wrappers.length).toBe(2);
     });
   });
 
@@ -143,7 +143,89 @@ invalid code
     ));
 
     await waitFor(() => {
-      expect(container.querySelector('.diagram-placeholder')).toBeTruthy();
+      expect(container.querySelector('.code-block-wrapper')).toBeTruthy();
+    });
+  });
+
+  it('should have toggle and zoom buttons for diagram code blocks', async () => {
+    const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+    const { container } = render(() => (
+      <MarkdownView content={markdown} theme="light" />
+    ));
+
+    await waitFor(() => {
+      const toggleBtn = container.querySelector('.diagram-toggle-btn');
+      const zoomBtn = container.querySelector('.diagram-zoom-btn');
+      expect(toggleBtn).toBeTruthy();
+      expect(zoomBtn).toBeTruthy();
+    });
+  });
+
+  it('should toggle between source and rendered diagram', async () => {
+    const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+    const { container } = render(() => (
+      <MarkdownView content={markdown} theme="light" />
+    ));
+
+    await waitFor(() => {
+      expect(container.querySelector('.diagram-toggle-btn')).toBeTruthy();
+    });
+
+    const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
+    const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
+
+    // Initially should be in source mode
+    expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeTruthy();
+
+    // Click to render diagram
+    toggleBtn.click();
+
+    await waitFor(() => {
+      expect(wrapper.querySelector('.diagram-rendered')).toBeTruthy();
+    }, { timeout: 5000 });
+
+    // Click again to go back to source
+    toggleBtn.click();
+
+    await waitFor(() => {
+      expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeTruthy();
+    });
+  });
+
+  it('should not have toggle/zoom buttons for regular code blocks', async () => {
+    const markdown = `
+# Test
+
+\`\`\`javascript
+const x = 1;
+\`\`\`
+`;
+
+    const { container } = render(() => (
+      <MarkdownView content={markdown} theme="light" />
+    ));
+
+    await waitFor(() => {
+      const toggleBtn = container.querySelector('.diagram-toggle-btn');
+      const zoomBtn = container.querySelector('.diagram-zoom-btn');
+      expect(toggleBtn).toBeFalsy();
+      expect(zoomBtn).toBeFalsy();
     });
   });
 });

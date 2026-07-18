@@ -106,7 +106,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     // First add headers to all code blocks
     addCodeBlockHeaders(containerRef);
 
-    const preElements = containerRef.querySelectorAll('pre.shiki-code-block');
+    const preElements = containerRef.querySelectorAll('pre[data-lang]');
     
     preElements.forEach((pre) => {
       const lang = pre.getAttribute('data-lang') || 'text';
