@@ -78,7 +78,7 @@ describe('useScrollSpy', () => {
     });
   });
 
-  it('updates active heading to the bottommost visible heading when observer fires', async () => {
+  it('updates active heading to the topmost visible heading when observer fires', async () => {
     await createRoot(async (dispose) => {
       const container = document.createElement('div');
       container.className = 'content-main';
@@ -103,7 +103,7 @@ describe('useScrollSpy', () => {
         {} as IntersectionObserver,
       );
 
-      expect(activeHeadingId()).toBe('getting-started');
+      expect(activeHeadingId()).toBe('introduction');
 
       document.body.removeChild(container);
       dispose();

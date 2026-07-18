@@ -22,9 +22,9 @@ describe('computeActiveHeading', () => {
     expect(computeActiveHeading(visibleIds, headings)).toBe('installation');
   });
 
-  it('returns the bottommost visible heading when multiple are visible', () => {
+  it('returns the topmost visible heading when multiple are visible', () => {
     const visibleIds = new Set(['getting-started', 'installation', 'prerequisites']);
-    expect(computeActiveHeading(visibleIds, headings)).toBe('prerequisites');
+    expect(computeActiveHeading(visibleIds, headings)).toBe('getting-started');
   });
 
   it('returns the last heading when it is the only one visible', () => {
@@ -32,9 +32,9 @@ describe('computeActiveHeading', () => {
     expect(computeActiveHeading(visibleIds, headings)).toBe('api-reference');
   });
 
-  it('returns the last visible heading in document order when multiple are visible', () => {
+  it('returns the first visible heading in document order when multiple are visible', () => {
     const visibleIds = new Set(['introduction', 'configuration', 'api-reference']);
-    expect(computeActiveHeading(visibleIds, headings)).toBe('api-reference');
+    expect(computeActiveHeading(visibleIds, headings)).toBe('introduction');
   });
 
   it('ignores visible IDs that do not match any heading', () => {
