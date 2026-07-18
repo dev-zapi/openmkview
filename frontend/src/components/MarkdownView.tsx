@@ -116,14 +116,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'code-block-wrapper';
       pre.parentNode?.insertBefore(wrapper, pre);
-      wrapper.appendChild(pre);
 
       const encodedCode = btoa(unescape(encodeURIComponent(pre.querySelector('code')?.textContent || '')));
       wrapper.setAttribute('data-diagram-code', encodedCode);
       wrapper.setAttribute('data-diagram-type', lang);
 
+      // Move header out of pre and into wrapper
       const header = pre.querySelector('.code-block-header');
-      if (!header) return;
+      if (!header) {
+        wrapper.appendChild(pre);
+        return;
+      }
+      header.remove();
+      wrapper.appendChild(header);
+      wrapper.appendChild(pre);
 
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'diagram-toggle-btn';
@@ -170,14 +176,18 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           const diagramDiv = document.createElement('div');
           diagramDiv.className = 'diagram-rendered';
           diagramDiv.innerHTML = svg;
-          wrapper.replaceChild(diagramDiv, pre);
+          if (pre.parentNode === wrapper) {
+            wrapper.replaceChild(diagramDiv, pre);
+          }
           wrapper.classList.add('diagram-mode');
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : '渲染失败';
           const errorDiv = document.createElement('div');
           errorDiv.className = 'diagram-error';
           errorDiv.textContent = errorMessage;
-          wrapper.replaceChild(errorDiv, pre);
+          if (pre.parentNode === wrapper) {
+            wrapper.replaceChild(errorDiv, pre);
+          }
         }
       };
 
@@ -204,7 +214,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           toggleBtn.title = '查看渲染图';
           zoomBtn.style.display = '';
           wrapper.classList.remove('diagram-mode');
-          wrapper.appendChild(pre);
+          // Remove diagram div if present
+          const diagramDiv = wrapper.querySelector('.diagram-rendered');
+          if (diagramDiv) {
+            diagramDiv.remove();
+          }
+          // Add pre back if not present
+          if (!wrapper.contains(pre)) {
+            wrapper.appendChild(pre);
+          }
         } else {
           iconSource.style.display = 'none';
           iconRender.style.display = '';
@@ -213,10 +231,14 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           if (!renderedSvg) {
             await renderDiagramContent();
           } else {
+            // Remove pre if present
+            if (wrapper.contains(pre)) {
+              pre.remove();
+            }
             const diagramDiv = document.createElement('div');
             diagramDiv.className = 'diagram-rendered';
             diagramDiv.innerHTML = renderedSvg;
-            wrapper.replaceChild(diagramDiv, pre);
+            wrapper.appendChild(diagramDiv);
             wrapper.classList.add('diagram-mode');
           }
         }

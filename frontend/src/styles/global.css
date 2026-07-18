@@ -1427,9 +1427,15 @@
 .code-block-wrapper {
   position: relative;
   margin-bottom: 1em;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .code-block-wrapper.diagram-mode pre {
+  display: none;
+}
+
+.code-block-wrapper.diagram-mode .code-block-header {
   display: none;
 }
 
@@ -1441,11 +1447,14 @@
   background: var(--color-bg-e);
   border: 1px solid var(--color-border);
   border-radius: 8px;
+  overflow: auto;
+  max-width: 100%;
 }
 
 .diagram-rendered svg {
   max-width: 100%;
   height: auto;
+  display: block;
 }
 
 .diagram-zoom-btn,
