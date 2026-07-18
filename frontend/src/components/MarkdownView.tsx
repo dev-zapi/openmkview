@@ -230,6 +230,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                     if (pre) {
                       pre.classList.add('shiki-code-block');
                       pre.setAttribute('data-lang', type);
+                      pre.style.position = 'relative';
                       const header = document.createElement('div');
                       header.className = 'code-block-header';
                       const langTag = document.createElement('span');
@@ -255,7 +256,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                           copyBtn.textContent = '已复制';
                           copyBtn.classList.add('copied');
                           setTimeout(() => {
-                            copyBtn.textContent = ' 复制';
+                            copyBtn.textContent = '📋 复制';
                             copyBtn.classList.remove('copied');
                           }, 2000);
                         } catch {
@@ -273,7 +274,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                     }
                   } catch {
                     const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
-                    content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}"><code>${escapeHtml(rawCode)}</code></pre>`;
+                    content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}" style="position:relative"><code>${escapeHtml(rawCode)}</code></pre>`;
                   }
                   requestAnimationFrame(() => {
                     content.style.opacity = '1';
