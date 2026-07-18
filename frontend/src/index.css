@@ -1863,6 +1863,11 @@ textarea {
   padding-left: calc(12px + 4px);
 }
 
+.outline-item.active .outline-text {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
 /* Outline item click feedback */
 .outline-item {
   cursor: pointer;

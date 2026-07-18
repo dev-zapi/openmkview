@@ -5,6 +5,7 @@ import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
 import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
+import { useScrollSpy } from '../hooks/useScrollSpy';
 import type { Project, FileContent, FileType, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
@@ -69,6 +70,10 @@ interface MobileLayoutWrapperProps {
 
 export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) => {
   const [topBarMenuOpen, setTopBarMenuOpen] = createSignal(false);
+  const { activeHeadingId, lockForProgrammaticScroll } = useScrollSpy(
+    () => props.headings,
+    () => mobileLayoutStore.rightDrawerOpen,
+  );
 
   const handleTopBarMenuOpen = (e: MouseEvent) => {
     e.stopPropagation();
@@ -264,6 +269,8 @@ onClick={() => {
           outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
           transition={props.outlineTransition ?? ''}
           onStartDragging={props.onOutlineStartDragging ?? (() => {})}
+          activeHeadingId={activeHeadingId()}
+          onProgrammaticScrollLock={lockForProgrammaticScroll}
         />
       }
       headerContent={

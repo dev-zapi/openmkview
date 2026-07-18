@@ -1,4 +1,4 @@
-import { Component, For, Show } from 'solid-js';
+import { Component, For, Show, createEffect } from 'solid-js';
 import type { Heading } from '../types';
 
 interface OutlinePanelProps {
@@ -10,12 +10,28 @@ interface OutlinePanelProps {
   outlineWidth: number;
   transition: string;
   onStartDragging: () => void;
+  activeHeadingId: string | null;
+  onProgrammaticScrollLock?: (id: string) => void;
 }
 
 const OutlinePanel: Component<OutlinePanelProps> = (props) => {
+  let contentContainerRef: HTMLDivElement | undefined;
+
+  createEffect(() => {
+    const activeId = props.activeHeadingId;
+    if (!activeId || !contentContainerRef) return;
+    const escapedId = CSS.escape(activeId);
+    const activeEl = contentContainerRef.querySelector(`.outline-item[data-heading-id="${escapedId}"]`);
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+
   const handleClick = (id: string, e: MouseEvent) => {
     e.preventDefault();
-    
+
+    props.onProgrammaticScrollLock?.(id);
+
     const element = document.getElementById(id);
     const contentArea = document.querySelector('.content-main');
     
@@ -89,7 +105,7 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
         </Show>
       </div>
 
-      <div class="outline-panel-content">
+      <div class="outline-panel-content" ref={contentContainerRef}>
         <Show
           when={props.headings && props.headings.length > 0}
           fallback={
@@ -107,10 +123,11 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
           <For each={props.headings}>
             {(heading) => (
               <div
-                class="outline-item"
+                class={`outline-item${props.activeHeadingId === heading.id ? ' active' : ''}`}
                 style={getIndentStyle(heading.depth)}
                 onClick={(e) => handleClick(heading.id, e)}
                 title={heading.text}
+                data-heading-id={heading.id}
               >
                 <span class={`outline-level outline-level-${heading.depth}`}>
                   {getLevelIcon(heading.depth)}

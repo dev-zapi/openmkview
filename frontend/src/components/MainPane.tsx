@@ -2,6 +2,7 @@ import { Component, Show } from 'solid-js';
 import { MarkdownHeader } from './markdown-header';
 import { FileContentView } from './FileContentView';
 import OutlinePanel from './OutlinePanel';
+import { useScrollSpy } from '../hooks/useScrollSpy';
 import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header';
 import type { Settings, ThemeType } from '../types/app';
@@ -54,6 +55,11 @@ interface MainPaneProps {
 }
 
 export const MainPane: Component<MainPaneProps> = (props) => {
+  const { activeHeadingId, lockForProgrammaticScroll } = useScrollSpy(
+    () => props.headings,
+    () => props.isOutlineOpen,
+  );
+
   return (
     <main class="main">
       <div class="main-left">
@@ -153,6 +159,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
           outlineWidth={props.outlineWidth}
           transition={props.outlineTransition}
           onStartDragging={props.onOutlineStartDragging}
+          activeHeadingId={activeHeadingId()}
+          onProgrammaticScrollLock={lockForProgrammaticScroll}
         />
       </Show>
     </main>
