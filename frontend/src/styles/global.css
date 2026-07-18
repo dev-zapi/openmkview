@@ -1409,14 +1409,15 @@
 }
 
 .diagram-content svg {
-  max-width: 100%;
+  max-width: 80%;
+  width: 100%;
   height: auto;
 }
 
 
 .diagram-wrapper {
   position: relative;
-  display: inline-block;
+  display: block;
   max-width: 100%;
 }
 
