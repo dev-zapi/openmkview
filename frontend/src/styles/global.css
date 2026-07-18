@@ -1461,17 +1461,6 @@
   transition: opacity 0.2s ease;
 }
 
-.diagram-source-view pre {
-  margin: 0;
-  border-radius: 0;
-  border: none;
-}
-
-.diagram-source-view .code-block-header {
-  position: sticky;
-  top: 0;
-}
-
 @media (max-width: 768px) {
   .diagram-toggle-btn {
     width: 32px;

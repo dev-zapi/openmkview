@@ -230,51 +230,12 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                     if (pre) {
                       pre.classList.add('shiki-code-block');
                       pre.setAttribute('data-lang', type);
-                      pre.style.position = 'relative';
-                      const header = document.createElement('div');
-                      header.className = 'code-block-header';
-                      const langTag = document.createElement('span');
-                      langTag.className = 'code-lang-tag';
-                      langTag.textContent = type;
-                      const copyBtn = document.createElement('button');
-                      copyBtn.className = 'copy-button';
-                      copyBtn.textContent = '📋 复制';
-                      copyBtn.onclick = async (ev) => {
-                        ev.stopPropagation();
-                        try {
-                          const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
-                          if (navigator.clipboard) {
-                            await navigator.clipboard.writeText(rawCode);
-                          } else {
-                            const textarea = document.createElement('textarea');
-                            textarea.value = rawCode;
-                            document.body.appendChild(textarea);
-                            textarea.select();
-                            document.execCommand('copy');
-                            document.body.removeChild(textarea);
-                          }
-                          copyBtn.textContent = '已复制';
-                          copyBtn.classList.add('copied');
-                          setTimeout(() => {
-                            copyBtn.textContent = '📋 复制';
-                            copyBtn.classList.remove('copied');
-                          }, 2000);
-                        } catch {
-                          copyBtn.textContent = '复制失败';
-                          copyBtn.classList.add('failed');
-                          setTimeout(() => {
-                            copyBtn.textContent = '📋 复制';
-                            copyBtn.classList.remove('failed');
-                          }, 2000);
-                        }
-                      };
-                      header.appendChild(langTag);
-                      header.appendChild(copyBtn);
-                      pre.appendChild(header);
                     }
+                    addCodeBlockHeaders(content);
                   } catch {
                     const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
-                    content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}" style="position:relative"><code>${escapeHtml(rawCode)}</code></pre>`;
+                    content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}"><code>${escapeHtml(rawCode)}</code></pre>`;
+                    addCodeBlockHeaders(content);
                   }
                   requestAnimationFrame(() => {
                     content.style.opacity = '1';
