@@ -28,6 +28,7 @@ export function useScrollSpy(
     }
 
     const visibleIds = new Set<string>();
+    let lastActiveId: string | null = null;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -42,11 +43,17 @@ export function useScrollSpy(
           }
         }
 
-        setActiveHeadingId(computeActiveHeading(visibleIds, headings()));
+        const activeId = computeActiveHeading(visibleIds, headings());
+        if (activeId !== null) {
+          lastActiveId = activeId;
+          setActiveHeadingId(activeId);
+        } else if (lastActiveId !== null) {
+          setActiveHeadingId(lastActiveId);
+        }
       },
       {
         root: document.querySelector('.content-main'),
-        rootMargin: '-80px 0px 0px 0px',
+        rootMargin: '0px 0px -50% 0px',
         threshold: 0,
       },
     );

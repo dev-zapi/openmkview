@@ -78,7 +78,7 @@ describe('useScrollSpy', () => {
     });
   });
 
-  it('updates active heading when observer fires', async () => {
+  it('updates active heading to the bottommost visible heading when observer fires', async () => {
     await createRoot(async (dispose) => {
       const container = document.createElement('div');
       container.className = 'content-main';
@@ -103,14 +103,14 @@ describe('useScrollSpy', () => {
         {} as IntersectionObserver,
       );
 
-      expect(activeHeadingId()).toBe('introduction');
+      expect(activeHeadingId()).toBe('getting-started');
 
       document.body.removeChild(container);
       dispose();
     });
   });
 
-  it('returns null when no headings are intersecting', async () => {
+  it('returns null when no headings are intersecting and no previous active', async () => {
     await createRoot(async (dispose) => {
       const container = document.createElement('div');
       container.className = 'content-main';
@@ -131,6 +131,38 @@ describe('useScrollSpy', () => {
       );
 
       expect(activeHeadingId()).toBeNull();
+
+      document.body.removeChild(container);
+      dispose();
+    });
+  });
+
+  it('keeps previous active heading when no headings are intersecting', async () => {
+    await createRoot(async (dispose) => {
+      const container = document.createElement('div');
+      container.className = 'content-main';
+      headings.forEach((h) => {
+        const el = document.createElement('h2');
+        el.id = h.id;
+        container.appendChild(el);
+      });
+      document.body.appendChild(container);
+
+      const { activeHeadingId } = useScrollSpy(() => headings, () => true);
+      await Promise.resolve();
+
+      const introEl = document.getElementById('introduction')!;
+      observerCallback(
+        [{ target: introEl, isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      );
+      expect(activeHeadingId()).toBe('introduction');
+
+      observerCallback(
+        [{ target: introEl, isIntersecting: false } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      );
+      expect(activeHeadingId()).toBe('introduction');
 
       document.body.removeChild(container);
       dispose();
