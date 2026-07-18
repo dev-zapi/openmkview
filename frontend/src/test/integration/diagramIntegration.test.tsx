@@ -190,22 +190,24 @@ A-->B
     const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
     const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
 
-    // Initially should be in source mode
-    expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeTruthy();
-
-    // Click to render diagram
-    toggleBtn.click();
-
+    // Initially should be in render mode (diagram rendered)
     await waitFor(() => {
       expect(wrapper.querySelector('.diagram-rendered')).toBeTruthy();
     }, { timeout: 5000 });
 
-    // Click again to go back to source
+    // Click to switch to source mode
     toggleBtn.click();
 
     await waitFor(() => {
       expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeTruthy();
     });
+
+    // Click again to go back to render mode
+    toggleBtn.click();
+
+    await waitFor(() => {
+      expect(wrapper.querySelector('.diagram-rendered')).toBeTruthy();
+    }, { timeout: 5000 });
   });
 
   it('should not have toggle/zoom buttons for regular code blocks', async () => {

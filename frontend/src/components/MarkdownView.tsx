@@ -159,7 +159,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       header.insertBefore(zoomBtn, header.firstChild);
       header.insertBefore(toggleBtn, header.firstChild);
 
-      let isSourceMode = true;
+      let isSourceMode = false;
       let renderedSvg = '';
 
       const renderDiagramContent = async () => {
@@ -180,6 +180,17 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           wrapper.replaceChild(errorDiv, pre);
         }
       };
+
+      // Set initial icon state for render mode
+      const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+      const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+      iconSource.style.display = 'none';
+      iconRender.style.display = '';
+      toggleBtn.title = '查看源码';
+      zoomBtn.style.display = 'none';
+
+      // Auto-render diagram on load
+      renderDiagramContent();
 
       toggleBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
