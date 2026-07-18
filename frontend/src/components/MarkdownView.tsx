@@ -382,8 +382,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const highlightedBlocks = await Promise.all(highlightPromises);
 
       let index = 0;
-      html = html.replace(/<pre class="shiki-code-block"[^>]*><code[^>]*>[\s\S]*?<\/code><\/pre>/g, () => {
-        return highlightedBlocks[index++] || '';
+      html = html.replace(/<pre class="shiki-code-block" data-lang="([^"]*)"><code[^>]*>[\s\S]*?<\/code><\/pre>/g, (_match, lang) => {
+        const highlighted = highlightedBlocks[index++] || '';
+        return highlighted.replace(/<pre([^>]*)>/, `<pre$1 data-lang="${lang}">`);
       });
 
       setRenderedHtml(html);
