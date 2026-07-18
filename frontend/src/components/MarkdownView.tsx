@@ -219,6 +219,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                   iconSource.style.display = 'none';
                   iconRender.style.display = '';
                   toggleBtn.title = '查看渲染图';
+                  toolbar.style.display = 'none';
                   content.classList.remove('diagram-rendered-view');
                   content.classList.add('diagram-source-view');
                   content.style.opacity = '0';
@@ -232,10 +233,18 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                       pre.setAttribute('data-lang', type);
                     }
                     addCodeBlockHeaders(content);
+                    const header = content.querySelector('.code-block-header');
+                    if (header) {
+                      header.insertBefore(toggleBtn, header.firstChild);
+                    }
                   } catch {
                     const rawCode = decodeDiagramCode(wrapper.getAttribute('data-diagram-code') || '');
                     content.innerHTML = `<pre class="shiki-code-block" data-lang="${type}"><code>${escapeHtml(rawCode)}</code></pre>`;
                     addCodeBlockHeaders(content);
+                    const header = content.querySelector('.code-block-header');
+                    if (header) {
+                      header.insertBefore(toggleBtn, header.firstChild);
+                    }
                   }
                   requestAnimationFrame(() => {
                     content.style.opacity = '1';
@@ -244,6 +253,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                   iconSource.style.display = '';
                   iconRender.style.display = 'none';
                   toggleBtn.title = '查看源码';
+                  toolbar.style.display = '';
                   content.classList.remove('diagram-source-view');
                   content.classList.add('diagram-rendered-view');
                   content.style.opacity = '0';

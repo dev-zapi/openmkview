@@ -1456,6 +1456,15 @@
   backdrop-filter: blur(4px);
 }
 
+.code-block-header .diagram-toggle-btn {
+  position: static;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  opacity: 0.8;
+  margin-right: 4px;
+}
+
 .diagram-toggle-btn:hover,
 .diagram-toggle-btn:focus-visible {
   opacity: 1;
