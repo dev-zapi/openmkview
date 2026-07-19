@@ -197,7 +197,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       iconSource.style.display = 'none';
       iconRender.style.display = '';
       toggleBtn.title = '查看源码';
-      zoomBtn.style.display = 'none';
+      zoomBtn.style.display = '';
 
       // Auto-render diagram on load
       renderDiagramContent();
@@ -212,7 +212,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           iconSource.style.display = '';
           iconRender.style.display = 'none';
           toggleBtn.title = '查看渲染图';
-          zoomBtn.style.display = '';
+          zoomBtn.style.display = 'none';
           wrapper.classList.remove('diagram-mode');
           // Remove diagram div if present
           const diagramDiv = wrapper.querySelector('.diagram-rendered');
@@ -227,7 +227,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           iconSource.style.display = 'none';
           iconRender.style.display = '';
           toggleBtn.title = '查看源码';
-          zoomBtn.style.display = 'none';
+          zoomBtn.style.display = '';
           if (!renderedSvg) {
             await renderDiagramContent();
           } else {

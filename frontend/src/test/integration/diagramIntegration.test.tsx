@@ -277,7 +277,33 @@ A-->B
       }, { timeout: 5000 });
     });
 
-    it('should hide zoom button in diagram mode', async () => {
+    it('should show zoom button in rendered mode', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('.diagram-toggle-btn')).toBeTruthy();
+      });
+
+      const zoomBtn = container.querySelector('.diagram-zoom-btn') as HTMLButtonElement;
+
+      // In render mode, zoom button should be visible
+      await waitFor(() => {
+        expect(zoomBtn.style.display).toBe('');
+      });
+    });
+
+    it('should hide zoom button in source mode', async () => {
       const markdown = `
 # Test
 
@@ -298,23 +324,23 @@ A-->B
       const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
       const zoomBtn = container.querySelector('.diagram-zoom-btn') as HTMLButtonElement;
 
-      // Initially in render mode, zoom should be hidden
+      // Initially in render mode, zoom should be visible
       await waitFor(() => {
-        expect(zoomBtn.style.display).toBe('none');
+        expect(zoomBtn.style.display).toBe('');
       });
 
       // Switch to source mode
       toggleBtn.click();
 
       await waitFor(() => {
-        expect(zoomBtn.style.display).toBe('');
+        expect(zoomBtn.style.display).toBe('none');
       });
 
       // Switch back to render mode
       toggleBtn.click();
 
       await waitFor(() => {
-        expect(zoomBtn.style.display).toBe('none');
+        expect(zoomBtn.style.display).toBe('');
       });
     });
 
@@ -487,6 +513,54 @@ print("hello")
 
       expect(container.querySelector('.diagram-toggle-btn')).toBeFalsy();
       expect(container.querySelector('.diagram-zoom-btn')).toBeFalsy();
+    });
+
+    it('should not render zoom or toggle buttons for any non-diagram language', async () => {
+      const markdown = `
+# Test
+
+\`\`\`javascript
+const x = 1;
+\`\`\`
+
+\`\`\`typescript
+const y: number = 2;
+\`\`\`
+
+\`\`\`python
+print("hello")
+\`\`\`
+
+\`\`\`bash
+echo "world"
+\`\`\`
+
+\`\`\`json
+{"key": "value"}
+\`\`\`
+
+\`\`\`css
+body { color: red; }
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('pre[data-lang="javascript"]')).toBeTruthy();
+        expect(container.querySelector('pre[data-lang="typescript"]')).toBeTruthy();
+        expect(container.querySelector('pre[data-lang="python"]')).toBeTruthy();
+        expect(container.querySelector('pre[data-lang="bash"]')).toBeTruthy();
+        expect(container.querySelector('pre[data-lang="json"]')).toBeTruthy();
+        expect(container.querySelector('pre[data-lang="css"]')).toBeTruthy();
+      });
+
+      // None of these should have diagram buttons
+      expect(container.querySelectorAll('.diagram-toggle-btn').length).toBe(0);
+      expect(container.querySelectorAll('.diagram-zoom-btn').length).toBe(0);
+      expect(container.querySelectorAll('.code-block-wrapper').length).toBe(0);
     });
 
     it('should have copy button for both regular and diagram code blocks', async () => {

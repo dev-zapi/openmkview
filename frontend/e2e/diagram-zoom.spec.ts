@@ -13,14 +13,11 @@ test.describe('Diagram zoom in markdown preview', () => {
     await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('.code-block-wrapper')).toHaveCount(2, { timeout: 15000 });
 
-    // Default is rendered diagram mode; zoom button is hidden.
-    // Switch to source mode to access the zoom button.
-    const toggleBtn = page.locator('.diagram-toggle-btn').first();
-    await toggleBtn.click({ force: true });
-    await expect(page.locator('pre')).toBeVisible({ timeout: 5000 });
+    // Default is rendered diagram mode; zoom button is visible.
+    const zoomBtn = page.locator('.diagram-zoom-btn').first();
+    await expect(zoomBtn).toBeVisible();
 
     // Open the zoom modal by clicking the zoom button
-    const zoomBtn = page.locator('.diagram-zoom-btn').first();
     await zoomBtn.click({ force: true });
 
     const overlay = page.locator('.diagram-zoom-overlay');
@@ -63,57 +60,68 @@ test.describe('Diagram zoom in markdown preview', () => {
     await expect(firstWrapper.locator('pre')).not.toBeVisible();
   });
 
-  test('zoom button hidden in diagram mode', async ({ page }) => {
+  test('zoom button visible in rendered diagram mode', async ({ page }) => {
     // Wait for the markdown preview
     await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
 
-    // Initially in render mode, zoom button should be hidden
+    // Initially in render mode, zoom button should be visible
     const zoomBtn = page.locator('.diagram-zoom-btn').first();
-    await expect(zoomBtn).not.toBeVisible();
+    await expect(zoomBtn).toBeVisible();
+
+    // Toggle button should also be visible
+    const toggleBtn = page.locator('.diagram-toggle-btn').first();
+    await expect(toggleBtn).toBeVisible();
 
     // Click toggle to switch to source mode
-    const toggleBtn = page.locator('.diagram-toggle-btn').first();
     await toggleBtn.click({ force: true });
 
     // Wait for source code to show
     await expect(page.locator('pre')).toBeVisible({ timeout: 5000 });
 
-    // Zoom button should be visible in source mode
-    await expect(zoomBtn).toBeVisible();
+    // Zoom button should be hidden in source mode
+    await expect(zoomBtn).not.toBeVisible();
+
+    // Toggle button should still be visible in source mode
+    await expect(toggleBtn).toBeVisible();
 
     // Click toggle again to go back to rendered diagram
     await toggleBtn.click({ force: true });
 
-    // Zoom button should be hidden again in diagram mode
-    await expect(zoomBtn).not.toBeVisible();
+    // Zoom button should be visible again in rendered mode
+    await expect(zoomBtn).toBeVisible();
   });
 
-  test('regular code blocks show source without toggle buttons', async ({ page }) => {
+  test('non-diagram code blocks do not render zoom or toggle buttons', async ({ page }) => {
     // Navigate to a page with regular code blocks
-    await page.goto('/project/1/files/%2Fdocs%2Fdiagrams.md');
+    await page.goto('/project/1/files/%2FREADME.md');
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
 
-    // Regular code blocks (non-diagram) should not have toggle/zoom buttons
-    // and should not be wrapped in .code-block-wrapper
+    // Wait for code blocks to render
+    await expect(page.locator('pre[data-lang]')).toHaveCount(await page.locator('pre[data-lang]').count(), { timeout: 10000 });
+
+    // Non-diagram code blocks should not have toggle/zoom buttons in the DOM
+    await expect(page.locator('.diagram-toggle-btn')).toHaveCount(0);
+    await expect(page.locator('.diagram-zoom-btn')).toHaveCount(0);
+    await expect(page.locator('.code-block-wrapper')).toHaveCount(0);
+
+    // Verify regular code blocks exist with correct structure
     const allPre = page.locator('pre[data-lang]');
     const count = await allPre.count();
+    expect(count).toBeGreaterThan(0);
 
     for (let i = 0; i < count; i++) {
       const pre = allPre.nth(i);
       const lang = await pre.getAttribute('data-lang');
 
-      if (lang !== 'mermaid' && lang !== 'plantuml') {
-        // Regular code block - should not be inside a .code-block-wrapper
-        const parent = pre.locator('xpath=..');
-        const parentClass = await parent.getAttribute('class');
-        expect(parentClass || '').not.toContain('code-block-wrapper');
+      // None of these should be diagram languages
+      expect(lang).not.toBe('mermaid');
+      expect(lang).not.toBe('plantuml');
 
-        // No diagram elements near this code block
-        await expect(pre.locator('.diagram-toggle-btn')).not.toBeVisible();
-        await expect(pre.locator('.diagram-zoom-btn')).not.toBeVisible();
-        await expect(pre.locator('.diagram-rendered')).not.toBeVisible();
-      }
+      // Should not be inside a .code-block-wrapper
+      const parent = pre.locator('xpath=..');
+      const parentClass = await parent.getAttribute('class');
+      expect(parentClass || '').not.toContain('code-block-wrapper');
     }
   });
 });
