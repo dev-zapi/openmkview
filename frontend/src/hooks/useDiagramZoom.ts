@@ -34,21 +34,21 @@ export function useDiagramZoom() {
     let minX: number;
     let maxX: number;
     if (nw <= cw) {
-      minX = (cw - nw) / 2;
-      maxX = minX;
-    } else {
-      minX = cw - nw;
+      minX = 0;
       maxX = 0;
+    } else {
+      minX = (cw - nw) / 2;
+      maxX = (nw - cw) / 2;
     }
 
     let minY: number;
     let maxY: number;
     if (nh <= ch) {
-      minY = (ch - nh) / 2;
-      maxY = minY;
-    } else {
-      minY = ch - nh;
+      minY = 0;
       maxY = 0;
+    } else {
+      minY = (ch - nh) / 2;
+      maxY = (nh - ch) / 2;
     }
 
     return {
