@@ -72,9 +72,9 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
     svg();
     state().scale;
     window.setTimeout(() => {
-      if (transformRef && overlayRef) {
+      if (transformRef && contentRef) {
         const contentRect = transformRef.getBoundingClientRect();
-        const containerRect = overlayRef.getBoundingClientRect();
+        const containerRect = contentRef.getBoundingClientRect();
         measure(
           { width: contentRect.width / state().scale, height: contentRect.height / state().scale },
           { width: containerRect.width, height: containerRect.height }
