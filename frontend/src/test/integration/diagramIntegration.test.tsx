@@ -418,4 +418,209 @@ A-->B
       });
     });
   });
+
+  describe('Default Display Mode', () => {
+    it('should default diagram code blocks to rendered mode', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
+        expect(wrapper).toBeTruthy();
+        expect(wrapper.querySelector('.diagram-rendered')).toBeTruthy();
+      }, { timeout: 10000 });
+
+      // Source code should NOT be visible in default rendered mode
+      const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
+      expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeFalsy();
+    });
+
+    it('should default regular code blocks to source display', async () => {
+      const markdown = `
+# Test
+
+\`\`\`javascript
+const x = 1;
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const pre = container.querySelector('pre[data-lang="javascript"]');
+        expect(pre).toBeTruthy();
+      });
+
+      // Regular code blocks should NOT have diagram-rendered element
+      expect(container.querySelector('.diagram-rendered')).toBeFalsy();
+      expect(container.querySelector('.code-block-wrapper')).toBeFalsy();
+    });
+
+    it('should not have toggle button for regular code blocks', async () => {
+      const markdown = `
+# Test
+
+\`\`\`python
+print("hello")
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('pre[data-lang="python"]')).toBeTruthy();
+      });
+
+      expect(container.querySelector('.diagram-toggle-btn')).toBeFalsy();
+      expect(container.querySelector('.diagram-zoom-btn')).toBeFalsy();
+    });
+
+    it('should have copy button for both regular and diagram code blocks', async () => {
+      const markdown = `
+# Test
+
+\`\`\`javascript
+const x = 1;
+\`\`\`
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const copyBtns = container.querySelectorAll('.copy-button');
+        expect(copyBtns.length).toBe(2);
+      });
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle empty mermaid code block', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const wrapper = container.querySelector('.code-block-wrapper');
+        expect(wrapper).toBeTruthy();
+      });
+    });
+
+    it('should handle special characters in diagram code', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A["<b>Bold</b> & 'Quotes'"]-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('.code-block-wrapper')).toBeTruthy();
+      });
+    });
+
+    it('should handle diagram code block with no language', async () => {
+      const markdown = `
+# Test
+
+\`\`\`
+some code
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const pre = container.querySelector('pre[data-lang="text"]');
+        expect(pre).toBeTruthy();
+        // No diagram buttons for unlabeled code blocks
+        expect(container.querySelector('.diagram-toggle-btn')).toBeFalsy();
+      });
+    });
+
+    it('should handle unknown diagram language gracefully', async () => {
+      const markdown = `
+# Test
+
+\`\`\`unknownlang
+some content
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const pre = container.querySelector('pre[data-lang="unknownlang"]');
+        expect(pre).toBeTruthy();
+        expect(container.querySelector('.diagram-toggle-btn')).toBeFalsy();
+      });
+    });
+
+    it('should not crash when toggling rapidly', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('.diagram-toggle-btn')).toBeTruthy();
+      });
+
+      const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
+
+      // Rapid clicks should not throw
+      for (let i = 0; i < 10; i++) {
+        toggleBtn.click();
+      }
+
+      // Component should still be functional
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(container.querySelector('.diagram-toggle-btn')).toBeTruthy();
+    });
+  });
 });
