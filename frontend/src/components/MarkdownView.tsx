@@ -191,11 +191,11 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         }
       };
 
-      // Set initial icon state for render mode
+      // Set initial icon state for render mode (show source icon to indicate "click to view source")
       const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
       const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
-      iconSource.style.display = 'none';
-      iconRender.style.display = '';
+      iconSource.style.display = '';
+      iconRender.style.display = 'none';
       toggleBtn.title = '查看源码';
       zoomBtn.style.display = '';
 
