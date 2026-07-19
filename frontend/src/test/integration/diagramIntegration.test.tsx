@@ -231,6 +231,10 @@ A-->B
       await waitFor(() => {
         const copyBtn = container.querySelector('.copy-button');
         expect(copyBtn).toBeTruthy();
+        // Header should be visible (copy button is inside it)
+        const header = container.querySelector('.code-block-header') as HTMLElement;
+        expect(header).toBeTruthy();
+        expect(getComputedStyle(header).display).not.toBe('none');
       });
     });
   });
@@ -300,6 +304,10 @@ A-->B
       // In render mode, zoom button should be visible
       await waitFor(() => {
         expect(zoomBtn.style.display).toBe('');
+        const header = container.querySelector('.code-block-header') as HTMLElement;
+        expect(header).toBeTruthy();
+        // Verify header is actually visible (not hidden by CSS display: none)
+        expect(getComputedStyle(header).display).not.toBe('none');
       });
     });
 
@@ -334,6 +342,10 @@ A-->B
 
       await waitFor(() => {
         expect(zoomBtn.style.display).toBe('none');
+        // Header should still be visible in source mode (not hidden by CSS)
+        const header = container.querySelector('.code-block-header') as HTMLElement;
+        expect(header).toBeTruthy();
+        expect(getComputedStyle(header).display).not.toBe('none');
       });
 
       // Switch back to render mode
@@ -341,6 +353,10 @@ A-->B
 
       await waitFor(() => {
         expect(zoomBtn.style.display).toBe('');
+        // Header should be visible in render mode too
+        const header = container.querySelector('.code-block-header') as HTMLElement;
+        expect(header).toBeTruthy();
+        expect(getComputedStyle(header).display).not.toBe('none');
       });
     });
 
@@ -469,6 +485,50 @@ A-->B
       // Source code should NOT be visible in default rendered mode
       const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
       expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeFalsy();
+
+      // Header should be visible in rendered mode (not hidden by CSS display: none)
+      const header = container.querySelector('.code-block-header') as HTMLElement;
+      expect(header).toBeTruthy();
+      expect(getComputedStyle(header).display).not.toBe('none');
+    });
+
+    it('should have all header buttons visible in rendered diagram mode', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
+        expect(wrapper).toBeTruthy();
+        expect(wrapper.querySelector('.diagram-rendered')).toBeTruthy();
+      }, { timeout: 10000 });
+
+      // All header buttons should be visible (not hidden by CSS)
+      const header = container.querySelector('.code-block-header') as HTMLElement;
+      expect(getComputedStyle(header).display).not.toBe('none');
+
+      const langTag = header.querySelector('.code-lang-tag') as HTMLElement;
+      expect(langTag).toBeTruthy();
+
+      const copyBtn = header.querySelector('.copy-button') as HTMLElement;
+      expect(copyBtn).toBeTruthy();
+
+      const toggleBtn = header.querySelector('.diagram-toggle-btn') as HTMLElement;
+      expect(toggleBtn).toBeTruthy();
+
+      const zoomBtn = header.querySelector('.diagram-zoom-btn') as HTMLElement;
+      expect(zoomBtn).toBeTruthy();
+      // zoom button should be visible in render mode (no inline display:none)
+      expect(zoomBtn.style.display).toBe('');
     });
 
     it('should default regular code blocks to source display', async () => {

@@ -1435,10 +1435,6 @@
   display: none;
 }
 
-.code-block-wrapper.diagram-mode .code-block-header {
-  display: none;
-}
-
 .diagram-rendered {
   padding: 1rem;
   display: flex;
