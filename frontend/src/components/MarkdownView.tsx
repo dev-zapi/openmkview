@@ -209,8 +209,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
 
         if (isSourceMode) {
-          iconSource.style.display = '';
-          iconRender.style.display = 'none';
+          iconSource.style.display = 'none';
+          iconRender.style.display = '';
           toggleBtn.title = '查看渲染图';
           zoomBtn.style.display = 'none';
           wrapper.classList.remove('diagram-mode');
@@ -224,8 +224,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             wrapper.appendChild(pre);
           }
         } else {
-          iconSource.style.display = 'none';
-          iconRender.style.display = '';
+          iconSource.style.display = '';
+          iconRender.style.display = 'none';
           toggleBtn.title = '查看源码';
           zoomBtn.style.display = '';
           if (!renderedSvg) {

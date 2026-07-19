@@ -648,6 +648,129 @@ A-->B
     });
   });
 
+  describe('Toggle Button Icons', () => {
+    it('should show source icon and hide render icon in default diagram render mode', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        const toggleBtn = container.querySelector('.diagram-toggle-btn');
+        expect(toggleBtn).toBeTruthy();
+      });
+
+      const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
+
+      // In render mode: source icon visible, render icon hidden
+      const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+      const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+      expect(iconSource.style.display).not.toBe('none');
+      expect(iconRender.style.display).toBe('none');
+      expect(toggleBtn.title).toBe('查看源码');
+    });
+
+    it('should show render icon and hide source icon after toggling to source mode', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('.diagram-toggle-btn')).toBeTruthy();
+      });
+
+      const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
+
+      // Initially in render mode
+      let iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+      let iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+      expect(iconSource.style.display).not.toBe('none');
+      expect(iconRender.style.display).toBe('none');
+
+      // Toggle to source mode
+      toggleBtn.click();
+
+      await waitFor(() => {
+        const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
+        expect(wrapper.querySelector('pre[data-lang="mermaid"]')).toBeTruthy();
+      });
+
+      // Re-query icons (DOM may have been recreated)
+      iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+      iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+
+      // In source mode: render icon visible, source icon hidden
+      expect(iconSource.style.display).toBe('none');
+      expect(iconRender.style.display).not.toBe('none');
+      expect(toggleBtn.title).toBe('查看渲染图');
+    });
+
+    it('should restore source icon after toggling back to render mode', async () => {
+      const markdown = `
+# Test
+
+\`\`\`mermaid
+graph TD
+A-->B
+\`\`\`
+`;
+
+      const { container } = render(() => (
+        <MarkdownView content={markdown} theme="light" />
+      ));
+
+      await waitFor(() => {
+        expect(container.querySelector('.diagram-toggle-btn')).toBeTruthy();
+      });
+
+      const toggleBtn = container.querySelector('.diagram-toggle-btn') as HTMLButtonElement;
+
+      // Toggle to source mode
+      toggleBtn.click();
+
+      await waitFor(() => {
+        let iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+        let iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+        expect(iconSource.style.display).toBe('none');
+        expect(iconRender.style.display).not.toBe('none');
+      });
+
+      // Toggle back to render mode
+      toggleBtn.click();
+
+      await waitFor(() => {
+        const wrapper = container.querySelector('.code-block-wrapper') as HTMLDivElement;
+        expect(wrapper.querySelector('.diagram-rendered')).toBeTruthy();
+      }, { timeout: 5000 });
+
+      // Re-query icons (DOM may have been recreated)
+      const iconSource = toggleBtn.querySelector('.icon-source') as SVGElement;
+      const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
+
+      // Should be back to render mode: source icon visible, render icon hidden
+      expect(iconSource.style.display).not.toBe('none');
+      expect(iconRender.style.display).toBe('none');
+      expect(toggleBtn.title).toBe('查看源码');
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle empty mermaid code block', async () => {
       const markdown = `

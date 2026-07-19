@@ -91,6 +91,35 @@ test.describe('Diagram zoom in markdown preview', () => {
     await expect(zoomBtn).toBeVisible();
   });
 
+  test('toggle button shows correct icon in each mode', async ({ page }) => {
+    // Wait for the markdown preview
+    await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });
+
+    const toggleBtn = page.locator('.diagram-toggle-btn').first();
+    const iconSource = page.locator('.diagram-toggle-btn .icon-source').first();
+    const iconRender = page.locator('.diagram-toggle-btn .icon-render').first();
+
+    // In render mode: source icon visible, render icon hidden
+    await expect(iconSource).toBeVisible();
+    await expect(iconRender).not.toBeVisible();
+
+    // Toggle to source mode
+    await toggleBtn.click({ force: true });
+    await expect(page.locator('pre')).toBeVisible({ timeout: 5000 });
+
+    // In source mode: render icon visible, source icon hidden
+    await expect(iconRender).toBeVisible();
+    await expect(iconSource).not.toBeVisible();
+
+    // Toggle back to render mode
+    await toggleBtn.click({ force: true });
+    await expect(page.locator('.diagram-rendered')).toBeVisible({ timeout: 15000 });
+
+    // Back in render mode: source icon visible, render icon hidden
+    await expect(iconSource).toBeVisible();
+    await expect(iconRender).not.toBeVisible();
+  });
+
   test('non-diagram code blocks do not render zoom or toggle buttons', async ({ page }) => {
     // Navigate to a page with regular code blocks
     await page.goto('/project/1/files/%2FREADME.md');

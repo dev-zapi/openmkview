@@ -20,6 +20,7 @@ export function useDiagramZoom() {
   const [state, setState] = createSignal<ZoomState>({ scale: 1, x: 0, y: 0 });
   const [naturalSize, setNaturalSize] = createSignal<Size>({ width: 0, height: 0 });
   const [containerSize, setContainerSize] = createSignal<Size>({ width: 0, height: 0 });
+  const [hasMeasured, setHasMeasured] = createSignal(false);
 
   const clampScale = (scale: number): number => {
     return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
@@ -75,7 +76,10 @@ export function useDiagramZoom() {
   const zoomIn = () => updateScale(state().scale * BUTTON_ZOOM_FACTOR);
   const zoomOut = () => updateScale(state().scale / BUTTON_ZOOM_FACTOR);
   const resetZoom = () => {
-    setState({ scale: 1, ...clampTranslate(0, 0, 1) });
+    setHasMeasured(false);
+    setNaturalSize({ width: 0, height: 0 });
+    setContainerSize({ width: 0, height: 0 });
+    setState({ scale: 1, x: 0, y: 0 });
   };
 
   const onWheel = (event: WheelEvent) => {
@@ -86,12 +90,29 @@ export function useDiagramZoom() {
   };
 
   const measure = (content: Size, container: Size) => {
+    const isFirst = !hasMeasured();
     setNaturalSize(content);
     setContainerSize(container);
-    setState((prev) => ({
-      scale: prev.scale,
-      ...clampTranslate(prev.x, prev.y, prev.scale),
-    }));
+    if (isFirst) {
+      setHasMeasured(true);
+    }
+    setState((prev) => {
+      if (isFirst) {
+        const nw = content.width * prev.scale;
+        const nh = content.height * prev.scale;
+        const cw = container.width;
+        const ch = container.height;
+        return {
+          scale: prev.scale,
+          x: (cw - nw) / 2,
+          y: (ch - nh) / 2,
+        };
+      }
+      return {
+        scale: prev.scale,
+        ...clampTranslate(prev.x, prev.y, prev.scale),
+      };
+    });
   };
 
   return {
