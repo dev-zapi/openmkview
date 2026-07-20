@@ -422,6 +422,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
       setRenderedHtml(html);
 
+      if (renderTimer) clearTimeout(renderTimer);
       renderTimer = setTimeout(() => {
         if (containerRef) {
           // Setup code blocks (headers + diagram toggle)

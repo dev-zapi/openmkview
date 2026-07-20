@@ -2,6 +2,12 @@
 
 import { vi } from 'vitest';
 
+if (typeof CSS === 'undefined') {
+  (globalThis as any).CSS = {
+    escape: (str: string) => str.replace(/([^\w-])/g, '\\$1'),
+  };
+}
+
 let prefersDark = false;
 
 export const setPrefersDark = (value: boolean) => {

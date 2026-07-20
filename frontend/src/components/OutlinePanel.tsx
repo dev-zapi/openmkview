@@ -16,10 +16,20 @@ interface OutlinePanelProps {
 
 const OutlinePanel: Component<OutlinePanelProps> = (props) => {
   let contentContainerRef: HTMLDivElement | undefined;
+  let lastUserScrollTime = 0;
+  const USER_SCROLL_SUPPRESSION_MS = 1000;
+
+  const handleWheel = () => {
+    lastUserScrollTime = Date.now();
+  };
 
   createEffect(() => {
     const activeId = props.activeHeadingId;
     if (!activeId || !contentContainerRef) return;
+
+    const timeSinceUserScroll = Date.now() - lastUserScrollTime;
+    if (timeSinceUserScroll < USER_SCROLL_SUPPRESSION_MS) return;
+
     const escapedId = CSS.escape(activeId);
     const activeEl = contentContainerRef.querySelector(`.outline-item[data-heading-id="${escapedId}"]`);
     if (activeEl) {
@@ -105,7 +115,7 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
         </Show>
       </div>
 
-      <div class="outline-panel-content" ref={contentContainerRef}>
+      <div class="outline-panel-content" ref={contentContainerRef} onWheel={handleWheel}>
         <Show
           when={props.headings && props.headings.length > 0}
           fallback={
