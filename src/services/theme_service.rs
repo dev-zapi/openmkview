@@ -1,23 +1,7 @@
 use crate::errors::AppResult;
 use crate::models::{get_builtin_themes, Theme, ThemeListResponse, ThemeMetadata, ThemeType};
+use crate::paths::AppPaths;
 use regex::Regex;
-use std::path::PathBuf;
-
-fn get_themes_dir() -> PathBuf {
-    let config_home = std::env::var("XDG_CONFIG_HOME")
-        .ok()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            dirs::home_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join(".config")
-        });
-    let themes_dir = config_home.join("openmkview").join("themes");
-    if !themes_dir.exists() {
-        std::fs::create_dir_all(&themes_dir).ok();
-    }
-    themes_dir
-}
 
 fn parse_theme_metadata(css_content: &str) -> Option<ThemeMetadata> {
     let metadata_regex = Regex::new(r"/\*\s*\n?\s*\*?\s*@(\w+):\s*([^\n]+)").unwrap();
@@ -71,10 +55,10 @@ fn sanitize_theme_id(name: &str) -> String {
     id_regex.replace_all(&id, "-").trim_matches('-').to_string()
 }
 
-pub fn get_all_themes() -> AppResult<ThemeListResponse> {
+pub fn get_all_themes(paths: &AppPaths) -> AppResult<ThemeListResponse> {
     let mut themes = get_builtin_themes();
 
-    let themes_dir = get_themes_dir();
+    let themes_dir = paths.themes_dir();
     if themes_dir.exists() {
         for entry in std::fs::read_dir(&themes_dir)? {
             let entry = entry?;
@@ -112,7 +96,7 @@ pub fn get_all_themes() -> AppResult<ThemeListResponse> {
     Ok(ThemeListResponse { themes })
 }
 
-pub fn get_theme_css(theme_id: &str) -> AppResult<String> {
+pub fn get_theme_css(theme_id: &str, paths: &AppPaths) -> AppResult<String> {
     let builtin_themes = get_builtin_themes();
     if builtin_themes.iter().any(|t| t.id == theme_id) {
         return Err(crate::errors::AppError::BadRequest(
@@ -120,7 +104,7 @@ pub fn get_theme_css(theme_id: &str) -> AppResult<String> {
         ));
     }
 
-    let themes_dir = get_themes_dir();
+    let themes_dir = paths.themes_dir();
 
     for entry in std::fs::read_dir(&themes_dir)? {
         let entry = entry?;
@@ -154,7 +138,7 @@ pub fn get_theme_css(theme_id: &str) -> AppResult<String> {
     )))
 }
 
-pub fn install_theme(_filename: &str, content: &str) -> AppResult<Theme> {
+pub fn install_theme(_filename: &str, content: &str, paths: &AppPaths) -> AppResult<Theme> {
     let metadata = parse_theme_metadata(content).ok_or_else(|| {
         crate::errors::AppError::BadRequest(
             "Invalid theme file: missing @name or @type metadata".to_string(),
@@ -169,7 +153,7 @@ pub fn install_theme(_filename: &str, content: &str) -> AppResult<Theme> {
 
     let full_id = format!("{}-{}", theme_type_str, id);
 
-    let themes_dir = get_themes_dir();
+    let themes_dir = paths.themes_dir();
     let file_path = themes_dir.join(format!("{}.theme.css", id));
 
     std::fs::write(&file_path, content)?;
@@ -185,7 +169,7 @@ pub fn install_theme(_filename: &str, content: &str) -> AppResult<Theme> {
     })
 }
 
-pub fn delete_theme(theme_id: &str) -> AppResult<()> {
+pub fn delete_theme(theme_id: &str, paths: &AppPaths) -> AppResult<()> {
     let builtin_themes = get_builtin_themes();
     if builtin_themes.iter().any(|t| t.id == theme_id) {
         return Err(crate::errors::AppError::BadRequest(
@@ -193,7 +177,7 @@ pub fn delete_theme(theme_id: &str) -> AppResult<()> {
         ));
     }
 
-    let themes_dir = get_themes_dir();
+    let themes_dir = paths.themes_dir();
 
     for entry in std::fs::read_dir(&themes_dir)? {
         let entry = entry?;

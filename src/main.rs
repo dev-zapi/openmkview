@@ -18,6 +18,7 @@ use openmkview::handlers::{
     update_settings, validate_project,
 };
 use openmkview::passkey::{build_passkey_sites, build_passkey_state};
+use openmkview::paths::AppPaths;
 use openmkview::services::TrashService;
 use openmkview::static_files;
 use std::sync::{Arc, Mutex};
@@ -232,9 +233,12 @@ struct CliWithServeDefaults {
 }
 
 fn handle_config_command(action: ConfigAction) -> anyhow::Result<()> {
+    let app_paths = openmkview::paths::AppPaths::new();
+    app_paths.ensure_dirs()?;
+
     match action {
         ConfigAction::SetUser(args) => {
-            let mut config = load_config()?;
+            let mut config = load_config(&app_paths)?;
             let password = match args.password {
                 Some(password) => password,
                 None => rpassword::prompt_password("Password: ")?,
@@ -244,17 +248,17 @@ fn handle_config_command(action: ConfigAction) -> anyhow::Result<()> {
             config.auth.username = Some(args.username);
             config.auth.password_hash = Some(password_hash);
             config.auth.algorithm = args.algorithm;
-            save_config(&config)?;
+            save_config(&config, &app_paths)?;
             println!("用户认证配置已保存到配置文件");
         }
         ConfigAction::SetTimeout(args) => {
-            let mut config = load_config()?;
+            let mut config = load_config(&app_paths)?;
             config.session.timeout_minutes = args.minutes.max(1);
-            save_config(&config)?;
+            save_config(&config, &app_paths)?;
             println!("Session 超时已更新为 {} 分钟", args.minutes.max(1));
         }
         ConfigAction::AddPasskeySite(args) => {
-            let mut config = load_config()?;
+            let mut config = load_config(&app_paths)?;
             let new_site = PasskeySiteFileConfig {
                 id: args.id.trim().to_string(),
                 origin: args.origin.trim().to_string(),
@@ -277,11 +281,11 @@ fn handle_config_command(action: ConfigAction) -> anyhow::Result<()> {
             }
             config.passkeys.enabled = true;
             validate_passkey_config(&config.passkeys)?;
-            save_config(&config)?;
+            save_config(&config, &app_paths)?;
             println!("Passkey 站点配置已保存到配置文件");
         }
         ConfigAction::RemovePasskeySite(args) => {
-            let mut config = load_config()?;
+            let mut config = load_config(&app_paths)?;
             let target_id = args.id.trim();
             let before = config.passkeys.sites.len();
             config
@@ -295,11 +299,11 @@ fn handle_config_command(action: ConfigAction) -> anyhow::Result<()> {
                 config.passkeys.enabled = false;
             }
             validate_passkey_config(&config.passkeys)?;
-            save_config(&config)?;
+            save_config(&config, &app_paths)?;
             println!("Passkey 站点已移除: {}", target_id);
         }
         ConfigAction::Show => {
-            let config = load_config()?;
+            let config = load_config(&app_paths)?;
             let username = config.auth.username.unwrap_or_else(|| "<none>".to_string());
             let password_hash = config
                 .auth
@@ -368,21 +372,25 @@ fn validate_passkey_config(passkeys: &PasskeysFileConfig) -> anyhow::Result<bool
 }
 
 async fn run_server(args: ServeArgs) -> std::io::Result<()> {
-    let config = load_config().map_err(std::io::Error::other)?;
+    let app_paths = Arc::new(AppPaths::new());
+    app_paths.ensure_dirs()?;
 
     let db_path = if let Ok(path) = std::env::var("OPENMKVIEW_DB_PATH") {
+        log::warn!(
+            "OPENMKVIEW_DB_PATH is deprecated. Use OPENMKVIEW_DATA_HOME instead. \
+             Falling back to: {}",
+            path
+        );
         std::path::PathBuf::from(path)
     } else {
-        let data_dir = dirs::data_local_dir()
-            .unwrap_or_else(|| std::env::current_dir().expect("Cannot get current directory"))
-            .join("openmkview");
-        std::fs::create_dir_all(&data_dir).expect("Cannot create data directory");
-        data_dir.join("openmkview.db")
+        app_paths.db_path()
     };
 
     let conn = init_db(&db_path).expect("Database initialization failed");
 
     log::info!("Database initialization complete: {:?}", db_path);
+
+    let config = load_config(&app_paths).map_err(std::io::Error::other)?;
 
     let settings_repo = SettingsRepository::new(&conn);
     let settings = settings_repo
@@ -406,7 +414,7 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
 
     let auth = resolve_auth_config(args.username, args.password, &config)
         .and_then(|auth| {
-            auth.map(|cfg| build_auth_state(cfg, timeout_minutes, secure_cookies))
+            auth.map(|cfg| build_auth_state(cfg, timeout_minutes, secure_cookies, &app_paths))
                 .transpose()
         })
         .map(|auth| auth.map(Arc::new))
@@ -417,7 +425,8 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
     let passkey = if let Some(auth_state) = auth.as_ref() {
         if passkey_enabled {
             Some(Arc::new(
-                build_passkey_state(auth_state, &config.passkeys).map_err(std::io::Error::other)?,
+                build_passkey_state(auth_state, &config.passkeys, &app_paths)
+                    .map_err(std::io::Error::other)?,
             ))
         } else {
             None
@@ -430,9 +439,11 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
     let projects = project_repo.list(false).expect("Failed to list projects");
     let project_ids: Vec<i64> = projects.iter().map(|p| p.id).collect();
 
-    if let Ok(count) =
-        TrashService::cleanup_all_expired_trash(settings.trash_expire_days, &project_ids)
-    {
+    if let Ok(count) = TrashService::cleanup_all_expired_trash(
+        settings.trash_expire_days,
+        &project_ids,
+        &app_paths,
+    ) {
         if count > 0 {
             log::info!("Cleaned {} expired trash items", count);
         }
@@ -442,6 +453,7 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
         db: Arc::new(Mutex::new(conn)),
         auth: auth.clone(),
         passkey: passkey.clone(),
+        paths: app_paths.clone(),
     });
 
     log::info!("Server started at http://{}", bind_addr);

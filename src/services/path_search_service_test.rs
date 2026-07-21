@@ -250,16 +250,11 @@ fn test_resolve_path_absolute_non_existing_base() {
     assert_eq!(response.path_type, PathType::Absolute);
     assert_eq!(response.candidates.len(), 0);
 }
-
 #[test]
 fn test_resolve_path_relative_existing_base() {
-    let home_dir = dirs::home_dir().expect("Cannot get home directory");
-    let test_dir_name = ".test_openmkview_relative_existing";
-    let test_dir = home_dir.join(test_dir_name);
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_dir = temp_dir.path().join(".test_openmkview_relative_existing");
 
-    if test_dir.exists() {
-        fs::remove_dir_all(&test_dir).unwrap();
-    }
     fs::create_dir_all(&test_dir).unwrap();
 
     let subdir = test_dir.join("src");
@@ -267,23 +262,17 @@ fn test_resolve_path_relative_existing_base() {
     let file = subdir.join("main.rs");
     File::create(&file).unwrap();
 
-    let response = PathSearchService::resolve_path("src/main");
+    let response = PathSearchService::resolve_path_with_home("src/main", temp_dir.path());
 
     assert_eq!(response.path_type, PathType::Relative);
     assert!(response.candidates.iter().any(|c| c.name == "main.rs"));
-
-    fs::remove_dir_all(&test_dir).unwrap();
 }
 
 #[test]
 fn test_resolve_path_relative_hidden_directory() {
-    let home_dir = dirs::home_dir().expect("Cannot get home directory");
-    let test_dir_name = ".test_openmkview_hidden";
-    let test_dir = home_dir.join(test_dir_name);
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_dir = temp_dir.path().join(".test_openmkview_hidden");
 
-    if test_dir.exists() {
-        fs::remove_dir_all(&test_dir).unwrap();
-    }
     fs::create_dir_all(&test_dir).unwrap();
 
     let hidden_dir = test_dir.join(".openclaw_test");
@@ -291,23 +280,17 @@ fn test_resolve_path_relative_hidden_directory() {
     let file = hidden_dir.join("workspace.md");
     File::create(&file).unwrap();
 
-    let response = PathSearchService::resolve_path(".openclaw_test/w");
+    let response = PathSearchService::resolve_path_with_home(".openclaw_test/w", temp_dir.path());
 
     assert_eq!(response.path_type, PathType::Relative);
     assert!(response.candidates.iter().any(|c| c.name == "workspace.md"));
-
-    fs::remove_dir_all(&test_dir).unwrap();
 }
 
 #[test]
 fn test_resolve_path_relative_non_existing_base_fuzzy_search() {
-    let home_dir = dirs::home_dir().expect("Cannot get home directory");
-    let test_dir_name = ".test_openmkview_fuzzy_search";
-    let test_dir = home_dir.join(test_dir_name);
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_dir = temp_dir.path().join(".test_openmkview_fuzzy_search");
 
-    if test_dir.exists() {
-        fs::remove_dir_all(&test_dir).unwrap();
-    }
     fs::create_dir_all(&test_dir).unwrap();
 
     let openclaw = test_dir.join("openclaw_test");
@@ -316,22 +299,17 @@ fn test_resolve_path_relative_non_existing_base_fuzzy_search() {
     let file = openclaw.join("worker.md");
     File::create(&file).unwrap();
 
-    let response = PathSearchService::resolve_path("openclaw_test/w");
+    let response = PathSearchService::resolve_path_with_home("openclaw_test/w", temp_dir.path());
+
     assert_eq!(response.path_type, PathType::Relative);
     assert!(response.candidates.iter().any(|c| c.name == "worker.md"));
-
-    fs::remove_dir_all(&test_dir).unwrap();
 }
 
 #[test]
 fn test_resolve_path_exact_directory_match() {
-    let home_dir = dirs::home_dir().expect("Cannot get home directory");
-    let test_dir_name = ".test_openmkview_exact_match";
-    let test_dir = home_dir.join(test_dir_name);
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_dir = temp_dir.path().join(".test_openmkview_exact_match");
 
-    if test_dir.exists() {
-        fs::remove_dir_all(&test_dir).unwrap();
-    }
     fs::create_dir_all(&test_dir).unwrap();
 
     let exact = test_dir.join(".openclaw_test_exact");
@@ -345,15 +323,14 @@ fn test_resolve_path_exact_directory_match() {
     File::create(fuzzy.join("fuzzy_w.md")).unwrap();
     File::create(normal.join("normal_w.md")).unwrap();
 
-    let response = PathSearchService::resolve_path(".openclaw_test_exact/w");
+    let response =
+        PathSearchService::resolve_path_with_home(".openclaw_test_exact/w", temp_dir.path());
 
     assert_eq!(response.path_type, PathType::Relative);
 
     assert!(response.candidates.iter().any(|c| c.name == "exact_w.md"));
     assert!(!response.candidates.iter().any(|c| c.name == "fuzzy_w.md"));
     assert!(!response.candidates.iter().any(|c| c.name == "normal_w.md"));
-
-    fs::remove_dir_all(&test_dir).unwrap();
 }
 
 #[test]

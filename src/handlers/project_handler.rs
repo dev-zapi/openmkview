@@ -43,10 +43,17 @@ mod tests {
         )
         .expect("insert closed project");
 
+        let temp_dir = tempfile::tempdir().unwrap();
+        let paths = crate::paths::AppPaths {
+            config_dir: temp_dir.path().join("config"),
+            data_dir: temp_dir.path().join("data"),
+        };
+
         AppState {
             db: Arc::new(Mutex::new(conn)),
             auth: None,
             passkey: None,
+            paths: Arc::new(paths),
         }
     }
 

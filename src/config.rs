@@ -1,4 +1,5 @@
 use crate::errors::{AppError, AppResult};
+use crate::paths::AppPaths;
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use argon2::Argon2;
@@ -6,7 +7,6 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use bcrypt::{hash as bcrypt_hash, verify as bcrypt_verify, DEFAULT_COST};
 use clap::ValueEnum;
-use dirs::config_dir;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -90,14 +90,12 @@ pub fn default_timeout_minutes() -> u64 {
     DEFAULT_SESSION_TIMEOUT_MINUTES
 }
 
-pub fn config_file_path() -> AppResult<PathBuf> {
-    let base =
-        config_dir().ok_or_else(|| AppError::InternalError("无法获取配置目录".to_string()))?;
-    Ok(base.join("openmkview").join("config.toml"))
+pub fn config_file_path(paths: &AppPaths) -> PathBuf {
+    paths.config_file()
 }
 
-pub fn load_config() -> AppResult<AppConfig> {
-    let path = config_file_path()?;
+pub fn load_config(paths: &AppPaths) -> AppResult<AppConfig> {
+    let path = config_file_path(paths);
     if !path.exists() {
         return Ok(AppConfig::default());
     }
@@ -108,8 +106,8 @@ pub fn load_config() -> AppResult<AppConfig> {
     Ok(config)
 }
 
-pub fn save_config(config: &AppConfig) -> AppResult<()> {
-    let path = config_file_path()?;
+pub fn save_config(config: &AppConfig, paths: &AppPaths) -> AppResult<()> {
+    let path = config_file_path(paths);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -120,7 +118,7 @@ pub fn save_config(config: &AppConfig) -> AppResult<()> {
     Ok(())
 }
 
-pub fn ensure_secret_key(config: &mut AppConfig) -> AppResult<Vec<u8>> {
+pub fn ensure_secret_key(config: &mut AppConfig, paths: &AppPaths) -> AppResult<Vec<u8>> {
     if let Some(secret_key) = &config.session.secret_key {
         let decoded = STANDARD
             .decode(secret_key)
@@ -136,7 +134,7 @@ pub fn ensure_secret_key(config: &mut AppConfig) -> AppResult<Vec<u8>> {
     let mut secret = vec![0_u8; 32];
     rand::thread_rng().fill_bytes(&mut secret);
     config.session.secret_key = Some(STANDARD.encode(&secret));
-    save_config(config)?;
+    save_config(config, paths)?;
     Ok(secret)
 }
 

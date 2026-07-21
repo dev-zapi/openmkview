@@ -249,6 +249,11 @@ impl PathSearchService {
     /// // Returns candidates from home directory matching "myproject"
     /// ```
     pub fn resolve_path(path_input: &str) -> ResolvePathResponse {
+        let home_dir = dirs::home_dir().expect("Cannot get home directory");
+        Self::resolve_path_with_home(path_input, &home_dir)
+    }
+
+    pub fn resolve_path_with_home(path_input: &str, home_dir: &Path) -> ResolvePathResponse {
         debug!("[resolve_path] Parsing path input: {}", path_input);
 
         let (path_type, candidates) = if path_input.starts_with('/') {
@@ -296,8 +301,6 @@ impl PathSearchService {
                 if base_name.is_empty() {
                     (PathType::Relative, vec![])
                 } else {
-                    let home_dir = dirs::home_dir().expect("Cannot get home directory");
-
                     debug!(
                         "[resolve_path] Searching from home directory: {}",
                         home_dir.display()
@@ -306,7 +309,7 @@ impl PathSearchService {
                     let mut all_candidates = Vec::new();
                     let base_lower = base_name.to_lowercase();
 
-                    let walker = WalkDir::new(&home_dir)
+                    let walker = WalkDir::new(home_dir)
                         .max_depth(3)
                         .into_iter()
                         .filter_entry(|_| true);
@@ -338,14 +341,13 @@ impl PathSearchService {
         } else {
             // Case: No `/` in input - fuzzy search from home directory
             // This handles simple search patterns like "myproject", "work", etc.
-            let home_path = dirs::home_dir().expect("Cannot get home directory");
             debug!(
                 "[resolve_path] Path type: Fuzzy, search directory: {}",
-                home_path.display()
+                home_dir.display()
             );
             // Search with hidden files excluded (include_hidden=false)
             // User can use relative path syntax (.hidden/...) to explicitly search hidden directories
-            let search_results = search_with_depth(&home_path, path_input, 2, false);
+            let search_results = search_with_depth(home_dir, path_input, 2, false);
             debug!(
                 "[resolve_path] Fuzzy search returned {} candidates",
                 search_results.len()

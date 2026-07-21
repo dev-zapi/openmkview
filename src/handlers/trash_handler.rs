@@ -34,8 +34,13 @@ pub async fn move_to_trash(
     }
 
     let project_path = PathBuf::from(&project.path);
-    let item =
-        TrashService::move_to_trash(&project_path, &body.path, body.is_folder, body.project_id)?;
+    let item = TrashService::move_to_trash(
+        &project_path,
+        &body.path,
+        body.is_folder,
+        body.project_id,
+        &data.paths,
+    )?;
 
     Ok(HttpResponse::Ok().json(item))
 }
@@ -55,43 +60,48 @@ pub async fn restore_from_trash(
         .ok_or_else(|| AppError::NotFound("Project not found".into()))?;
 
     let project_path = PathBuf::from(&project.path);
-    TrashService::restore_from_trash(&project_path, &body.trash_item_id, body.project_id)?;
+    TrashService::restore_from_trash(
+        &project_path,
+        &body.trash_item_id,
+        body.project_id,
+        &data.paths,
+    )?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
 }
 
 pub async fn delete_from_trash(
-    _data: web::Data<AppState>,
+    data: web::Data<AppState>,
     body: web::Json<TrashDeleteRequest>,
 ) -> AppResult<HttpResponse> {
-    TrashService::delete_from_trash(body.project_id, &body.trash_item_id)?;
+    TrashService::delete_from_trash(body.project_id, &body.trash_item_id, &data.paths)?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
 }
 
 pub async fn clear_trash(
-    _data: web::Data<AppState>,
+    data: web::Data<AppState>,
     body: web::Json<TrashClearRequest>,
 ) -> AppResult<HttpResponse> {
-    TrashService::clear_trash(body.project_id)?;
+    TrashService::clear_trash(body.project_id, &data.paths)?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
 }
 
 pub async fn list_trash(
-    _data: web::Data<AppState>,
+    data: web::Data<AppState>,
     query: web::Query<TrashListParams>,
 ) -> AppResult<HttpResponse> {
-    let items: Vec<TrashItem> = TrashService::list_trash(query.project_id)?;
+    let items: Vec<TrashItem> = TrashService::list_trash(query.project_id, &data.paths)?;
 
     Ok(HttpResponse::Ok().json(items))
 }
 
 pub async fn get_trash_stats(
-    _data: web::Data<AppState>,
+    data: web::Data<AppState>,
     query: web::Query<TrashListParams>,
 ) -> AppResult<HttpResponse> {
-    let stats: TrashStats = TrashService::get_trash_stats(query.project_id)?;
+    let stats: TrashStats = TrashService::get_trash_stats(query.project_id, &data.paths)?;
 
     Ok(HttpResponse::Ok().json(stats))
 }

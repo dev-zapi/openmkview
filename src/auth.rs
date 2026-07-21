@@ -3,6 +3,7 @@ use crate::config::{
     AppConfig, PasswordAlgorithm,
 };
 use crate::errors::{AppError, AppResult};
+use crate::paths::AppPaths;
 use crate::AppState;
 use actix_web::body::{EitherBody, MessageBody};
 use actix_web::cookie::{time::Duration as CookieDuration, Cookie, SameSite};
@@ -141,13 +142,14 @@ pub fn build_auth_state(
     auth_config: AuthConfig,
     timeout_minutes: u64,
     secure_cookies: bool,
+    paths: &AppPaths,
 ) -> AppResult<AuthState> {
-    let mut config = load_config()?;
-    let secret_key = ensure_secret_key(&mut config)?;
+    let mut config = load_config(paths)?;
+    let secret_key = ensure_secret_key(&mut config, paths)?;
 
     if config.session.timeout_minutes == 0 {
         config.session.timeout_minutes = default_timeout_minutes();
-        save_config(&config)?;
+        save_config(&config, paths)?;
     }
 
     Ok(AuthState {
@@ -170,9 +172,9 @@ pub fn update_session_timeout(app_state: &AppState, timeout_minutes: u64) -> App
         .map_err(|_| AppError::InternalError("session 状态已损坏".to_string()))? =
         timeout_minutes.max(1);
 
-    let mut config = load_config()?;
+    let mut config = load_config(&app_state.paths)?;
     config.session.timeout_minutes = timeout_minutes.max(1);
-    save_config(&config)
+    save_config(&config, &app_state.paths)
 }
 
 fn session_timeout_minutes(auth: &AuthState) -> AppResult<u64> {

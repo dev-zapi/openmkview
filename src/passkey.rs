@@ -124,8 +124,9 @@ pub struct PasskeyLoginFinishRequest {
 pub fn build_passkey_state(
     auth: &AuthState,
     config: &PasskeysFileConfig,
+    paths: &crate::paths::AppPaths,
 ) -> AppResult<PasskeyState> {
-    let store_path = passkey_store_path()?;
+    let store_path = passkey_store_path(paths);
     if let Some(parent) = store_path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -629,11 +630,8 @@ pub async fn passkey_delete(
     Ok(HttpResponse::Ok().json(PasskeyListResponse { credentials }))
 }
 
-fn passkey_store_path() -> AppResult<PathBuf> {
-    let base = dirs::data_local_dir()
-        .or_else(dirs::data_dir)
-        .unwrap_or(std::env::current_dir()?);
-    Ok(base.join("openmkview").join("passkeys.json"))
+fn passkey_store_path(paths: &crate::paths::AppPaths) -> PathBuf {
+    paths.passkey_store_path()
 }
 
 fn load_store(path: &PathBuf) -> AppResult<PasskeyStoreData> {

@@ -1,5 +1,6 @@
 use crate::errors::{AppError, AppResult};
 use crate::models::{TrashItem, TrashMetadata, TrashStats};
+use crate::paths::AppPaths;
 use chrono::{DateTime, Utc};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -58,24 +59,6 @@ fn normalize_path(path: &Path) -> PathBuf {
     result
 }
 
-fn get_trash_dir() -> PathBuf {
-    #[cfg(test)]
-    {
-        std::env::temp_dir().join("openmkview_test_trash")
-    }
-    #[cfg(not(test))]
-    {
-        dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("openmkview")
-            .join("trash")
-    }
-}
-
-fn get_project_trash_dir(project_id: i64) -> PathBuf {
-    get_trash_dir().join(project_id.to_string())
-}
-
 fn get_size(path: &PathBuf) -> AppResult<u64> {
     if path.is_dir() {
         let mut total_size = 0;
@@ -119,9 +102,10 @@ impl TrashService {
         file_path: &str,
         is_folder: bool,
         project_id: i64,
+        paths: &AppPaths,
     ) -> AppResult<TrashItem> {
         let validated_path = validate_relative_path(file_path)?;
-        let trash_dir = get_project_trash_dir(project_id);
+        let trash_dir = paths.trash_dir().join(project_id.to_string());
         let files_dir = trash_dir.join("files");
         let metadata_dir = trash_dir.join("metadata");
 
@@ -177,10 +161,11 @@ impl TrashService {
         project_path: &Path,
         trash_item_id: &str,
         project_id: i64,
+        paths: &AppPaths,
     ) -> AppResult<()> {
         validate_trash_item_id(trash_item_id)?;
 
-        let trash_dir = get_project_trash_dir(project_id);
+        let trash_dir = paths.trash_dir().join(project_id.to_string());
         let source = trash_dir.join("files").join(trash_item_id);
         let meta_path = trash_dir
             .join("metadata")
@@ -220,10 +205,14 @@ impl TrashService {
         Ok(())
     }
 
-    pub fn delete_from_trash(project_id: i64, trash_item_id: &str) -> AppResult<()> {
+    pub fn delete_from_trash(
+        project_id: i64,
+        trash_item_id: &str,
+        paths: &AppPaths,
+    ) -> AppResult<()> {
         validate_trash_item_id(trash_item_id)?;
 
-        let trash_dir = get_project_trash_dir(project_id);
+        let trash_dir = paths.trash_dir().join(project_id.to_string());
         let file_path = trash_dir.join("files").join(trash_item_id);
         let meta_path = trash_dir
             .join("metadata")
@@ -244,16 +233,16 @@ impl TrashService {
         Ok(())
     }
 
-    pub fn clear_trash(project_id: i64) -> AppResult<()> {
-        let trash_dir = get_project_trash_dir(project_id);
+    pub fn clear_trash(project_id: i64, paths: &AppPaths) -> AppResult<()> {
+        let trash_dir = paths.trash_dir().join(project_id.to_string());
         if trash_dir.exists() {
             fs::remove_dir_all(&trash_dir)?;
         }
         Ok(())
     }
 
-    pub fn list_trash(project_id: i64) -> AppResult<Vec<TrashItem>> {
-        let trash_dir = get_project_trash_dir(project_id);
+    pub fn list_trash(project_id: i64, paths: &AppPaths) -> AppResult<Vec<TrashItem>> {
+        let trash_dir = paths.trash_dir().join(project_id.to_string());
         let metadata_dir = trash_dir.join("metadata");
 
         if !metadata_dir.exists() {
@@ -290,8 +279,8 @@ impl TrashService {
         Ok(items)
     }
 
-    pub fn get_trash_stats(project_id: i64) -> AppResult<TrashStats> {
-        let items = Self::list_trash(project_id)?;
+    pub fn get_trash_stats(project_id: i64, paths: &AppPaths) -> AppResult<TrashStats> {
+        let items = Self::list_trash(project_id, paths)?;
         let total_items = items.len();
         let total_size = items.iter().map(|i| i.size).sum();
 
@@ -315,8 +304,12 @@ impl TrashService {
         })
     }
 
-    pub fn cleanup_expired_trash(project_id: i64, expire_days: u32) -> AppResult<usize> {
-        let items = Self::list_trash(project_id)?;
+    pub fn cleanup_expired_trash(
+        project_id: i64,
+        expire_days: u32,
+        paths: &AppPaths,
+    ) -> AppResult<usize> {
+        let items = Self::list_trash(project_id, paths)?;
         let now = Utc::now();
         let mut deleted_count = 0;
 
@@ -326,7 +319,7 @@ impl TrashService {
                 let days_since = (now - deleted_at_utc).num_days() as u32;
 
                 if days_since >= expire_days {
-                    Self::delete_from_trash(project_id, &item.id)?;
+                    Self::delete_from_trash(project_id, &item.id, paths)?;
                     deleted_count += 1;
                 }
             }
@@ -335,10 +328,14 @@ impl TrashService {
         Ok(deleted_count)
     }
 
-    pub fn cleanup_all_expired_trash(expire_days: u32, project_ids: &[i64]) -> AppResult<usize> {
+    pub fn cleanup_all_expired_trash(
+        expire_days: u32,
+        project_ids: &[i64],
+        paths: &AppPaths,
+    ) -> AppResult<usize> {
         let mut total_deleted = 0;
         for project_id in project_ids {
-            if let Ok(count) = Self::cleanup_expired_trash(*project_id, expire_days) {
+            if let Ok(count) = Self::cleanup_expired_trash(*project_id, expire_days, paths) {
                 total_deleted += count;
             }
         }
