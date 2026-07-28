@@ -1,12 +1,17 @@
 /* @refresh reload */
 import { createEffect, createSignal, onMount, Show } from 'solid-js'
 import { render } from 'solid-js/web'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import LoginPage from './components/LoginPage.tsx'
 import { authStore } from './stores/authStore'
 
 const root = document.getElementById('root')
+
+if ('serviceWorker' in navigator) {
+  registerSW({ immediate: true })
+}
 
 const Root = () => {
   const [ready, setReady] = createSignal(false)

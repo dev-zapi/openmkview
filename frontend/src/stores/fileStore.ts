@@ -7,6 +7,7 @@ const [extractedHeadings, setExtractedHeadings] = createSignal<Heading[]>([]);
 const [imagePreviewUrl, setImagePreviewUrl] = createSignal<string | null>(null);
 const [imageFileName, setImageFileName] = createSignal<string>('');
 const [loading, setLoading] = createSignal<boolean>(false);
+const [loadError, setLoadError] = createSignal<string | null>(null);
 const [fileTree, setFileTree] = createSignal<FileNode[]>([]);
 
 export const fileStore = {
@@ -22,6 +23,8 @@ export const fileStore = {
   setImageFileName,
   loading,
   setLoading,
+  loadError,
+  setLoadError,
   fileTree,
   setFileTree,
 
@@ -59,10 +62,12 @@ export const fileStore = {
     setImagePreviewUrl(null);
     setImageFileName('');
     setExtractedHeadings([]);
+    setLoadError(null);
   },
 
   startLoading() {
     setLoading(true);
+    setLoadError(null);
   },
 
   finishLoading() {
@@ -76,6 +81,7 @@ export const fileStore = {
     setImagePreviewUrl(null);
     setImageFileName('');
     setLoading(false);
+    setLoadError(null);
   },
 
   findNodeByPath(path: string): FileNode | null {

@@ -19,3 +19,7 @@ _Avoid_: path config, directory manager, file system context
 **XDG Base Directory**:
 A freedesktop.org standard defining default locations for application configuration and data files. OpenMKView follows this convention: config in `$XDG_CONFIG_HOME`, data in `$XDG_DATA_HOME`.
 _Avoid_: platform paths, OS directories, system locations
+
+**Offline Mode**:
+The read-only state the app enters automatically when the server is unreachable. The app shell and previously viewed file lists and file contents remain available from browser caches; editing is disabled and opening uncached content shows an empty-state message. Only an explicit 401 marks the session unauthenticated — a network failure never does. See `docs/adr/0002-offline-read-only-pwa.md`.
+_Avoid_: offline support, read-only mode, disconnected state

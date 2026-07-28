@@ -3,6 +3,7 @@ import { editorStore } from '../stores/editorStore';
 import { fileStore } from '../stores/fileStore';
 import { projectStore } from '../stores/projectStore';
 import { appStore } from '../stores/appStore';
+import { offlineStore } from '../stores/offlineStore';
 import type { TabType } from '../components/markdown-header/ViewTabs';
 
 let getEditorContent: (() => string) | null = null;
@@ -61,6 +62,10 @@ export const useEditor = () => {
   };
 
   const changeTab = (tab: TabType) => {
+    if (tab === 'edit' && !offlineStore.online()) {
+      alert('You are offline. Editing is unavailable in offline mode.');
+      return;
+    }
     if (editorStore.isDirty() && appStore.activeTab() === 'edit' && tab !== 'edit') {
       const confirmed = confirm('You have unsaved changes. Do you want to continue?');
       if (!confirmed) return;

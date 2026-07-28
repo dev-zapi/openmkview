@@ -10,6 +10,7 @@ import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header/ViewTabs';
 import type { Settings } from '../types/app';
 import { diffStore } from '../stores/diffStore';
+import { fileStore } from '../stores/fileStore';
 
 export interface FileContentViewProps {
   loading: boolean;
@@ -44,7 +45,13 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
 
   return (
     <>
-      <Show when={!props.loading && !props.currentFile && props.activeTab === 'preview' && props.currentFileType === 'markdown'}>
+      <Show when={!props.loading && fileStore.loadError()}>
+        <div class="empty-state load-error">
+          <p>{fileStore.loadError()}</p>
+        </div>
+      </Show>
+
+      <Show when={!props.loading && !fileStore.loadError() && !props.currentFile && props.activeTab === 'preview' && props.currentFileType === 'markdown'}>
         <div class="welcome">
           <h1>OpenMKView</h1>
           <Show when={props.welcomeMessage} fallback={<p>Click a file to preview</p>}>

@@ -4,6 +4,7 @@ import { editorStore } from '../stores/editorStore';
 import { projectStore } from '../stores/projectStore';
 import { appStore } from '../stores/appStore';
 import { diffStore } from '../stores/diffStore';
+import { offlineStore } from '../stores/offlineStore';
 import { navigateToFile } from '../utils/router';
 import { settingsStore } from '../stores/settingsStore';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
@@ -53,6 +54,11 @@ export const useFile = () => {
       }
     } catch (error) {
       console.error('Failed to load file:', error);
+      fileStore.setLoadError(
+        offlineStore.online()
+          ? '文件加载失败'
+          : '当前处于离线模式，且此内容未缓存',
+      );
     } finally {
       fileStore.finishLoading();
     }

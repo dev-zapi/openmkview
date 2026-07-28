@@ -1,6 +1,7 @@
 import { Component, createEffect, createSignal, createMemo } from 'solid-js';
 import { DesktopLayout, MobileLayoutWrapper } from './layouts';
 import { GlobalDialogs } from './components/GlobalDialogs';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
 import { projectStore } from './stores/projectStore';
 import { fileStore } from './stores/fileStore';
@@ -274,6 +275,8 @@ onCloseProject={handleProjectClose}
           onFileOpen={(path) => void fileHook.openFile(path)}
         />
       )}
+
+      <OfflineIndicator />
 
       <GlobalDialogs
         activeProject={projectStore.state.activeProject}

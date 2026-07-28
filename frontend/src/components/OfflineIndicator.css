@@ -1,0 +1,15 @@
+.offline-indicator {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  opacity: 0.9;
+  pointer-events: none;
+}

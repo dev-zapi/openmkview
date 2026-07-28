@@ -56,14 +56,21 @@ export const authStore = {
   setLoading,
   setError,
 
-  async checkStatus(): Promise<AuthStatus> {
+  async checkStatus(): Promise<AuthStatus | null> {
     setLoading(true);
     try {
       const res = await fetch('/api/auth/status');
+      if (res.status === 401) {
+        setAuthenticated(false);
+        return null;
+      }
       const data = await res.json() as AuthStatus;
       applyAuthStatus(data);
       setError(null);
       return data;
+    } catch {
+      // 网络失败（如离线）不等于未认证：保持现有会话状态，由离线 UI 提示
+      return null;
     } finally {
       setLoading(false);
     }
