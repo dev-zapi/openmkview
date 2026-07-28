@@ -25,6 +25,9 @@ export default defineConfig(({ mode }) => {
         workbox: {
           // shiki worker (~2.8MB) 是语法高亮必需，离线也要可用
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          // iframe 预览 HTML 文件也是 navigation 请求，不能被 SPA fallback
+          // 拦截成 index.html，否则 /api/files/raw 会显示应用首页
+          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
               // 认证相关请求永不缓存：challenge 是一次性的，缓存必坏
