@@ -98,6 +98,15 @@ export const api = {
     return res.json();
   },
 
+  async moveFile(from: string, to: string, projectId: number): Promise<void> {
+    const res = await request('/api/files/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, from, to }),
+    });
+    await checkResponse(res);
+  },
+
   async moveToTrash(path: string, projectId: number, isFolder: boolean): Promise<TrashItem> {
     const res = await request('/api/trash/move', {
       method: 'POST',

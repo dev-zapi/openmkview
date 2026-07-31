@@ -2,10 +2,12 @@ import { Component, onMount, onCleanup, createEffect } from 'solid-js';
 import { FileTree as PierreTree } from '@pierre/trees';
 import type { FileNode } from '../types';
 import { fileStore } from '../stores/fileStore';
+import { api } from '../services/api';
 import type {
   FileTreeOptions,
   ContextMenuItem,
   ContextMenuOpenContext,
+  FileTreeDropResult,
 } from '@pierre/trees';
 
 interface FileTreeProps {
@@ -15,6 +17,7 @@ interface FileTreeProps {
   onCopyPath?: (node: FileNode) => void;
   onRename?: (node: FileNode) => void;
   theme?: 'light' | 'dark';
+  projectId?: number;
 }
 
 function fileNodesToPaths(nodes: FileNode[]): string[] {
@@ -228,6 +231,48 @@ const FileTree: Component<FileTreeProps> = (props) => {
           buttonVisibility: 'when-needed',
           render: (item, context) => renderContextMenu(item, context, props),
         },
+      },
+      dragAndDrop: {
+        canDrag: (paths) => paths.length === 1,
+        canDrop: (event) => {
+          const { target, draggedPaths } = event;
+          if (target.kind === 'root') return true;
+          if (target.kind === 'directory') {
+            const dirPath = target.directoryPath!;
+            const draggedPath = draggedPaths[0];
+            // Can't drop onto self
+            if (draggedPath === dirPath) return false;
+            // Can't drop onto own descendant (cycle prevention)
+            if (dirPath.startsWith(draggedPath)) return false;
+            return true;
+          }
+          return false;
+        },
+        onDropComplete: (event: FileTreeDropResult) => {
+          if (event.operation !== 'move') return;
+
+          const { draggedPaths, target } = event;
+          const from = draggedPaths[0];
+          let to = target.kind === 'root' ? '' : (target.directoryPath || '');
+          // Strip trailing slash from directory path for the API
+          if (to.endsWith('/')) to = to.slice(0, -1);
+
+          const pid = props.projectId;
+          if (!pid) return;
+
+          api.moveFile(from, to, pid)
+            .then(() => api.getFileTree(pid))
+            .then((tree) => fileStore.setFileTree(tree))
+            .catch((err: Error) => {
+              console.error('Move failed:', err);
+              alert(`Failed to move: ${err.message || 'Unknown error'}`);
+              // Re-sync tree state from server on error
+              api.getFileTree(pid)
+                .then((tree) => fileStore.setFileTree(tree))
+                .catch(() => {});
+            });
+        },
+        openOnDropDelay: 800,
       },
       onSelectionChange: (selectedPaths) => {
         if (selectedPaths.length === 1) {

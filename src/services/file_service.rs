@@ -337,6 +337,54 @@ impl FileService {
         Ok(())
     }
 
+    /// Move a file or directory to a different directory within the same project.
+    ///
+    /// `from` is the relative source path (file or directory).
+    /// `to` is the relative target directory path (empty string for project root).
+    pub fn move_file(project_path: &Path, from: &str, to: &str) -> AppResult<()> {
+        // Validate and resolve the source (must exist)
+        let from_path = Self::resolve_existing_project_path(project_path, from)?;
+
+        // Resolve the target directory (must exist and be a directory)
+        let to_dir = if to.is_empty() || to == "." || to == "/" {
+            Self::canonical_project_path(project_path)?
+        } else {
+            Self::resolve_existing_project_path(project_path, to)?
+        };
+
+        if !to_dir.is_dir() {
+            return Err(AppError::BadRequest("Target must be a directory".into()));
+        }
+
+        // Get the source name (file or directory name)
+        let source_name = from_path
+            .file_name()
+            .ok_or_else(|| AppError::ValidationError("Invalid source path".into()))?;
+
+        // Build the destination path
+        let dest_path = to_dir.join(source_name);
+
+        // Collision check
+        if dest_path.exists() {
+            return Err(AppError::BadRequest(format!(
+                "A file or directory named '{}' already exists at the destination",
+                source_name.to_string_lossy()
+            )));
+        }
+
+        // Cycle prevention: cannot move a directory into itself or its descendants
+        if from_path.is_dir() && to_dir.starts_with(&from_path) {
+            return Err(AppError::BadRequest(
+                "Cannot move a directory into itself or one of its subdirectories".into(),
+            ));
+        }
+
+        // Perform the move
+        std::fs::rename(&from_path, &dest_path)?;
+
+        Ok(())
+    }
+
     pub fn rename_file(project_path: &Path, old_path: &str, new_name: &str) -> AppResult<()> {
         Self::validate_file_name(new_name)?;
         let old_path = Self::resolve_existing_project_path(project_path, old_path)?;

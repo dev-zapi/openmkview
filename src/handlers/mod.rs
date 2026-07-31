@@ -10,8 +10,8 @@ mod version_handler;
 
 pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{
-    create_file, delete_file, get_file_content, get_file_tree, rename_file, save_file_content,
-    search_favicons, serve_project_file,
+    create_file, delete_file, get_file_content, get_file_tree, move_file, rename_file,
+    save_file_content, search_favicons, serve_project_file,
 };
 pub use git_handler::{
     execute_git, get_branches, get_commits, get_file_at_ref, get_file_diff, get_tags,

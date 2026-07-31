@@ -608,6 +608,150 @@ fn test_get_raw_file_deep_nested_svg() {
     assert_eq!(file_name, "nested.svg");
 }
 
+// ============== Move file tests ==============
+
+#[test]
+fn test_move_file_to_subdirectory() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let src_path = temp_dir.path().join("readme.md");
+    let sub_dir = temp_dir.path().join("docs");
+    fs::create_dir_all(&sub_dir).unwrap();
+    fs::write(&src_path, "# Readme").unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "readme.md", "docs");
+    assert!(result.is_ok());
+    assert!(!src_path.exists());
+    assert!(sub_dir.join("readme.md").exists());
+}
+
+#[test]
+fn test_move_file_to_root() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let sub_dir = temp_dir.path().join("docs");
+    fs::create_dir_all(&sub_dir).unwrap();
+    let src_path = sub_dir.join("readme.md");
+    fs::write(&src_path, "# Readme").unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "docs/readme.md", "");
+    assert!(result.is_ok());
+    assert!(!src_path.exists());
+    assert!(temp_dir.path().join("readme.md").exists());
+}
+
+#[test]
+fn test_move_directory_with_contents() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let src_dir = temp_dir.path().join("old-folder");
+    let dest_dir = temp_dir.path().join("new-folder");
+    fs::create_dir_all(&src_dir).unwrap();
+    fs::create_dir_all(&dest_dir).unwrap();
+    fs::write(src_dir.join("file.md"), "# File").unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "old-folder", "new-folder");
+    assert!(result.is_ok());
+    assert!(!src_dir.exists());
+    assert!(dest_dir.join("old-folder").join("file.md").exists());
+}
+
+#[test]
+fn test_move_file_collision_error() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let src_path = temp_dir.path().join("readme.md");
+    let dest_dir = temp_dir.path().join("docs");
+    fs::create_dir_all(&dest_dir).unwrap();
+    fs::write(&src_path, "# Source").unwrap();
+    fs::write(dest_dir.join("readme.md"), "# Existing").unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "readme.md", "docs");
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("already exists"));
+    // Source should not have moved
+    assert!(src_path.exists());
+}
+
+#[test]
+fn test_move_directory_into_self_error() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let dir_path = temp_dir.path().join("docs");
+    fs::create_dir_all(&dir_path).unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "docs", "docs");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_move_directory_into_descendant_error() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let parent_dir = temp_dir.path().join("docs");
+    let child_dir = parent_dir.join("guide");
+    fs::create_dir_all(&child_dir).unwrap();
+
+    // Try to move "docs" into "docs/guide" — should be blocked as cycle
+    let result = FileService::move_file(temp_dir.path(), "docs", "docs/guide");
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().contains("itself") || err.to_string().contains("subdirectories"));
+    assert!(parent_dir.exists());
+    assert!(child_dir.exists());
+}
+
+#[test]
+fn test_move_file_source_not_found() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let dest_dir = temp_dir.path().join("docs");
+    fs::create_dir_all(&dest_dir).unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "nonexistent.md", "docs");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_move_file_target_not_directory() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_a = temp_dir.path().join("a.md");
+    let file_b = temp_dir.path().join("b.md");
+    fs::write(&file_a, "# A").unwrap();
+    fs::write(&file_b, "# B").unwrap();
+
+    // Try to move into a file (not a directory)
+    let result = FileService::move_file(temp_dir.path(), "a.md", "b.md");
+    assert!(result.is_err());
+    assert!(file_a.exists());
+}
+
+#[test]
+fn test_move_file_target_not_found() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("readme.md");
+    fs::write(&file_path, "# Readme").unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "readme.md", "nonexistent-dir");
+    assert!(result.is_err());
+    assert!(file_path.exists());
+}
+
+#[test]
+fn test_move_file_rejects_path_traversal_from() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let dest_dir = temp_dir.path().join("docs");
+    fs::create_dir_all(&dest_dir).unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "../outside.md", "docs");
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_move_file_rejects_path_traversal_to() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("readme.md");
+    fs::write(&file_path, "# Readme").unwrap();
+
+    let result = FileService::move_file(temp_dir.path(), "readme.md", "../outside");
+    assert!(result.is_err());
+    assert!(file_path.exists());
+}
+
 // ============== Patch 11: Backend save safety tests ==============
 
 #[test]

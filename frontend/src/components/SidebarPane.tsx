@@ -38,6 +38,7 @@ export const SidebarPane: Component<SidebarPaneProps> = (props) => {
             onDelete={props.onDelete}
             onCopyPath={props.onCopyPath}
             onRename={props.onRename}
+            projectId={props.project?.id}
           />
         </div>
         <div class="sidebar-resize-handle" onMouseDown={props.onStartDragging} />

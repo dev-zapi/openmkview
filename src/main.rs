@@ -11,11 +11,11 @@ use openmkview::handlers::{
     create_file, create_project, delete_custom_theme, delete_file, delete_from_trash, execute_git,
     get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
     get_recent_projects, get_settings, get_tags, get_theme_css_content, get_trash_stats,
-    get_version, install_custom_theme, list_projects, list_themes, list_trash, move_to_trash,
-    open_project, passkey_delete, passkey_list, passkey_login_finish, passkey_login_start,
-    passkey_register_finish, passkey_register_start, rename_file, resolve_path, restore_from_trash,
-    save_file_content, search_favicons, serve_project_file, update_project, update_project_color,
-    update_settings, validate_project,
+    get_version, install_custom_theme, list_projects, list_themes, list_trash, move_file,
+    move_to_trash, open_project, passkey_delete, passkey_list, passkey_login_finish,
+    passkey_login_start, passkey_register_finish, passkey_register_start, rename_file,
+    resolve_path, restore_from_trash, save_file_content, search_favicons, serve_project_file,
+    update_project, update_project_color, update_settings, validate_project,
 };
 use openmkview::passkey::{build_passkey_sites, build_passkey_state};
 use openmkview::paths::AppPaths;
@@ -174,6 +174,7 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
         .route("/api/files", web::post().to(create_file))
         .route("/api/files", web::put().to(rename_file))
         .route("/api/files", web::delete().to(delete_file))
+        .route("/api/files/move", web::post().to(move_file))
         .route("/api/settings", web::get().to(get_settings))
         .route("/api/settings", web::put().to(update_settings))
         .route("/api/version", web::get().to(get_version))

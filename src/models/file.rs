@@ -48,3 +48,12 @@ pub struct FileSaveResponse {
     #[serde(rename = "lastModified")]
     pub last_modified: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct FileMoveRequest {
+    pub project_id: i64,
+    /// Relative path of the source file/directory (e.g., "readme.md", "docs/guide")
+    pub from: String,
+    /// Relative path of the target directory (e.g., "", "docs")
+    pub to: String,
+}

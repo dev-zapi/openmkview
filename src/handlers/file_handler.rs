@@ -1,6 +1,6 @@
 use crate::db::ProjectRepository;
 use crate::errors::{AppError, AppResult};
-use crate::models::{FileOperationRequest, FileSaveRequest, FileSaveResponse};
+use crate::models::{FileMoveRequest, FileOperationRequest, FileSaveRequest, FileSaveResponse};
 use crate::services::{FileService, ProjectService};
 use crate::AppState;
 use actix_web::{web, HttpResponse};
@@ -134,6 +134,20 @@ pub async fn delete_file(
 
     FileService::delete_file(&project_path, file_path)?;
     Ok(HttpResponse::Ok().body("Deleted successfully"))
+}
+
+pub async fn move_file(
+    data: web::Data<AppState>,
+    body: web::Json<FileMoveRequest>,
+) -> AppResult<HttpResponse> {
+    let conn = data.db.lock().unwrap();
+    let project_repo = ProjectRepository::new(&conn);
+    let project_service = ProjectService::new(project_repo);
+
+    let project_path = project_service.get_project_path(body.project_id)?;
+
+    FileService::move_file(&project_path, &body.from, &body.to)?;
+    Ok(HttpResponse::Ok().body("Moved successfully"))
 }
 
 pub async fn search_favicons(
