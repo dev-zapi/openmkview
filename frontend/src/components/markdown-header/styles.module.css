@@ -48,6 +48,8 @@
   font-size: 12px;
   color: var(--color-text);
   opacity: 0.7;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .metaSeparator {
@@ -349,6 +351,57 @@
 
 .closeButton:hover {
   background: var(--color-hover-bg);
+}
+
+/* Container query: responsive toolbar based on .main-left width */
+@container (max-width: 700px) {
+  .documentTitleBar {
+    height: 44px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .fileName {
+    font-size: 13px;
+  }
+
+  .documentMeta {
+    display: none;
+  }
+
+  .documentCenter {
+    display: flex;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .viewTabs {
+    gap: 1px;
+  }
+
+  .tabItem {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .documentRight {
+    gap: 1px;
+  }
+
+  .toolbarButtonIcon {
+    padding: 6px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .fullscreenButton {
+    display: none;
+  }
+
+  .dropdownMenu {
+    right: 0;
+    left: auto;
+  }
 }
 
 @media (max-width: 768px) {
