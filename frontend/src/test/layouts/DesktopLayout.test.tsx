@@ -41,6 +41,8 @@ describe('DesktopLayout', () => {
         sidebarWidth={280}
         sidebarTransition="none"
         gitPanelOpen={false}
+        gitUnavailable={false}
+        pullDisabled={false}
         onProjectClick={() => {}}
         onProjectContextMenu={() => {}}
         onOpenProject={() => {}}
@@ -50,6 +52,7 @@ describe('DesktopLayout', () => {
         renderProjectIcon={() => <span>A</span>}
         getProjectStyle={() => ({})}
         onRefreshProject={() => {}}
+        onGitAction={async () => true}
         onEditProject={() => {}}
         onCloseProject={() => {}}
         onFileClick={() => {}}

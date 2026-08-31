@@ -35,9 +35,32 @@ describe('gitPanel utils', () => {
     });
   });
 
+  it('posts fetch actions', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, text: async () => '' } as Response);
+
+    await runGitAction(7, 'fetch');
+
+    expect(fetch).toHaveBeenCalledWith('/api/git', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'fetch', project_id: 7 }),
+    });
+  });
+
   it('throws when git action response is not ok', async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: false, text: async () => 'Push failed' } as Response);
 
     await expect(runGitAction(1, 'push')).rejects.toThrow('Push failed');
+  });
+
+  it('extracts JSON API errors', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      text: async () => JSON.stringify({ error: 'Git error: no upstream configured' }),
+    } as Response);
+
+    await expect(runGitAction(1, 'pull')).rejects.toThrow(
+      'Git error: no upstream configured'
+    );
   });
 });

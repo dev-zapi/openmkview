@@ -2,13 +2,16 @@ import { Component, createEffect, createSignal, createMemo } from 'solid-js';
 import { DesktopLayout, MobileLayoutWrapper } from './layouts';
 import { GlobalDialogs } from './components/GlobalDialogs';
 import { OfflineIndicator } from './components/OfflineIndicator';
-import { useProject, useFile, useEditor, useLayout, useLifecycle } from './hooks';
+import { AppToast } from './components/AppToast';
+import { useProject, useFile, useEditor, useLayout, useLifecycle, useProjectGit } from './hooks';
 import { projectStore } from './stores/projectStore';
 import { fileStore } from './stores/fileStore';
 import { editorStore } from './stores/editorStore';
 import { appStore } from './stores/appStore';
 import { settingsStore } from './stores/settingsStore';
+import { offlineStore } from './stores/offlineStore';
 import type { Project } from './types';
+import type { RemoteGitAction } from './utils/gitPanel';
 import { mobileLayoutStore } from './components/mobile';
 import { getMarkdownStyle, loadOutlineWidth } from './utils/settings';
 import { getFileTypeCategory } from './utils/fileType';
@@ -18,6 +21,7 @@ import './components/ProjectEditDialog.css';
 
 const App: Component = () => {
   const projectHook = useProject();
+  const projectGit = useProjectGit(projectHook.refreshProject);
   const fileHook = useFile();
   const editorHook = useEditor();
   const layoutHook = useLayout();
@@ -101,6 +105,12 @@ const App: Component = () => {
     return projectHook.switchProject(project);
   };
 
+  const handleGitAction = (action: RemoteGitAction): Promise<boolean> => {
+    const project = projectStore.state.activeProject;
+    if (!project) return Promise.resolve(false);
+    return projectGit.runRemoteAction({ ...project }, action);
+  };
+
   const theme = createMemo(() => settingsStore.effectiveTheme);
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
   const outlineTransition = layoutHook.getOutlineTransitionStyle();
@@ -181,15 +191,21 @@ const App: Component = () => {
           currentSearchResult={currentSearchResult()}
           searchRequestKey={editorSearchRequestKey()}
           fileTree={fileStore.fileTree()}
+          gitOperation={projectStore.state.activeProject
+            ? projectGit.operationForProject(projectStore.state.activeProject.id)
+            : undefined}
+          gitUnavailable={!offlineStore.online()}
+          pullDisabled={editorStore.isDirty()}
           onOpenProject={projectHook.openProject}
           onOpenTrash={() => appStore.openTrashDialog()}
           onOpenSettings={() => appStore.setSettingsOpen(true)}
           onToggleTheme={() => settingsStore.toggleThemeMode()}
           onEditProject={() => appStore.openProjectEditDialog()}
           onRefreshProject={() => void projectHook.refreshProject()}
-onCloseProject={handleProjectClose}
-           onProjectClick={handleMobileProjectClick}
-           onFileClick={(path) => fileHook.mobileFileClick(path)}
+          onGitAction={handleGitAction}
+          onCloseProject={handleProjectClose}
+          onProjectClick={handleMobileProjectClick}
+          onFileClick={(path) => fileHook.mobileFileClick(path)}
           onDelete={(node) => void fileHook.deleteFile(node)}
           onCopyPath={(node) => void fileHook.copyPath(node)}
           onRename={fileHook.renameFile}
@@ -238,6 +254,11 @@ onCloseProject={handleProjectClose}
           sidebarWidth={appStore.sidebarWidth()}
           sidebarTransition={layoutHook.getSidebarTransitionStyle()}
           gitPanelOpen={appStore.gitPanelOpen()}
+          gitOperation={projectStore.state.activeProject
+            ? projectGit.operationForProject(projectStore.state.activeProject.id)
+            : undefined}
+          gitUnavailable={!offlineStore.online()}
+          pullDisabled={editorStore.isDirty()}
           outlineWidth={appStore.outlineWidth()}
           outlineTransition={outlineTransition}
           onOutlineStartDragging={layoutHook.startOutlineDragging}
@@ -250,6 +271,7 @@ onCloseProject={handleProjectClose}
           renderProjectIcon={renderProjectIcon}
           getProjectStyle={projectHook.getColorStyle}
           onRefreshProject={() => void projectHook.refreshProject()}
+          onGitAction={handleGitAction}
           onEditProject={() => appStore.openProjectEditDialog()}
           onCloseProject={handleProjectClose}
           onFileClick={(path) => void fileHook.openFile(path)}
@@ -277,6 +299,7 @@ onCloseProject={handleProjectClose}
       )}
 
       <OfflineIndicator />
+      <AppToast toast={projectGit.toast()} />
 
       <GlobalDialogs
         activeProject={projectStore.state.activeProject}

@@ -839,13 +839,13 @@ body {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 7px;
+  padding: 5px 8px;
   background: none;
   border: none;
   border-radius: 4px;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.2s;
   text-align: left;
@@ -853,6 +853,21 @@ body {
 
 .menu-item:hover {
   background: var(--color-hover-bg);
+}
+
+.menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.menu-item:disabled:hover {
+  background: none;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--color-border);
 }
 
 .sidebar-resize-handle {

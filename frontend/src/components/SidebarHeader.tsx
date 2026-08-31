@@ -1,11 +1,16 @@
 import { Component, createSignal, Show } from 'solid-js';
 import type { Project } from '../types';
+import type { RemoteGitAction } from '../utils/gitPanel';
 import ProjectMenu from './ProjectMenu';
 import { getProjectDisplayName, getProjectFaviconUrl, isFaviconIcon, getFaviconPath } from '../utils/projectIcon';
 
 interface SidebarHeaderProps {
   project: Project;
+  gitOperation?: RemoteGitAction;
+  gitUnavailable: boolean;
+  pullDisabled: boolean;
   onRefresh: () => void;
+  onGitAction: (action: RemoteGitAction) => Promise<boolean>;
   onEdit: () => void;
   onCloseProject: () => void;
 }
@@ -25,6 +30,12 @@ const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
   const handleRefresh = () => {
     setMenuOpen(false);
     props.onRefresh();
+  };
+
+  const handleGitAction = async (action: RemoteGitAction) => {
+    const projectId = props.project.id;
+    const succeeded = await props.onGitAction(action);
+    if (succeeded && props.project.id === projectId) setMenuOpen(false);
   };
 
   const handleEdit = () => {
@@ -71,7 +82,12 @@ const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
         <ProjectMenu
           isOpen={menuOpen()}
           position={{ top: 40, right: 12 }}
+          gitOperation={props.gitOperation}
+          gitUnavailable={props.gitUnavailable}
+          pullDisabled={props.pullDisabled}
           onRefresh={handleRefresh}
+          onFetch={() => void handleGitAction('fetch')}
+          onPull={() => void handleGitAction('pull')}
           onEdit={handleEdit}
           onCloseProject={handleCloseProject}
           onCloseMenu={handleCloseMenu}

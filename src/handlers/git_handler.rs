@@ -31,11 +31,12 @@ pub async fn execute_git(
     data: web::Data<AppState>,
     body: web::Json<GitRequest>,
 ) -> AppResult<HttpResponse> {
-    let conn = data.db.lock().unwrap();
-    let project_repo = ProjectRepository::new(&conn);
-    let project_service = ProjectService::new(project_repo);
-
-    let project_path = project_service.get_project_path(body.project_id)?;
+    let project_path = {
+        let conn = data.db.lock().unwrap();
+        let project_repo = ProjectRepository::new(&conn);
+        let project_service = ProjectService::new(project_repo);
+        project_service.get_project_path(body.project_id)?
+    };
 
     match body.action.as_str() {
         "status" => handle_status(&project_path),

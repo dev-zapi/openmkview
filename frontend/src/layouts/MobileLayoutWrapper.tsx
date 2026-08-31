@@ -10,6 +10,7 @@ import type { Project, FileContent, FileType, Heading, FileNode } from '../types
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
 import type { TabType } from '../components/markdown-header';
+import type { RemoteGitAction } from '../utils/gitPanel';
 import styles from '../components/mobile/MobileLayout.module.css';
 
 interface MobileLayoutWrapperProps {
@@ -35,12 +36,16 @@ interface MobileLayoutWrapperProps {
   currentSearchResult: number;
   searchRequestKey: number;
   fileTree: FileNode[];
+  gitOperation?: RemoteGitAction;
+  gitUnavailable: boolean;
+  pullDisabled: boolean;
   onOpenProject: () => void;
   onOpenTrash: () => void;
   onOpenSettings: () => void;
   onToggleTheme: () => void;
   onEditProject: () => void;
   onRefreshProject?: () => void;
+  onGitAction: (action: RemoteGitAction) => Promise<boolean>;
   onCloseProject?: () => void;
   onProjectClick: (project: Project) => void | Promise<boolean | void>;
   onFileClick: (path: string, relativePath: string) => void;
@@ -83,6 +88,12 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
   const handleTopBarMenuRefresh = () => {
     setTopBarMenuOpen(false);
     props.onRefreshProject?.();
+  };
+
+  const handleTopBarGitAction = async (action: RemoteGitAction) => {
+    const projectId = props.activeProject?.id;
+    const succeeded = await props.onGitAction(action);
+    if (succeeded && props.activeProject?.id === projectId) setTopBarMenuOpen(false);
   };
 
   const handleTopBarMenuEdit = () => {
@@ -401,6 +412,39 @@ onClick={() => {
                 </svg>
                 <span>Refresh</span>
               </button>
+              <div class={styles.projectMenuSeparator} role="separator" />
+              <button
+                class={styles.projectMenuButton}
+                disabled={Boolean(props.gitOperation) || props.gitUnavailable}
+                title={props.gitUnavailable ? 'Unavailable while offline' : undefined}
+                onClick={() => void handleTopBarGitAction('fetch')}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 3v12" />
+                  <path d="m7 10 5 5 5-5" />
+                  <path d="M5 21h14" />
+                </svg>
+                <span>{props.gitOperation === 'fetch' ? 'Fetching...' : 'Fetch'}</span>
+              </button>
+              <button
+                class={styles.projectMenuButton}
+                disabled={Boolean(props.gitOperation) || props.gitUnavailable || props.pullDisabled}
+                title={
+                  props.gitUnavailable
+                    ? 'Unavailable while offline'
+                    : props.pullDisabled
+                      ? 'Save or discard unsaved changes before pulling'
+                      : undefined
+                }
+                onClick={() => void handleTopBarGitAction('pull')}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M8 18 3 13l5-5" />
+                  <path d="M3 13h10a6 6 0 0 0 6-6V5" />
+                </svg>
+                <span>{props.gitOperation === 'pull' ? 'Pulling...' : 'Pull'}</span>
+              </button>
+              <div class={styles.projectMenuSeparator} role="separator" />
               <button class={styles.projectMenuButton} onClick={handleTopBarMenuEdit}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />

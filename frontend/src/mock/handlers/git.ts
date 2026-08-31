@@ -115,7 +115,7 @@ export async function handleGitApi(
   if (req.method === 'POST' && pathname === '/api/git') {
     const body = await parseBody<{ action: string; project_id: number }>(req);
 
-    if (body.action === 'status') {
+    if (body.action === 'status' || body.action === 'fetch' || body.action === 'pull') {
       sendJson(res, mockGitStatus);
       return true;
     }

@@ -6,6 +6,7 @@ import MainPane from '../components/MainPane';
 import type { Project, FileContent, FileType, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import type { TabType } from '../components/markdown-header';
+import type { RemoteGitAction } from '../utils/gitPanel';
 
 interface DesktopLayoutProps {
   projects: Project[];
@@ -36,6 +37,9 @@ interface DesktopLayoutProps {
   gitPanelOpen: boolean;
   outlineWidth: number;
   outlineTransition: string;
+  gitOperation?: RemoteGitAction;
+  gitUnavailable: boolean;
+  pullDisabled: boolean;
   onOutlineStartDragging: () => void;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
@@ -46,6 +50,7 @@ interface DesktopLayoutProps {
   renderProjectIcon: (project: Project) => JSX.Element;
   getProjectStyle: (project: Project) => Record<string, string>;
   onRefreshProject: () => void;
+  onGitAction: (action: RemoteGitAction) => Promise<boolean>;
   onEditProject: () => void;
   onCloseProject: () => void;
   onFileClick: (path: string, relativePath: string) => void;
@@ -93,7 +98,11 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         nodes={props.fileTree}
         sidebarWidth={props.sidebarWidth}
         transition={props.sidebarTransition}
+        gitOperation={props.gitOperation}
+        gitUnavailable={props.gitUnavailable}
+        pullDisabled={props.pullDisabled}
         onRefresh={props.onRefreshProject}
+        onGitAction={props.onGitAction}
         onEdit={props.onEditProject}
         onCloseProject={props.onCloseProject}
         onFileClick={props.onFileClick}

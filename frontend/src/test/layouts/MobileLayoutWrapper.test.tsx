@@ -57,11 +57,14 @@ const createProps = (overrides: Partial<MobileLayoutWrapperProps> = {}): MobileL
   currentSearchResult: 0,
   searchRequestKey: 0,
   fileTree: [],
+  gitUnavailable: false,
+  pullDisabled: false,
   onOpenProject: () => {},
   onOpenTrash: () => {},
   onOpenSettings: () => {},
   onToggleTheme: () => {},
   onEditProject: () => {},
+  onGitAction: async () => true,
   onProjectClick: () => {},
   onFileClick: () => {},
   onDelete: () => {},
@@ -176,6 +179,35 @@ describe('MobileLayoutWrapper', () => {
     await fireEvent.click(projectButton);
 
     expect(onProjectClick).toHaveBeenCalledWith(project);
+  });
+
+  it('runs git actions from the mobile project menu', async () => {
+    const onGitAction = vi.fn().mockResolvedValue(true);
+    renderWrapper({
+      projects: [project],
+      activeProject: project,
+      onGitAction,
+    });
+
+    mobileLayoutStore.openLeftDrawer();
+    await fireEvent.click(screen.getByLabelText('Project options'));
+    await fireEvent.click(screen.getByRole('button', { name: 'Fetch' }));
+
+    expect(onGitAction).toHaveBeenCalledWith('fetch');
+  });
+
+  it('restores mobile git progress when the menu reopens', async () => {
+    renderWrapper({
+      projects: [project],
+      activeProject: project,
+      gitOperation: 'pull',
+    });
+
+    mobileLayoutStore.openLeftDrawer();
+    await fireEvent.click(screen.getByLabelText('Project options'));
+
+    expect((screen.getByRole('button', { name: 'Fetch' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Pulling...' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('updates selected project button and top bar title when active project changes', async () => {

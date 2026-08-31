@@ -109,6 +109,14 @@ fn test_run_git_invalid_command() {
 }
 
 #[test]
+fn test_run_git_nonzero_exit_is_error() {
+    let cwd = PathBuf::from(".");
+    let result = GitService::run_git(&cwd, &["--definitely-invalid-option"]);
+    assert!(result.is_err());
+    assert!(!result.unwrap_err().is_empty());
+}
+
+#[test]
 fn test_parse_exec_command_allows_expected_commands() {
     let result = GitService::parse_exec_command("status --porcelain").unwrap();
     assert_eq!(result, vec!["status", "--porcelain"]);

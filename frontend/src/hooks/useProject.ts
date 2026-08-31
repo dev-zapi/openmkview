@@ -11,6 +11,23 @@ import type { Project } from '../types';
 import type { RecentProject } from '../types/openProject';
 import { getFaviconPath, getProjectDisplayName, getProjectIconContent, isFaviconIcon } from '../utils/projectIcon';
 
+export type ProjectRefreshStatus =
+  | 'refreshed'
+  | 'current-file-preserved'
+  | 'current-file-closed'
+  | 'skipped'
+  | 'failed';
+
+export interface ProjectRefreshResult {
+  status: ProjectRefreshStatus;
+  error?: string;
+}
+
+interface ProjectRefreshOptions {
+  expectedProjectId?: number;
+  preserveDirtyFile?: boolean;
+}
+
 export const useProject = () => {
   const getColorPickerPosition = (rect: Pick<DOMRect, 'left' | 'right' | 'top'>) => {
     const x = rect.right + 8;
@@ -127,25 +144,65 @@ export const useProject = () => {
     }
   };
 
-  const refreshProject = async () => {
+  const refreshProject = async (
+    options: ProjectRefreshOptions = {}
+  ): Promise<ProjectRefreshResult> => {
     const project = projectStore.state.activeProject;
-    if (!project) return;
+    if (!project || (options.expectedProjectId && project.id !== options.expectedProjectId)) {
+      return { status: 'skipped' };
+    }
 
     fileStore.startLoading();
     try {
       const tree = await api.getFileTree(project.id);
+
+      if (projectStore.state.activeProject?.id !== project.id) {
+        return { status: 'skipped' };
+      }
+
       fileStore.setFileTree(tree);
 
       const file = fileStore.currentFile();
       if (file) {
+        if (options.preserveDirtyFile && editorStore.isDirty()) {
+          return { status: 'current-file-preserved' };
+        }
+
+        if (!fileStore.findNodeByPath(file.path)) {
+          fileStore.closeFile();
+          editorStore.reset();
+          diffStore.reset();
+          return { status: 'current-file-closed' };
+        }
+
         const content = await api.getFileContent(file.path, project.id);
+
+        if (
+          projectStore.state.activeProject?.id !== project.id ||
+          fileStore.currentFile()?.path !== file.path
+        ) {
+          return { status: 'skipped' };
+        }
+
+        if (options.preserveDirtyFile && editorStore.isDirty()) {
+          return { status: 'current-file-preserved' };
+        }
+
         fileStore.setCurrentFile(content);
         editorStore.initialize(content.content);
       }
+      return { status: 'refreshed' };
     } catch (error) {
       console.error('Failed to refresh:', error);
+      return {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown refresh error',
+      };
     } finally {
-      fileStore.finishLoading();
+      const activeProjectId = projectStore.state.activeProject?.id;
+      if (!activeProjectId || activeProjectId === project.id) {
+        fileStore.finishLoading();
+      }
     }
   };
 

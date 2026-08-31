@@ -4,11 +4,14 @@ import { projectStore } from '../../stores/projectStore';
 import { appStore } from '../../stores/appStore';
 import { openProjectStore } from '../../stores/openProjectStore';
 import { editorStore } from '../../stores/editorStore';
+import { fileStore } from '../../stores/fileStore';
+import { api } from '../../services/api';
 import type { Project } from '../../types';
 
 vi.mock('../../services/api', () => ({
   api: {
     getFileTree: vi.fn().mockResolvedValue([]),
+    getFileContent: vi.fn(),
     closeProject: vi.fn().mockResolvedValue(undefined),
     updateProjectColor: vi.fn().mockResolvedValue(undefined),
     updateProject: vi.fn(),
@@ -31,6 +34,8 @@ describe('useProject', () => {
     projectStore.setProjects([]);
     projectStore.setActiveProject(null);
     editorStore.reset();
+    fileStore.reset();
+    vi.clearAllMocks();
     appStore.setActiveTab('preview');
     appStore.closeColorPicker();
     appStore.closeOpenProjectDialog();
@@ -200,6 +205,70 @@ describe('useProject', () => {
     await expect(switchProject(targetProject)).resolves.toBe(false);
     expect(projectStore.state.activeProject).toEqual(project);
     expect(editorStore.originalContent()).toBe('old');
+    expect(editorStore.isDirty()).toBe(true);
+  });
+
+  it('preserves a dirty current file while refreshing the tree', async () => {
+    const currentFile = {
+      content: 'local edits',
+      fileName: 'README.md',
+      path: 'README.md',
+    };
+    vi.mocked(api.getFileTree).mockResolvedValue([
+      { id: 'README.md', name: 'README.md', path: 'README.md', isFolder: false },
+    ]);
+    projectStore.setActiveProject(project);
+    fileStore.setCurrentFile(currentFile);
+    editorStore.initialize(currentFile.content);
+    editorStore.setDirty(true);
+
+    const result = await useProject().refreshProject({
+      expectedProjectId: project.id,
+      preserveDirtyFile: true,
+    });
+
+    expect(result.status).toBe('current-file-preserved');
+    expect(fileStore.currentFile()).toEqual(currentFile);
+    expect(api.getFileContent).not.toHaveBeenCalled();
+  });
+
+  it('closes the current file when refresh finds it was deleted', async () => {
+    vi.mocked(api.getFileTree).mockResolvedValue([]);
+    projectStore.setActiveProject(project);
+    fileStore.setCurrentFile({
+      content: 'old content',
+      fileName: 'deleted.md',
+      path: 'deleted.md',
+    });
+
+    const result = await useProject().refreshProject({
+      expectedProjectId: project.id,
+      preserveDirtyFile: true,
+    });
+
+    expect(result.status).toBe('current-file-closed');
+    expect(fileStore.currentFile()).toBeNull();
+  });
+
+  it('preserves dirty content when pull deleted the current file', async () => {
+    const currentFile = {
+      content: 'unsaved content',
+      fileName: 'deleted.md',
+      path: 'deleted.md',
+    };
+    vi.mocked(api.getFileTree).mockResolvedValue([]);
+    projectStore.setActiveProject(project);
+    fileStore.setCurrentFile(currentFile);
+    editorStore.initialize(currentFile.content);
+    editorStore.setDirty(true);
+
+    const result = await useProject().refreshProject({
+      expectedProjectId: project.id,
+      preserveDirtyFile: true,
+    });
+
+    expect(result.status).toBe('current-file-preserved');
+    expect(fileStore.currentFile()).toEqual(currentFile);
     expect(editorStore.isDirty()).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { Component, Show } from 'solid-js';
 import type { Project, FileNode } from '../types';
+import type { RemoteGitAction } from '../utils/gitPanel';
 import FileTree from './FileTree';
 import SidebarHeader from './SidebarHeader';
 
@@ -8,7 +9,11 @@ interface SidebarPaneProps {
   nodes: FileNode[];
   sidebarWidth: number;
   transition: string;
+  gitOperation?: RemoteGitAction;
+  gitUnavailable: boolean;
+  pullDisabled: boolean;
   onRefresh: () => void;
+  onGitAction: (action: RemoteGitAction) => Promise<boolean>;
   onEdit: () => void;
   onCloseProject: () => void;
   onFileClick: (path: string, relativePath: string) => void;
@@ -27,7 +32,11 @@ export const SidebarPane: Component<SidebarPaneProps> = (props) => {
       >
         <SidebarHeader
           project={props.project!}
+          gitOperation={props.gitOperation}
+          gitUnavailable={props.gitUnavailable}
+          pullDisabled={props.pullDisabled}
           onRefresh={props.onRefresh}
+          onGitAction={props.onGitAction}
           onEdit={props.onEdit}
           onCloseProject={props.onCloseProject}
         />

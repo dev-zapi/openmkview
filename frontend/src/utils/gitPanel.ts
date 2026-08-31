@@ -1,6 +1,7 @@
 import { authStore } from '../stores/authStore';
 
-export type GitAction = 'add' | 'commit' | 'pull' | 'push';
+export type RemoteGitAction = 'fetch' | 'pull';
+export type GitAction = 'add' | 'commit' | 'pull' | 'push' | 'fetch';
 
 export const runGitAction = async (projectId: number, action: GitAction, message?: string) => {
   const response = await fetch('/api/git', {
@@ -19,7 +20,14 @@ export const runGitAction = async (projectId: number, action: GitAction, message
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || `Git ${action} failed`);
+    let errorMessage = errorText;
+    try {
+      const parsed = JSON.parse(errorText) as { error?: string };
+      errorMessage = parsed.error || errorText;
+    } catch {
+      // Plain-text API errors are already ready for display.
+    }
+    throw new Error(errorMessage || `Git ${action} failed`);
   }
 };
 

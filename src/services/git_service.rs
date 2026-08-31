@@ -76,6 +76,20 @@ impl GitService {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
+        if !output.status.success() {
+            let detail = match (stdout.trim(), stderr.trim()) {
+                ("", stderr) => stderr.to_string(),
+                (stdout, "") => stdout.to_string(),
+                (stdout, stderr) => format!("{}\n{}", stdout, stderr),
+            };
+            let message = if detail.is_empty() {
+                format!("Git command failed with status {}", output.status)
+            } else {
+                detail
+            };
+            return Err(message);
+        }
+
         Ok((stdout, stderr))
     }
 
@@ -481,6 +495,14 @@ mod tests {
         let result = GitService::run_git(&cwd, &["status"]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Git execution failed"));
+    }
+
+    #[test]
+    fn test_run_git_nonzero_exit_is_error() {
+        let cwd = PathBuf::from(".");
+        let result = GitService::run_git(&cwd, &["--definitely-invalid-option"]);
+        assert!(result.is_err());
+        assert!(!result.unwrap_err().is_empty());
     }
 
     #[test]

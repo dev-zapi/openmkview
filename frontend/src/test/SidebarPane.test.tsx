@@ -13,7 +13,10 @@ describe('SidebarPane', () => {
         nodes={nodes}
         sidebarWidth={280}
         transition="none"
+        gitUnavailable={false}
+        pullDisabled={false}
         onRefresh={() => {}}
+        onGitAction={async () => true}
         onEdit={() => {}}
         onCloseProject={() => {}}
         onFileClick={() => {}}
@@ -36,7 +39,10 @@ describe('SidebarPane', () => {
         nodes={nodes}
         sidebarWidth={280}
         transition="none"
+        gitUnavailable={false}
+        pullDisabled={false}
         onRefresh={() => {}}
+        onGitAction={async () => true}
         onEdit={() => {}}
         onCloseProject={() => {}}
         onFileClick={() => {}}
