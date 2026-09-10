@@ -28,6 +28,8 @@ export default defineConfig(({ mode }) => {
           // iframe 预览 HTML 文件也是 navigation 请求，不能被 SPA fallback
           // 拦截成 index.html，否则 /api/files/raw 会显示应用首页
           navigateFallbackDenylist: [/^\/api\//],
+          // 清理旧缓存
+          cleanupOutdatedCaches: true,
           runtimeCaching: [
             {
               // 认证相关请求永不缓存：challenge 是一次性的，缓存必坏
@@ -35,27 +37,29 @@ export default defineConfig(({ mode }) => {
               handler: 'NetworkOnly',
             },
             {
-              // 文件树/文件内容：LRU 200 条、30 天过期
+              // 文件树/文件内容：优先网络，失败才用缓存，保证获取最新内容
               urlPattern: /\/api\/files\//,
-              handler: 'StaleWhileRevalidate',
+              handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-files',
                 expiration: {
                   maxEntries: 200,
                   maxAgeSeconds: 30 * 24 * 60 * 60,
                 },
+                networkTimeoutSeconds: 3,
               },
             },
             {
-              // 其余只读 API（项目列表、设置、主题等）
+              // 其余只读 API（项目列表、设置、主题等）：优先网络
               urlPattern: /\/api\//,
-              handler: 'StaleWhileRevalidate',
+              handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-data',
                 expiration: {
                   maxEntries: 50,
                   maxAgeSeconds: 30 * 24 * 60 * 60,
                 },
+                networkTimeoutSeconds: 3,
               },
             },
           ],

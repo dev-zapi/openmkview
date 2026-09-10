@@ -10,7 +10,17 @@ import { authStore } from './stores/authStore'
 const root = document.getElementById('root')
 
 if ('serviceWorker' in navigator) {
-  registerSW({ immediate: true })
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      if (confirm('有新版本可用,是否立即更新?\n\nNew version available, refresh now?')) {
+        updateSW(true)
+      }
+    },
+    onOfflineReady() {
+      console.log('App ready to work offline')
+    },
+  })
 }
 
 const Root = () => {
