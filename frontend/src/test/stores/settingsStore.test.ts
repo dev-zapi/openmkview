@@ -18,6 +18,8 @@ const mockDefaultSettings = vi.hoisted(() => ({
   sessionTimeoutMinutes: 60,
   codeBlockThemeLight: 'github-light',
   codeBlockThemeDark: 'github-dark',
+  tableDensity: 'medium' as const,
+  customStylesheet: '',
 }));
 
 vi.mock('../../utils/settings', () => ({
@@ -25,6 +27,8 @@ vi.mock('../../utils/settings', () => ({
   saveSettings: vi.fn(),
   getValidatedSidebarWidth: vi.fn(),
   applyFontSettings: vi.fn(),
+  applyTableDensity: vi.fn(),
+  applyCustomStylesheet: vi.fn(),
 }));
 
 vi.mock('../../utils/theme', () => ({

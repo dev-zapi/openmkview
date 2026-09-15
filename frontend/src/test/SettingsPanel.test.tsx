@@ -282,7 +282,7 @@ describe('SettingsPanel', () => {
       render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
       
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(4);
+          expect(observeMock).toHaveBeenCalledTimes(6);
         });
       });
 
@@ -297,7 +297,7 @@ describe('SettingsPanel', () => {
         render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
 
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(6);
+          expect(observeMock).toHaveBeenCalledTimes(8);
         });
       });
   });

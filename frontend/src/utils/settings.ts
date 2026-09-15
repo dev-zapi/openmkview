@@ -100,6 +100,8 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     protectedPaths: settings.protectedPaths,
     trashExpireDays: settings.trashExpireDays,
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
+    tableDensity: settings.tableDensity,
+    customStylesheet: settings.customStylesheet,
   };
 };
 
@@ -194,6 +196,28 @@ export const applyFontSettings = (settings: Settings): void => {
   document.documentElement.style.setProperty('--markdown-size', settings.markdownFontSize);
   document.documentElement.style.setProperty('--code-font', settings.codeFontFamily);
   document.documentElement.style.setProperty('--code-size', settings.codeFontSize);
+};
+
+export const applyTableDensity = (settings: Settings): void => {
+  document.documentElement.setAttribute('data-table-density', settings.tableDensity);
+};
+
+export const CUSTOM_STYLESHEET_MAX = 100_000;
+
+export const applyCustomStylesheet = (css: string): void => {
+  const id = 'omkv-custom-stylesheet';
+  let el = document.getElementById(id) as HTMLStyleElement | null;
+  const trimmed = (css || '').slice(0, CUSTOM_STYLESHEET_MAX);
+  if (!trimmed.trim()) {
+    if (el) el.textContent = '';
+    return;
+  }
+  if (!el) {
+    el = document.createElement('style');
+    el.id = id;
+  }
+  document.head.appendChild(el);
+  el.textContent = `@scope (.markdown-view) {\n${trimmed}\n}`;
 };
 
 export const loadOutlineOpenByFileType = (): OutlineOpenByFileType => {

@@ -2,9 +2,10 @@ import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } 
 import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
 import { applyTheme } from '../utils/theme';
-import { saveSettings } from '../utils/settings';
+import { saveSettings, CUSTOM_STYLESHEET_MAX } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
+import { CssEditor } from './CssEditor';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -525,6 +526,42 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     />
                   </div>
                 </Show>
+
+                <div class="settings-item">
+                  <label for="table-density">Table Density</label>
+                  <select
+                    id="table-density"
+                    value={settingsStore.settings().tableDensity}
+                    onChange={(e) => updateSetting('tableDensity', e.currentTarget.value as 'small' | 'medium' | 'large')}
+                  >
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                  </select>
+                </div>
+
+                <div class="settings-item settings-item-column">
+                  <label for="custom-stylesheet">Custom Stylesheet</label>
+                  <CssEditor
+                    value={settingsStore.settings().customStylesheet}
+                    onChange={(v) => updateSetting('customStylesheet', v.slice(0, CUSTOM_STYLESHEET_MAX))}
+                    theme={settingsStore.effectiveTheme}
+                  />
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 8px;">
+                    <button
+                      type="button"
+                      onClick={() => updateSetting('customStylesheet', '')}
+                    >
+                      Clear
+                    </button>
+                    <span style="font-size: 11px; color: var(--color-text); opacity: 0.7;">
+                      {settingsStore.settings().customStylesheet.length} / {CUSTOM_STYLESHEET_MAX}
+                    </span>
+                  </div>
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Scoped to the Markdown content. Write element selectors directly (e.g. <code>table</code>, <code>h1</code>). To override built-in styles, raise specificity with <code>:scope</code> (e.g. <code>:scope td {'{'} padding: 4px {'}'}</code>). Dark mode: <code>:scope[data-theme='dark'] {'{'} ... {'}'}</code>. External <code>url()</code>/<code>@import</code> won't work offline. Requires a modern browser (CSS @scope).
+                  </p>
+                </div>
               </div>
 
               <Show when={props.authRequired}>

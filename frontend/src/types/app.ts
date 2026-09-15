@@ -26,6 +26,8 @@ export interface ServerSettings {
   sessionTimeoutMinutes: number;
   codeBlockThemeLight: string;
   codeBlockThemeDark: string;
+  tableDensity: 'small' | 'medium' | 'large';
+  customStylesheet: string;
 }
 
 export interface Settings extends ServerSettings {
@@ -50,6 +52,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sessionTimeoutMinutes: 60,
   codeBlockThemeLight: 'github-light',
   codeBlockThemeDark: 'github-dark',
+  tableDensity: 'medium',
+  customStylesheet: '',
 };
 
 export interface AuthStatus {

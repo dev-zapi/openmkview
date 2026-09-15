@@ -23,3 +23,11 @@ _Avoid_: platform paths, OS directories, system locations
 **Offline Mode**:
 The read-only state the app enters automatically when the server is unreachable. The app shell and previously viewed file lists and file contents remain available from browser caches; editing is disabled and opening uncached content shows an empty-state message. Only an explicit 401 marks the session unauthenticated — a network failure never does. See `docs/adr/0002-offline-read-only-pwa.md`.
 _Avoid_: offline support, read-only mode, disconnected state
+
+**Table Density**:
+The cell-padding preset for tables rendered from Markdown, chosen from three levels — small, medium (default), and large. Applies to Markdown body tables and the frontmatter panel table; the diff view is excluded.
+_Avoid_: 表格间距, cell size, padding level, table spacing
+
+**Custom Stylesheet**:
+A block of raw CSS supplied by the user that is injected to override the appearance of rendered Markdown content. Scoped to the Markdown view, so it cannot restyle the application shell.
+_Avoid_: custom CSS, user styles, theme override, user stylesheet

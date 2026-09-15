@@ -10,6 +10,8 @@ import {
   getValidatedOutlineWidth,
   getMarkdownStyle,
   applyFontSettings,
+  applyTableDensity,
+  applyCustomStylesheet,
   loadOutlineOpenByFileType,
   saveOutlineOpenByFileType,
 } from '../../utils/settings';
@@ -257,6 +259,66 @@ describe('settings utils', () => {
       saveOutlineOpenByFileType(state);
       const saved = localStorage.getItem('outline-open-by-filetype');
       expect(saved).toBe(JSON.stringify(state));
+    });
+  });
+
+  describe('applyTableDensity', () => {
+    it('sets data-table-density attribute on documentElement', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS, tableDensity: 'small' };
+      applyTableDensity(settings);
+      expect(document.documentElement.getAttribute('data-table-density')).toBe('small');
+    });
+
+    it('defaults to medium when not specified', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS };
+      applyTableDensity(settings);
+      expect(document.documentElement.getAttribute('data-table-density')).toBe('medium');
+    });
+
+    it('updates attribute when density changes', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS, tableDensity: 'large' };
+      applyTableDensity(settings);
+      expect(document.documentElement.getAttribute('data-table-density')).toBe('large');
+    });
+  });
+
+  describe('applyCustomStylesheet', () => {
+    beforeEach(() => {
+      const existing = document.getElementById('omkv-custom-stylesheet');
+      if (existing) existing.remove();
+    });
+
+    it('injects a scoped style element with the correct id', () => {
+      applyCustomStylesheet('table { color: red }');
+      const el = document.getElementById('omkv-custom-stylesheet') as HTMLStyleElement;
+      expect(el).toBeTruthy();
+      expect(el.tagName).toBe('STYLE');
+      expect(el.textContent).toContain('@scope (.markdown-view)');
+      expect(el.textContent).toContain('table { color: red }');
+    });
+
+    it('empties content when css is blank', () => {
+      applyCustomStylesheet('table { color: red }');
+      applyCustomStylesheet('');
+      const el = document.getElementById('omkv-custom-stylesheet') as HTMLStyleElement;
+      expect(el).toBeTruthy();
+      expect(el.textContent).toBe('');
+    });
+
+    it('caps length at CUSTOM_STYLESHEET_MAX', () => {
+      const huge = 'a'.repeat(200_000);
+      applyCustomStylesheet(huge);
+      const el = document.getElementById('omkv-custom-stylesheet') as HTMLStyleElement;
+      // The content is wrapped: @scope (.markdown-view) {\n<css>\n}
+      // The inner css should be capped at 100_000
+      const inner = el.textContent!.replace(/^@scope \(.markdown-view\) \{\n/, '').replace(/\n\}$/, '');
+      expect(inner.length).toBeLessThanOrEqual(100_000);
+    });
+
+    it('appends the style as last child of head', () => {
+      applyCustomStylesheet('h1 { color: blue }');
+      const el = document.getElementById('omkv-custom-stylesheet');
+      expect(el).toBe(document.head.lastElementChild);
     });
   });
 });

@@ -81,6 +81,10 @@ pub struct SystemSettings {
         default = "default_session_timeout_minutes"
     )]
     pub session_timeout_minutes: u64,
+    #[serde(rename = "tableDensity", default)]
+    pub table_density: TableDensity,
+    #[serde(rename = "customStylesheet", default)]
+    pub custom_stylesheet: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -101,4 +105,56 @@ pub enum WidthMode {
     #[default]
     Full,
     Fixed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TableDensity {
+    Small,
+    #[default]
+    Medium,
+    Large,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_table_density_is_medium() {
+        assert_eq!(
+            SystemSettings::default().table_density,
+            TableDensity::Medium
+        );
+    }
+
+    #[test]
+    fn default_custom_stylesheet_is_empty() {
+        assert_eq!(SystemSettings::default().custom_stylesheet, "");
+    }
+
+    #[test]
+    fn empty_json_yields_defaults_for_new_fields() {
+        let settings: SystemSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(settings.table_density, TableDensity::Medium);
+        assert_eq!(settings.custom_stylesheet, "");
+    }
+
+    #[test]
+    fn table_density_deserializes_from_lowercase() {
+        let json = r#"{"tableDensity":"small"}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.table_density, TableDensity::Small);
+
+        let json = r#"{"tableDensity":"large"}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.table_density, TableDensity::Large);
+    }
+
+    #[test]
+    fn custom_stylesheet_round_trips() {
+        let json = r#"{"customStylesheet":"table { color: red }"}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.custom_stylesheet, "table { color: red }");
+    }
 }
