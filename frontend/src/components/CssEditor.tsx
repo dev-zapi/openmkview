@@ -1,4 +1,4 @@
-import { Component, onMount, onCleanup, createEffect } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, on } from 'solid-js';
 import { EditorView } from '@codemirror/view';
 import { EditorState, type Extension } from '@codemirror/state';
 import { css } from '@codemirror/lang-css';
@@ -103,14 +103,14 @@ export const CssEditor: Component<CssEditorProps> = (props) => {
     }
   });
 
-  // Rebuild on theme change
-  createEffect(() => {
-    if (!editorView || !props.theme) return;
+  // Rebuild on theme change (deferred to skip initial mount)
+  createEffect(on(() => props.theme, () => {
+    if (!editorView) return;
     const current = editorView.state.doc.toString();
     editorView.destroy();
     editorView = undefined;
     createEditor(current);
-  });
+  }, { defer: true }));
 
   return (
     <div class="css-editor-container" ref={editorContainer} />

@@ -271,6 +271,8 @@ describe('SettingsPanel', () => {
       });
     });
 
+    // Count = number of visible category sections (4 without auth / 6 with auth)
+    // plus 1 from the CSS editor's own CodeMirror IntersectionObserver.
     it('IntersectionObserver observes all sections', async () => {
       const observeMock = vi.fn();
       IntersectionObserverMock.mockImplementation(function(this: IntersectionObserver) {
@@ -278,11 +280,11 @@ describe('SettingsPanel', () => {
         this.unobserve = vi.fn();
         this.disconnect = vi.fn();
       } as any);
-      
+
       render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
-      
+
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(6);
+          expect(observeMock).toHaveBeenCalledTimes(5);
         });
       });
 
@@ -297,7 +299,7 @@ describe('SettingsPanel', () => {
         render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
 
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(8);
+          expect(observeMock).toHaveBeenCalledTimes(7);
         });
       });
   });
