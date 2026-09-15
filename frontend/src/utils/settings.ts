@@ -102,6 +102,7 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
     tableDensity: settings.tableDensity,
     customStylesheet: settings.customStylesheet,
+    tableWrap: settings.tableWrap,
   };
 };
 
@@ -200,6 +201,10 @@ export const applyFontSettings = (settings: Settings): void => {
 
 export const applyTableDensity = (settings: Settings): void => {
   document.documentElement.setAttribute('data-table-density', settings.tableDensity);
+};
+
+export const applyTableWrap = (settings: Settings): void => {
+  document.documentElement.setAttribute('data-table-wrap', settings.tableWrap);
 };
 
 export const CUSTOM_STYLESHEET_MAX = 100_000;

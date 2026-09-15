@@ -28,6 +28,10 @@ _Avoid_: offline support, read-only mode, disconnected state
 The cell-padding preset for tables rendered from Markdown, chosen from three levels — small, medium (default), and large. Applies to Markdown body tables and the frontmatter panel table; the diff view is excluded.
 _Avoid_: 表格间距, cell size, padding level, table spacing
 
+**Table Wrapping**:
+Whether cells in Markdown-rendered tables wrap onto multiple lines (default) or stay on a single line, in which case the table scrolls horizontally when it overflows its container. Applies to Markdown body tables only.
+_Avoid_: nowrap, table overflow, horizontal scroll, table scroll
+
 **Custom Stylesheet**:
 A block of raw CSS supplied by the user that is injected to override the appearance of rendered Markdown content. Scoped to the Markdown view, so it cannot restyle the application shell.
 _Avoid_: custom CSS, user styles, theme override, user stylesheet

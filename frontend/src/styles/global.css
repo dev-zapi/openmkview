@@ -5,6 +5,9 @@
 :root[data-table-density="medium"] { --md-table-cell-padding: 10px 14px; }
 :root[data-table-density="large"]  { --md-table-cell-padding: 16px 22px; }
 
+:root { --md-table-white-space: normal; }
+:root[data-table-wrap="nowrap"] { --md-table-white-space: nowrap; }
+
 /* Markdown View Enhancements */
 .markdown-view {
   font-family: var(--markdown-font);
@@ -136,6 +139,7 @@
 .markdown-view td {
   border: 1px solid var(--color-border);
   padding: var(--md-table-cell-padding);
+  white-space: var(--md-table-white-space);
   text-align: left;
 }
 

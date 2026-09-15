@@ -540,6 +540,18 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   </select>
                 </div>
 
+                <div class="settings-item">
+                  <label for="table-wrap">Table Cell Wrapping</label>
+                  <select
+                    id="table-wrap"
+                    value={settingsStore.settings().tableWrap}
+                    onChange={(e) => updateSetting('tableWrap', e.currentTarget.value as 'wrap' | 'nowrap')}
+                  >
+                    <option value="wrap">Wrap</option>
+                    <option value="nowrap">No wrap (scroll horizontally)</option>
+                  </select>
+                </div>
+
                 <div class="settings-item settings-item-column">
                   <label for="custom-stylesheet">Custom Stylesheet</label>
                   <CssEditor

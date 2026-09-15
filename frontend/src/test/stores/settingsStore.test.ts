@@ -20,6 +20,7 @@ const mockDefaultSettings = vi.hoisted(() => ({
   codeBlockThemeDark: 'github-dark',
   tableDensity: 'medium' as const,
   customStylesheet: '',
+  tableWrap: 'wrap' as const,
 }));
 
 vi.mock('../../utils/settings', () => ({
@@ -29,6 +30,7 @@ vi.mock('../../utils/settings', () => ({
   applyFontSettings: vi.fn(),
   applyTableDensity: vi.fn(),
   applyCustomStylesheet: vi.fn(),
+  applyTableWrap: vi.fn(),
 }));
 
 vi.mock('../../utils/theme', () => ({

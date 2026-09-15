@@ -3,7 +3,7 @@ import type { Settings, ThemeMode, ServerSettings } from '../types/app';
 import { DEFAULT_SETTINGS } from '../types/app';
 import { loadSettings, saveSettings, normalizeSettings, extractServerSettings, mergeServerSettings } from '../utils/settings';
 import { applyTheme, getEffectiveThemeType, getSystemTheme } from '../utils/theme';
-import { applyFontSettings, applyTableDensity, applyCustomStylesheet } from '../utils/settings';
+import { applyFontSettings, applyTableDensity, applyCustomStylesheet, applyTableWrap } from '../utils/settings';
 
 const [settings, setSettings] = createSignal<Settings>(loadSettings());
 const [systemTheme, setSystemTheme] = createSignal<'light' | 'dark'>(getSystemTheme());
@@ -95,6 +95,10 @@ export const settingsStore = {
     applyCustomStylesheet(settings().customStylesheet);
   },
 
+  applyTableWrap() {
+    applyTableWrap(settings());
+  },
+
   updateSystemTheme(theme: 'light' | 'dark') {
     setSystemTheme(theme);
     if (settings().themeMode === 'system') {
@@ -130,6 +134,10 @@ export function initSettingsEffects() {
 
   createEffect(() => {
     settingsStore.applyCustomStylesheet();
+  });
+
+  createEffect(() => {
+    settingsStore.applyTableWrap();
   });
 }
 

@@ -28,6 +28,7 @@ export interface ServerSettings {
   codeBlockThemeDark: string;
   tableDensity: 'small' | 'medium' | 'large';
   customStylesheet: string;
+  tableWrap: 'wrap' | 'nowrap';
 }
 
 export interface Settings extends ServerSettings {
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   codeBlockThemeDark: 'github-dark',
   tableDensity: 'medium',
   customStylesheet: '',
+  tableWrap: 'wrap',
 };
 
 export interface AuthStatus {

@@ -85,6 +85,8 @@ pub struct SystemSettings {
     pub table_density: TableDensity,
     #[serde(rename = "customStylesheet", default)]
     pub custom_stylesheet: String,
+    #[serde(rename = "tableWrap", default)]
+    pub table_wrap: TableWrap,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -114,6 +116,14 @@ pub enum TableDensity {
     #[default]
     Medium,
     Large,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TableWrap {
+    #[default]
+    Wrap,
+    Nowrap,
 }
 
 #[cfg(test)]
@@ -156,5 +166,23 @@ mod tests {
         let json = r#"{"customStylesheet":"table { color: red }"}"#;
         let settings: SystemSettings = serde_json::from_str(json).unwrap();
         assert_eq!(settings.custom_stylesheet, "table { color: red }");
+    }
+
+    #[test]
+    fn default_table_wrap_is_wrap() {
+        assert_eq!(SystemSettings::default().table_wrap, TableWrap::Wrap);
+    }
+
+    #[test]
+    fn empty_json_yields_default_table_wrap() {
+        let settings: SystemSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(settings.table_wrap, TableWrap::Wrap);
+    }
+
+    #[test]
+    fn table_wrap_deserializes_from_lowercase() {
+        let json = r#"{"tableWrap":"nowrap"}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.table_wrap, TableWrap::Nowrap);
     }
 }

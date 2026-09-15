@@ -11,6 +11,7 @@ import {
   getMarkdownStyle,
   applyFontSettings,
   applyTableDensity,
+  applyTableWrap,
   applyCustomStylesheet,
   loadOutlineOpenByFileType,
   saveOutlineOpenByFileType,
@@ -279,6 +280,20 @@ describe('settings utils', () => {
       const settings: Settings = { ...DEFAULT_SETTINGS, tableDensity: 'large' };
       applyTableDensity(settings);
       expect(document.documentElement.getAttribute('data-table-density')).toBe('large');
+    });
+  });
+
+  describe('applyTableWrap', () => {
+    it('sets data-table-wrap attribute on documentElement', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS, tableWrap: 'nowrap' };
+      applyTableWrap(settings);
+      expect(document.documentElement.getAttribute('data-table-wrap')).toBe('nowrap');
+    });
+
+    it('defaults to wrap when not specified', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS };
+      applyTableWrap(settings);
+      expect(document.documentElement.getAttribute('data-table-wrap')).toBe('wrap');
     });
   });
 
