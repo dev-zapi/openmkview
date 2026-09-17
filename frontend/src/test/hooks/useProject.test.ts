@@ -271,4 +271,28 @@ describe('useProject', () => {
     expect(fileStore.currentFile()).toEqual(currentFile);
     expect(editorStore.isDirty()).toBe(true);
   });
+
+  it('closes the color-picker target project, not the active project', async () => {
+    const active: Project = { id: 1, name: 'alpha', path: '/workspace/alpha' };
+    const target: Project = { id: 2, name: 'beta', path: '/workspace/beta' };
+    projectStore.setProjects([active, target]);
+    projectStore.setActiveProject(active);
+    appStore.openColorPicker(target.id, 0, 0);
+
+    await useProject().closeColorPickerProject();
+
+    expect(api.closeProject).toHaveBeenCalledWith(target.id);
+    expect(api.closeProject).not.toHaveBeenCalledWith(active.id);
+    expect(projectStore.state.projects.map((p) => p.id)).toEqual([active.id]);
+  });
+
+  it('does nothing when the color picker has no target project', async () => {
+    projectStore.setProjects([project]);
+    appStore.closeColorPicker();
+
+    await useProject().closeColorPickerProject();
+
+    expect(api.closeProject).not.toHaveBeenCalled();
+    expect(projectStore.state.projects.map((p) => p.id)).toEqual([project.id]);
+  });
 });

@@ -107,6 +107,12 @@ export const useProject = () => {
     }
   };
 
+  const closeColorPickerProject = async () => {
+    const projectId = appStore.colorPickerProjectId();
+    if (projectId == null) return;
+    await closeProject(projectId);
+  };
+
   const openProject = () => {
     appStore.openOpenProjectDialog();
   };
@@ -273,6 +279,7 @@ export const useProject = () => {
     confirmDiscardIfDirty,
     switchProject,
     closeProject,
+    closeColorPickerProject,
     openProject,
     closeOpenProjectDialog,
     handleProjectOpened,

@@ -317,7 +317,7 @@ const App: Component = () => {
         onProjectOpened={(project) => void projectHook.handleProjectOpened(project)}
         onColorChange={(color) => void projectHook.updateProjectColor(color)}
         onCloseColorPicker={() => appStore.closeColorPicker()}
-        onCloseProject={handleProjectClose}
+        onCloseProject={() => void projectHook.closeColorPickerProject()}
         onCloseProjectEditDialog={() => appStore.closeProjectEditDialog()}
         onProjectSave={(project) => void projectHook.saveProjectEdit(project)}
         onCloseTrashDialog={() => appStore.closeTrashDialog()}
