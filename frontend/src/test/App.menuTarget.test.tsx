@@ -126,4 +126,69 @@ describe('Menu Target highlight in Activity Bar', () => {
       expect(alphaButton.getAttribute('aria-expanded')).toBe('true');
     });
   });
+
+  it('clears menu target when a color is selected', async () => {
+    const { default: App } = await import('../App');
+    render(() => <App />);
+
+    const alphaButton = await screen.findByTitle('Alpha');
+
+    // Right-click Alpha to open context menu
+    fireEvent.contextMenu(alphaButton);
+    await waitFor(() => {
+      expect(alphaButton.classList.contains('menu-target')).toBe(true);
+    });
+
+    // Click a color preset (they have color values as titles)
+    const colorPreset = await screen.findByTitle('#FF6B6B');
+    fireEvent.click(colorPreset);
+
+    // Menu target should be cleared
+    await waitFor(() => {
+      expect(alphaButton.classList.contains('menu-target')).toBe(false);
+      expect(alphaButton.getAttribute('aria-expanded')).toBe('false');
+    });
+  });
+
+  it('clears menu target when Close Project is chosen', async () => {
+    const { default: App } = await import('../App');
+    render(() => <App />);
+
+    const alphaButton = await screen.findByTitle('Alpha');
+
+    // Right-click Alpha to open context menu
+    fireEvent.contextMenu(alphaButton);
+    await waitFor(() => {
+      expect(alphaButton.classList.contains('menu-target')).toBe(true);
+    });
+
+    // Click "Close Project"
+    const closeProjectButton = await screen.findByText('Close Project');
+    fireEvent.click(closeProjectButton);
+
+    // Menu target should be cleared (and Alpha should be gone)
+    await waitFor(() => {
+      expect(screen.queryByTitle('Alpha')).toBeNull();
+    });
+  });
+
+  it('highlights menu target even when no project is active', async () => {
+    const { default: App } = await import('../App');
+    const { projectStore } = await import('../stores/projectStore');
+    render(() => <App />);
+
+    // Verify no project is active
+    await waitFor(() => expect(projectStore.state.activeProject).toBeNull());
+
+    const alphaButton = await screen.findByTitle('Alpha');
+
+    // Right-click Alpha (no active project)
+    fireEvent.contextMenu(alphaButton);
+
+    // Alpha should have menu-target class
+    await waitFor(() => {
+      expect(alphaButton.classList.contains('menu-target')).toBe(true);
+      expect(alphaButton.getAttribute('aria-expanded')).toBe('true');
+    });
+  });
 });
