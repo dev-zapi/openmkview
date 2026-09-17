@@ -35,3 +35,11 @@ _Avoid_: nowrap, table overflow, horizontal scroll, table scroll
 **Custom Stylesheet**:
 A block of raw CSS supplied by the user that is injected to override the appearance of rendered Markdown content. Scoped to the Markdown view, so it cannot restyle the application shell.
 _Avoid_: custom CSS, user styles, theme override, user stylesheet
+
+**Menu Target**:
+The project whose context menu is currently open in the activity bar. Distinct from the Active Project; a menu target may or may not be the active project. Derived from color picker state. When the color picker closes, the menu target becomes null.
+_Avoid_: context menu target, right-clicked project, selected project, focused project
+
+**Active Project**:
+The project currently being worked on, whose files appear in the file tree and main pane. Changed by clicking a project icon in the activity bar or opening a new project. At most one project is active at a time.
+_Avoid_: current project, working project, focused project, selected project

@@ -11,6 +11,7 @@ import type { RemoteGitAction } from '../utils/gitPanel';
 interface DesktopLayoutProps {
   projects: Project[];
   activeProject: Project | null;
+  menuTargetProject: Project | null;
   themeMode: ThemeMode;
   currentFile: FileContent | null;
   currentFileType: FileType;
@@ -82,6 +83,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
       <ActivityBar
         projects={props.projects}
         activeProject={props.activeProject}
+        menuTargetProject={props.menuTargetProject}
         themeMode={props.themeMode}
         onProjectClick={props.onProjectClick}
         onProjectContextMenu={props.onProjectContextMenu}

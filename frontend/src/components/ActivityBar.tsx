@@ -5,6 +5,7 @@ import type { ThemeMode } from '../types/app';
 interface ActivityBarProps {
   projects: Project[];
   activeProject: Project | null;
+  menuTargetProject: Project | null;
   themeMode: ThemeMode;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
@@ -25,14 +26,24 @@ export const ActivityBar: Component<ActivityBarProps> = (props) => {
             const activeStyle = () => props.getProjectStyle(project);
             const projectColor = () => activeStyle().background;
             const isActive = () => props.activeProject?.id === project.id;
+            const isMenuTarget = () => props.menuTargetProject?.id === project.id;
+
+            const buttonClass = () => {
+              const classes: string[] = [];
+              if (isActive()) classes.push('active');
+              if (isMenuTarget()) classes.push('menu-target');
+              return classes.join(' ');
+            };
 
             return (
               <button
-                class={isActive() ? 'active' : ''}
+                class={buttonClass()}
                 title={project.name}
                 onClick={() => props.onProjectClick(project)}
                 onContextMenu={(event) => props.onProjectContextMenu(event, project.id)}
                 style={projectColor() ? activeStyle() : undefined}
+                aria-haspopup="menu"
+                aria-expanded={isMenuTarget()}
               >
                 {props.renderProjectIcon(project)}
               </button>

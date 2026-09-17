@@ -32,6 +32,13 @@ const App: Component = () => {
   const [editorSearchRequestKey, setEditorSearchRequestKey] = createSignal(0);
   const [searchScopeKey, setSearchScopeKey] = createSignal('');
 
+  const menuTargetProject = createMemo((): Project | null => {
+    if (!appStore.colorPickerOpen()) return null;
+    const id = appStore.colorPickerProjectId();
+    if (id === null) return null;
+    return projectStore.state.projects.find(p => p.id === id) ?? null;
+  });
+
   const savedOutlineWidth = loadOutlineWidth();
   appStore.initOutlineWidth(savedOutlineWidth);
 
@@ -230,6 +237,7 @@ const App: Component = () => {
         <DesktopLayout
           projects={projectStore.state.projects}
           activeProject={projectStore.state.activeProject}
+          menuTargetProject={menuTargetProject()}
           themeMode={settingsStore.settings().themeMode}
           currentFile={fileStore.currentFile()}
           currentFileType={fileStore.currentFileType()}
