@@ -582,6 +582,33 @@
   gap: 8px;
   align-items: center;
   z-index: 10;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.markdown-view pre:hover > .code-block-header,
+.code-block-wrapper:hover > .code-block-header,
+.code-block-header:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Touch devices have no hover - keep the header always visible */
+@media (hover: none) {
+  .code-block-header {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-block-header {
+    transition: none;
+  }
 }
 
 .code-lang-tag {
