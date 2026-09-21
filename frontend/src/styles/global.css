@@ -877,6 +877,11 @@
     padding: 12px;
   }
 
+  /* Prevent iOS zoom on input focus */
+  .git-commit-input input {
+    font-size: 16px;
+  }
+
   .git-actions {
     padding: 8px 12px;
     flex-wrap: wrap;

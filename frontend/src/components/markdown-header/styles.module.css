@@ -419,6 +419,11 @@
     font-size: 13px;
   }
 
+  /* Prevent iOS zoom on input focus */
+  .searchInput {
+    font-size: 16px;
+  }
+
   .documentMeta {
     display: none;
   }

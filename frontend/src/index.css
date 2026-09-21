@@ -238,6 +238,7 @@ body {
   height: 100%;
   min-height: 100%;
   background: var(--color-bg);
+  touch-action: manipulation;
 }
 
 body {
@@ -2095,8 +2096,15 @@ textarea {
 
   /* Prevent iOS zoom on input focus */
   .settings-item select,
-  .settings-item input {
+  .settings-item input,
+  .login-field input {
     font-size: 16px;
+  }
+
+  /* CodeMirror themes inject styles at runtime after the bundle,
+     so !important is needed to keep mobile editor text at 16px */
+  .css-editor-container .cm-content {
+    font-size: 16px !important;
   }
 
   .passkey-card {

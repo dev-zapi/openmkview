@@ -80,6 +80,9 @@
 
   .codemirror-editor-container .cm-content {
     padding: 0;
+    /* Prevent iOS zoom on editor focus (theme injects styles at
+       runtime after the bundle, so !important is required) */
+    font-size: 16px !important;
   }
 
   .codemirror-editor-container .cm-line {
