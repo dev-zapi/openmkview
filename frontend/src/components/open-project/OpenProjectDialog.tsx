@@ -14,6 +14,7 @@ import { useOpenProject } from './hooks/useOpenProject';
 import PathInput from './PathInput';
 import type { RecentProject } from '../../types/openProject';
 import FolderItem from './FolderItem';
+import { Button } from '../ui';
 import './OpenProjectDialog.css';
 import { buildListItems } from './utils/listItems';
 
@@ -144,7 +145,9 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
             <h2 id="open-project-title" class="open-project-title">
               Open project
             </h2>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               class="open-project-close-btn"
               onClick={handleClose}
               aria-label="Close"
@@ -153,7 +156,7 @@ const OpenProjectDialog: Component<OpenProjectDialogProps> = (props) => {
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
-            </button>
+            </Button>
           </div>
 
           {/* Body */}
