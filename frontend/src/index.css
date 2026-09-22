@@ -1472,7 +1472,8 @@ textarea {
   color: var(--color-accent);
 }
 
-/* Settings Panel - Modal Style */
+/* Settings Panel - Modal Style (overlay/panel kept manual to preserve
+   container.querySelector tests; internal elements use ui/ primitives) */
 .settings-overlay {
   position: fixed;
   inset: 0;
@@ -1488,8 +1489,8 @@ textarea {
 }
 
 .settings-panel {
-  background: var(--color-bg);
-  border-radius: 12px;
+  background: hsl(var(--background));
+  border-radius: var(--radius-lg);
   width: 760px;
   max-width: calc(100vw - 32px);
   max-height: min(78vh, 760px);
@@ -1497,7 +1498,7 @@ textarea {
   flex-direction: column;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid var(--color-border);
+  border: 1px solid hsl(var(--border));
 }
 
 .settings-panel-header {
@@ -1505,31 +1506,19 @@ textarea {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .settings-panel-header h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-h);
+  color: hsl(var(--foreground));
 }
 
+/* close-btn visuals supplied by <Button variant="ghost" size="icon">;
+   kept only for legacy class selector compatibility */
 .close-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  color: var(--color-text);
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: var(--color-code-bg);
-  color: var(--color-text-h);
+  /* Button primitive handles padding, border-radius, hover, focus */
 }
 
 .settings-panel-body {
@@ -1542,7 +1531,7 @@ textarea {
 .settings-nav {
   width: 160px;
   min-width: 160px;
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid hsl(var(--border));
   padding: 12px 0;
   overflow-y: auto;
 }
@@ -1574,14 +1563,14 @@ textarea {
 }
 
 .settings-nav button:hover {
-  color: var(--color-text);
-  background: var(--color-bg-hover);
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent) / 0.08);
 }
 
 .settings-nav button.active {
-  color: var(--color-text);
-  border-left-color: var(--color-accent);
-  background: var(--color-bg-active);
+  color: hsl(var(--foreground));
+  border-left-color: hsl(var(--accent));
+  background: hsl(var(--accent) / 0.12);
   font-weight: 500;
 }
 
@@ -1643,34 +1632,21 @@ textarea {
 .settings-item label {
   display: block;
   font-size: 14px;
-  color: var(--color-text-h);
+  color: hsl(var(--foreground));
   margin-bottom: 8px;
   font-weight: 500;
 }
 
+/* .settings-item select/input: visual rules now supplied by <Select>/<Input> primitives;
+   keep width override so selects/inputs fill the item width in this layout. */
 .settings-item select,
 .settings-item input {
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-size: 14px;
-  background: var(--color-bg-subtle);
-  color: var(--color-text-h);
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.settings-item select:focus,
-.settings-item input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-bg);
 }
 
 .settings-panel-footer {
   padding: 20px 24px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid hsl(var(--border));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1684,13 +1660,13 @@ textarea {
 
 .settings-version {
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   opacity: 0.7;
 }
 
 .settings-build-time {
   font-size: 11px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   opacity: 0.5;
 }
 
@@ -1728,67 +1704,33 @@ textarea {
 .passkey-card-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-h);
+  color: hsl(var(--foreground));
   margin-bottom: 4px;
 }
 
 .passkey-card-time {
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   opacity: 0.75;
 }
 
-.passkey-register-btn,
-.passkey-delete-btn {
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text-h);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
+/* passkey-register-btn / passkey-delete-btn: visual rules now supplied by <Button>;
+   kept only for layout overrides (margin-top on register, legacy class selector) */
 .passkey-register-btn {
   margin-top: 12px;
 }
 
-.passkey-register-btn:hover,
-.passkey-delete-btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.passkey-register-btn:disabled,
-.passkey-delete-btn:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
+/* settings-save-btn: visual rules now supplied by <Button>;
+   kept only for legacy class selector compatibility */
 .settings-save-btn {
-  padding: 10px 24px;
-  background: var(--color-accent);
-  color: var(--color-button-text);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.settings-save-btn:hover {
-  background: var(--color-accent-hover);
-  transform: translateY(-1px);
+  /* Button primitive handles padding, background, color, radius, hover */
 }
 
 /* Git Panel */
 .git-panel {
   width: 380px;
-  background: var(--color-bg);
-  border-left: 1px solid var(--color-border);
+  background: hsl(var(--background));
+  border-left: 1px solid hsl(var(--border));
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;

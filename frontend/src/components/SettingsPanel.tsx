@@ -6,6 +6,7 @@ import { saveSettings, CUSTOM_STYLESHEET_MAX } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
+import { Button, Input, Select } from './ui';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -364,9 +365,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       <div class={className}>
         <For each={presets}>
           {(preset) => (
-            <button type="button" onClick={() => updateSetting(key, preset.value as Settings[K])}>
+            <Button type="button" variant="outline" size="sm" onClick={() => updateSetting(key, preset.value as Settings[K])}>
               {preset.label}
-            </button>
+            </Button>
           )}
         </For>
       </div>
@@ -379,11 +380,17 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
         <div class="settings-panel" onClick={(e) => e.stopPropagation()}>
           <div class="settings-panel-header">
             <h3>Settings</h3>
-            <button class="close-btn" onClick={props.onClose}>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="close-btn"
+              onClick={props.onClose}
+              aria-label="Close"
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
-            </button>
+            </Button>
           </div>
 
           <div class="settings-panel-body">
@@ -416,7 +423,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="theme-mode">Theme Mode</label>
-                  <select
+                  <Select
                     id="theme-mode"
                     value={settingsStore.settings().themeMode}
                     onChange={(e) => updateSetting('themeMode', e.currentTarget.value as ThemeMode)}
@@ -424,12 +431,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <option value="system">Follow System</option>
                     <option value="light">Always Light</option>
                     <option value="dark">Always Dark</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item">
                   <label for="light-theme">Light Theme</label>
-                  <select
+                  <Select
                     id="light-theme"
                     value={settingsStore.settings().lightTheme}
                     onChange={(e) => updateSetting('lightTheme', e.currentTarget.value)}
@@ -437,12 +444,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <For each={lightThemes()}>
                       {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
                     </For>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item">
                   <label for="dark-theme">Dark Theme</label>
-                  <select
+                  <Select
                     id="dark-theme"
                     value={settingsStore.settings().darkTheme}
                     onChange={(e) => updateSetting('darkTheme', e.currentTarget.value)}
@@ -450,12 +457,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <For each={darkThemes()}>
                       {(theme) => <option value={theme.id}>{theme.name}{!theme.builtin ? ' (Custom)' : ''}</option>}
                     </For>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item">
                   <label for="code-theme-light">Code Theme (Light)</label>
-                  <select
+                  <Select
                     id="code-theme-light"
                     value={settingsStore.settings().codeBlockThemeLight}
                     onChange={(e) => updateSetting('codeBlockThemeLight', e.currentTarget.value)}
@@ -463,12 +470,12 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <For each={codeThemeLightPresets}>
                       {(theme) => <option value={theme.value}>{theme.label}</option>}
                     </For>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item">
                   <label for="code-theme-dark">Code Theme (Dark)</label>
-                  <select
+                  <Select
                     id="code-theme-dark"
                     value={settingsStore.settings().codeBlockThemeDark}
                     onChange={(e) => updateSetting('codeBlockThemeDark', e.currentTarget.value)}
@@ -476,7 +483,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <For each={codeThemeDarkPresets}>
                       {(theme) => <option value={theme.value}>{theme.label}</option>}
                     </For>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item">
@@ -504,20 +511,20 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="content-width">Content Width</label>
-                  <select
+                  <Select
                     id="content-width"
                     value={settingsStore.settings().markdownWidth.mode}
                     onChange={(e) => updateSetting('markdownWidth', { ...settingsStore.settings().markdownWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
                   >
                     <option value="full">Full Width</option>
                     <option value="fixed">Fixed Width</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <Show when={settingsStore.settings().markdownWidth.mode === 'fixed'}>
                   <div class="settings-item">
                     <label for="fixed-width-value">Fixed Width Value</label>
-                    <input
+                    <Input
                       id="fixed-width-value"
                       type="text"
                       value={settingsStore.settings().markdownWidth.fixedWidth}
@@ -529,7 +536,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="table-density">Table Density</label>
-                  <select
+                  <Select
                     id="table-density"
                     value={settingsStore.settings().tableDensity}
                     onChange={(e) => updateSetting('tableDensity', e.currentTarget.value as 'small' | 'medium' | 'large')}
@@ -537,19 +544,19 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <option value="small">Small</option>
                     <option value="medium">Medium</option>
                     <option value="large">Large</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item">
                   <label for="table-wrap">Table Cell Wrapping</label>
-                  <select
+                  <Select
                     id="table-wrap"
                     value={settingsStore.settings().tableWrap}
                     onChange={(e) => updateSetting('tableWrap', e.currentTarget.value as 'wrap' | 'nowrap')}
                   >
                     <option value="wrap">Wrap</option>
                     <option value="nowrap">No wrap (scroll horizontally)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div class="settings-item settings-item-column">
@@ -560,12 +567,14 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     theme={settingsStore.effectiveTheme}
                   />
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 8px;">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => updateSetting('customStylesheet', '')}
                     >
                       Clear
-                    </button>
+                    </Button>
                     <span style="font-size: 11px; color: var(--color-text); opacity: 0.7;">
                       {settingsStore.settings().customStylesheet.length} / {CUSTOM_STYLESHEET_MAX}
                     </span>
@@ -582,7 +591,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                   <div class="settings-item">
                     <label for="session-timeout-minutes">Session Timeout (minutes)</label>
-                    <input
+                    <Input
                       id="session-timeout-minutes"
                       type="number"
                       min="1"
@@ -641,21 +650,23 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                               <div class="passkey-card-time">Last used {formatTimestamp(credential.lastUsedAt)}</div>
                             </div>
 
-                            <button
+                            <Button
                               type="button"
+                              variant="outline"
                               class="passkey-delete-btn"
                               disabled={passkeyBusyId() === credential.id}
                               onClick={() => void handlePasskeyDelete(credential.id)}
                             >
                               {passkeyBusyId() === credential.id ? 'Removing...' : 'Remove'}
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </For>
                     </div>
 
-                    <button
+                    <Button
                       type="button"
+                      variant="default"
                       class="passkey-register-btn"
                       disabled={passkeyBusyId() === '__register__' || !authStore.passkeyConfigured()}
                       onClick={() => void handlePasskeyRegister()}
@@ -665,7 +676,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                         : authStore.passkeyConfigured()
                           ? 'Add Passkey for This Domain'
                           : 'Passkey Unavailable for This Domain'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </Show>
@@ -675,7 +686,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="trash-expire-days">Auto-delete after (days)</label>
-                  <input
+                  <Input
                     id="trash-expire-days"
                     type="number"
                     min="1"
@@ -708,7 +719,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="ui-font-family">UI Font</label>
-                  <input
+                  <Input
                     id="ui-font-family"
                     type="text"
                     value={settingsStore.settings().uiFontFamily}
@@ -720,7 +731,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="ui-font-size">UI Font Size</label>
-                  <input
+                  <Input
                     id="ui-font-size"
                     type="text"
                     value={settingsStore.settings().uiFontSize}
@@ -732,7 +743,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="markdown-font-family">Markdown Font</label>
-                  <input
+                  <Input
                     id="markdown-font-family"
                     type="text"
                     value={settingsStore.settings().markdownFontFamily}
@@ -744,7 +755,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="markdown-font-size">Markdown Font Size</label>
-                  <input
+                  <Input
                     id="markdown-font-size"
                     type="text"
                     value={settingsStore.settings().markdownFontSize}
@@ -756,7 +767,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="code-font-family">Code Block Font</label>
-                  <input
+                  <Input
                     id="code-font-family"
                     type="text"
                     value={settingsStore.settings().codeFontFamily}
@@ -768,7 +779,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="code-font-size">Code Block Font Size</label>
-                  <input
+                  <Input
                     id="code-font-size"
                     type="text"
                     value={settingsStore.settings().codeFontSize}
@@ -790,9 +801,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 </Show>
               </div>
             </Show>
-            <button class="settings-save-btn" onClick={handleSave}>
+            <Button class="settings-save-btn" onClick={handleSave}>
               {saved() ? '✓ Saved!' : 'Save Settings'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
