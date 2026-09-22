@@ -934,36 +934,6 @@ body {
   --trees-bg-muted-override: rgba(0, 0, 0, 0.1);
 }
 
-/* Buttons */
-.btn {
-  padding: 10px 18px;
-  background: var(--color-accent);
-  color: var(--color-button-text);
-  border: none;
-  cursor: pointer;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  width: 100%;
-  margin-bottom: 12px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn:hover {
-  background: var(--color-accent-hover);
-  transform: translateY(-1px);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
 /* All interactive elements with smooth transitions */
 button,
 a,
