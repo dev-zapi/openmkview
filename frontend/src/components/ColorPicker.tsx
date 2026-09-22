@@ -1,4 +1,5 @@
 import { Component, Show, createSignal } from 'solid-js';
+import { Button, Input } from './ui';
 
 interface ColorPickerProps {
   currentColor?: string;
@@ -68,7 +69,7 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
         <span>Select Color</span>
         <button class="color-picker-close" onClick={props.onClose}>×</button>
       </div>
-      
+
       <div class="color-picker-presets">
         {PRESET_COLORS.map(color => (
           <button
@@ -92,32 +93,32 @@ const ColorPicker: Component<ColorPickerProps> = (props) => {
             onInput={(e) => setCustomColor(e.currentTarget.value)}
             class="color-picker-native"
           />
-          <input
+          <Input
             type="text"
             value={customColor()}
             onInput={(e) => setCustomColor(e.currentTarget.value)}
             placeholder="#RRGGBB"
             class="color-picker-input"
           />
-          <button class="color-picker-apply" onClick={handleCustomSubmit}>
+          <Button class="color-picker-apply" onClick={handleCustomSubmit}>
             Apply
-          </button>
+          </Button>
         </div>
       </Show>
 
       <Show when={!showCustom()}>
-        <button class="color-picker-custom-toggle" onClick={() => setShowCustom(true)}>
+        <Button variant="outline" class="color-picker-custom-toggle" onClick={() => setShowCustom(true)}>
           Custom Color
-        </button>
+        </Button>
       </Show>
 
       <Show when={props.onCloseProject}>
         <div class="color-picker-divider">
           <span></span>
         </div>
-        <button class="color-picker-close-project" onClick={handleCloseProject}>
+        <Button variant="outline" class="color-picker-close-project" onClick={handleCloseProject}>
           Close Project
-        </button>
+        </Button>
       </Show>
     </div>
   );
