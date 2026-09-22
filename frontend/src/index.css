@@ -1,206 +1,192 @@
 @import "tailwindcss";
 
 @theme {
-  /* Soft Black & White Theme - Light Mode */
-  --color-text: #4a4a4a;
-  --color-text-h: #1a1a1a;
-  --color-bg: #f5f5f5;
-  --color-topbar-bg: #f5f5f5;
-  --color-bg-subtle: #ebebeb;
-  --color-bg-tertiary: #e0e0e0;
-  --color-border: #d0d0d0;
-  --color-border-strong: #b0b0b0;
-  --color-code-bg: #f6f8fa;
-  --color-hover-bg: rgba(0, 0, 0, 0.06);
-  --color-active-bg: rgba(0, 0, 0, 0.1);
-  --color-accent: #333333;
-  --color-accent-hover: #1a1a1a;
-  --color-accent-bg: rgba(0, 0, 0, 0.05);
-  --color-accent-border: rgba(0, 0, 0, 0.15);
-  --color-social-bg: rgba(0, 0, 0, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #ffffff;
-  
-  /* Fonts */
+  /* shadcn neutral/zinc scale — raw HSL triplets (enables Tailwind v4 alpha utilities + color-mix) */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 35%;
+  --secondary: 240 5% 89%;
+  --secondary-foreground: 240 6% 10%;
+  --accent: 240 5.9% 10%;
+  --accent-foreground: 0 0% 98%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 240 5.9% 10%;
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+
+  --radius: 0.5rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Fonts (unchanged) */
   --font-sans: 'MiSans', sans-serif;
   --font-heading: 'MiSans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
-  
-  /* Markdown Font Variables */
+
+  /* Markdown / code font vars (unchanged) */
   --markdown-font: Georgia, 'Noto Serif', serif;
   --markdown-size: 16px;
-  
-  /* Code Font Variables */
   --code-font: "JetBrains Mono", ui-monospace, Consolas, monospace;
   --code-size: 14px;
 }
 
-/* Dark mode colors */
+/* Legacy --color-* aliases — each maps to a new shadcn token, so existing CSS and
+   inline styles using var(--color-*) keep resolving as the active theme overrides
+   the underlying --background / --accent / etc. tokens above. */
+:root {
+  --color-bg: hsl(var(--background));
+  --color-text: hsl(var(--muted-foreground));
+  --color-text-h: hsl(var(--foreground));
+  --color-topbar-bg: hsl(var(--background));
+  --color-bg-subtle: hsl(var(--muted));
+  --color-bg-tertiary: hsl(var(--secondary));
+  --color-border: hsl(var(--border));
+  --color-border-strong: color-mix(in oklab, hsl(var(--border)), hsl(var(--foreground)) 35%);
+  --color-code-bg: hsl(var(--card));
+  --color-hover-bg: hsl(var(--accent) / 0.08);
+  --color-active-bg: hsl(var(--accent) / 0.12);
+  --color-accent: hsl(var(--accent));
+  --color-accent-hover: hsl(var(--accent));
+  --color-accent-bg: hsl(var(--accent) / 0.08);
+  --color-accent-border: hsl(var(--accent) / 0.2);
+  --color-social-bg: hsl(var(--accent) / 0.03);
+  --color-success: hsl(var(--success));
+  --color-error: hsl(var(--destructive));
+  --color-error-bg: hsl(var(--destructive) / 0.1);
+  --color-error-hover: hsl(var(--destructive) / 0.85);
+  --color-danger: hsl(var(--destructive));
+  --color-danger-bg: hsl(var(--destructive) / 0.1);
+  --color-primary: hsl(var(--primary));
+  --color-button-text: hsl(var(--primary-foreground));
+  --color-bg-hover: hsl(var(--accent) / 0.08);
+  --color-bg-active: hsl(var(--accent) / 0.12);
+  --color-bg-e: hsl(var(--muted));
+  --color-text-secondary: hsl(var(--muted-foreground));
+  --color-text-soft: hsl(var(--muted-foreground));
+  --color-text-s: hsl(var(--muted-foreground));
+  --color-border-subtle: hsl(var(--border) / 0.5);
+  --color-warning: hsl(var(--warning));
+}
+
+/* Dark mode via system preference */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-text: #b0b0b0;
-    --color-text-h: #e8e8e8;
-    --color-bg: #1a1a1a;
-    --color-topbar-bg: #1a1a1a;
-    --color-bg-subtle: #252525;
-    --color-bg-tertiary: #303030;
-    --color-border: #3a3a3a;
-    --color-border-strong: #4a4a4a;
-    --color-code-bg: #2a2a2a;
-    --color-hover-bg: rgba(255, 255, 255, 0.08);
-    --color-active-bg: rgba(255, 255, 255, 0.12);
-    --color-accent: #e0e0e0;
-    --color-accent-hover: #ffffff;
-    --color-accent-bg: rgba(255, 255, 255, 0.08);
-    --color-accent-border: rgba(255, 255, 255, 0.15);
-    --color-social-bg: rgba(255, 255, 255, 0.03);
-    --color-success: #22c55e;
-    --color-error: #ef4444;
-    --color-button-text: #1a1a1a;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --muted: 240 4% 10%;
+    --muted-foreground: 240 5% 64.9%;
+    --secondary: 240 4% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 0 0% 98%;
+    --accent-foreground: 240 10% 3.9%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 10% 3.9%;
+    --destructive: 0 62.3% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 240 5% 84%;
   }
 }
 
-/* Dark theme class support */
+/* Explicit dark theme class */
 .dark-theme {
-  --color-text: #b0b0b0;
-  --color-text-h: #e8e8e8;
-  --color-bg: #1a1a1a;
-  --color-topbar-bg: #1a1a1a;
-  --color-bg-subtle: #252525;
-  --color-bg-tertiary: #303030;
-  --color-border: #3a3a3a;
-  --color-border-strong: #4a4a4a;
-  --color-code-bg: #2a2a2a;
-  --color-hover-bg: rgba(255, 255, 255, 0.08);
-  --color-active-bg: rgba(255, 255, 255, 0.12);
-  --color-accent: #e0e0e0;
-  --color-accent-hover: #ffffff;
-  --color-accent-bg: rgba(255, 255, 255, 0.08);
-  --color-accent-border: rgba(255, 255, 255, 0.15);
-  --color-social-bg: rgba(255, 255, 255, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #1a1a1a;
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --muted: 240 4% 10%;
+  --muted-foreground: 240 5% 64.9%;
+  --secondary: 240 4% 14%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 0 0% 98%;
+  --accent-foreground: 240 10% 3.9%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 10% 3.9%;
+  --destructive: 0 62.3% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 240 5% 84%;
 }
 
-/* Light theme class (explicit) */
+/* Explicit light theme class (base neutral set) */
 .light-theme {
-  --color-text: #4a4a4a;
-  --color-text-h: #1a1a1a;
-  --color-bg: #f5f5f5;
-  --color-topbar-bg: #f5f5f5;
-  --color-bg-subtle: #ebebeb;
-  --color-bg-tertiary: #e0e0e0;
-  --color-border: #d0d0d0;
-  --color-border-strong: #b0b0b0;
-  --color-code-bg: #f6f8fa;
-  --color-hover-bg: rgba(0, 0, 0, 0.06);
-  --color-active-bg: rgba(0, 0, 0, 0.1);
-  --color-accent: #333333;
-  --color-accent-hover: #1a1a1a;
-  --color-accent-bg: rgba(0, 0, 0, 0.05);
-  --color-accent-border: rgba(0, 0, 0, 0.15);
-  --color-social-bg: rgba(0, 0, 0, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #ffffff;
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 35%;
+  --secondary: 240 5% 89%;
+  --secondary-foreground: 240 6% 10%;
+  --accent: 240 5.9% 10%;
+  --accent-foreground: 0 0% 98%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 240 5.9% 10%;
 }
 
-/* ===== Builtin Light Themes ===== */
+/* ===== Accent-only theme variants (sit on the neutral base above) ===== */
 
-/* Light Warm - Cozy amber/warm tones */
+/* Light Warm — amber/brown accent */
 .light-theme.light-warm {
-  --color-text: #4a3a2a;
-  --color-text-h: #2a1a0a;
-  --color-bg: #f9f3e8;
-  --color-topbar-bg: #f9f3e8;
-  --color-bg-subtle: #f0e8d8;
-  --color-bg-tertiary: #e8dcc8;
-  --color-border: #d4c4a8;
-  --color-border-strong: #c4b498;
-  --color-code-bg: #fdf8ec;
-  --color-hover-bg: rgba(180, 140, 80, 0.08);
-  --color-active-bg: rgba(180, 140, 80, 0.12);
-  --color-accent: #8b5a2b;
-  --color-accent-hover: #6b4520;
-  --color-accent-bg: rgba(139, 90, 43, 0.08);
-  --color-accent-border: rgba(139, 90, 43, 0.2);
-  --color-social-bg: rgba(180, 140, 80, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #ffffff;
+  --accent: 28 60% 35%;
+  --accent-foreground: 0 0% 100%;
+  --primary: 28 60% 35%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 28 60% 35%;
 }
 
-/* Light Cool - Blue-gray tones */
+/* Light Cool — blue-gray accent */
 .light-theme.light-cool {
-  --color-text: #3a4a5a;
-  --color-text-h: #1a2a3a;
-  --color-bg: #f0f4f8;
-  --color-topbar-bg: #f0f4f8;
-  --color-bg-subtle: #e4eaf0;
-  --color-bg-tertiary: #d8e4ec;
-  --color-border: #c8d4e0;
-  --color-border-strong: #a8b8c8;
-  --color-code-bg: #f0f6fc;
-  --color-hover-bg: rgba(60, 120, 180, 0.08);
-  --color-active-bg: rgba(60, 120, 180, 0.12);
-  --color-accent: #2a5a8a;
-  --color-accent-hover: #1a4a7a;
-  --color-accent-bg: rgba(42, 90, 138, 0.08);
-  --color-accent-border: rgba(42, 90, 138, 0.2);
-  --color-social-bg: rgba(60, 120, 180, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #ffffff;
+  --accent: 210 50% 35%;
+  --accent-foreground: 0 0% 100%;
+  --primary: 210 50% 35%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 210 50% 35%;
 }
 
-/* ===== Builtin Dark Themes ===== */
-
-/* Dark Blue - GitHub-style deep blue */
+/* Dark Blue — GitHub-style blue accent */
 .dark-theme.dark-blue {
-  --color-text: #8b949e;
-  --color-text-h: #c9d1d9;
-  --color-bg: #0d1117;
-  --color-topbar-bg: #0d1117;
-  --color-bg-subtle: #161b22;
-  --color-bg-tertiary: #21262d;
-  --color-border: #30363d;
-  --color-border-strong: #484f58;
-  --color-code-bg: #161b22;
-  --color-hover-bg: rgba(88, 166, 255, 0.08);
-  --color-active-bg: rgba(88, 166, 255, 0.12);
-  --color-accent: #58a6ff;
-  --color-accent-hover: #79b8ff;
-  --color-accent-bg: rgba(88, 166, 255, 0.08);
-  --color-accent-border: rgba(88, 166, 255, 0.2);
-  --color-social-bg: rgba(88, 166, 255, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #0d1117;
+  --accent: 212 92% 68%;
+  --accent-foreground: 240 10% 3.9%;
+  --primary: 212 92% 68%;
+  --primary-foreground: 240 10% 3.9%;
+  --ring: 212 92% 68%;
 }
 
-/* Dark Purple - Purple tinted */
+/* Dark Purple — purple accent */
 .dark-theme.dark-purple {
-  --color-text: #9b8ec4;
-  --color-text-h: #d4c4f4;
-  --color-bg: #1a1625;
-  --color-topbar-bg: #1a1625;
-  --color-bg-subtle: #241f31;
-  --color-bg-tertiary: #2d283f;
-  --color-border: #3d3852;
-  --color-border-strong: #4d4862;
-  --color-code-bg: #241f31;
-  --color-hover-bg: rgba(170, 130, 255, 0.08);
-  --color-active-bg: rgba(170, 130, 255, 0.12);
-  --color-accent: #aa82ff;
-  --color-accent-hover: #bb93ff;
-  --color-accent-bg: rgba(170, 130, 255, 0.08);
-  --color-accent-border: rgba(170, 130, 255, 0.2);
-  --color-social-bg: rgba(170, 130, 255, 0.03);
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-button-text: #1a1625;
+  --accent: 265 90% 76%;
+  --accent-foreground: 240 10% 3.9%;
+  --primary: 265 90% 76%;
+  --primary-foreground: 240 10% 3.9%;
+  --ring: 265 90% 76%;
 }
 
 /* Base styles */
@@ -279,8 +265,8 @@ body {
   width: min(420px, calc(100vw - 32px));
   padding: 28px;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 90%, transparent);
-  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  border: 1px solid hsl(var(--border) / 0.9);
+  background: hsl(var(--background) / 0.88);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(18px);
 }
@@ -311,8 +297,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent);
-  color: var(--color-button-text);
+  background: hsl(var(--accent));
+  color: hsl(var(--primary-foreground));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -374,7 +360,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   opacity: 0.6;
   font-size: 12px;
 }
@@ -683,14 +669,14 @@ body {
   margin-bottom: 8px;
   background: transparent;
   border: none;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.15s ease, color 0.15s ease;
   position: relative;
 }
 
@@ -1564,7 +1550,7 @@ textarea {
   padding: 8px 16px;
   cursor: pointer;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: hsl(var(--muted-foreground));
   border-left: 2px solid transparent;
   border-top: none;
   border-right: none;
@@ -1703,13 +1689,13 @@ textarea {
 }
 
 .passkey-empty {
-  border: 1px dashed var(--color-border);
-  border-radius: 10px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: var(--radius-lg);
   padding: 16px;
   font-size: 13px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   opacity: 0.7;
-  background: var(--color-bg-subtle);
+  background: hsl(var(--muted));
 }
 
 .passkey-card {
@@ -1717,10 +1703,10 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
   padding: 14px 16px;
-  background: var(--color-bg-subtle);
+  background: hsl(var(--muted));
 }
 
 .passkey-card-meta {
@@ -1825,7 +1811,7 @@ textarea {
   border: none;
   cursor: pointer;
   font-size: 13px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   transition: all 0.2s ease;
   position: relative;
 }

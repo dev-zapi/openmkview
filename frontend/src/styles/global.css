@@ -1553,28 +1553,28 @@
 }
 
 /* Dark theme adjustments for diagrams */
-.dark .diagram-error {
+.dark-theme .diagram-error {
   background: #7f1d1d;
   border-color: #dc2626;
 }
 
-.dark .error-title {
+.dark-theme .error-title {
   color: #fca5a5;
 }
 
-.dark .error-message {
+.dark-theme .error-message {
   color: #fecaca;
 }
 
-.dark .error-code {
+.dark-theme .error-code {
   background: #991b1b;
   color: #fee2e2;
 }
 
-.dark .error-hint {
+.dark-theme .error-hint {
   color: #fecaca;
 }
 
-.dark .error-hint a {
+.dark-theme .error-hint a {
   color: #60a5fa;
 }
