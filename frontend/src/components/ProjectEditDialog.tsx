@@ -1,7 +1,17 @@
-import { Component, createSignal, Show, For, createEffect, onMount } from 'solid-js';
+import { Component, createSignal, Show, For, createEffect } from 'solid-js';
 import type { Project } from '../types';
 import { api } from '../services/api';
 import { FAVICON_PREFIX, getFaviconPath, getProjectFaviconUrl, isFaviconIcon } from '../utils/projectIcon';
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from './ui';
 
 interface ProjectEditDialogProps {
   project: Project;
@@ -92,7 +102,7 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
   const renderIconPreview = () => {
     if (isFaviconIcon(icon())) {
       return (
-        <img 
+        <img
           src={getProjectFaviconUrl(getFaviconPath(icon()!), props.project.id)}
           alt="favicon"
           class="icon-preview-image"
@@ -103,148 +113,147 @@ const ProjectEditDialog: Component<ProjectEditDialogProps> = (props) => {
   };
 
   return (
-    <Show when={props.isOpen}>
-      <div class="dialog-overlay" onClick={props.onClose}>
-        <div class="dialog-content" onClick={(e) => e.stopPropagation()}>
-          <div class="dialog-header">
-            <h3>Edit project</h3>
-            <button class="dialog-close" onClick={props.onClose}>×</button>
+    <Dialog open={props.isOpen} onOpenChange={(open) => { if (!open) props.onClose(); }}>
+      <DialogContent class="project-edit-dialog">
+        <DialogHeader class="dialog-header">
+          <DialogTitle>Edit project</DialogTitle>
+        </DialogHeader>
+        <DialogClose />
+
+        <div class="dialog-body">
+          <div class="form-group">
+            <label>Name</label>
+            <Input
+              type="text"
+              value={name()}
+              onInput={(e) => setName(e.currentTarget.value)}
+              class="form-input"
+              placeholder="Project name"
+            />
           </div>
 
-          <div class="dialog-body">
-            <div class="form-group">
-              <label>Name</label>
-              <input
-                type="text"
-                value={name()}
-                onInput={(e) => setName(e.currentTarget.value)}
-                class="form-input"
-                placeholder="Project name"
-              />
+          <div class="form-group">
+            <label>Icon</label>
+            <div class="icon-preview-container">
+              <div
+                class="icon-preview-large"
+                style={{ background: color() || 'var(--color-bg-subtle)' }}
+              >
+                {renderIconPreview()}
+              </div>
+              <div class="icon-picker-inline">
+                <div class="icon-grid">
+                  <For each={PRESET_ICONS}>
+                    {(iconItem) => (
+                      <button
+                        class={`icon-grid-item ${icon() === iconItem ? 'active' : ''}`}
+                        onClick={() => handleIconSelect(iconItem)}
+                        title={iconItem}
+                      >
+                        {iconItem}
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </div>
             </div>
 
-            <div class="form-group">
-              <label>Icon</label>
-              <div class="icon-preview-container">
-                <div 
-                  class="icon-preview-large"
-                  style={{ background: color() || 'var(--color-bg-subtle)' }}
-                >
-                  {renderIconPreview()}
-                </div>
-                <div class="icon-picker-inline">
-                  <div class="icon-grid">
-                    <For each={PRESET_ICONS}>
-                      {(iconItem) => (
+            <div class="favicon-search-section">
+              <Button
+                variant="outline"
+                class="favicon-search-btn"
+                onClick={handleSearchFavicons}
+                disabled={searchingFavicons()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35"/>
+                </svg>
+                {searchingFavicons() ? 'Searching...' : 'Search favicon in project'}
+              </Button>
+
+              <Show when={favicons().length > 0}>
+                <div class="favicon-results">
+                  <label class="favicon-results-label">Found favicons:</label>
+                  <div class="favicon-grid">
+                    <For each={favicons()}>
+                      {(faviconPath) => (
                         <button
-                          class={`icon-grid-item ${icon() === iconItem ? 'active' : ''}`}
-                          onClick={() => handleIconSelect(iconItem)}
-                          title={iconItem}
+                          class={`favicon-item ${icon() === `${FAVICON_PREFIX}${faviconPath}` ? 'active' : ''}`}
+                          onClick={() => handleFaviconSelect(faviconPath)}
+                          title={faviconPath}
                         >
-                          {iconItem}
+                          <img
+                            src={getProjectFaviconUrl(faviconPath, props.project.id)}
+                            alt={faviconPath}
+                            class="favicon-thumbnail"
+                          />
                         </button>
                       )}
                     </For>
                   </div>
                 </div>
-              </div>
-              
-              <div class="favicon-search-section">
-                <button 
-                  class="favicon-search-btn"
-                  onClick={handleSearchFavicons}
-                  disabled={searchingFavicons()}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                  </svg>
-                  {searchingFavicons() ? 'Searching...' : 'Search favicon in project'}
-                </button>
-                
-                <Show when={favicons().length > 0}>
-                  <div class="favicon-results">
-                    <label class="favicon-results-label">Found favicons:</label>
-                    <div class="favicon-grid">
-                      <For each={favicons()}>
-                        {(faviconPath) => (
-                          <button
-                            class={`favicon-item ${icon() === `${FAVICON_PREFIX}${faviconPath}` ? 'active' : ''}`}
-                            onClick={() => handleFaviconSelect(faviconPath)}
-                            title={faviconPath}
-                          >
-                            <img 
-                              src={getProjectFaviconUrl(faviconPath, props.project.id)}
-                              alt={faviconPath}
-                              class="favicon-thumbnail"
-                            />
-                          </button>
-                        )}
-                      </For>
-                    </div>
-                  </div>
-                </Show>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>Color</label>
-              <div class="color-picker-inline">
-                <For each={PRESET_COLORS}>
-                  {(colorItem) => (
-                    <button
-                      class={`color-swatch ${color() === colorItem ? 'active' : ''}`}
-                      style={{ background: colorItem }}
-                      onClick={() => handleColorSelect(colorItem)}
-                    >
-                      <Show when={color() === colorItem}>
-                        <span class="color-check">✓</span>
-                      </Show>
-                    </button>
-                  )}
-                </For>
-                <button
-                  class={`color-swatch custom-color ${isCustomColor() ? 'active' : ''}`}
-                  style={{ background: isCustomColor() ? color() : 'var(--color-bg-subtle)' }}
-                  onClick={() => setShowCustomColor(!showCustomColor())}
-                  title="Custom color"
-                >
-                  <Show when={!isCustomColor()} fallback={<span class="color-check">✓</span>}>
-                    <span class="custom-color-icon">+</span>
-                  </Show>
-                </button>
-              </div>
-              <Show when={showCustomColor()}>
-                <div class="custom-color-input-container">
-                  <input
-                    type="color"
-                    value={color() || customColor()}
-                    onInput={handleCustomColorChange}
-                    class="color-input-native"
-                  />
-                  <input
-                    type="text"
-                    value={color() || ''}
-                    onInput={(e) => setColor(e.currentTarget.value)}
-                    class="color-input-text"
-                    placeholder="#000000"
-                  />
-                </div>
               </Show>
             </div>
           </div>
 
-          <div class="dialog-footer">
-            <button class="dialog-button cancel" onClick={props.onClose}>
-              Cancel
-            </button>
-            <button class="dialog-button save" onClick={handleSave}>
-              Save
-            </button>
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-picker-inline">
+              <For each={PRESET_COLORS}>
+                {(colorItem) => (
+                  <button
+                    class={`color-swatch ${color() === colorItem ? 'active' : ''}`}
+                    style={{ background: colorItem }}
+                    onClick={() => handleColorSelect(colorItem)}
+                  >
+                    <Show when={color() === colorItem}>
+                      <span class="color-check">✓</span>
+                    </Show>
+                  </button>
+                )}
+              </For>
+              <button
+                class={`color-swatch custom-color ${isCustomColor() ? 'active' : ''}`}
+                style={{ background: isCustomColor() ? color() : 'var(--color-bg-subtle)' }}
+                onClick={() => setShowCustomColor(!showCustomColor())}
+                title="Custom color"
+              >
+                <Show when={!isCustomColor()} fallback={<span class="color-check">✓</span>}>
+                  <span class="custom-color-icon">+</span>
+                </Show>
+              </button>
+            </div>
+            <Show when={showCustomColor()}>
+              <div class="custom-color-input-container">
+                <input
+                  type="color"
+                  value={color() || customColor()}
+                  onInput={handleCustomColorChange}
+                  class="color-input-native"
+                />
+                <Input
+                  type="text"
+                  value={color() || ''}
+                  onInput={(e) => setColor(e.currentTarget.value)}
+                  class="color-input-text"
+                  placeholder="#000000"
+                />
+              </div>
+            </Show>
           </div>
         </div>
-      </div>
-    </Show>
+
+        <DialogFooter class="dialog-footer">
+          <Button variant="outline" class="dialog-button cancel" onClick={props.onClose}>
+            Cancel
+          </Button>
+          <Button class="dialog-button save" onClick={handleSave}>
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

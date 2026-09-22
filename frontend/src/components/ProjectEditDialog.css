@@ -1,35 +1,15 @@
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
+/* Overlay, card chrome, close button and button visuals are provided by the
+   ui/ Dialog, Button and Input primitives. This file keeps the dialog's layout
+   (width, section spacing) and content styles (icon grid, color swatches,
+   favicon picker). */
 
-.dark-theme .dialog-overlay {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.dialog-content {
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+/* Width + scroll behaviour for the project-edit dialog card (DialogContent). */
+.project-edit-dialog {
   width: 480px;
   max-width: 90vw;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: scaleIn 0.2s ease;
-}
-
-.dark-theme .dialog-content {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--color-border-strong);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 0;
 }
 
 .dialog-header {
@@ -37,33 +17,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.dialog-header h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text-h);
-}
-
-.dialog-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: var(--color-text);
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.dialog-close:hover {
-  background: var(--color-code-bg);
-  color: var(--color-text-h);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .dialog-body {
@@ -83,32 +37,12 @@
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.form-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-size: 14px;
-  background: var(--color-bg-subtle);
-  color: var(--color-text-h);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-bg);
-}
-
-.form-input::placeholder {
-  color: var(--color-text);
-  opacity: 0.5;
-}
+/* .form-input visual styles come from the Input primitive. */
 
 .icon-preview-container {
   display: flex;
@@ -119,17 +53,17 @@
 .icon-preview-large {
   width: 64px;
   height: 64px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2px solid var(--color-border);
-  transition: border-color 0.2s;
+  border: 2px solid hsl(var(--border));
+  transition: border-color 0.15s ease;
 }
 
 .icon-preview-large:hover {
-  border-color: var(--color-accent);
+  border-color: hsl(var(--accent));
 }
 
 .icon-preview-letter {
@@ -157,26 +91,26 @@
   height: auto;
   min-width: 28px;
   max-width: 36px;
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
+  border: 2px solid hsl(var(--border));
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  background: var(--color-bg-subtle);
+  background: hsl(var(--secondary));
 }
 
 .icon-grid-item:hover {
   transform: scale(1.05);
-  background: var(--color-code-bg);
-  border-color: var(--color-border-strong);
+  background: hsl(var(--muted));
+  border-color: hsl(var(--foreground) / 0.3);
 }
 
 .icon-grid-item.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: hsl(var(--accent));
+  background: hsl(var(--accent) / 0.08);
 }
 
 .color-picker-inline {
@@ -191,7 +125,7 @@
   border-radius: 10px;
   border: 3px solid transparent;
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -203,8 +137,8 @@
 }
 
 .color-swatch.active {
-  border-color: var(--color-text-h);
-  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-border);
+  border-color: hsl(var(--foreground));
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--border));
 }
 
 .color-check {
@@ -215,12 +149,12 @@
 }
 
 .custom-color {
-  border: 3px dashed var(--color-border);
-  background: var(--color-bg-subtle);
+  border: 3px dashed hsl(var(--border));
+  background: hsl(var(--secondary));
 }
 
 .custom-color:hover {
-  border-color: var(--color-border-strong);
+  border-color: hsl(var(--foreground) / 0.3);
 }
 
 .custom-color.active {
@@ -230,7 +164,7 @@
 .custom-color-icon {
   font-size: 24px;
   font-weight: 300;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
 .custom-color-input-container {
@@ -238,18 +172,19 @@
   gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid hsl(var(--border));
   align-items: center;
 }
 
 .color-input-native {
   width: 44px;
   height: 44px;
-  border: 2px solid var(--color-border);
+  border: 2px solid hsl(var(--border));
   border-radius: 10px;
   cursor: pointer;
   padding: 0;
   background: transparent;
+  flex-shrink: 0;
 }
 
 .color-input-native::-webkit-color-swatch-wrapper {
@@ -258,30 +193,14 @@
 
 .color-input-native::-webkit-color-swatch {
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
+/* .color-input-text visual styles come from the Input primitive. */
 .color-input-text {
   flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-size: 14px;
+  min-width: 0;
   font-family: var(--font-mono);
-  background: var(--color-bg-subtle);
-  color: var(--color-text-h);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.color-input-text:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-bg);
-}
-
-.color-input-text::placeholder {
-  color: var(--color-text);
-  opacity: 0.5;
 }
 
 .dialog-footer {
@@ -289,41 +208,7 @@
   justify-content: flex-end;
   gap: 12px;
   padding: 20px 24px;
-  border-top: 1px solid var(--color-border);
-}
-
-.dialog-button {
-  padding: 10px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-}
-
-.dialog-button:active {
-  transform: scale(0.98);
-}
-
-.dialog-button.cancel {
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-h);
-}
-
-.dialog-button.cancel:hover {
-  background: var(--color-code-bg);
-  border-color: var(--color-border-strong);
-}
-
-.dialog-button.save {
-  background: var(--color-accent);
-  border: none;
-  color: var(--color-button-text);
-}
-
-.dialog-button.save:hover {
-  background: var(--color-accent-hover);
+  border-top: 1px solid hsl(var(--border));
 }
 
 .icon-preview-image {
@@ -335,32 +220,12 @@
 .favicon-search-section {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid hsl(var(--border));
 }
 
+/* .favicon-search-btn visual styles come from the Button (outline) primitive. */
 .favicon-search-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg-subtle);
-  color: var(--color-text-h);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.favicon-search-btn:hover:not(:disabled) {
-  background: var(--color-code-bg);
-  border-color: var(--color-accent);
-}
-
-.favicon-search-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .favicon-results {
@@ -371,7 +236,7 @@
   display: block;
   margin-bottom: 8px;
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
 .favicon-grid {
@@ -383,26 +248,26 @@
 .favicon-item {
   width: 44px;
   height: 44px;
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
+  border: 2px solid hsl(var(--border));
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px;
-  background: var(--color-bg-subtle);
+  background: hsl(var(--secondary));
 }
 
 .favicon-item:hover {
   transform: scale(1.05);
-  background: var(--color-code-bg);
-  border-color: var(--color-border-strong);
+  background: hsl(var(--muted));
+  border-color: hsl(var(--foreground) / 0.3);
 }
 
 .favicon-item.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
+  border-color: hsl(var(--accent));
+  background: hsl(var(--accent) / 0.08);
 }
 
 .favicon-thumbnail {
