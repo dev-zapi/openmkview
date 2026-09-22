@@ -896,29 +896,17 @@
   }
 }
 
-/* Trash Dialog Styles */
-.trash-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-}
-
+/* Trash Dialog Styles — overlay/card chrome and button visuals come from the
+   ui/ Dialog, Button primitives. Kept here: layout (width, flex, scroll) and
+   content styles (header, stats, list, confirm box). */
 .trash-dialog {
-  background: var(--color-bg);
-  border-radius: 12px;
   width: 760px;
   max-width: calc(100vw - 32px);
   max-height: min(78vh, 760px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--color-border);
+  padding: 0;
 }
 
 .trash-header {
@@ -927,7 +915,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .trash-header h2 {
@@ -936,21 +924,8 @@
   gap: 8px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-h);
+  color: hsl(var(--foreground));
   margin: 0;
-}
-
-.trash-header .close-btn {
-  padding: 6px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: var(--color-text);
-  border-radius: 6px;
-}
-
-.trash-header .close-btn:hover {
-  background: var(--color-bg-subtle);
 }
 
 .trash-toolbar {
@@ -967,38 +942,20 @@
   flex-wrap: wrap;
   gap: 16px;
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   justify-content: flex-end;
   min-width: 0;
 }
 
 .trash-stats span {
   padding: 4px 8px;
-  background: var(--color-bg-subtle);
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
+  background: hsl(var(--secondary));
+  border-radius: var(--radius-sm);
+  border: 1px solid hsl(var(--border));
 }
 
 .trash-toolbar .clear-btn {
-  padding: 8px 16px;
-  background: var(--color-error);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: background 0.2s;
   flex-shrink: 0;
-}
-
-.trash-toolbar .clear-btn:hover:not(:disabled) {
-  background: var(--color-error-hover);
-}
-
-.trash-toolbar .clear-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .trash-loading,
@@ -1007,7 +964,7 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
 }
 
@@ -1042,12 +999,12 @@
 
 .trash-item-info .icon {
   flex-shrink: 0;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
 .trash-item-info .name {
   font-weight: 500;
-  color: var(--color-text-h);
+  color: hsl(var(--foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1056,7 +1013,7 @@
 
 .trash-item-info .path {
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1065,7 +1022,7 @@
 
 .trash-item-info .date {
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
   flex-shrink: 0;
 }
 
@@ -1075,36 +1032,9 @@
   flex-shrink: 0;
 }
 
-.trash-item-actions .restore-btn,
-.trash-item-actions .delete-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
+/* Restore is an outline button tinted toward the accent. */
 .trash-item-actions .restore-btn {
-  color: var(--color-accent);
-}
-
-.trash-item-actions .restore-btn:hover {
-  background: var(--color-accent-bg);
-  border-color: var(--color-accent);
-}
-
-.trash-item-actions .delete-btn {
-  color: var(--color-error);
-}
-
-.trash-item-actions .delete-btn:hover {
-  background: var(--color-error-bg);
-  border-color: var(--color-error);
+  color: hsl(var(--accent));
 }
 
 .trash-confirm-overlay {
@@ -1118,12 +1048,35 @@
 }
 
 .trash-confirm-dialog {
-  background: var(--color-bg);
-  border-radius: 12px;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-radius: var(--radius-lg);
   padding: 20px;
   max-width: 320px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--color-border);
+  border: 1px solid hsl(var(--border));
+}
+
+.trash-confirm-dialog p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+}
+
+.trash-confirm-warning {
+  font-size: 12px;
+  color: hsl(var(--destructive));
+}
+
+.trash-confirm-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.trash-confirm-actions .cancel-btn,
+.trash-confirm-actions .confirm-btn {
+  flex: 1;
 }
 
 @media (max-width: 768px) {
@@ -1170,53 +1123,6 @@
   .trash-item-actions {
     justify-content: flex-end;
   }
-}
-
-.trash-confirm-dialog p {
-  margin: 0 0 8px;
-  font-size: 14px;
-  color: var(--color-text-h);
-}
-
-.trash-confirm-warning {
-  font-size: 12px;
-  color: var(--color-error);
-}
-
-.trash-confirm-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.trash-confirm-actions .cancel-btn,
-.trash-confirm-actions .confirm-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.trash-confirm-actions .cancel-btn {
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-}
-
-.trash-confirm-actions .cancel-btn:hover {
-  background: var(--color-bg);
-}
-
-.trash-confirm-actions .confirm-btn {
-  background: var(--color-error);
-  border: none;
-  color: white;
-}
-
-.trash-confirm-actions .confirm-btn:hover {
-  background: var(--color-error-hover);
 }
 
 .image-preview {
