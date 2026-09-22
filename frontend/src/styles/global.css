@@ -315,8 +315,8 @@
 
 .diff-selector {
   padding: 20px;
-  background: var(--color-bg-subtle);
-  border-bottom: 1px solid var(--color-border);
+  background: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
   margin-bottom: 20px;
 }
 
@@ -335,114 +335,59 @@
 
 .selector-group label {
   font-size: 12px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
+/* .selector-group select: visual rules now supplied by <Select> primitive;
+   kept only for layout min-width override */
 .selector-group select {
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg);
-  font-size: 12px;
   min-width: 160px;
 }
 
 .compare-arrow {
   font-size: 18px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
+/* .compare-btn: visual rules now supplied by <Button>; kept for legacy class selector */
 .compare-btn {
-  padding: 8px 20px;
-  background: var(--color-accent);
-  color: var(--color-button-text);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  height: 34px;
-  line-height: 18px;
-}
-
-.compare-btn:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  transform: translateY(-1px);
-}
-
-.compare-btn:disabled {
-  background: var(--color-border);
-  cursor: not-allowed;
+  /* Button primitive handles all visuals */
 }
 
 /* Git Panel Additional */
 .git-branch {
   padding: 12px 20px;
   font-size: 13px;
-  color: var(--color-text);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-subtle);
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
 }
 
 .git-actions {
   display: flex;
   gap: 8px;
   padding: 12px 20px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
+/* .git-actions button: visual rules now supplied by <Button variant="outline"> */
 .git-actions button {
   flex: 1;
-  padding: 8px 12px;
-  background: var(--color-bg-subtle);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s ease;
-}
-
-.git-actions button:hover {
-  background: var(--color-code-bg);
-  border-color: var(--color-accent);
 }
 
 .git-commit-input {
   display: flex;
   gap: 8px;
   padding: 12px 20px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
+/* .git-commit-input input: visual rules now supplied by <Input> */
 .git-commit-input input {
   flex: 1;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: 13px;
-  background: var(--color-bg);
 }
 
-.git-commit-input button {
-  padding: 10px 16px;
-  background: var(--color-accent);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s ease;
-}
-
-.git-commit-input button:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-}
-
-.git-commit-input button:disabled {
-  background: var(--color-border);
-  cursor: not-allowed;
-}
+/* .git-commit-input button: visual rules now supplied by <Button> */
 
 .git-files {
   flex: 1;
@@ -460,7 +405,7 @@
 }
 
 .git-file-item:hover {
-  background: var(--color-code-bg);
+  background: hsl(var(--accent) / 0.08);
 }
 
 .git-file-status {
@@ -469,7 +414,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 10px;
   font-weight: 600;
   margin-right: 10px;
@@ -506,14 +451,14 @@
   padding: 32px 20px;
   text-align: center;
   font-size: 13px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
 .git-not-repo {
   padding: 32px 20px;
   text-align: center;
   font-size: 13px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
 .git-commits {
@@ -524,32 +469,32 @@
 
 .git-commit-item {
   padding: 14px 20px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid hsl(var(--border));
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .git-commit-item:hover {
-  background: var(--color-code-bg);
+  background: hsl(var(--accent) / 0.08);
 }
 
 .git-commit-hash {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--color-accent);
+  color: hsl(var(--accent));
   margin-bottom: 4px;
 }
 
 .git-commit-message {
   font-size: 14px;
-  color: var(--color-text-h);
+  color: hsl(var(--foreground));
   margin-bottom: 4px;
   line-height: 1.4;
 }
 
 .git-commit-meta {
   font-size: 11px;
-  color: var(--color-text);
+  color: hsl(var(--muted-foreground));
 }
 
 /* Shiki Code Block Styles */
@@ -981,7 +926,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--color-border-subtle, var(--color-border));
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
   gap: 12px;
 }
 

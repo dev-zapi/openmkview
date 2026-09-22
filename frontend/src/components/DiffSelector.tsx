@@ -2,6 +2,7 @@ import { Component, createSignal, For, Show, createEffect } from 'solid-js';
 import { gitApi, type FileDiffRequest } from '../services/git';
 import { diffStore } from '../stores/diffStore';
 import type { GitCommit } from '../types';
+import { Button, Select } from './ui';
 
 interface DiffSelectorProps {
   projectId: number;
@@ -88,32 +89,32 @@ const DiffSelector: Component<DiffSelectorProps> = (props) => {
       <div class="selector-row">
         <div class="selector-group">
           <label>Base</label>
-          <select value={refType()} onChange={(e) => setRefType(e.target.value as any)}>
+          <Select value={refType()} onChange={(e) => setRefType(e.target.value as any)}>
             <option value="branch">Branch</option>
             <option value="tag">Tag</option>
             <option value="commit">Commit</option>
-          </select>
-          <select value={oldRef()} onChange={(e) => setOldRef(e.target.value)}>
+          </Select>
+          <Select value={oldRef()} onChange={(e) => setOldRef(e.target.value)}>
             <For each={getRefOptions()}>{(ref) => <option value={ref}>{ref}</option>}</For>
-          </select>
+          </Select>
         </div>
 
         <span class="compare-arrow">→</span>
 
         <div class="selector-group">
           <label>Target</label>
-          <select value={newRef()} onChange={(e) => setNewRef(e.target.value)}>
+          <Select value={newRef()} onChange={(e) => setNewRef(e.target.value)}>
             <For each={getRefOptions()}>{(ref) => <option value={ref}>{ref}</option>}</For>
-          </select>
+          </Select>
         </div>
 
-        <button
+        <Button
           class="compare-btn"
           onClick={handleCompare}
           disabled={loading() || !oldRef() || !newRef()}
         >
           {loading() ? 'Loading...' : 'Compare'}
-        </button>
+        </Button>
       </div>
     </div>
   );

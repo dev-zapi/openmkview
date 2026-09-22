@@ -2,6 +2,7 @@ import { Component, Show, createSignal, createEffect, onCleanup, onMount } from 
 import { Portal } from 'solid-js/web';
 import { renderZoomDiagram, type ZoomDiagramSource } from '../services/diagramZoomService';
 import { useDiagramZoom } from '../hooks/useDiagramZoom';
+import { Dialog, DialogOverlay } from './ui';
 import './DiagramZoomModal.css';
 
 interface DiagramZoomModalProps {
@@ -22,7 +23,6 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal('');
 
-  let overlayRef: HTMLDivElement | undefined;
   let contentRef: HTMLDivElement | undefined;
   let transformRef: HTMLDivElement | undefined;
   let pointers = new Map<number, { x: number; y: number }>();
@@ -83,12 +83,6 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
     }, 0);
   });
 
-  const handleOverlayClick = (e: MouseEvent) => {
-    if (e.target === overlayRef) {
-      props.onClose();
-    }
-  };
-
   const handlePointerDown = (e: PointerEvent) => {
     if (!contentRef) return;
     contentRef.setPointerCapture?.(e.pointerId);
@@ -132,15 +126,15 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
   return (
     <Show when={props.isOpen}>
       <Portal>
-        <div
-          ref={overlayRef}
-          class="diagram-zoom-overlay"
-          onClick={handleOverlayClick}
-          role="dialog"
-          aria-modal="true"
-          aria-label="图表放大预览"
-        >
-          <div class="diagram-zoom-dialog" onClick={(e) => e.stopPropagation()}>
+        <Dialog open={props.isOpen} onOpenChange={(open) => !open && props.onClose()}>
+          <DialogOverlay class="diagram-zoom-overlay" />
+          <div
+            class="diagram-zoom-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="图表放大预览"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div class="diagram-zoom-header">
               <span class="diagram-zoom-title">{props.title || '图表预览'}</span>
               <button
@@ -195,7 +189,7 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
               </button>
             </div>
           </div>
-        </div>
+        </Dialog>
       </Portal>
     </Show>
   );

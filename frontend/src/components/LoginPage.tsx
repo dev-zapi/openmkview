@@ -1,5 +1,6 @@
 import { Component, createSignal, Show } from 'solid-js';
 import { authStore } from '../stores/authStore';
+import { Button, Input } from './ui';
 
 const LoginPage: Component = () => {
   const [username, setUsername] = createSignal('');
@@ -47,7 +48,7 @@ const LoginPage: Component = () => {
         <form class="login-form" onSubmit={(event) => void handleSubmit(event)}>
           <label class="login-field">
             <span>Username</span>
-            <input
+            <Input
               type="text"
               value={username()}
               onInput={(event) => setUsername(event.currentTarget.value)}
@@ -58,7 +59,7 @@ const LoginPage: Component = () => {
 
           <label class="login-field">
             <span>Password</span>
-            <input
+            <Input
               type="password"
               value={password()}
               onInput={(event) => setPassword(event.currentTarget.value)}
@@ -71,23 +72,24 @@ const LoginPage: Component = () => {
             <div class="login-error">{authStore.error()}</div>
           </Show>
 
-          <button class="login-submit" type="submit" disabled={submitting()}>
+          <Button class="login-submit" type="submit" disabled={submitting()}>
             {submitting() ? 'Signing in...' : 'Sign in'}
-          </button>
+          </Button>
 
           <Show when={authStore.passkeyAvailable()}>
             <div class="login-divider" aria-hidden="true">
               <span>or</span>
             </div>
 
-            <button
+            <Button
               class="login-passkey"
+              variant="outline"
               type="button"
               onClick={() => void handlePasskeyLogin()}
               disabled={passkeySubmitting()}
             >
               {passkeySubmitting() ? 'Waiting for Passkey...' : 'Sign in with Passkey'}
-            </button>
+            </Button>
           </Show>
         </form>
       </div>

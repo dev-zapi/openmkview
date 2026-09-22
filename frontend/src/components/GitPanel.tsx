@@ -2,6 +2,7 @@ import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { gitApi } from '../services/git';
 import type { GitCommit } from '../types';
 import { getStatusColor, getStatusLabel, runGitAction } from '../utils/gitPanel';
+import { Button, Input } from './ui';
 
 interface GitPanelProps {
   projectId: number;
@@ -101,7 +102,7 @@ const GitPanel: Component<GitPanelProps> = (props) => {
       <div class="git-panel">
         <div class="git-panel-header">
           <h3>🌿 Git</h3>
-          <button class="close-btn" onClick={props.onClose}>✕</button>
+          <Button variant="ghost" size="icon" class="close-btn" onClick={props.onClose} aria-label="Close">✕</Button>
         </div>
 
         <div class="git-panel-tabs">
@@ -133,22 +134,22 @@ const GitPanel: Component<GitPanelProps> = (props) => {
               <div class="git-branch">Branch: {status()?.branch}</div>
 
               <div class="git-actions">
-                <button onClick={handleStageAll}>Stage All</button>
-                <button onClick={handlePull}>Pull</button>
-                <button onClick={handlePush}>Push</button>
+                <Button variant="outline" size="sm" onClick={handleStageAll}>Stage All</Button>
+                <Button variant="outline" size="sm" onClick={handlePull}>Pull</Button>
+                <Button variant="outline" size="sm" onClick={handlePush}>Push</Button>
               </div>
 
               <div class="git-commit-input">
-                <input
+                <Input
                   type="text"
                   placeholder="Commit message..."
                   value={commitMessage()}
                   onInput={(e) => setCommitMessage(e.currentTarget.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCommit()}
                 />
-                <button onClick={handleCommit} disabled={!commitMessage().trim()}>
+                <Button onClick={handleCommit} disabled={!commitMessage().trim()}>
                   Commit
-                </button>
+                </Button>
               </div>
 
               <div class="git-files">
