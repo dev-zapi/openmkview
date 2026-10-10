@@ -211,34 +211,31 @@
   display: none;
 }
 
-/* Dropdown menu */
-.dropdown {
-  position: relative;
-}
-
+/* Dropdown menu — aligned with the unified .ui-menu design tokens */
 .dropdownMenu {
   position: absolute;
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   padding: 4px;
-  min-width: 160px;
+  min-width: 180px;
   z-index: 100;
-  animation: dropdownSlide 0.15s ease;
+  animation: dropdownSlide 0.12s ease;
 }
 
 @keyframes dropdownSlide {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-4px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -247,20 +244,26 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: none;
   background: none;
   cursor: pointer;
   border-radius: 6px;
   font-size: 13px;
-  color: var(--color-text);
+  line-height: 20px;
+  color: inherit;
   text-align: left;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.12s ease;
 }
 
-.dropdownItem:hover {
-  background: var(--color-hover-bg);
-  color: var(--color-text-h);
+.dropdownItem:hover:not(:disabled) {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.dropdownItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .dropdownIcon {
@@ -547,28 +550,6 @@
   font-size: 12px;
 }
 
-.overflowMenuRoot {
-  position: relative;
-}
-
-.overflowDropdown {
-  right: 4px;
-  left: auto;
-  top: calc(100% - 2px);
-  min-width: 200px;
-  z-index: 1500;
-}
-
-.overflowDropdown .dropdownItem {
-  padding: 10px 12px;
-  font-size: 14px;
-}
-
-.overflowDropdown .dropdownItem:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 @media (max-width: 480px) {
   .mobileTitleBar {
     flex-wrap: nowrap;
@@ -585,7 +566,7 @@
     flex-shrink: 0;
   }
 
-  .documentRight.overflowMenuRoot {
+  .documentRight {
     order: 2;
   }
 }

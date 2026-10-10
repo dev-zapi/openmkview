@@ -1,4 +1,6 @@
-export type ExportFormat = 'pdf' | 'md';
+import type { DocumentFileType } from '../types';
+
+export type ExportFormat = 'pdf' | 'html' | 'md';
 
 export const escapeHtml = (text: string): string => {
   return text
@@ -56,10 +58,15 @@ export const markdownToSafeHtml = (markdown: string): string => {
   return escaped;
 };
 
+const stripExtension = (fileName: string): string => fileName.replace(/\.[^/.]+$/, '');
+const dateStamp = (date: Date): string => date.toISOString().slice(0, 10);
+
 export const buildMarkdownDownloadName = (fileName: string, date: Date = new Date()): string => {
-  const timestamp = date.toISOString().slice(0, 10);
-  const baseName = fileName.replace(/\.[^/.]+$/, '');
-  return `${baseName}_${timestamp}.md`;
+  return `${stripExtension(fileName)}_${dateStamp(date)}.md`;
+};
+
+export const buildHtmlDownloadName = (fileName: string, date: Date = new Date()): string => {
+  return `${stripExtension(fileName)}_${dateStamp(date)}.html`;
 };
 
 export const buildPrintableMarkdownDocument = (fileName: string, content: string): string => {
@@ -81,4 +88,60 @@ export const buildPrintableMarkdownDocument = (fileName: string, content: string
   ${safeHtmlBody}
 </body>
 </html>`;
+};
+
+/** Trigger a browser download of a text payload. */
+export const downloadTextFile = (content: string, filename: string, mimeType: string): void => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+/** Open a print window with the given full HTML document and invoke print(). */
+export const printHtmlDocument = (html: string): boolean => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return false;
+  // Load via a blob URL instead of document.write() to avoid XSS sinks
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  printWindow.addEventListener('load', () => {
+    printWindow.print();
+    URL.revokeObjectURL(url);
+  });
+  printWindow.location.href = url;
+  return true;
+};
+
+/**
+ * Export a document file in the requested format.
+ * - markdown: pdf (print window), html (rendered standalone doc), md (source)
+ * - html: pdf (print window of the raw html), html (source)
+ */
+export const exportDocument = (
+  docType: DocumentFileType,
+  fileName: string,
+  content: string,
+  format: ExportFormat,
+): void => {
+  switch (format) {
+    case 'pdf': {
+      const html = docType === 'html' ? content : buildPrintableMarkdownDocument(fileName, content);
+      printHtmlDocument(html);
+      break;
+    }
+    case 'html': {
+      const html = docType === 'html' ? content : buildPrintableMarkdownDocument(fileName, content);
+      downloadTextFile(html, buildHtmlDownloadName(fileName), 'text/html');
+      break;
+    }
+    case 'md': {
+      downloadTextFile(content, buildMarkdownDownloadName(fileName), 'text/markdown');
+      break;
+    }
+  }
 };

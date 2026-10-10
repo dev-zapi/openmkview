@@ -1,8 +1,9 @@
 import { Component, onMount, onCleanup, createEffect } from 'solid-js';
 import { FileTree as PierreTree } from '@pierre/trees';
-import type { FileNode } from '../types';
+import type { DocumentFileType, FileNode } from '../types';
 import { fileStore } from '../stores/fileStore';
 import { api } from '../services/api';
+import { exportDocument, type ExportFormat } from '../utils/markdownExport';
 import type {
   FileTreeOptions,
   ContextMenuItem,
@@ -67,33 +68,59 @@ function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
   } as Record<string, string>;
 }
 
-function createMenuButton(label: string, iconSvg: string, color?: string): HTMLButtonElement {
+function createMenuButton(label: string, iconSvg: string, destructive?: boolean): HTMLButtonElement {
   const btn = document.createElement('button');
-  btn.style.cssText = `
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    width: 100%;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    cursor: pointer;
-    font-size: 13px;
-    color: ${color || 'inherit'};
-    text-align: left;
-    transition: background 0.15s;
-    font-family: inherit;
-  `;
-  btn.innerHTML = `${iconSvg}<span>${label}</span>`;
-  btn.addEventListener('mouseenter', () => {
-    btn.style.background = 'var(--color-active-bg, rgba(0,0,0,0.1))';
-  });
-  btn.addEventListener('mouseleave', () => {
-    btn.style.background = 'transparent';
-  });
+  btn.className = destructive ? 'ui-menu-item ui-menu-item-destructive' : 'ui-menu-item';
+  // iconSvg is a static in-repo constant; the label goes through textContent.
+  const iconWrapper = document.createElement('span');
+  iconWrapper.style.display = 'inline-flex';
+  const tpl = document.createElement('template');
+  tpl.innerHTML = iconSvg;
+  iconWrapper.appendChild(tpl.content.cloneNode(true));
+  const labelSpan = document.createElement('span');
+  labelSpan.textContent = label;
+  btn.appendChild(iconWrapper);
+  btn.appendChild(labelSpan);
   return btn;
 }
+
+const createMenuSeparator = (): HTMLDivElement => {
+  const sep = document.createElement('div');
+  sep.className = 'ui-menu-separator';
+  sep.setAttribute('role', 'separator');
+  return sep;
+};
+
+const renameIcon =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+const copyIcon =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const trashIcon =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+const exportIcon =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+/** Document type inferred from the file extension; null when not exportable. */
+function getDocumentType(name: string): DocumentFileType | null {
+  if (/\.(md|mdx|markdown)$/i.test(name)) return 'markdown';
+  if (/\.html?$/i.test(name)) return 'html';
+  return null;
+}
+
+function exportNodeFile(node: FileNode, projectId: number, format: ExportFormat): void {
+  const docType = getDocumentType(node.name);
+  if (!docType) return;
+  api
+    .getFileContent(node.path, projectId)
+    .then((file) => exportDocument(docType, file.fileName || node.name, file.content, format))
+    .catch((err: Error) => {
+      console.error('Export failed:', err);
+      alert(`Export failed: ${err.message || 'Unknown error'}`);
+    });
+}
+
+/** projectId may be NaN in mock mode — only undefined means "no project". */
+const hasProject = (id: number | undefined): id is number => id !== undefined;
 
 function renderContextMenu(
   item: ContextMenuItem,
@@ -122,9 +149,68 @@ function renderContextMenu(
   // Tag the portaled element too so library outside-click logic recognises
   // clicks inside it.
   menu.setAttribute('data-file-tree-context-menu-root', 'true');
+  menu.className = 'ui-menu';
+  menu.setAttribute('role', 'menu');
 
-  const menuWidth = 180;
-  const menuHeight = 132;
+  const isFolder = item.kind === 'directory';
+  const docType = isFolder ? null : getDocumentType(item.name);
+
+  const renameBtn = createMenuButton('Rename', renameIcon);
+  renameBtn.addEventListener('click', () => {
+    props.onRename?.(node);
+    context.close();
+  });
+
+  const copyBtn = createMenuButton('Copy Path', copyIcon);
+  copyBtn.addEventListener('click', () => {
+    props.onCopyPath?.(node);
+    context.close();
+  });
+
+  const deleteBtn = createMenuButton('Move to Trash', trashIcon, true);
+  deleteBtn.addEventListener('click', () => {
+    props.onDelete?.(node);
+    context.close();
+  });
+
+  menu.appendChild(renameBtn);
+  menu.appendChild(copyBtn);
+
+  // Export entries for markdown/html documents
+  let exportCount = 0;
+  if (docType && hasProject(props.projectId)) {
+    const pid = props.projectId;
+    const exportTargets: { format: ExportFormat; label: string }[] =
+      docType === 'html'
+        ? [
+            { format: 'pdf', label: 'Export as PDF' },
+            { format: 'html', label: 'Export as HTML' },
+          ]
+        : [
+            { format: 'pdf', label: 'Export as PDF' },
+            { format: 'html', label: 'Export as HTML' },
+            { format: 'md', label: 'Export as Markdown' },
+          ];
+    menu.appendChild(createMenuSeparator());
+    for (const target of exportTargets) {
+      const btn = createMenuButton(target.label, exportIcon);
+      btn.addEventListener('click', () => {
+        context.close();
+        exportNodeFile(node, pid, target.format);
+      });
+      menu.appendChild(btn);
+      exportCount++;
+    }
+  }
+
+  menu.appendChild(createMenuSeparator());
+  menu.appendChild(deleteBtn);
+
+  // Keep the fixed-position box inside the viewport.
+  const menuWidth = 200;
+  const itemCount = 3 + exportCount;
+  const separatorCount = exportCount > 0 ? 2 : 1;
+  const menuHeight = itemCount * 32 + separatorCount * 9 + 8;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
@@ -146,51 +232,9 @@ function renderContextMenu(
     left: ${left}px;
     top: ${top}px;
     z-index: 10000;
-    background: var(--color-bg, #fff);
-    border: 1px solid var(--color-border, #d0d0d0);
-    border-radius: 6px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08);
-    min-width: 160px;
     width: ${menuWidth}px;
     box-sizing: border-box;
-    padding: 4px;
-    overflow: hidden;
-    font-family: inherit;
-    font-size: 13px;
-    color: var(--color-text, #4a4a4a);
   `;
-
-  const renameBtn = createMenuButton(
-    'Rename',
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
-  );
-  renameBtn.addEventListener('click', () => {
-    props.onRename?.(node);
-    context.close();
-  });
-
-  const copyBtn = createMenuButton(
-    'Copy Path',
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
-  );
-  copyBtn.addEventListener('click', () => {
-    props.onCopyPath?.(node);
-    context.close();
-  });
-
-  const deleteBtn = createMenuButton(
-    'Move to Trash',
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-    'var(--color-error, #ef4444)'
-  );
-  deleteBtn.addEventListener('click', () => {
-    props.onDelete?.(node);
-    context.close();
-  });
-
-  menu.appendChild(renameBtn);
-  menu.appendChild(copyBtn);
-  menu.appendChild(deleteBtn);
 
   document.body.appendChild(menu);
 

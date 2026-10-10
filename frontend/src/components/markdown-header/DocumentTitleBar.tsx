@@ -1,8 +1,10 @@
-import { Component, createSignal, onCleanup, Show } from 'solid-js';
+import { Component, For, Show } from 'solid-js';
 import styles from './styles.module.css';
 import { ViewTabs } from './ViewTabs';
 import type { TabType } from './ViewTabs';
 import type { FileType } from '../../types';
+import type { ExportFormat } from '../../utils/markdownExport';
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '../ui';
 
 export interface DocumentTitleBarProps {
   fileName: string;
@@ -21,7 +23,7 @@ export interface DocumentTitleBarProps {
   searchDisabled?: boolean;
   searchButtonTitle?: string;
   onCopyClick: () => void;
-  onExportClick: (format: 'pdf' | 'md') => void;
+  onExportClick: (format: ExportFormat) => void;
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
@@ -82,41 +84,66 @@ const getFileIcon = (fileName: string): string => {
   return '📄';
 };
 
-export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
-  const [exportMenuOpen, setExportMenuOpen] = createSignal(false);
-  const [overflowMenuOpen, setOverflowMenuOpen] = createSignal(false);
+const searchIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
+const copyIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+const outlineIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="18" x2="20" y2="18" />
+  </svg>
+);
+
+const exportIcons: Record<ExportFormat, string> = {
+  pdf: '📄',
+  html: '🌐',
+  md: '📝',
+};
+
+export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
   const formattedSize = () =>
     props.fileSize !== undefined ? formatFileSize(props.fileSize) : '';
 
   const formattedTime = () =>
     props.lastModified ? formatTimeAgo(props.lastModified) : '';
 
-  const handleExport = (format: 'pdf' | 'md') => {
-    props.onExportClick(format);
-    setExportMenuOpen(false);
-    setOverflowMenuOpen(false);
-  };
+  const isImage = () => props.fileType === 'image';
 
-  // Close overflow menu when clicking outside
-  const handleDocumentClick = (e: MouseEvent) => {
-    if (!overflowMenuOpen()) return;
-    const target = e.target as HTMLElement | null;
-    if (target && target.closest(`.${styles.overflowMenuRoot}`)) return;
-    setOverflowMenuOpen(false);
-  };
+  /** Export targets by document type: markdown → PDF/HTML/MD source, html → PDF/HTML source. */
+  const exportOptions = (): { format: ExportFormat; label: string }[] =>
+    props.fileType === 'html'
+      ? [
+          { format: 'pdf', label: '导出为 PDF' },
+          { format: 'html', label: '导出为 HTML 源文件' },
+        ]
+      : [
+          { format: 'pdf', label: '导出为 PDF' },
+          { format: 'html', label: '导出为 HTML' },
+          { format: 'md', label: '导出为 Markdown 源文件' },
+        ];
 
-  const bindOutsideClick = () => {
-    document.addEventListener('click', handleDocumentClick);
-    onCleanup(() => document.removeEventListener('click', handleDocumentClick));
-  };
-
-  bindOutsideClick();
+  const exportTriggerIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
 
   // ----- Mobile rendering -----
   if (props.mobile) {
-    const closeMenu = () => setOverflowMenuOpen(false);
-
     return (
       <div class={`${styles.documentTitleBar} ${styles.mobileTitleBar}`}>
         <Show when={props.onMenuClick}>
@@ -151,7 +178,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           />
         </div>
 
-        <div class={`${styles.documentRight} ${styles.overflowMenuRoot}`}>
+        <div class={styles.documentRight}>
           <Show when={props.activeTab === 'edit' && props.onSave}>
             <button
               class={`${styles.toolbarButtonIcon} ${styles.saveButton}`}
@@ -174,85 +201,54 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
             </button>
           </Show>
 
-          <button
-            class={`${styles.toolbarButtonIcon} ${overflowMenuOpen() ? styles.active : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOverflowMenuOpen(!overflowMenuOpen());
-            }}
-            title="More actions"
-            aria-label="More actions"
-            aria-expanded={overflowMenuOpen()}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="19" cy="12" r="2" />
-            </svg>
-          </button>
-
-          <Show when={overflowMenuOpen()}>
-            <div class={`${styles.dropdownMenu} ${styles.overflowDropdown}`} role="menu">
-              <button
-                class={styles.dropdownItem}
+          <Menu>
+            <MenuTrigger
+              class={styles.toolbarButtonIcon}
+              title="More actions"
+              aria-label="More actions"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="19" cy="12" r="2" />
+              </svg>
+            </MenuTrigger>
+            <MenuContent align="end">
+              <MenuItem
                 disabled={props.searchDisabled}
-                onClick={() => { closeMenu(); props.onSearchClick(); }}
-                role="menuitem"
+                onClick={() => props.onSearchClick()}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
+                {searchIcon}
                 <span>{props.searchButtonTitle || '搜索'}</span>
-              </button>
+              </MenuItem>
 
-              <button
-                class={styles.dropdownItem}
-                onClick={() => { closeMenu(); props.onCopyClick(); }}
-                role="menuitem"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
+              <MenuItem onClick={() => props.onCopyClick()}>
+                {copyIcon}
                 <span>复制全文</span>
-              </button>
+              </MenuItem>
 
-              <button
-                class={styles.dropdownItem}
-                onClick={() => handleExport('pdf')}
-                role="menuitem"
-              >
-                <span class={styles.dropdownIcon}>📄</span>
-                <span>导出为 PDF</span>
-              </button>
+              <Show when={!isImage()}>
+                <MenuSeparator />
+                <For each={exportOptions()}>
+                  {(option) => (
+                    <MenuItem onClick={() => props.onExportClick(option.format)}>
+                      <span>{exportIcons[option.format]}</span>
+                      <span>{option.label}</span>
+                    </MenuItem>
+                  )}
+                </For>
+              </Show>
 
-              <button
-                class={styles.dropdownItem}
-                onClick={() => handleExport('md')}
-                role="menuitem"
-              >
-                <span class={styles.dropdownIcon}>📝</span>
-                <span>导出为 Markdown</span>
-              </button>
-
-              <button
-                class={`${styles.dropdownItem} ${props.isOutlineOpen ? styles.active : ''}`}
-                onClick={() => { closeMenu(); props.onOutlineToggle(); }}
-                role="menuitem"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="4" y1="6" x2="20" y2="6"/>
-                  <line x1="4" y1="12" x2="20" y2="12"/>
-                  <line x1="4" y1="18" x2="20" y2="18"/>
-                </svg>
+              <MenuSeparator />
+              <MenuItem onClick={() => props.onOutlineToggle()}>
+                {outlineIcon}
                 <span>大纲</span>
                 <Show when={props.outlineCount > 0}>
-                  <span class={styles.badge} style={{ 'margin-left': 'auto' }}>{props.outlineCount}</span>
+                  <span class="ui-menu-badge">{props.outlineCount}</span>
                 </Show>
-              </button>
-            </div>
-          </Show>
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         </div>
       </div>
     );
@@ -329,31 +325,23 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           </svg>
         </button>
 
-        <div class={styles.dropdown}>
-          <button
-            class={styles.toolbarButtonIcon}
-            onClick={() => setExportMenuOpen(!exportMenuOpen())}
-            title="导出"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </button>
-          <Show when={exportMenuOpen()}>
-            <div class={styles.dropdownMenu}>
-              <button class={styles.dropdownItem} onClick={() => handleExport('pdf')}>
-                <span class={styles.dropdownIcon}>📄</span>
-                <span>导出为 PDF</span>
-              </button>
-              <button class={styles.dropdownItem} onClick={() => handleExport('md')}>
-                <span class={styles.dropdownIcon}>📝</span>
-                <span>导出为 Markdown</span>
-              </button>
-            </div>
-          </Show>
-        </div>
+        <Show when={!isImage()}>
+          <Menu>
+            <MenuTrigger class={styles.toolbarButtonIcon} title="导出">
+              {exportTriggerIcon}
+            </MenuTrigger>
+            <MenuContent align="end">
+              <For each={exportOptions()}>
+                {(option) => (
+                  <MenuItem onClick={() => props.onExportClick(option.format)}>
+                    <span>{exportIcons[option.format]}</span>
+                    <span>{option.label}</span>
+                  </MenuItem>
+                )}
+              </For>
+            </MenuContent>
+          </Menu>
+        </Show>
 
         <button
           class={`${styles.toolbarButtonIcon} ${props.isOutlineOpen ? styles.active : ''}`}

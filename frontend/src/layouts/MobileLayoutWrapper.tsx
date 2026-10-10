@@ -267,6 +267,7 @@ onClick={() => {
             onDelete={props.onDelete}
             onCopyPath={props.onCopyPath}
             onRename={props.onRename}
+            projectId={props.activeProject?.id}
           />
         </Show>
       }

@@ -4,7 +4,7 @@ import { DocumentTitleBar } from './DocumentTitleBar';
 import { SearchBox } from './SearchBox';
 import type { TabType } from './ViewTabs';
 import type { FileType } from '../../types';
-import { buildMarkdownDownloadName, buildPrintableMarkdownDocument } from '../../utils/markdownExport';
+import { exportDocument } from '../../utils/markdownExport';
 
 export interface MarkdownHeaderProps {
   fileName: string;
@@ -63,45 +63,16 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
     }
   };
 
-  const handleExportClick = (format: 'pdf' | 'md') => {
-    switch (format) {
-      case 'pdf':
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          // Use DOM APIs instead of document.write() for safer injection
-          printWindow.document.open();
-          const doc = printWindow.document;
-          doc.write(buildPrintableMarkdownDocument(props.fileName, props.content));
-          doc.close();
-          printWindow.print();
-        }
-        setToast({ message: 'Exporting PDF...', type: 'success' });
-        break;
-
-      case 'md':
-        if (props.fileType === 'html') {
-          downloadFile(props.content, props.fileName, 'text/html');
-          setToast({ message: 'HTML downloaded', type: 'success' });
-        } else {
-          downloadFile(props.content, buildMarkdownDownloadName(props.fileName), 'text/markdown');
-          setToast({ message: 'Markdown downloaded', type: 'success' });
-        }
-        break;
-    }
-
+  const handleExportClick = (format: 'pdf' | 'html' | 'md') => {
+    const docType = props.fileType === 'html' ? 'html' : 'markdown';
+    exportDocument(docType, props.fileName, props.content, format);
+    const messages: Record<typeof format, string> = {
+      pdf: 'Exporting PDF...',
+      html: 'HTML downloaded',
+      md: 'Markdown downloaded',
+    };
+    setToast({ message: messages[format], type: 'success' });
     setTimeout(() => setToast(null), 2000);
-  };
-
-  const downloadFile = (content: string, filename: string, mimeType: string) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const handleFullscreenToggle = () => {

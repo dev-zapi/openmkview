@@ -29,3 +29,11 @@ export type {
 } from './Dialog';
 export { Popover, PopoverTrigger, PopoverContent, PopoverClose } from './Popover';
 export type { PopoverProps, PopoverTriggerProps, PopoverContentProps, PopoverCloseProps } from './Popover';
+export { Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator } from './Menu';
+export type {
+  MenuProps,
+  MenuTriggerProps,
+  MenuContentProps,
+  MenuItemProps,
+  MenuSeparatorProps,
+} from './Menu';
