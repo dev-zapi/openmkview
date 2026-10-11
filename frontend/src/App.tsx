@@ -136,6 +136,12 @@ const App: Component = () => {
       return;
     }
 
+    // Toggle: clicking the search button while the bar is open closes it.
+    if (isSearchOpen()) {
+      handleSearchClose();
+      return;
+    }
+
     setIsSearchOpen(true);
   };
 

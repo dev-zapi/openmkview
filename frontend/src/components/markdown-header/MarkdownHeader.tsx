@@ -1,4 +1,4 @@
-import { Component, createSignal, onMount, onCleanup, Show } from 'solid-js';
+import { Component, createSignal, onMount, onCleanup } from 'solid-js';
 import styles from './styles.module.css';
 import { DocumentTitleBar } from './DocumentTitleBar';
 import { SearchBox } from './SearchBox';
@@ -38,6 +38,7 @@ export interface MarkdownHeaderProps {
 export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const [toast, setToast] = createSignal<{ message: string; type: 'success' | 'error' } | null>(null);
+  let searchInputEl: HTMLInputElement | undefined;
 
   const isDocumentFile = () => props.fileType === 'markdown' || props.fileType === 'html';
   const canSearch = () => isDocumentFile() && props.activeTab !== 'diff';
@@ -85,13 +86,18 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    // Ctrl+F 或 Cmd+F 打开搜索
+    // Ctrl+F 或 Cmd+F 打开搜索（已打开时重新聚焦输入框）
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
       if (!canSearch()) {
         return;
       }
 
       e.preventDefault();
+      if (usesInlineSearch() && props.isSearchOpen) {
+        searchInputEl?.focus();
+        searchInputEl?.select();
+        return;
+      }
       props.onSearchClick();
     }
     // ESC 关闭搜索
@@ -129,6 +135,7 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         onClose={props.onSearchClose}
         onNextResult={props.onSearchNext}
         onPrevResult={props.onSearchPrev}
+        inputRef={(el) => (searchInputEl = el)}
       />
       <DocumentTitleBar
         fileName={props.fileName}

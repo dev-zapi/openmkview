@@ -48,6 +48,131 @@
   color: var(--color-text);
 }
 
+/* ---- CodeMirror search panel, aligned with the shadcn token set ---- */
+.codemirror-editor-container .cm-panels {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: none;
+}
+
+.codemirror-editor-container .cm-panels.cm-panels-bottom {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.codemirror-editor-container .cm-panel.cm-search {
+  padding: 8px 12px;
+  padding-right: 44px; /* room for the close button */
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 28px;
+}
+
+.codemirror-editor-container .cm-panel.cm-search .cm-textfield {
+  height: 28px;
+  padding: 0 10px;
+  margin: 0 6px 0 0;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-md);
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  min-width: 160px;
+  vertical-align: middle;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.codemirror-editor-container .cm-panel.cm-search .cm-textfield:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+.codemirror-editor-container .cm-panel.cm-search .cm-textfield::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.codemirror-editor-container .cm-panel.cm-search .cm-button {
+  height: 28px;
+  padding: 0 10px;
+  margin: 0 4px 0 0;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-md);
+  background: hsl(var(--background));
+  background-image: none;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.15s ease;
+}
+
+.codemirror-editor-container .cm-panel.cm-search .cm-button:hover {
+  background: hsl(var(--secondary));
+  background-image: none;
+}
+
+.codemirror-editor-container .cm-panel.cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 8px 0 0;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.codemirror-editor-container .cm-panel.cm-search input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: hsl(var(--accent));
+  cursor: pointer;
+}
+
+.codemirror-editor-container .cm-panel.cm-search button[name='close'] {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: hsl(var(--muted-foreground));
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.codemirror-editor-container .cm-panel.cm-search button[name='close']:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+/* Search match highlights */
+.codemirror-editor-container .cm-editor .cm-searchMatch {
+  background: hsl(var(--warning) / 0.3);
+  outline: 1px solid hsl(var(--warning) / 0.45);
+  border-radius: 2px;
+}
+
+.codemirror-editor-container .cm-editor .cm-searchMatch-selected {
+  background: hsl(var(--warning) / 0.55);
+  outline-color: hsl(var(--warning) / 0.8);
+}
+
+.codemirror-editor-container .cm-editor .cm-selectionMatch {
+  background: hsl(var(--accent) / 0.15);
+}
+
+
 .file-name {
   font-weight: 500;
   color: var(--color-text-h);

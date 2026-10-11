@@ -208,11 +208,9 @@
   }
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* NOTE: no global `* { margin: 0; padding: 0 }` reset here — Tailwind preflight
+   already applies the same reset inside @layer base, and an unlayered duplicate
+   would override every Tailwind padding/margin utility. */
 
 html {
   scroll-behavior: smooth;
