@@ -43,7 +43,7 @@ describe('theme utils', () => {
 
   describe('applyTheme', () => {
     beforeEach(() => {
-      document.body.className = '';
+      document.documentElement.className = '';
       __resetPreviousThemeId();
     });
 
@@ -53,8 +53,8 @@ describe('theme utils', () => {
         lightTheme: 'custom-light',
         darkTheme: 'custom-dark',
       });
-      expect(document.body.classList.contains('light-theme')).toBe(true);
-      expect(document.body.classList.contains('custom-light')).toBe(true);
+      expect(document.documentElement.classList.contains('light-theme')).toBe(true);
+      expect(document.documentElement.classList.contains('custom-light')).toBe(true);
     });
 
     it('applies dark theme correctly', () => {
@@ -63,20 +63,20 @@ describe('theme utils', () => {
         lightTheme: 'custom-light',
         darkTheme: 'custom-dark',
       });
-      expect(document.body.classList.contains('dark-theme')).toBe(true);
-      expect(document.body.classList.contains('custom-dark')).toBe(true);
+      expect(document.documentElement.classList.contains('dark-theme')).toBe(true);
+      expect(document.documentElement.classList.contains('custom-dark')).toBe(true);
     });
 
     it('removes previous theme type class', () => {
-      document.body.classList.add('light-theme', 'light-default');
+      document.documentElement.classList.add('light-theme', 'light-default');
       applyTheme({
         themeMode: 'dark',
         lightTheme: 'new-light',
         darkTheme: 'new-dark',
       });
-      expect(document.body.classList.contains('light-theme')).toBe(false);
-      expect(document.body.classList.contains('dark-theme')).toBe(true);
-      expect(document.body.classList.contains('new-dark')).toBe(true);
+      expect(document.documentElement.classList.contains('light-theme')).toBe(false);
+      expect(document.documentElement.classList.contains('dark-theme')).toBe(true);
+      expect(document.documentElement.classList.contains('new-dark')).toBe(true);
     });
 
     it('removes previous theme id class', () => {
@@ -90,8 +90,8 @@ describe('theme utils', () => {
         lightTheme: 'new-light',
         darkTheme: 'new-dark',
       });
-      expect(document.body.classList.contains('old-theme')).toBe(false);
-      expect(document.body.classList.contains('new-dark')).toBe(true);
+      expect(document.documentElement.classList.contains('old-theme')).toBe(false);
+      expect(document.documentElement.classList.contains('new-dark')).toBe(true);
     });
 
     it('updates theme-color from the applied body theme variables', async () => {

@@ -14,16 +14,20 @@ export const __resetPreviousThemeId = (): void => {
   previousThemeId = null;
 };
 
+// Theme classes live on <html>, not <body>: the legacy --color-* aliases are
+// declared on :root as hsl(var(--background)…) and custom properties substitute
+// at the declaring element, so a body-level class can never re-resolve them.
 export const applyTheme = (settings: { themeMode: ThemeMode; lightTheme: string; darkTheme: string }): void => {
   const effectiveType = getEffectiveThemeType(settings.themeMode);
   const themeId = effectiveType === 'light' ? settings.lightTheme : settings.darkTheme;
 
-  document.body.classList.remove('light-theme', 'dark-theme');
+  const root = document.documentElement;
+  root.classList.remove('light-theme', 'dark-theme');
   if (previousThemeId) {
-    document.body.classList.remove(previousThemeId);
+    root.classList.remove(previousThemeId);
   }
 
-  document.body.classList.add(`${effectiveType}-theme`, themeId);
+  root.classList.add(`${effectiveType}-theme`, themeId);
   previousThemeId = themeId;
 
   updateBrowserThemeColor();

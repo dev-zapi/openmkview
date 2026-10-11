@@ -192,7 +192,7 @@ describe('SettingsPanel', () => {
       expect(onSave).toHaveBeenCalled();
     });
     
-    expect(document.body.classList.contains('light-theme') || document.body.classList.contains('dark-theme')).toBe(true);
+    expect(document.documentElement.classList.contains('light-theme') || document.documentElement.classList.contains('dark-theme')).toBe(true);
   });
 
   it('applies font preset buttons', async () => {
