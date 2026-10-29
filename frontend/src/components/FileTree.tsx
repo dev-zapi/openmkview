@@ -8,12 +8,13 @@ import { exportDocument, type ExportFormat } from '../utils/markdownExport';
 import {
   collectPlaceholderPaths,
   fileNodesToPaths,
-  isPlaceholderNoticePath,
+  getPlaceholderNotice,
   normalizeTreePath,
 } from '../utils/fileTree';
 import { getFileTreeIcons } from '../utils/fileIconCategory';
 import type {
   FileTreeOptions,
+  FileTreeRowDecorationContext,
   ContextMenuItem,
   ContextMenuOpenContext,
   FileTreeDropResult,
@@ -119,11 +120,6 @@ function renderContextMenu(
   context: ContextMenuOpenContext,
   props: FileTreeProps
 ): HTMLElement | null {
-  // The synthetic placeholder notice row is informational only.
-  if (isPlaceholderNoticePath(item.path)) {
-    return null;
-  }
-
   const node = fileStore.findNodeByPath(item.path) || {
     id: item.path,
     name: item.name,
@@ -252,12 +248,30 @@ function renderContextMenu(
 const FileTree: Component<FileTreeProps> = (props) => {
   let hostRef: HTMLDivElement | undefined;
   let model: PierreTree | undefined;
+  let placeholderPathSet = new Set<string>();
+
+  const refreshPlaceholderPaths = () => {
+    placeholderPathSet = collectPlaceholderPaths(props.nodes);
+  };
+
+  // Placeholder Directories have no children in the model; expanding one shows
+  // this notice inside its own row instead of a synthetic child path (which the
+  // built-in search would otherwise match and render as a real file).
+  const renderPlaceholderDecoration = (context: FileTreeRowDecorationContext) => {
+    if (context.row.kind !== 'directory') return null;    const notice = getPlaceholderNotice(
+      placeholderPathSet,
+      context.row.path,
+      context.row.isExpanded
+    );
+    return notice == null ? null : { text: notice, title: notice };
+  };
 
   const initTree = () => {
     if (model) {
       model.cleanUp();
     }
 
+    refreshPlaceholderPaths();
     const paths = fileNodesToPaths(props.nodes, fileTreeVisibilityStore.showHidden());
 
     model = new PierreTree({
@@ -266,6 +280,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
       flattenEmptyDirectories: true,
       search: true,
       icons: getFileTreeIcons(),
+      renderRowDecoration: renderPlaceholderDecoration,
       composition: {
         contextMenu: {
           enabled: true,
@@ -275,8 +290,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
         },
       },
       dragAndDrop: {
-        canDrag: (paths) =>
-          paths.length === 1 && !isPlaceholderNoticePath(paths[0]),
+        canDrag: (paths) => paths.length === 1,
         canDrop: (event) => {
           const { target, draggedPaths } = event;
           if (target.kind === 'root') return true;
@@ -322,7 +336,6 @@ const FileTree: Component<FileTreeProps> = (props) => {
       onSelectionChange: (selectedPaths) => {
         if (selectedPaths.length === 1) {
           const path = selectedPaths[0];
-          if (isPlaceholderNoticePath(path)) return;
           const handle = model?.getItem(path);
           if (handle && !handle.isDirectory()) {
             props.onFileClick(path, path);
@@ -341,6 +354,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
   });
 
   createEffect(() => {
+    refreshPlaceholderPaths();
     const paths = fileNodesToPaths(props.nodes, fileTreeVisibilityStore.showHidden());
     if (model) {
       model.resetPaths(paths);

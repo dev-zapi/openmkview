@@ -5,7 +5,7 @@ import {
   collectPlaceholderPaths,
   fileNodesToPaths,
   filterVisibleNodes,
-  isPlaceholderNoticePath,
+  getPlaceholderNotice,
   normalizeTreePath,
 } from '../../utils/fileTree';
 
@@ -45,10 +45,16 @@ describe('fileTree utils', () => {
     expect(normalizeTreePath('/src//')).toBe('/src');
   });
 
-  it('recognizes the placeholder notice row', () => {
-    expect(isPlaceholderNoticePath(PLACEHOLDER_NOTICE_NAME)).toBe(true);
-    expect(isPlaceholderNoticePath(`node_modules/${PLACEHOLDER_NOTICE_NAME}`)).toBe(true);
-    expect(isPlaceholderNoticePath('node_modules/pkg')).toBe(false);
+  it('shows the notice when a Placeholder Directory is expanded', () => {
+    const placeholders = collectPlaceholderPaths(tree);
+    expect(getPlaceholderNotice(placeholders, 'node_modules/', true)).toBe(
+      PLACEHOLDER_NOTICE_NAME
+    );
+    expect(getPlaceholderNotice(placeholders, 'node_modules', true)).toBe(
+      PLACEHOLDER_NOTICE_NAME
+    );
+    expect(getPlaceholderNotice(placeholders, 'node_modules', false)).toBeNull();
+    expect(getPlaceholderNotice(placeholders, 'src', true)).toBeNull();
   });
 
   it('filters Hidden Entries when the toggle is off', () => {
@@ -62,15 +68,14 @@ describe('fileTree utils', () => {
     expect(visible[0].children?.map((node) => node.name)).toEqual(['index.ts', '.cache']);
   });
 
-  it('emits a notice child for placeholder directories and does not descend', () => {
+  it('does not add a searchable notice path for placeholder directories', () => {
     const paths = fileNodesToPaths(tree, false);
     expect(paths).toContain('src/');
     expect(paths).toContain('src/index.ts');
     expect(paths).toContain('node_modules/');
-    expect(paths).toContain(`node_modules/${PLACEHOLDER_NOTICE_NAME}`);
-    expect(paths.filter((path) => path.startsWith('node_modules/')).sort()).toEqual([
+    expect(paths.some((path) => path.includes(PLACEHOLDER_NOTICE_NAME))).toBe(false);
+    expect(paths.filter((path) => path.startsWith('node_modules/'))).toEqual([
       'node_modules/',
-      `node_modules/${PLACEHOLDER_NOTICE_NAME}`,
     ]);
   });
 

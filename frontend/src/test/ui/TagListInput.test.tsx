@@ -3,8 +3,10 @@ import { fireEvent, render, screen } from '@solidjs/testing-library';
 import { TagListInput, splitTagListText } from '../../components/ui/TagListInput';
 
 describe('TagListInput', () => {
-  it('splits text on semicolons and commas', () => {
+  it('splits text on semicolons, commas, and newlines', () => {
     expect(splitTagListText('a; b,c ,,d')).toEqual(['a', 'b', 'c', 'd']);
+    expect(splitTagListText('one\ntwo\r\nthree')).toEqual(['one', 'two', 'three']);
+    expect(splitTagListText('a,b\nc;d')).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('renders one row per value with a delete button', () => {
@@ -39,6 +41,29 @@ describe('TagListInput', () => {
     });
 
     expect(onChange).toHaveBeenCalledWith(['one', 'two', 'three']);
+  });
+
+  it('splits newline-separated pasted text into multiple rows', () => {
+    const onChange = vi.fn();
+    render(() => <TagListInput values={[]} onChange={onChange} addLabel="Item" />);
+
+    const input = screen.getByRole('textbox', { name: 'Add Item' });
+    fireEvent.paste(input, {
+      clipboardData: { getData: () => 'vendor\nbuild\ncache' },
+    });
+
+    expect(onChange).toHaveBeenCalledWith(['vendor', 'build', 'cache']);
+  });
+
+  it('splits pasted delimiters inside an existing row', () => {
+    const onChange = vi.fn();
+    render(() => <TagListInput values={['a', 'keep']} onChange={onChange} addLabel="Item" />);
+
+    fireEvent.paste(screen.getByDisplayValue('a'), {
+      clipboardData: { getData: () => 'x;y\nz' },
+    });
+
+    expect(onChange).toHaveBeenCalledWith(['x', 'y', 'z', 'keep']);
   });
 
   it('removes a row via its delete button', () => {

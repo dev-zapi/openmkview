@@ -1,8 +1,9 @@
 import type { FileNode } from '../types';
 
 /**
- * Synthetic row inserted under a Placeholder Directory so expanding it shows a
- * single notice instead of enumerating its contents.
+ * Notice shown when a Placeholder Directory is expanded. Rendered as a row
+ * decoration rather than a synthetic child path, so tree search can never
+ * surface it as if it were a real file.
  */
 export const PLACEHOLDER_NOTICE_NAME = '(此目录不支持展开)';
 
@@ -11,12 +12,17 @@ export function normalizeTreePath(path: string): string {
   return path.replace(/\/+$/, '');
 }
 
-/** True when the path points at the synthetic placeholder notice row. */
-export function isPlaceholderNoticePath(path: string): boolean {
-  return (
-    path === PLACEHOLDER_NOTICE_NAME ||
-    path.endsWith(`/${PLACEHOLDER_NOTICE_NAME}`)
-  );
+/**
+ * Notice text for an expanded Placeholder Directory row, or null for every
+ * other row.
+ */
+export function getPlaceholderNotice(
+  placeholderPaths: ReadonlySet<string>,
+  rowPath: string,
+  isExpanded: boolean
+): string | null {
+  if (!isExpanded) return null;
+  return placeholderPaths.has(normalizeTreePath(rowPath)) ? PLACEHOLDER_NOTICE_NAME : null;
 }
 
 /** Recursively drop Hidden Entries when the show-hidden preference is off. */
@@ -43,9 +49,10 @@ export function filterVisibleNodes(
  * Convert the tree into the flat path list consumed by @pierre/trees.
  *
  * Hidden Entries are filtered out before the model sees them, so the built-in
- * tree search also respects the toggle. Placeholder Directories emit their own
- * directory path plus a single synthetic notice child and never descend into
- * `children`.
+ * tree search also respects the toggle. Placeholder Directories emit only their
+ * own directory path and never descend into `children`; the "not expandable"
+ * notice is a row decoration, not a synthetic path, so search cannot surface it
+ * as a real file.
  */
 export function fileNodesToPaths(
   nodes: FileNode[],
@@ -64,7 +71,6 @@ export function fileNodesToPaths(
 
     paths.push(`${path}/`);
     if (node.isPlaceholder) {
-      paths.push(`${path}/${PLACEHOLDER_NOTICE_NAME}`);
       return;
     }
 

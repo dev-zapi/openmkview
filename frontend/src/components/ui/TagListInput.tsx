@@ -14,17 +14,21 @@ export interface TagListInputProps {
   class?: string;
 }
 
-/** Split pasted/typed input on semicolons and commas. */
+/** Delimiter set for pasted/typed list text: semicolons, commas, newlines. */
+const TAG_LIST_DELIMITER = /[;,\r\n]/;
+
+/** Split pasted/typed input on semicolons, commas, and newlines. */
 export function splitTagListText(text: string): string[] {
   return text
-    .split(/[;,]/)
+    .split(/[;,\r\n]+/)
     .map((part) => part.trim())
     .filter(Boolean);
 }
 
 /**
  * Multi-line list editor: one item per row, Enter adds a new row, each row has
- * a delete button, and pasting text splits on ";" or "," into multiple rows.
+ * a delete button, and pasting text splits on ";" / "," / newlines into multiple
+ * rows (including when pasted onto an existing row).
  */
 export const TagListInput: Component<TagListInputProps> = (props) => {
   const [local] = splitProps(props, ['id', 'values', 'onChange', 'placeholder', 'addLabel', 'class']);
@@ -50,6 +54,16 @@ export const TagListInput: Component<TagListInputProps> = (props) => {
     local.onChange(next.filter((entry) => entry.trim() !== ''));
   };
 
+  /** Replace one row with the values split out of pasted text. */
+  const replaceValueWithPastedText = (index: number, parts: string[]) => {
+    const next = [...local.values];
+    next.splice(index, 1, ...parts);
+    const deduped = next
+      .map((entry) => entry.trim())
+      .filter((entry, entryIndex, all) => entry !== '' && all.indexOf(entry) === entryIndex);
+    local.onChange(deduped);
+  };
+
   const removeValue = (index: number) => {
     const next = local.values.filter((_, i) => i !== index);
     local.onChange(next);
@@ -62,11 +76,16 @@ export const TagListInput: Component<TagListInputProps> = (props) => {
     }
   };
 
-  const handlePaste = (event: ClipboardEvent) => {
+  const handlePaste = (event: ClipboardEvent, replaceIndex?: number) => {
     const text = event.clipboardData?.getData('text') ?? '';
-    if (!/[;,]/.test(text)) return;
+    if (!TAG_LIST_DELIMITER.test(text)) return;
     event.preventDefault();
-    appendValues(splitTagListText(text));
+    const parts = splitTagListText(text);
+    if (replaceIndex == null) {
+      appendValues(parts);
+    } else {
+      replaceValueWithPastedText(replaceIndex, parts);
+    }
   };
 
   return (
@@ -79,6 +98,7 @@ export const TagListInput: Component<TagListInputProps> = (props) => {
               value={value()}
               aria-label={`${local.addLabel ?? 'Item'} ${index + 1}`}
               onInput={(event) => updateValue(index, event.currentTarget.value)}
+              onPaste={(event) => handlePaste(event, index)}
             />
             <Button
               type="button"
@@ -107,7 +127,7 @@ export const TagListInput: Component<TagListInputProps> = (props) => {
           aria-label={`Add ${local.addLabel ?? 'item'}`}
           onInput={(event) => setDraft(event.currentTarget.value)}
           onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
+          onPaste={(event) => handlePaste(event)}
         />
         <Button
           type="button"

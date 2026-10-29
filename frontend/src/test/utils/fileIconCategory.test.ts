@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getFileIconCategory, getFileTreeIcons } from '../../utils/fileIconCategory';
+import {
+  GENERIC_CODE_ICON,
+  getFileIconCategory,
+  getFileTreeIcons,
+} from '../../utils/fileIconCategory';
 
 describe('fileIconCategory', () => {
   it('classifies code extensions', () => {
@@ -38,5 +42,17 @@ describe('fileIconCategory', () => {
       expect(icons.set).toBe('complete');
       expect(icons.byFileExtension?.toml).toBe('json');
     }
+  });
+
+  it('maps code extensions the built-in set lacks to a code icon', () => {
+    const icons = getFileTreeIcons();
+    if (typeof icons !== 'object') throw new Error('expected icon config object');
+
+    for (const fileName of ['main.c', 'App.java', 'index.php', 'script.lua', 'Main.kt', 'a.cs']) {
+      const extension = fileName.split('.').pop()!;
+      expect(getFileIconCategory(fileName)).toBe('code');
+      expect(icons.byFileExtension?.[extension]).toBe(GENERIC_CODE_ICON);
+    }
+    expect(icons.spriteSheet).toContain(`id="${GENERIC_CODE_ICON}"`);
   });
 });
