@@ -11,6 +11,15 @@ pub struct FileTreeNode {
     pub children: Option<Vec<FileTreeNode>>,
     #[serde(rename = "fileType", skip_serializing_if = "Option::is_none")]
     pub file_type: Option<String>,
+    /// True when any path component starts with a dot (Hidden Entry).
+    #[serde(default)]
+    pub hidden: bool,
+    /// True for Placeholder Directories: visible but not expandable.
+    #[serde(rename = "isPlaceholder", default)]
+    pub is_placeholder: bool,
+    /// File size in bytes (0 for directories).
+    #[serde(default)]
+    pub size: u64,
 }
 
 #[derive(Debug, Deserialize)]

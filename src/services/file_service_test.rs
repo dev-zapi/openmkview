@@ -60,14 +60,16 @@ fn test_get_file_content_success() {
     fs::write(&file_path, "# Test").unwrap();
 
     // Use relative path
-    let (content, file_name, path, file_size, last_modified) =
-        FileService::get_file_content(temp_dir.path(), "test.md").unwrap();
+    let file = FileService::get_file_content(temp_dir.path(), "test.md").unwrap();
 
-    assert_eq!(content, "# Test");
-    assert_eq!(file_name, "test.md");
-    assert_eq!(path, "test.md"); // Path is now relative
-    assert_eq!(file_size, 6);
-    assert!(last_modified.is_some());
+    assert_eq!(file.content, "# Test");
+    assert_eq!(file.file_name, "test.md");
+    assert_eq!(file.path, "test.md"); // Path is now relative
+    assert_eq!(file.file_size, 6);
+    assert!(file.last_modified.is_some());
+    assert!(!file.truncated);
+    assert!(!file.lossy);
+    assert!(!file.binary);
 }
 
 #[test]
@@ -79,14 +81,17 @@ fn test_get_file_content_not_found() {
 }
 
 #[test]
-fn test_get_file_content_not_markdown() {
+fn test_get_file_content_other_file_type_is_read() {
     let temp_dir = tempfile::tempdir().unwrap();
     let file_path = temp_dir.path().join("test.txt");
     fs::write(&file_path, "Test").unwrap();
 
-    // Use relative path
-    let result = FileService::get_file_content(temp_dir.path(), "test.txt");
-    assert!(result.is_err());
+    // Any file inside the project root is now readable (Source Fallback).
+    let file = FileService::get_file_content(temp_dir.path(), "test.txt").unwrap();
+    assert_eq!(file.content, "Test");
+    assert!(!file.binary);
+    assert!(!file.truncated);
+    assert!(!file.lossy);
 }
 
 #[test]
@@ -106,14 +111,13 @@ fn test_get_file_content_html() {
     let file_path = temp_dir.path().join("test.html");
     fs::write(&file_path, "<h1>HTML</h1>").unwrap();
 
-    let (content, file_name, path, file_size, last_modified) =
-        FileService::get_file_content(temp_dir.path(), "test.html").unwrap();
+    let file = FileService::get_file_content(temp_dir.path(), "test.html").unwrap();
 
-    assert_eq!(content, "<h1>HTML</h1>");
-    assert_eq!(file_name, "test.html");
-    assert_eq!(path, "test.html");
-    assert_eq!(file_size, 13);
-    assert!(last_modified.is_some());
+    assert_eq!(file.content, "<h1>HTML</h1>");
+    assert_eq!(file.file_name, "test.html");
+    assert_eq!(file.path, "test.html");
+    assert_eq!(file.file_size, 13);
+    assert!(file.last_modified.is_some());
 }
 
 #[test]
@@ -898,11 +902,189 @@ fn test_get_file_content_returns_relative_path() {
     let file_path = nested_dir.join("readme.md");
     fs::write(&file_path, "# Docs").unwrap();
 
-    let (content, file_name, path, _file_size, _last_modified) =
-        FileService::get_file_content(temp_dir.path(), "docs/readme.md").unwrap();
+    let file = FileService::get_file_content(temp_dir.path(), "docs/readme.md").unwrap();
 
-    assert_eq!(content, "# Docs");
-    assert_eq!(file_name, "readme.md");
+    assert_eq!(file.content, "# Docs");
+    assert_eq!(file.file_name, "readme.md");
     // Path should be relative, not absolute
-    assert_eq!(path, "docs/readme.md");
+    assert_eq!(file.path, "docs/readme.md");
+}
+
+// ============== Tree overhaul: real traversal, hidden, placeholder ==============
+
+fn default_placeholder_dirs() -> Vec<String> {
+    vec![
+        "node_modules".to_string(),
+        "target".to_string(),
+        "dist".to_string(),
+        "build".to_string(),
+        ".git".to_string(),
+        ".svn".to_string(),
+        ".hg".to_string(),
+    ]
+}
+
+fn default_ignored_files() -> Vec<String> {
+    vec![".DS_Store".to_string(), "Thumbs.db".to_string()]
+}
+
+#[test]
+fn test_build_tree_from_fs_flags_hidden_entries() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::write(root.join("visible.md"), "# Visible").unwrap();
+    fs::write(root.join(".hidden.md"), "# Hidden").unwrap();
+    fs::create_dir_all(root.join(".config")).unwrap();
+    fs::write(root.join(".config/app.json"), "{}").unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let visible = tree.iter().find(|n| n.name == "visible.md").unwrap();
+    assert!(!visible.hidden);
+
+    let hidden_file = tree.iter().find(|n| n.name == ".hidden.md").unwrap();
+    assert!(hidden_file.hidden);
+
+    let hidden_dir = tree.iter().find(|n| n.name == ".config").unwrap();
+    assert!(hidden_dir.hidden);
+    assert!(hidden_dir.is_folder);
+    // Hidden directories are still traversed; their descendants are hidden too.
+    let child = hidden_dir
+        .children
+        .as_ref()
+        .unwrap()
+        .iter()
+        .find(|n| n.name == "app.json")
+        .unwrap();
+    assert!(child.hidden);
+}
+
+#[test]
+fn test_build_tree_from_fs_placeholder_dirs_are_not_descended() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::create_dir_all(root.join("node_modules/pkg")).unwrap();
+    fs::write(root.join("node_modules/pkg/index.js"), "module.exports").unwrap();
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("src/main.rs"), "fn main() {}").unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let placeholder = tree.iter().find(|n| n.name == "node_modules").unwrap();
+    assert!(placeholder.is_folder);
+    assert!(placeholder.is_placeholder);
+    assert!(placeholder.children.is_none());
+
+    let src = tree.iter().find(|n| n.name == "src").unwrap();
+    assert!(!src.is_placeholder);
+    assert_eq!(src.children.as_ref().unwrap().len(), 1);
+}
+
+#[test]
+fn test_build_tree_from_fs_excludes_ignored_files() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::write(root.join(".DS_Store"), "junk").unwrap();
+    fs::write(root.join("Thumbs.db"), "junk").unwrap();
+    fs::write(root.join("keep.md"), "# Keep").unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    assert!(tree.iter().all(|n| n.name != ".DS_Store"));
+    assert!(tree.iter().all(|n| n.name != "Thumbs.db"));
+    assert!(tree.iter().any(|n| n.name == "keep.md"));
+}
+
+#[test]
+fn test_build_tree_from_fs_includes_empty_directories() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::create_dir_all(root.join("empty-dir")).unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let empty = tree.iter().find(|n| n.name == "empty-dir").unwrap();
+    assert!(empty.is_folder);
+    assert_eq!(empty.children.as_ref().unwrap().len(), 0);
+}
+
+#[test]
+fn test_build_tree_from_fs_other_file_type_and_size() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::write(root.join("notes.md"), "# Notes").unwrap();
+    fs::write(root.join("script.rs"), "fn main() {}").unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let md = tree.iter().find(|n| n.name == "notes.md").unwrap();
+    assert_eq!(md.file_type.as_deref(), Some("markdown"));
+    assert_eq!(md.size, 7);
+
+    let rs = tree.iter().find(|n| n.name == "script.rs").unwrap();
+    assert_eq!(rs.file_type.as_deref(), Some("other"));
+    assert_eq!(rs.size, 12);
+}
+
+#[test]
+fn test_get_file_content_binary_sniff() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::write(root.join("data.bin"), [0x41u8, 0x00, 0x42]).unwrap();
+
+    let file = FileService::get_file_content(root, "data.bin").unwrap();
+    assert!(file.binary);
+    assert_eq!(file.content, "");
+    assert_eq!(file.size, 3);
+    assert_eq!(file.file_size, 3);
+    assert!(!file.truncated);
+    assert!(!file.lossy);
+}
+
+#[test]
+fn test_get_file_content_truncates_at_one_megabyte() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let data = vec![b'a'; 1024 * 1024 + 100];
+    fs::write(root.join("big.txt"), &data).unwrap();
+
+    let file = FileService::get_file_content(root, "big.txt").unwrap();
+    assert!(file.truncated);
+    assert!(!file.binary);
+    assert_eq!(file.content.len(), 1024 * 1024);
+    assert_eq!(file.size, data.len() as u64);
+}
+
+#[test]
+fn test_get_file_content_flags_lossy_decode() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    // Invalid UTF-8 sequence without a NUL byte.
+    fs::write(root.join("latin1.txt"), [0x66u8, 0x6f, 0x80, 0x6f]).unwrap();
+
+    let file = FileService::get_file_content(root, "latin1.txt").unwrap();
+    assert!(!file.binary);
+    assert!(file.lossy);
+    assert!(!file.truncated);
+    assert!(file.content.contains('\u{FFFD}'));
 }

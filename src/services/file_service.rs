@@ -5,7 +5,31 @@ use std::path::{Path, PathBuf};
 
 pub struct FileService;
 
+/// Result of reading a file for the content endpoint.
+pub struct FileContentResult {
+    pub content: String,
+    pub file_name: String,
+    pub path: String,
+    pub file_size: u64,
+    /// Byte size of the file on disk (same as `file_size`, kept for the new
+    /// response contract).
+    pub size: u64,
+    pub last_modified: Option<std::time::SystemTime>,
+    /// Content was cut at the 1 MB limit.
+    pub truncated: bool,
+    /// Source bytes were not valid UTF-8 and were lossily decoded.
+    pub lossy: bool,
+    /// File looks binary (NUL byte in the first 8 KB); content is empty.
+    pub binary: bool,
+}
+
 const MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
+
+/// Maximum number of bytes returned by the relaxed file-content endpoint.
+const MAX_CONTENT_SIZE: usize = 1024 * 1024;
+
+/// Number of leading bytes inspected when sniffing for binary content.
+const BINARY_SNIFF_BYTES: usize = 8 * 1024;
 
 const DOCUMENT_EXTENSIONS: &[&str] = &["md", "mdx", "html", "htm"];
 const ALLOWED_IMAGE_EXTENSIONS: &[&str] =
@@ -33,6 +57,34 @@ impl FileService {
             "ico" => "image/x-icon",
             _ => "application/octet-stream",
         }
+    }
+
+    /// Classify a file for the tree's `fileType` field.
+    ///
+    /// Markdown, HTML and images keep their dedicated renderers; everything
+    /// else is `other` and opens in the Source Fallback view.
+    pub fn classify_file_type(ext: Option<&str>) -> String {
+        match ext.map(|e| e.to_lowercase()) {
+            Some(ext) if ext == "md" || ext == "mdx" => "markdown".to_string(),
+            Some(ext) if ext == "html" || ext == "htm" => "html".to_string(),
+            Some(ext) if Self::is_allowed_file_type(&ext) => "image".to_string(),
+            _ => "other".to_string(),
+        }
+    }
+
+    /// True when any component of a relative path starts with a dot.
+    fn is_hidden_path(relative_path: &str) -> bool {
+        relative_path
+            .split(['/', '\\'])
+            .any(|component| component.starts_with('.') && component != "." && component != "..")
+    }
+
+    fn is_placeholder_dir(name: &str, placeholder_dirs: &[String]) -> bool {
+        placeholder_dirs.iter().any(|dir| dir == name)
+    }
+
+    fn is_ignored_file(name: &str, ignored_files: &[String]) -> bool {
+        ignored_files.iter().any(|file| file == name)
     }
 
     pub fn get_raw_file(
@@ -206,25 +258,18 @@ impl FileService {
                             .extension()
                             .and_then(|e| e.to_str())
                             .map(|e| e.to_lowercase());
-                        let node_type = file_type.as_deref().and_then(|ext| {
-                            if ext == "md" || ext == "mdx" {
-                                Some("markdown".to_string())
-                            } else if ext == "html" || ext == "htm" {
-                                Some("html".to_string())
-                            } else if FileService::is_allowed_file_type(ext) {
-                                Some("image".to_string())
-                            } else {
-                                None
-                            }
-                        });
+                        let node_type = Some(FileService::classify_file_type(file_type.as_deref()));
 
                         nodes.push(FileTreeNode {
                             id: relative_path.clone(),
                             name: name.clone(),
-                            path: relative_path, // Return relative path
+                            path: relative_path.clone(), // Return relative path
                             is_folder: false,
                             children: None,
                             file_type: node_type,
+                            hidden: FileService::is_hidden_path(&relative_path),
+                            is_placeholder: false,
+                            size: 0,
                         });
                     }
                 } else {
@@ -237,10 +282,13 @@ impl FileService {
                     nodes.push(FileTreeNode {
                         id: child_prefix.clone(),
                         name,
-                        path: child_prefix, // Return relative path for folders too
+                        path: child_prefix.clone(), // Return relative path for folders too
                         is_folder: true,
                         children: Some(children),
                         file_type: None,
+                        hidden: FileService::is_hidden_path(&child_prefix),
+                        is_placeholder: false,
+                        size: 0,
                     });
                 }
             }
@@ -251,6 +299,138 @@ impl FileService {
         let mut tree = build_node(&file_refs, 0, "", root_path);
         Self::sort_tree(&mut tree);
         tree
+    }
+
+    /// Build the tree by walking the real filesystem.
+    ///
+    /// Every file and directory under `root_path` becomes a node, including
+    /// empty directories and directories that only contain hidden entries.
+    /// Ignored files are skipped. Placeholder directories are emitted but not
+    /// descended into.
+    pub fn build_tree_from_fs(
+        root_path: &Path,
+        placeholder_dirs: &[String],
+        ignored_files: &[String],
+    ) -> Vec<FileTreeNode> {
+        Self::walk_directory(root_path, root_path, placeholder_dirs, ignored_files)
+    }
+
+    fn walk_directory(
+        dir: &Path,
+        root: &Path,
+        placeholder_dirs: &[String],
+        ignored_files: &[String],
+    ) -> Vec<FileTreeNode> {
+        let mut nodes = Vec::new();
+
+        let entries = match std::fs::read_dir(dir) {
+            Ok(entries) => entries,
+            // Unreadable directories are skipped rather than failing the whole tree.
+            Err(_) => return nodes,
+        };
+
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.is_empty() {
+                continue;
+            }
+
+            let path = entry.path();
+            let relative_path = path.strip_prefix(root).unwrap_or(&path);
+            let relative_str = relative_path.to_string_lossy().replace('\\', "/");
+            let hidden = Self::is_hidden_path(&relative_str);
+
+            let file_type = match entry.file_type() {
+                Ok(file_type) => file_type,
+                Err(_) => continue,
+            };
+
+            if file_type.is_file() {
+                if Self::is_ignored_file(&name, ignored_files) {
+                    continue;
+                }
+                let size = entry.metadata().map(|meta| meta.len()).unwrap_or(0);
+                nodes.push(FileTreeNode {
+                    id: relative_str.clone(),
+                    name,
+                    path: relative_str,
+                    is_folder: false,
+                    children: None,
+                    file_type: Some(Self::classify_file_type(
+                        path.extension().and_then(|e| e.to_str()),
+                    )),
+                    hidden,
+                    is_placeholder: false,
+                    size,
+                });
+            } else if file_type.is_dir() {
+                let is_placeholder = Self::is_placeholder_dir(&name, placeholder_dirs);
+                let children = if is_placeholder {
+                    None
+                } else {
+                    Some(Self::walk_directory(
+                        &path,
+                        root,
+                        placeholder_dirs,
+                        ignored_files,
+                    ))
+                };
+                nodes.push(FileTreeNode {
+                    id: relative_str.clone(),
+                    name,
+                    path: relative_str,
+                    is_folder: true,
+                    children,
+                    file_type: None,
+                    hidden,
+                    is_placeholder,
+                    size: 0,
+                });
+            } else if file_type.is_symlink() {
+                // Resolve symlinks but never recurse into symlinked directories,
+                // which could create cycles.
+                if let Ok(meta) = std::fs::metadata(&path) {
+                    if meta.is_file() {
+                        if Self::is_ignored_file(&name, ignored_files) {
+                            continue;
+                        }
+                        nodes.push(FileTreeNode {
+                            id: relative_str.clone(),
+                            name,
+                            path: relative_str,
+                            is_folder: false,
+                            children: None,
+                            file_type: Some(Self::classify_file_type(
+                                path.extension().and_then(|e| e.to_str()),
+                            )),
+                            hidden,
+                            is_placeholder: false,
+                            size: meta.len(),
+                        });
+                    } else if meta.is_dir() {
+                        let is_placeholder = Self::is_placeholder_dir(&name, placeholder_dirs);
+                        nodes.push(FileTreeNode {
+                            id: relative_str.clone(),
+                            name,
+                            path: relative_str,
+                            is_folder: true,
+                            children: if is_placeholder {
+                                None
+                            } else {
+                                Some(Vec::new())
+                            },
+                            file_type: None,
+                            hidden,
+                            is_placeholder,
+                            size: 0,
+                        });
+                    }
+                }
+            }
+        }
+
+        Self::sort_tree(&mut nodes);
+        nodes
     }
 
     fn sort_tree(nodes: &mut [FileTreeNode]) {
@@ -274,7 +454,7 @@ impl FileService {
     pub fn get_file_content(
         project_path: &Path,
         relative_path: &str,
-    ) -> AppResult<(String, String, String, u64, Option<std::time::SystemTime>)> {
+    ) -> AppResult<FileContentResult> {
         // Validate relative path to prevent path traversal
         Self::validate_relative_path(relative_path)?;
 
@@ -293,37 +473,86 @@ impl FileService {
             return Err(AppError::ValidationError("Access denied".into()));
         }
 
-        let ext = resolved
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase());
-
-        if !ext
-            .as_deref()
-            .is_some_and(FileService::is_document_file_type)
-        {
-            return Err(AppError::BadRequest(
-                "Only Markdown and HTML files are supported".into(),
-            ));
+        if resolved.is_dir() {
+            return Err(AppError::BadRequest("Path is a directory".into()));
         }
 
-        let content = std::fs::read_to_string(&resolved)?;
-        let file_name = resolved.file_name().unwrap().to_str().unwrap().to_string();
+        let file_name = resolved
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_default();
         // Return relative path for frontend
-        let path = relative_path;
+        let path = relative_path.to_string();
 
         // Get file size and modification time
         let metadata = std::fs::metadata(&resolved)?;
         let file_size = metadata.len();
         let last_modified = metadata.modified().ok();
 
-        Ok((
+        let ext = resolved
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase());
+
+        // Markdown and HTML keep their existing, strict reading behavior.
+        if ext
+            .as_deref()
+            .is_some_and(FileService::is_document_file_type)
+        {
+            let content = std::fs::read_to_string(&resolved)?;
+            return Ok(FileContentResult {
+                content,
+                file_name,
+                path,
+                file_size,
+                size: file_size,
+                last_modified,
+                truncated: false,
+                lossy: false,
+                binary: false,
+            });
+        }
+
+        // Every other file type is read as bytes: binary sniff, lossy decode
+        // and truncation at 1 MB.
+        let bytes = std::fs::read(&resolved)?;
+        let size = bytes.len() as u64;
+        let binary = bytes.iter().take(BINARY_SNIFF_BYTES).any(|byte| *byte == 0);
+
+        if binary {
+            return Ok(FileContentResult {
+                content: String::new(),
+                file_name,
+                path,
+                file_size: size,
+                size,
+                last_modified,
+                truncated: false,
+                lossy: false,
+                binary: true,
+            });
+        }
+
+        let lossy = std::str::from_utf8(&bytes).is_err();
+        let truncated = bytes.len() > MAX_CONTENT_SIZE;
+        let slice = if truncated {
+            &bytes[..MAX_CONTENT_SIZE]
+        } else {
+            &bytes[..]
+        };
+        let content = String::from_utf8_lossy(slice).to_string();
+
+        Ok(FileContentResult {
             content,
             file_name,
-            path.to_string(),
-            file_size,
+            path,
+            file_size: size,
+            size,
             last_modified,
-        ))
+            truncated,
+            lossy,
+            binary: false,
+        })
     }
 
     pub fn create_file(project_path: &Path, file_name: &str) -> AppResult<()> {

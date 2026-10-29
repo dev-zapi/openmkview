@@ -1,11 +1,10 @@
-use crate::db::ProjectRepository;
+use crate::db::{ProjectRepository, SettingsRepository};
 use crate::errors::{AppError, AppResult};
 use crate::models::{FileMoveRequest, FileOperationRequest, FileSaveRequest, FileSaveResponse};
 use crate::services::{FileService, ProjectService};
 use crate::AppState;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
-use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -38,8 +37,12 @@ pub async fn get_file_tree(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let files = collect_project_files(&project_path);
-    let tree = FileService::build_tree(&files, &project_path);
+    let settings = SettingsRepository::new(&conn).get_system_settings()?;
+    let tree = FileService::build_tree_from_fs(
+        &project_path,
+        &settings.placeholder_dirs,
+        &settings.ignored_files,
+    );
 
     Ok(HttpResponse::Ok().json(tree))
 }
@@ -54,20 +57,23 @@ pub async fn get_file_content(
 
     let project_path = project_service.get_project_path(query.project_id)?;
 
-    let (content, file_name, relative_path, file_size, last_modified) =
-        FileService::get_file_content(&project_path, &query.relative_path)?;
+    let file = FileService::get_file_content(&project_path, &query.relative_path)?;
 
-    let last_modified_str = last_modified.map(|t| {
+    let last_modified_str = file.last_modified.map(|t| {
         let datetime: chrono::DateTime<chrono::Utc> = t.into();
         datetime.to_rfc3339()
     });
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
-        "content": content,
-        "fileName": file_name,
-        "path": relative_path,  // Return relative path to frontend
-        "fileSize": file_size,
-        "lastModified": last_modified_str
+        "content": file.content,
+        "fileName": file.file_name,
+        "path": file.path,  // Return relative path to frontend
+        "fileSize": file.file_size,
+        "lastModified": last_modified_str,
+        "truncated": file.truncated,
+        "lossy": file.lossy,
+        "binary": file.binary,
+        "size": file.size
     })))
 }
 
@@ -227,44 +233,4 @@ pub async fn save_file_content(
         file_size,
         last_modified: last_modified_str.to_rfc3339(),
     }))
-}
-
-#[allow(dead_code)]
-fn collect_project_files(root_path: &PathBuf) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-
-    for entry in walkdir::WalkDir::new(root_path)
-        .into_iter()
-        .filter_entry(|e| {
-            let name = e.file_name().to_string_lossy();
-            name != "node_modules" && name != ".git"
-        })
-        .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                let ext_lower = ext.to_string_lossy().to_lowercase();
-                if ext_lower == "md"
-                    || ext_lower == "mdx"
-                    || ext_lower == "html"
-                    || ext_lower == "htm"
-                    || ext_lower == "png"
-                    || ext_lower == "jpg"
-                    || ext_lower == "jpeg"
-                    || ext_lower == "gif"
-                    || ext_lower == "svg"
-                    || ext_lower == "webp"
-                    || ext_lower == "bmp"
-                    || ext_lower == "ico"
-                {
-                    if let Ok(rel) = path.strip_prefix(root_path) {
-                        files.push(rel.to_path_buf());
-                    }
-                }
-            }
-        }
-    }
-
-    files
 }
