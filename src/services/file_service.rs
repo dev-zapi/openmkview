@@ -1,6 +1,7 @@
 use crate::errors::{AppError, AppResult};
 use crate::models::FileTreeNode;
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 pub struct FileService;
@@ -74,9 +75,32 @@ impl FileService {
 
     /// True when any component of a relative path starts with a dot.
     fn is_hidden_path(relative_path: &str) -> bool {
-        relative_path
-            .split(['/', '\\'])
+        // A backslash is a path separator only on Windows; on Unix it is an
+        // ordinary filename character and must not split components.
+        #[cfg(windows)]
+        let mut components = relative_path.split(['/', '\\']);
+        #[cfg(not(windows))]
+        let mut components = relative_path.split('/');
+
+        components
             .any(|component| component.starts_with('.') && component != "." && component != "..")
+    }
+
+    /// Convert a path relative to the project root into the forward-slash
+    /// string used as a node id/path.
+    ///
+    /// Returns `None` for non-UTF-8 paths: they cannot round-trip through the
+    /// JSON tree, so they must be skipped rather than lossily encoded.
+    fn relative_path_to_string(relative_path: &Path) -> Option<String> {
+        let raw = relative_path.to_str()?;
+        #[cfg(windows)]
+        {
+            Some(raw.replace('\\', "/"))
+        }
+        #[cfg(not(windows))]
+        {
+            Some(raw.to_string())
+        }
     }
 
     fn is_placeholder_dir(name: &str, placeholder_dirs: &[String]) -> bool {
@@ -312,32 +336,67 @@ impl FileService {
         placeholder_dirs: &[String],
         ignored_files: &[String],
     ) -> Vec<FileTreeNode> {
-        Self::walk_directory(root_path, root_path, placeholder_dirs, ignored_files)
+        let canonical_root = root_path
+            .canonicalize()
+            .unwrap_or_else(|_| root_path.to_path_buf());
+        let mut ancestors = Vec::new();
+        Self::walk_directory(
+            root_path,
+            root_path,
+            &canonical_root,
+            placeholder_dirs,
+            ignored_files,
+            &mut ancestors,
+        )
     }
 
     fn walk_directory(
         dir: &Path,
         root: &Path,
+        canonical_root: &Path,
         placeholder_dirs: &[String],
         ignored_files: &[String],
+        ancestors: &mut Vec<PathBuf>,
     ) -> Vec<FileTreeNode> {
         let mut nodes = Vec::new();
+
+        // Cycle guard: a directory already on the current descent path means a
+        // symlink loop; stop instead of recursing forever.
+        let canonical_dir = match dir.canonicalize() {
+            Ok(path) => path,
+            Err(_) => return nodes,
+        };
+        if ancestors.contains(&canonical_dir) {
+            return nodes;
+        }
+        ancestors.push(canonical_dir);
 
         let entries = match std::fs::read_dir(dir) {
             Ok(entries) => entries,
             // Unreadable directories are skipped rather than failing the whole tree.
-            Err(_) => return nodes,
+            Err(_) => {
+                ancestors.pop();
+                return nodes;
+            }
         };
 
         for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
+            // Non-UTF-8 names cannot round-trip through the JSON tree, so they
+            // are skipped instead of lossily encoded.
+            let name = match entry.file_name().into_string() {
+                Ok(name) => name,
+                Err(_) => continue,
+            };
             if name.is_empty() {
                 continue;
             }
 
             let path = entry.path();
             let relative_path = path.strip_prefix(root).unwrap_or(&path);
-            let relative_str = relative_path.to_string_lossy().replace('\\', "/");
+            let relative_str = match Self::relative_path_to_string(relative_path) {
+                Some(relative_str) => relative_str,
+                None => continue,
+            };
             let hidden = Self::is_hidden_path(&relative_str);
 
             let file_type = match entry.file_type() {
@@ -371,8 +430,10 @@ impl FileService {
                     Some(Self::walk_directory(
                         &path,
                         root,
+                        canonical_root,
                         placeholder_dirs,
                         ignored_files,
+                        ancestors,
                     ))
                 };
                 nodes.push(FileTreeNode {
@@ -387,8 +448,9 @@ impl FileService {
                     size: 0,
                 });
             } else if file_type.is_symlink() {
-                // Resolve symlinks but never recurse into symlinked directories,
-                // which could create cycles.
+                // Resolve symlinks. Symlinked directories are followed only when
+                // their target stays inside the project root; cycles are caught
+                // by the ancestor chain.
                 if let Ok(meta) = std::fs::metadata(&path) {
                     if meta.is_file() {
                         if Self::is_ignored_file(&name, ignored_files) {
@@ -409,16 +471,34 @@ impl FileService {
                         });
                     } else if meta.is_dir() {
                         let is_placeholder = Self::is_placeholder_dir(&name, placeholder_dirs);
+                        let children = if is_placeholder {
+                            None
+                        } else {
+                            let target_inside_root = path
+                                .canonicalize()
+                                .map(|target| target.starts_with(canonical_root))
+                                .unwrap_or(false);
+                            if target_inside_root {
+                                Some(Self::walk_directory(
+                                    &path,
+                                    root,
+                                    canonical_root,
+                                    placeholder_dirs,
+                                    ignored_files,
+                                    ancestors,
+                                ))
+                            } else {
+                                // Links escaping the project root are shown but
+                                // never expanded.
+                                Some(Vec::new())
+                            }
+                        };
                         nodes.push(FileTreeNode {
                             id: relative_str.clone(),
                             name,
                             path: relative_str,
                             is_folder: true,
-                            children: if is_placeholder {
-                                None
-                            } else {
-                                Some(Vec::new())
-                            },
+                            children,
                             file_type: None,
                             hidden,
                             is_placeholder,
@@ -429,6 +509,7 @@ impl FileService {
             }
         }
 
+        ancestors.pop();
         Self::sort_tree(&mut nodes);
         nodes
     }
@@ -486,6 +567,13 @@ impl FileService {
 
         // Get file size and modification time
         let metadata = std::fs::metadata(&resolved)?;
+
+        // Only regular files are readable. Directories are handled above;
+        // FIFOs, sockets and devices would block or misbehave on read.
+        if !metadata.file_type().is_file() {
+            return Err(AppError::BadRequest("Path is not a regular file".into()));
+        }
+
         let file_size = metadata.len();
         let last_modified = metadata.modified().ok();
 
@@ -514,9 +602,15 @@ impl FileService {
         }
 
         // Every other file type is read as bytes: binary sniff, lossy decode
-        // and truncation at 1 MB.
-        let bytes = std::fs::read(&resolved)?;
-        let size = bytes.len() as u64;
+        // and truncation at 1 MB. Read at most one byte past the truncation
+        // limit so huge files never land in memory whole.
+        let read_limit = (MAX_CONTENT_SIZE as u64).saturating_add(1);
+        let mut bytes = Vec::new();
+        {
+            let file = std::fs::File::open(&resolved)?;
+            file.take(read_limit).read_to_end(&mut bytes)?;
+        }
+        let size = file_size;
         let binary = bytes.iter().take(BINARY_SNIFF_BYTES).any(|byte| *byte == 0);
 
         if binary {
@@ -533,13 +627,9 @@ impl FileService {
             });
         }
 
-        let lossy = std::str::from_utf8(&bytes).is_err();
         let truncated = bytes.len() > MAX_CONTENT_SIZE;
-        let slice = if truncated {
-            &bytes[..MAX_CONTENT_SIZE]
-        } else {
-            &bytes[..]
-        };
+        let slice = &bytes[..bytes.len().min(MAX_CONTENT_SIZE)];
+        let lossy = std::str::from_utf8(slice).is_err();
         let content = String::from_utf8_lossy(slice).to_string();
 
         Ok(FileContentResult {

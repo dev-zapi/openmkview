@@ -1088,3 +1088,174 @@ fn test_get_file_content_flags_lossy_decode() {
     assert!(!file.truncated);
     assert!(file.content.contains('\u{FFFD}'));
 }
+
+#[test]
+fn test_get_file_content_huge_file_reports_real_size_without_full_read() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let file_path = root.join("huge.log");
+    // ASCII prefix keeps the 8 KB binary sniff clean; the rest is sparse.
+    fs::write(&file_path, vec![b'a'; 8192]).unwrap();
+    let file = fs::OpenOptions::new().write(true).open(&file_path).unwrap();
+    file.set_len(64 * 1024 * 1024).unwrap();
+    drop(file);
+
+    let file = FileService::get_file_content(root, "huge.log").unwrap();
+    assert!(file.truncated);
+    assert!(!file.binary);
+    assert_eq!(file.content.len(), MAX_CONTENT_SIZE);
+    // Size reflects the file on disk, not the bounded read.
+    assert_eq!(file.size, 64 * 1024 * 1024);
+    assert_eq!(file.file_size, 64 * 1024 * 1024);
+}
+
+#[test]
+fn test_get_file_content_lossy_ignores_bytes_past_truncation() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let mut data = vec![b'a'; MAX_CONTENT_SIZE + 100];
+    data[MAX_CONTENT_SIZE + 50] = 0x80; // invalid UTF-8 beyond the cut
+    fs::write(root.join("big.txt"), &data).unwrap();
+
+    let file = FileService::get_file_content(root, "big.txt").unwrap();
+    assert!(file.truncated);
+    // Only the returned slice is decoded, so the invalid byte is not reported.
+    assert!(!file.lossy);
+    assert_eq!(file.content.len(), MAX_CONTENT_SIZE);
+    assert_eq!(file.size, data.len() as u64);
+}
+
+#[cfg(unix)]
+#[test]
+fn test_get_file_content_rejects_non_regular_file() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let fifo = root.join("pipe.txt");
+    let created = std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false);
+    if !created {
+        // mkfifo is unavailable on this platform; nothing to exercise.
+        return;
+    }
+
+    let result = FileService::get_file_content(root, "pipe.txt");
+    assert!(result.is_err());
+    let err = result.err().unwrap();
+    assert!(err.to_string().contains("not a regular file"));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_build_tree_from_fs_follows_in_root_symlinked_directories() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::create_dir_all(root.join("shared")).unwrap();
+    fs::write(root.join("shared/doc.md"), "# Doc").unwrap();
+    std::os::unix::fs::symlink(root.join("shared"), root.join("docs")).unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let docs = tree.iter().find(|n| n.name == "docs").unwrap();
+    assert!(docs.is_folder);
+    let children = docs.children.as_ref().unwrap();
+    assert!(children.iter().any(|n| n.name == "doc.md"));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_build_tree_from_fs_breaks_symlink_cycles() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::create_dir_all(root.join("dir")).unwrap();
+    std::os::unix::fs::symlink(root.join("dir"), root.join("dir/loop")).unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let dir = tree.iter().find(|n| n.name == "dir").unwrap();
+    let loop_node = dir
+        .children
+        .as_ref()
+        .unwrap()
+        .iter()
+        .find(|n| n.name == "loop")
+        .unwrap();
+    assert!(loop_node.is_folder);
+    assert!(loop_node.children.as_ref().unwrap().is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn test_build_tree_from_fs_does_not_expand_symlink_escaping_root() {
+    let outside = tempfile::tempdir().unwrap();
+    fs::write(outside.path().join("secret.txt"), "secret").unwrap();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    std::os::unix::fs::symlink(outside.path(), root.join("outside")).unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let node = tree.iter().find(|n| n.name == "outside").unwrap();
+    assert!(node.is_folder);
+    assert!(node.children.as_ref().unwrap().is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn test_build_tree_from_fs_preserves_backslash_in_names() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let name = "a\\b.txt";
+    fs::write(root.join(name), "hello").unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    let node = tree.iter().find(|n| n.name == name).unwrap();
+    assert_eq!(node.id, name);
+    assert_eq!(node.path, name);
+    assert!(!node.hidden);
+
+    // The emitted path must round-trip back to the same file.
+    let file = FileService::get_file_content(root, &node.path).unwrap();
+    assert_eq!(file.content, "hello");
+}
+
+#[cfg(unix)]
+#[test]
+fn test_build_tree_from_fs_skips_non_utf8_names() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::write(root.join("good.md"), "# Good").unwrap();
+    fs::write(root.join(OsStr::from_bytes(b"bad\x80.md")), "bad").unwrap();
+
+    let tree = FileService::build_tree_from_fs(
+        root,
+        &default_placeholder_dirs(),
+        &default_ignored_files(),
+    );
+
+    assert!(tree.iter().any(|n| n.name == "good.md"));
+    assert!(tree.iter().all(|node| !node.name.contains('\u{FFFD}')));
+    assert!(tree.iter().all(|node| !node.path.contains('\u{FFFD}')));
+}

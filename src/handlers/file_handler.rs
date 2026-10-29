@@ -31,13 +31,19 @@ pub async fn get_file_tree(
     data: web::Data<AppState>,
     query: web::Query<FileTreeParams>,
 ) -> AppResult<HttpResponse> {
-    let conn = data.db.lock().unwrap();
-    let project_repo = ProjectRepository::new(&conn);
-    let project_service = ProjectService::new(project_repo);
+    // Hold the DB lock only long enough to load the project path and settings.
+    // The filesystem walk can take seconds on large projects and must not
+    // block other handlers that share the connection.
+    let (project_path, settings) = {
+        let conn = data.db.lock().unwrap();
+        let project_repo = ProjectRepository::new(&conn);
+        let project_service = ProjectService::new(project_repo);
 
-    let project_path = project_service.get_project_path(query.project_id)?;
+        let project_path = project_service.get_project_path(query.project_id)?;
+        let settings = SettingsRepository::new(&conn).get_system_settings()?;
+        (project_path, settings)
+    };
 
-    let settings = SettingsRepository::new(&conn).get_system_settings()?;
     let tree = FileService::build_tree_from_fs(
         &project_path,
         &settings.placeholder_dirs,
