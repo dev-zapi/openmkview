@@ -43,3 +43,19 @@ _Avoid_: context menu target, right-clicked project, selected project, focused p
 **Active Project**:
 The project currently being worked on, whose files appear in the file tree and main pane. Changed by clicking a project icon in the activity bar or opening a new project. At most one project is active at a time.
 _Avoid_: current project, working project, focused project, selected project
+
+**Hidden Entry**:
+A file or directory whose name starts with a dot, excluded from the file tree by default following Linux convention. Visibility is a per-browser preference toggled from the project menu; it is hiding, not removal.
+_Avoid_: dotfile, hidden file, invisible entry, hidden system file
+
+**Ignored Files**:
+Junk files that never appear in the file tree regardless of the hidden toggle. Unlike Hidden Entries, which are merely hidden by default, ignored files are always gone.
+_Avoid_: junk list, blocked files, excluded files, prune list
+
+**Placeholder Directory**:
+A heavy directory (dependency caches, VCS internals) shown in the file tree as a node that cannot be expanded; opening it shows a notice instead of its contents. Dot-prefixed members additionally follow Hidden Entry visibility.
+_Avoid_: collapsed directory, pruned directory, lazy directory, system directory
+
+**Source Fallback**:
+The read-only, syntax-highlighted source rendering used for any text file without a dedicated renderer (markdown, HTML, and images keep their own). It is the only view for such files: no preview, edit, or diff.
+_Avoid_: code view, raw view, plain text view, unsupported file view
