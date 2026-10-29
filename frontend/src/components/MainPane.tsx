@@ -73,6 +73,7 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             outlineCount={props.outlineCount}
             content={props.currentFile!.content}
             fileType={props.currentFileType}
+            binary={props.currentFile!.binary}
             isSearchOpen={props.isSearchOpen}
             searchQuery={props.searchQuery}
             searchResultCount={props.searchResultCount}

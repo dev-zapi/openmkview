@@ -1,5 +1,6 @@
 import { Component, Show } from 'solid-js';
 import type { RemoteGitAction } from '../utils/gitPanel';
+import { fileTreeVisibilityStore } from '../stores/fileTreeVisibilityStore';
 
 interface ProjectMenuProps {
   isOpen: boolean;
@@ -17,6 +18,11 @@ interface ProjectMenuProps {
 
 const ProjectMenu: Component<ProjectMenuProps> = (props) => {
   const gitBusy = () => Boolean(props.gitOperation);
+  const checkIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
   const fetchTitle = () => props.gitUnavailable ? 'Unavailable while offline' : undefined;
   const pullTitle = () => {
     if (props.gitUnavailable) return 'Unavailable while offline';
@@ -57,6 +63,17 @@ const ProjectMenu: Component<ProjectMenuProps> = (props) => {
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
           </svg>
           <span>Refresh</span>
+        </button>
+        <button
+          class="menu-item"
+          role="menuitemcheckbox"
+          aria-checked={fileTreeVisibilityStore.showHidden()}
+          onClick={() => fileTreeVisibilityStore.toggleShowHidden()}
+        >
+          <span style={{ width: '16px', display: 'inline-flex', 'flex-shrink': '0' }}>
+            <Show when={fileTreeVisibilityStore.showHidden()}>{checkIcon}</Show>
+          </span>
+          <span>Show Hidden Files</span>
         </button>
         <div class="menu-separator" role="separator" />
         <button

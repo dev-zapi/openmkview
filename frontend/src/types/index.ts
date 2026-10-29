@@ -4,12 +4,18 @@ export interface FileNode {
   path: string;
   isFolder: boolean;
   children?: FileNode[];
-  fileType?: DocumentFileType | 'image';
+  fileType?: DocumentFileType | 'image' | 'other';
+  /** True when any path component starts with a dot (Hidden Entry). */
+  hidden?: boolean;
+  /** True for Placeholder Directories: visible but not expandable. */
+  isPlaceholder?: boolean;
+  /** File size in bytes (0 for directories). */
+  size?: number;
 }
 
 export type DocumentFileType = 'markdown' | 'html';
 
-export type FileType = DocumentFileType | 'image';
+export type FileType = DocumentFileType | 'image' | 'other';
 
 export interface Heading {
   depth: number;
@@ -23,6 +29,14 @@ export interface FileContent {
   path: string;  // Relative path from project root
   fileSize?: number;
   lastModified?: string;
+  /** Content was cut at the 1 MB limit. */
+  truncated?: boolean;
+  /** Source bytes were not valid UTF-8 and were lossily decoded. */
+  lossy?: boolean;
+  /** File looks binary and cannot be previewed. */
+  binary?: boolean;
+  /** Byte size reported by the content endpoint. */
+  size?: number;
 }
 
 export interface FileSaveRequest {

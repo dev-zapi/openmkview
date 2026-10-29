@@ -22,6 +22,8 @@ export interface ServerSettings {
   codeFontFamily: string;
   codeFontSize: string;
   protectedPaths: string[];
+  placeholderDirs: string[];
+  ignoredFiles: string[];
   trashExpireDays: number;
   sessionTimeoutMinutes: number;
   codeBlockThemeLight: string;
@@ -49,6 +51,8 @@ export const DEFAULT_SETTINGS: Settings = {
   markdownFontSize: '16px',
   codeFontSize: '14px',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
+  placeholderDirs: ['node_modules', 'target', 'dist', 'build', '.git', '.svn', '.hg'],
+  ignoredFiles: ['.DS_Store', 'Thumbs.db'],
   trashExpireDays: 30,
   sessionTimeoutMinutes: 60,
   codeBlockThemeLight: 'github-light',

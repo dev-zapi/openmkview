@@ -105,6 +105,24 @@ describe('fileStore', () => {
     });
   });
 
+  describe('openOtherFile', () => {
+    it('sets file type to other and stores content flags', () => {
+      const file: FileContent = {
+        content: 'const x = 1;',
+        fileName: 'script.ts',
+        path: 'script.ts',
+        truncated: true,
+        lossy: true,
+      };
+
+      fileStore.openOtherFile(file);
+
+      expect(fileStore.currentFile()).toEqual(file);
+      expect(fileStore.currentFileType()).toBe('other');
+      expect(fileStore.imagePreviewUrl()).toBe(null);
+    });
+  });
+
   describe('closeFile', () => {
     it('clears all file state', () => {
       fileStore.openMarkdownFile({

@@ -37,6 +37,7 @@ describe('SettingsPanel', () => {
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
     expect(screen.getAllByText('Markdown').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Themes').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('File Tree').length).toBeGreaterThan(0);
     expect(screen.getByText('Trash Settings')).toBeTruthy();
   });
 
@@ -232,14 +233,14 @@ describe('SettingsPanel', () => {
     it('renders navigation with all categories', () => {
       const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
       const navItems = container.querySelectorAll('.settings-nav button');
-      expect(navItems.length).toBe(4);
+      expect(navItems.length).toBe(5);
       expect(container.querySelector('.settings-nav')).toBeTruthy();
     });
 
     it('renders auth-only navigation categories when auth is enabled', () => {
       const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
       const navItems = container.querySelectorAll('.settings-nav button');
-      expect(navItems.length).toBe(6);
+      expect(navItems.length).toBe(7);
     });
 
     it('clicking navigation item triggers scrollIntoView', () => {
@@ -271,7 +272,7 @@ describe('SettingsPanel', () => {
       });
     });
 
-    // Count = number of visible category sections (4 without auth / 6 with auth)
+    // Count = number of visible category sections (5 without auth / 7 with auth)
     // plus 1 from the CSS editor's own CodeMirror IntersectionObserver.
     it('IntersectionObserver observes all sections', async () => {
       const observeMock = vi.fn();
@@ -284,7 +285,7 @@ describe('SettingsPanel', () => {
       render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
 
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(5);
+          expect(observeMock).toHaveBeenCalledTimes(6);
         });
       });
 
@@ -299,7 +300,7 @@ describe('SettingsPanel', () => {
         render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
 
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(7);
+          expect(observeMock).toHaveBeenCalledTimes(8);
         });
       });
   });

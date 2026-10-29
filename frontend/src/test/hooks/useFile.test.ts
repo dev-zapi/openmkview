@@ -6,6 +6,7 @@ import { diffStore } from '../../stores/diffStore';
 import { mobileLayoutStore } from '../../stores/mobileLayoutStore';
 import { editorStore } from '../../stores/editorStore';
 import { projectStore } from '../../stores/projectStore';
+import { api } from '../../services/api';
 import type { FileNode } from '../../types';
 
 describe('useFile', () => {
@@ -122,5 +123,55 @@ describe('useFile', () => {
     await mobileFileClick('docs/README.md', false);
 
     expect(closeLeftDrawerSpy).toHaveBeenCalled();
+  });
+
+  it('opens other text files on the source tab', async () => {
+    const openFile = useFile().openFile;
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
+    fileStore.setFileTree([{
+      id: 'script.ts',
+      name: 'script.ts',
+      path: 'script.ts',
+      isFolder: false,
+      fileType: 'other',
+    }]);
+    vi.spyOn(api, 'getFileContent').mockResolvedValue({
+      content: 'const x = 1;',
+      fileName: 'script.ts',
+      path: 'script.ts',
+      truncated: true,
+      lossy: true,
+    });
+
+    await openFile('script.ts', false);
+
+    expect(fileStore.currentFileType()).toBe('other');
+    expect(appStore.activeTab()).toBe('source');
+    expect(fileStore.currentFile()?.truncated).toBe(true);
+  });
+
+  it('opens binary files on the placeholder preview state', async () => {
+    const openFile = useFile().openFile;
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
+    fileStore.setFileTree([{
+      id: 'archive.zip',
+      name: 'archive.zip',
+      path: 'archive.zip',
+      isFolder: false,
+      fileType: 'other',
+    }]);
+    vi.spyOn(api, 'getFileContent').mockResolvedValue({
+      content: '',
+      fileName: 'archive.zip',
+      path: 'archive.zip',
+      binary: true,
+      size: 2048,
+    });
+
+    await openFile('archive.zip', false);
+
+    expect(fileStore.currentFileType()).toBe('other');
+    expect(appStore.activeTab()).toBe('preview');
+    expect(fileStore.currentFile()?.binary).toBe(true);
   });
 });

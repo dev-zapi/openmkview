@@ -12,6 +12,12 @@ import type { Settings } from '../types/app';
 import { diffStore } from '../stores/diffStore';
 import { fileStore } from '../stores/fileStore';
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export interface FileContentViewProps {
   loading: boolean;
   currentFile: FileContent | null;
@@ -48,6 +54,24 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
       <Show when={!props.loading && fileStore.loadError()}>
         <div class="empty-state load-error">
           <p>{fileStore.loadError()}</p>
+        </div>
+      </Show>
+
+      <Show when={!props.loading && props.currentFile?.binary}>
+        <div class="binary-placeholder">
+          <div class="binary-placeholder-icon" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="9" y1="13" x2="15" y2="13" />
+              <line x1="9" y1="17" x2="15" y2="17" />
+            </svg>
+          </div>
+          <div class="binary-placeholder-name">{props.currentFile!.fileName}</div>
+          <div class="binary-placeholder-size">
+            {formatFileSize(props.currentFile!.size ?? props.currentFile!.fileSize ?? 0)}
+          </div>
+          <div class="binary-placeholder-message">二进制文件，无法预览</div>
         </div>
       </Show>
 
@@ -98,7 +122,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
         </div>
       </Show>
 
-      <Show when={!props.loading && props.activeTab === 'diff' && props.activeProjectId && props.currentFile}>
+      <Show when={!props.loading && props.activeTab === 'diff' && props.activeProjectId && props.currentFile && props.currentFileType !== 'other' && !props.currentFile.binary}>
         <div class={`diff-wrapper ${fadeClass}`}>
           <DiffSelector
             projectId={props.activeProjectId!}
@@ -122,8 +146,18 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
         </div>
       </Show>
 
-      <Show when={!props.loading && props.currentFile && props.activeTab === 'source'}>
+      <Show when={!props.loading && props.currentFile && !props.currentFile.binary && props.activeTab === 'source'}>
         <div class={`source-view ${fadeClass}`}>
+          <Show when={props.currentFile!.truncated}>
+            <div class="source-notice" role="status">
+              文件超过 1 MB，内容已截断显示
+            </div>
+          </Show>
+          <Show when={props.currentFile!.lossy}>
+            <div class="source-notice" role="status">
+              文件包含无效的 UTF-8 字节，已使用替换字符显示
+            </div>
+          </Show>
           <SourceView
             content={props.currentFile!.content}
             fileName={props.currentFile!.fileName}
@@ -135,7 +169,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
         </div>
       </Show>
 
-      <Show when={!props.loading && props.currentFile && props.activeTab === 'edit'}>
+      <Show when={!props.loading && props.currentFile && props.activeTab === 'edit' && props.currentFileType !== 'other' && !props.currentFile.binary}>
         <div class={`edit-view ${fadeClass}`}>
           <CodeMirrorEditor
             initialContent={props.initialContent}

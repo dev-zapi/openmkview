@@ -2,8 +2,16 @@ import { Component, onMount, onCleanup, createEffect } from 'solid-js';
 import { FileTree as PierreTree } from '@pierre/trees';
 import type { DocumentFileType, FileNode } from '../types';
 import { fileStore } from '../stores/fileStore';
+import { fileTreeVisibilityStore } from '../stores/fileTreeVisibilityStore';
 import { api } from '../services/api';
 import { exportDocument, type ExportFormat } from '../utils/markdownExport';
+import {
+  collectPlaceholderPaths,
+  fileNodesToPaths,
+  isPlaceholderNoticePath,
+  normalizeTreePath,
+} from '../utils/fileTree';
+import { getFileTreeIcons } from '../utils/fileIconCategory';
 import type {
   FileTreeOptions,
   ContextMenuItem,
@@ -19,22 +27,6 @@ interface FileTreeProps {
   onRename?: (node: FileNode) => void;
   theme?: 'light' | 'dark';
   projectId?: number;
-}
-
-function fileNodesToPaths(nodes: FileNode[]): string[] {
-  const paths: string[] = [];
-  function traverse(node: FileNode) {
-    if (node.isFolder) {
-      paths.push(node.path + '/');
-      if (node.children) {
-        node.children.forEach(traverse);
-      }
-    } else {
-      paths.push(node.path);
-    }
-  }
-  nodes.forEach(traverse);
-  return paths;
 }
 
 function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
@@ -127,6 +119,11 @@ function renderContextMenu(
   context: ContextMenuOpenContext,
   props: FileTreeProps
 ): HTMLElement | null {
+  // The synthetic placeholder notice row is informational only.
+  if (isPlaceholderNoticePath(item.path)) {
+    return null;
+  }
+
   const node = fileStore.findNodeByPath(item.path) || {
     id: item.path,
     name: item.name,
@@ -261,13 +258,14 @@ const FileTree: Component<FileTreeProps> = (props) => {
       model.cleanUp();
     }
 
-    const paths = fileNodesToPaths(props.nodes);
+    const paths = fileNodesToPaths(props.nodes, fileTreeVisibilityStore.showHidden());
 
     model = new PierreTree({
       paths,
       initialExpansion: 'closed',
       flattenEmptyDirectories: true,
       search: true,
+      icons: getFileTreeIcons(),
       composition: {
         contextMenu: {
           enabled: true,
@@ -277,17 +275,20 @@ const FileTree: Component<FileTreeProps> = (props) => {
         },
       },
       dragAndDrop: {
-        canDrag: (paths) => paths.length === 1,
+        canDrag: (paths) =>
+          paths.length === 1 && !isPlaceholderNoticePath(paths[0]),
         canDrop: (event) => {
           const { target, draggedPaths } = event;
           if (target.kind === 'root') return true;
           if (target.kind === 'directory') {
-            const dirPath = target.directoryPath!;
+            const dirPath = normalizeTreePath(target.directoryPath!);
             const draggedPath = draggedPaths[0];
             // Can't drop onto self
             if (draggedPath === dirPath) return false;
             // Can't drop onto own descendant (cycle prevention)
             if (dirPath.startsWith(draggedPath)) return false;
+            // Placeholder Directories never receive contents.
+            if (collectPlaceholderPaths(props.nodes).has(dirPath)) return false;
             return true;
           }
           return false;
@@ -321,6 +322,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
       onSelectionChange: (selectedPaths) => {
         if (selectedPaths.length === 1) {
           const path = selectedPaths[0];
+          if (isPlaceholderNoticePath(path)) return;
           const handle = model?.getItem(path);
           if (handle && !handle.isDirectory()) {
             props.onFileClick(path, path);
@@ -339,7 +341,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
   });
 
   createEffect(() => {
-    const paths = fileNodesToPaths(props.nodes);
+    const paths = fileNodesToPaths(props.nodes, fileTreeVisibilityStore.showHidden());
     if (model) {
       model.resetPaths(paths);
     }

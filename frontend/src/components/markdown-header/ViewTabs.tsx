@@ -9,6 +9,8 @@ export interface ViewTabsProps {
   onTabChange: (tab: TabType) => void;
   fileType?: FileType;
   isDirty?: boolean;
+  /** Binary files show a placeholder page with no tabs at all. */
+  binary?: boolean;
 }
 
 export const ViewTabs: Component<ViewTabsProps> = (props) => {
@@ -20,8 +22,15 @@ export const ViewTabs: Component<ViewTabsProps> = (props) => {
   ];
 
   const visibleTabs = () => {
+    if (props.binary) {
+      return [];
+    }
     if (props.fileType === 'image') {
       return tabs.filter(t => t.id === 'preview');
+    }
+    // Files without a dedicated renderer only have the read-only Source tab.
+    if (props.fileType === 'other') {
+      return tabs.filter(t => t.id === 'source');
     }
     return tabs;
   };

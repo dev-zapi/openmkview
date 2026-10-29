@@ -14,6 +14,8 @@ const mockDefaultSettings = vi.hoisted(() => ({
   markdownFontSize: '16px',
   codeFontSize: '14px',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
+  placeholderDirs: ['node_modules', 'target', 'dist', 'build', '.git', '.svn', '.hg'],
+  ignoredFiles: ['.DS_Store', 'Thumbs.db'],
   trashExpireDays: 30,
   sessionTimeoutMinutes: 60,
   codeBlockThemeLight: 'github-light',
@@ -117,6 +119,17 @@ describe('settingsStore', () => {
     it('returns false for non-protected paths', () => {
       expect(settingsStore.isProtectedPath('src/index.md')).toBe(false);
       expect(settingsStore.isProtectedPath('docs/readme.md')).toBe(false);
+    });
+
+    it('also blocks server placeholder directories', () => {
+      settingsStore.setSettings({
+        ...DEFAULT_SETTINGS,
+        protectedPaths: [],
+        placeholderDirs: ['vendor'],
+      });
+
+      expect(settingsStore.isProtectedPath('vendor/package.json')).toBe(true);
+      expect(settingsStore.isProtectedPath('src/index.md')).toBe(false);
     });
   });
 

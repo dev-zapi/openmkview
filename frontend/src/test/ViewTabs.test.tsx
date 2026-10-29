@@ -41,6 +41,27 @@ describe('ViewTabs', () => {
     expect(screen.getByText('Preview')).toBeTruthy();
   });
 
+  it('shows only the source tab for other files', async () => {
+    const onTabChange = vi.fn();
+    const { container } = render(() => (
+      <ViewTabs activeTab="source" onTabChange={onTabChange} fileType="other" />
+    ));
+    const tabs = container.querySelectorAll('button');
+    expect(tabs.length).toBe(1);
+    expect(screen.getByText('Source')).toBeTruthy();
+    expect(screen.queryByText('Preview')).toBeNull();
+    expect(screen.queryByText('Edit')).toBeNull();
+    expect(screen.queryByText('Diff')).toBeNull();
+  });
+
+  it('renders no tabs for binary files', async () => {
+    const onTabChange = vi.fn();
+    const { container } = render(() => (
+      <ViewTabs activeTab="preview" onTabChange={onTabChange} fileType="other" binary={true} />
+    ));
+    expect(container.querySelectorAll('button').length).toBe(0);
+  });
+
   it('highlights active tab', async () => {
     const onTabChange = vi.fn();
     const { container } = render(() => (

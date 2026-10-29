@@ -15,6 +15,8 @@ export interface DocumentTitleBarProps {
   isOutlineOpen: boolean;
   isFullscreen: boolean;
   fileType?: FileType;
+  /** Binary files render a placeholder page; hide all view tabs. */
+  binary?: boolean;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
@@ -120,6 +122,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
     props.lastModified ? formatTimeAgo(props.lastModified) : '';
 
   const isImage = () => props.fileType === 'image';
+  const isDocument = () => props.fileType === 'markdown' || props.fileType === 'html';
 
   /** Export targets by document type: markdown → PDF/HTML/MD source, html → PDF/HTML source. */
   const exportOptions = (): { format: ExportFormat; label: string }[] =>
@@ -170,12 +173,14 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         </div>
 
         <div class={styles.mobileTabsSection}>
-          <ViewTabs
-            activeTab={props.activeTab}
-            onTabChange={props.onTabChange}
-            fileType={props.fileType}
-            isDirty={props.isDirty}
-          />
+          <Show when={!props.binary}>
+            <ViewTabs
+              activeTab={props.activeTab}
+              onTabChange={props.onTabChange}
+              fileType={props.fileType}
+              isDirty={props.isDirty}
+            />
+          </Show>
         </div>
 
         <div class={styles.documentRight}>
@@ -227,7 +232,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                 <span>复制全文</span>
               </MenuItem>
 
-              <Show when={!isImage()}>
+              <Show when={isDocument()}>
                 <MenuSeparator />
                 <For each={exportOptions()}>
                   {(option) => (
@@ -272,12 +277,14 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
       </div>
 
       <div class={styles.documentCenter}>
-        <ViewTabs
-          activeTab={props.activeTab}
-          onTabChange={props.onTabChange}
-          fileType={props.fileType}
-          isDirty={props.isDirty}
-        />
+        <Show when={!props.binary}>
+          <ViewTabs
+            activeTab={props.activeTab}
+            onTabChange={props.onTabChange}
+            fileType={props.fileType}
+            isDirty={props.isDirty}
+          />
+        </Show>
       </div>
 
       <div class={styles.documentRight}>
@@ -325,7 +332,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           </svg>
         </button>
 
-        <Show when={!isImage()}>
+        <Show when={isDocument()}>
           <Menu>
             <MenuTrigger class={styles.toolbarButtonIcon} title="导出">
               {exportTriggerIcon}

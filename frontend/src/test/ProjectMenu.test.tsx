@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@solidjs/testing-library';
 import ProjectMenu from '../components/ProjectMenu';
+import { fileTreeVisibilityStore } from '../stores/fileTreeVisibilityStore';
 
 const renderMenu = (overrides: Record<string, unknown> = {}) => {
   const props = {
@@ -46,5 +47,19 @@ describe('ProjectMenu', () => {
     const pull = screen.getByRole('menuitem', { name: 'Pull' }) as HTMLButtonElement;
     expect(pull.disabled).toBe(true);
     expect(pull.getAttribute('title')).toBe('Save or discard unsaved changes before pulling');
+  });
+
+  it('toggles hidden files from a checkable menu item', () => {
+    fileTreeVisibilityStore.setShowHidden(false);
+    renderMenu();
+
+    const toggle = screen.getByRole('menuitemcheckbox', { name: 'Show Hidden Files' });
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+
+    fireEvent.click(toggle);
+
+    expect(fileTreeVisibilityStore.showHidden()).toBe(true);
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(localStorage.getItem('openmkview-show-hidden')).toBe('true');
   });
 });

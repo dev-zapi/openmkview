@@ -45,10 +45,21 @@ export const useFile = () => {
     fileStore.startLoading();
     try {
       const content = await api.getFileContent(path, project.id);
-      fileStore.openDocumentFile(content, fileType === 'html' ? 'html' : 'markdown');
-      editorStore.initialize(content.content);
-      diffStore.reset();
-      appStore.setActiveTab('preview');
+
+      if (fileType === 'other' || content.binary) {
+        // Source Fallback for text files without a dedicated renderer; binaries
+        // get a placeholder page.
+        fileStore.openOtherFile(content);
+        editorStore.reset();
+        diffStore.reset();
+        appStore.setActiveTab(content.binary ? 'preview' : 'source');
+      } else {
+        fileStore.openDocumentFile(content, fileType === 'html' ? 'html' : 'markdown');
+        editorStore.initialize(content.content);
+        diffStore.reset();
+        appStore.setActiveTab('preview');
+      }
+
       if (updateUrl) {
         navigateToFile(project.id, path);
       }

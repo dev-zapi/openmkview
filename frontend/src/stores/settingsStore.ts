@@ -110,10 +110,19 @@ export const settingsStore = {
     return settings().protectedPaths || DEFAULT_SETTINGS.protectedPaths;
   },
 
+  getPlaceholderDirs(): string[] {
+    return settings().placeholderDirs || DEFAULT_SETTINGS.placeholderDirs;
+  },
+
   isProtectedPath(path: string): boolean {
-    const protectedPaths = this.getProtectedPaths();
+    // Delete/trash guard: the union of protected paths and server-defined
+    // Placeholder Directories.
+    const blocked = [
+      ...this.getProtectedPaths(),
+      ...this.getPlaceholderDirs(),
+    ];
     const pathSegments = path.toLowerCase().split(/[/\\]/);
-    return protectedPaths.some(p =>
+    return blocked.some(p =>
       pathSegments.includes(p.toLowerCase())
     );
   },

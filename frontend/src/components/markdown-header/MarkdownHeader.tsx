@@ -15,6 +15,8 @@ export interface MarkdownHeaderProps {
   outlineCount: number;
   content: string;
   fileType?: FileType;
+  /** Binary files render a placeholder page; hide all view tabs. */
+  binary?: boolean;
   isSearchOpen: boolean;
   searchQuery: string;
   searchResultCount: number;
@@ -146,6 +148,7 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         isOutlineOpen={props.isOutlineOpen}
         isFullscreen={isFullscreen()}
         fileType={props.fileType}
+        binary={props.binary}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         onFullscreenToggle={handleFullscreenToggle}

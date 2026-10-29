@@ -56,6 +56,15 @@ export const fileStore = {
     setExtractedHeadings([]);
   },
 
+  /** Open a file that has no dedicated renderer (Source Fallback / binary). */
+  openOtherFile(file: FileContent) {
+    setCurrentFile(file);
+    setCurrentFileType('other');
+    setImagePreviewUrl(null);
+    setImageFileName('');
+    setExtractedHeadings([]);
+  },
+
   closeFile() {
     setCurrentFile(null);
     setCurrentFileType('markdown');

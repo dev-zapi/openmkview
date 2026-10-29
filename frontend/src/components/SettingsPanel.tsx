@@ -6,7 +6,7 @@ import { saveSettings, CUSTOM_STYLESHEET_MAX } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
-import { Button, Input, Select } from './ui';
+import { Button, Input, Select, TagListInput } from './ui';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ type StringSettingKey = {
 const categories: SettingsCategory[] = [
   { id: 'settings-themes', label: 'Themes' },
   { id: 'settings-markdown', label: 'Markdown' },
+  { id: 'settings-file-tree', label: 'File Tree' },
   { id: 'settings-session', label: 'Session' },
   { id: 'settings-passkeys', label: 'Passkeys' },
   { id: 'settings-trash', label: 'Trash' },
@@ -585,6 +586,38 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 </div>
               </div>
 
+              <div class="settings-section" id="settings-file-tree">
+                <h4>File Tree</h4>
+
+                <div class="settings-item">
+                  <label for="ignored-files">Ignored Files (never shown)</label>
+                  <TagListInput
+                    id="ignored-files"
+                    values={settingsStore.settings().ignoredFiles}
+                    onChange={(values) => updateSetting('ignoredFiles', values)}
+                    placeholder="e.g. .DS_Store"
+                    addLabel="Ignored file"
+                  />
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Files matching these names never appear in the file tree, regardless of the hidden toggle.
+                  </p>
+                </div>
+
+                <div class="settings-item">
+                  <label for="placeholder-dirs">Placeholder Directories (not expandable)</label>
+                  <TagListInput
+                    id="placeholder-dirs"
+                    values={settingsStore.settings().placeholderDirs}
+                    onChange={(values) => updateSetting('placeholderDirs', values)}
+                    placeholder="e.g. node_modules"
+                    addLabel="Placeholder directory"
+                  />
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    These directories stay visible but cannot be expanded, and they cannot be deleted.
+                  </p>
+                </div>
+              </div>
+
               <Show when={props.authRequired}>
                 <div class="settings-section" id="settings-session">
                   <h4>Session</h4>
@@ -701,15 +734,15 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
                 <div class="settings-item">
                   <label for="protected-paths">Protected Paths (cannot be deleted)</label>
-                  <textarea
+                  <TagListInput
                     id="protected-paths"
-                    value={settingsStore.settings().protectedPaths.join('\n')}
-                    onInput={(e) => updateSetting('protectedPaths', e.currentTarget.value.split('\n').filter(p => p.trim()))}
-                    placeholder=".git\n.github\nnode_modules"
-                    rows={5}
+                    values={settingsStore.settings().protectedPaths}
+                    onChange={(values) => updateSetting('protectedPaths', values)}
+                    placeholder="e.g. .github"
+                    addLabel="Protected path"
                   />
                   <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
-                    Files/folders matching these paths cannot be moved to trash.
+                    Files/folders matching these paths cannot be moved to trash. Placeholder directories are protected automatically.
                   </p>
                 </div>
               </div>

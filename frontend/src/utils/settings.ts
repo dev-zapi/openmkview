@@ -5,6 +5,7 @@ const SETTINGS_KEY = 'openmkview-settings';
 const SIDEBAR_WIDTH_KEY = 'filetree-sidebar-width';
 const OUTLINE_WIDTH_KEY = 'outline-panel-width';
 const OUTLINE_OPEN_BY_FILETYPE_KEY = 'outline-open-by-filetype';
+export const SHOW_HIDDEN_KEY = 'openmkview-show-hidden';
 
 export interface OutlineOpenByFileType {
   markdown: boolean;
@@ -98,6 +99,8 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     codeBlockThemeLight: settings.codeBlockThemeLight,
     codeBlockThemeDark: settings.codeBlockThemeDark,
     protectedPaths: settings.protectedPaths,
+    placeholderDirs: settings.placeholderDirs,
+    ignoredFiles: settings.ignoredFiles,
     trashExpireDays: settings.trashExpireDays,
     sessionTimeoutMinutes: settings.sessionTimeoutMinutes,
     tableDensity: settings.tableDensity,
@@ -247,5 +250,23 @@ export const saveOutlineOpenByFileType = (state: OutlineOpenByFileType): void =>
     localStorage.setItem(OUTLINE_OPEN_BY_FILETYPE_KEY, JSON.stringify(state));
   } catch (e) {
     console.error('Failed to save outline open state by filetype:', e);
+  }
+};
+
+/** Per-browser preference: show Hidden Entries in the file tree. Default false. */
+export const loadShowHidden = (): boolean => {
+  try {
+    return localStorage.getItem(SHOW_HIDDEN_KEY) === 'true';
+  } catch (e) {
+    console.error('Failed to load show-hidden preference:', e);
+    return false;
+  }
+};
+
+export const saveShowHidden = (visible: boolean): void => {
+  try {
+    localStorage.setItem(SHOW_HIDDEN_KEY, visible ? 'true' : 'false');
+  } catch (e) {
+    console.error('Failed to save show-hidden preference:', e);
   }
 };

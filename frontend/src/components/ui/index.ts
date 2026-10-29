@@ -3,6 +3,8 @@ export { Button } from './Button';
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 export { Input } from './Input';
 export type { InputProps } from './Input';
+export { TagListInput, splitTagListText } from './TagListInput';
+export type { TagListInputProps } from './TagListInput';
 export { Select } from './Select';
 export type { SelectProps } from './Select';
 export {
