@@ -54,5 +54,9 @@ describe('fileIconCategory', () => {
       expect(icons.byFileExtension?.[extension]).toBe(GENERIC_CODE_ICON);
     }
     expect(icons.spriteSheet).toContain(`id="${GENERIC_CODE_ICON}"`);
+    const sprite = new DOMParser().parseFromString(icons.spriteSheet ?? '', 'image/svg+xml').documentElement;
+    expect(sprite.getAttribute('width')).toBe('0');
+    expect(sprite.getAttribute('height')).toBe('0');
+    expect(sprite.getAttribute('aria-hidden')).toBe('true');
   });
 });

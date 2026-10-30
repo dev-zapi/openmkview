@@ -1,10 +1,9 @@
 import { Component, Show } from 'solid-js';
+import { MenuContent } from './ui/Menu';
 import type { RemoteGitAction } from '../utils/gitPanel';
 import { fileTreeVisibilityStore } from '../stores/fileTreeVisibilityStore';
 
 interface ProjectMenuProps {
-  isOpen: boolean;
-  position: { top: number; right: number };
   gitOperation?: RemoteGitAction;
   gitUnavailable: boolean;
   pullDisabled: boolean;
@@ -13,7 +12,6 @@ interface ProjectMenuProps {
   onPull: () => void;
   onEdit: () => void;
   onCloseProject: () => void;
-  onCloseMenu: () => void;
 }
 
 const ProjectMenu: Component<ProjectMenuProps> = (props) => {
@@ -31,31 +29,7 @@ const ProjectMenu: Component<ProjectMenuProps> = (props) => {
   };
 
   return (
-    <Show when={props.isOpen}>
-      <div
-        class="menu-overlay"
-        onClick={props.onCloseMenu}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          'z-index': 9998,
-          background: 'transparent',
-        }}
-      />
-      <div
-        class="sidebar-header-menu-dropdown"
-        role="menu"
-        style={{
-          position: 'absolute',
-          top: `${props.position.top}px`,
-          right: `${props.position.right}px`,
-          'z-index': 9999,
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <MenuContent align="end">
         <button class="menu-item" role="menuitem" onClick={props.onRefresh}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 4v6h-6" />
@@ -118,8 +92,7 @@ const ProjectMenu: Component<ProjectMenuProps> = (props) => {
           </svg>
           <span>Close Project</span>
         </button>
-      </div>
-    </Show>
+    </MenuContent>
   );
 };
 

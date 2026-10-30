@@ -44,7 +44,7 @@ export function getFileIconCategory(fileName: string): FileIconCategory {
 export const GENERIC_CODE_ICON = 'openmkview-file-tree-code';
 
 const GENERIC_CODE_ICON_SPRITE =
-  '<svg xmlns="http://www.w3.org/2000/svg"><symbol id="' +
+  '<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="0" height="0" style="position:absolute;overflow:hidden"><symbol id="' +
   GENERIC_CODE_ICON +
   '" viewBox="0 0 16 16">' +
   '<path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ' +

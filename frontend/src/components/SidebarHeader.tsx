@@ -2,6 +2,7 @@ import { Component, createSignal, Show } from 'solid-js';
 import type { Project } from '../types';
 import type { RemoteGitAction } from '../utils/gitPanel';
 import ProjectMenu from './ProjectMenu';
+import { Menu, MenuTrigger } from './ui/Menu';
 import { getProjectDisplayName, getProjectFaviconUrl, isFaviconIcon, getFaviconPath } from '../utils/projectIcon';
 
 interface SidebarHeaderProps {
@@ -17,15 +18,6 @@ interface SidebarHeaderProps {
 
 const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
   const [menuOpen, setMenuOpen] = createSignal(false);
-
-  const handleMenuToggle = (e: MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(!menuOpen());
-  };
-
-  const handleCloseMenu = () => {
-    setMenuOpen(false);
-  };
 
   const handleRefresh = () => {
     setMenuOpen(false);
@@ -72,26 +64,25 @@ const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
           {renderIcon()}
         </span>
         <span class="sidebar-header-name">{props.project.name}</span>
-        <button class="sidebar-header-menu" onClick={handleMenuToggle}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="12" cy="19" r="2" />
-          </svg>
-        </button>
-        <ProjectMenu
-          isOpen={menuOpen()}
-          position={{ top: 40, right: 12 }}
-          gitOperation={props.gitOperation}
-          gitUnavailable={props.gitUnavailable}
-          pullDisabled={props.pullDisabled}
-          onRefresh={handleRefresh}
-          onFetch={() => void handleGitAction('fetch')}
-          onPull={() => void handleGitAction('pull')}
-          onEdit={handleEdit}
-          onCloseProject={handleCloseProject}
-          onCloseMenu={handleCloseMenu}
-        />
+        <Menu open={menuOpen()} onOpenChange={setMenuOpen}>
+          <MenuTrigger class="sidebar-header-menu">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="12" cy="19" r="2" />
+            </svg>
+          </MenuTrigger>
+          <ProjectMenu
+            gitOperation={props.gitOperation}
+            gitUnavailable={props.gitUnavailable}
+            pullDisabled={props.pullDisabled}
+            onRefresh={handleRefresh}
+            onFetch={() => void handleGitAction('fetch')}
+            onPull={() => void handleGitAction('pull')}
+            onEdit={handleEdit}
+            onCloseProject={handleCloseProject}
+          />
+        </Menu>
       </div>
     </div>
   );
