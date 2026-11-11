@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "frontend/src/styles/global.css"
+        ],
+        "createdAt": "2026-11-11T07:33:08.881Z",
+        "reason": "agent triage: line 116 is a standard Markdown blockquote border, not a card side-tab accent"
+      }
+    ]
+  }
+}
