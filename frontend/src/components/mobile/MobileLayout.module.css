@@ -89,7 +89,7 @@
   align-items: center;
   width: 52px;
   padding: 0 6px;
-  background: var(--color-bg-subtle);
+  background: linear-gradient(to bottom, hsl(var(--activity-bar-gradient-start)) 0%, hsl(var(--muted)) 100%);
   border-right: 1px solid var(--color-border);
   flex-shrink: 0;
   overflow: hidden;
@@ -115,7 +115,6 @@
   align-items: center;
   width: 100%;
   padding: 4px 0 calc(12px + var(--safe-bottom));
-  background: var(--color-bg-subtle);
   flex-shrink: 0;
 }
 

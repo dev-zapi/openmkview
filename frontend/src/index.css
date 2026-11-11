@@ -10,6 +10,7 @@
   --popover-foreground: 240 10% 3.9%;
   --muted: 240 5% 96%;
   --muted-foreground: 240 4% 35%;
+  --activity-bar-gradient-start: 0 0% 100%;
   --secondary: 240 5% 89%;
   --secondary-foreground: 240 6% 10%;
   --accent: 240 5.9% 10%;
@@ -91,6 +92,7 @@
     --popover-foreground: 0 0% 98%;
     --muted: 240 4% 10%;
     --muted-foreground: 240 5% 64.9%;
+    --activity-bar-gradient-start: 0 0% 0%;
     --secondary: 240 4% 14%;
     --secondary-foreground: 0 0% 98%;
     --accent: 0 0% 98%;
@@ -107,6 +109,7 @@
 
 /* Explicit dark theme class */
 .dark-theme {
+  --activity-bar-gradient-start: 0 0% 0%;
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --card: 240 10% 3.9%;
@@ -138,6 +141,7 @@
   --popover-foreground: 240 10% 3.9%;
   --muted: 240 5% 96%;
   --muted-foreground: 240 4% 35%;
+  --activity-bar-gradient-start: 0 0% 100%;
   --secondary: 240 5% 89%;
   --secondary-foreground: 240 6% 10%;
   --accent: 240 5.9% 10%;
@@ -508,7 +512,7 @@ body {
 .activity-bar {
   width: 52px;
   height: 100vh;
-  background: hsl(var(--secondary));
+  background: linear-gradient(to bottom, hsl(var(--activity-bar-gradient-start)) 0%, hsl(var(--secondary)) 100%);
   border-right: 1px solid hsl(var(--border));
   display: flex;
   flex-direction: column;
@@ -645,7 +649,6 @@ body {
   align-items: center;
   width: 100%;
   flex-shrink: 0;
-  background: hsl(var(--secondary));
 }
 
 .activity-bar-bottom button {
