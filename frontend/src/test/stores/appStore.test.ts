@@ -10,6 +10,7 @@ describe('appStore', () => {
     appStore.setSettingsOpen(false);
     appStore.setIsMobile(false);
     appStore.setSidebarWidth(280);
+    appStore.setSidebarOpen(true);
     appStore.setIsDragging(false);
     appStore.setOpenProjectDialogOpen(false);
     appStore.setColorPickerOpen(false);
@@ -84,6 +85,14 @@ describe('appStore', () => {
     it('can change sidebar width', () => {
       appStore.setSidebarWidth(300);
       expect(appStore.sidebarWidth()).toBe(300);
+    });
+
+    it('can collapse and reopen the sidebar', () => {
+      expect(appStore.sidebarOpen()).toBe(true);
+      appStore.toggleSidebar();
+      expect(appStore.sidebarOpen()).toBe(false);
+      appStore.toggleSidebar();
+      expect(appStore.sidebarOpen()).toBe(true);
     });
 
     it('can set dragging state', () => {

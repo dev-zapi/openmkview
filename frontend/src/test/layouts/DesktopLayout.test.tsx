@@ -38,6 +38,7 @@ describe('DesktopLayout', () => {
         theme="light"
         markdownStyle={{}}
         fileTree={[]}
+        sidebarOpen={true}
         sidebarWidth={280}
         sidebarTransition="none"
         gitPanelOpen={false}
@@ -46,6 +47,7 @@ describe('DesktopLayout', () => {
         onProjectClick={() => {}}
         onProjectContextMenu={() => {}}
         onOpenProject={() => {}}
+        onToggleSidebar={() => {}}
         onToggleTheme={() => {}}
         onOpenTrash={() => {}}
         onOpenSettings={() => {}}

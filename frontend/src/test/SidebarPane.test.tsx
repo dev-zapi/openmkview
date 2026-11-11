@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { createSignal } from 'solid-js';
 import { render, screen, fireEvent } from '@solidjs/testing-library';
 import SidebarPane from '../components/SidebarPane';
 
@@ -11,6 +12,35 @@ describe('SidebarPane', () => {
       <SidebarPane
         project={project}
         nodes={nodes}
+        open={true}
+        sidebarWidth={280}
+        transition="none"
+        gitUnavailable={false}
+        pullDisabled={false}
+        onRefresh={() => {}}
+        onGitAction={async () => true}
+        onEdit={() => {}}
+        onCloseProject={() => {}}
+        onFileClick={() => {}}
+        onDelete={() => {}}
+        onCopyPath={() => {}}
+        onRename={() => {}}
+        onCollapse={() => {}}
+        onStartDragging={() => {}}
+      />
+    ));
+
+    expect(screen.getByText('Alpha')).toBeTruthy();
+    expect(container.querySelector('.pierre-file-tree-host')).toBeTruthy();
+  });
+
+  it('collapses and reopens without unmounting the file tree', () => {
+    const [open, setOpen] = createSignal(true);
+    const { container } = render(() => (
+      <SidebarPane
+        project={project}
+        nodes={nodes}
+        open={open()}
         sidebarWidth={280}
         transition="none"
         gitUnavailable={false}
@@ -24,11 +54,21 @@ describe('SidebarPane', () => {
         onCopyPath={() => {}}
         onRename={() => {}}
         onStartDragging={() => {}}
+        onCollapse={() => setOpen(false)}
       />
     ));
 
-    expect(screen.getByText('Alpha')).toBeTruthy();
-    expect(container.querySelector('.pierre-file-tree-host')).toBeTruthy();
+    const sidebar = container.querySelector('#file-tree-sidebar');
+    const fileTree = container.querySelector('.pierre-file-tree-host');
+    expect(sidebar?.hasAttribute('hidden')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(sidebar?.hasAttribute('hidden')).toBe(true);
+    expect(container.querySelector('.pierre-file-tree-host')).toBe(fileTree);
+
+    setOpen(true);
+    expect(sidebar?.hasAttribute('hidden')).toBe(false);
+    expect(container.querySelector('.pierre-file-tree-host')).toBe(fileTree);
   });
 
   it('calls resize handler on mouse down', () => {
@@ -37,6 +77,7 @@ describe('SidebarPane', () => {
       <SidebarPane
         project={project}
         nodes={nodes}
+        open={true}
         sidebarWidth={280}
         transition="none"
         gitUnavailable={false}
@@ -49,6 +90,7 @@ describe('SidebarPane', () => {
         onDelete={() => {}}
         onCopyPath={() => {}}
         onRename={() => {}}
+        onCollapse={() => {}}
         onStartDragging={onStartDragging}
       />
     ));

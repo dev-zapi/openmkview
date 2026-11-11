@@ -33,6 +33,7 @@ interface DesktopLayoutProps {
   currentSearchResult: number;
   searchRequestKey: number;
   fileTree: FileNode[];
+  sidebarOpen: boolean;
   sidebarWidth: number;
   sidebarTransition: string;
   gitPanelOpen: boolean;
@@ -45,6 +46,7 @@ interface DesktopLayoutProps {
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
   onOpenProject: () => void;
+  onToggleSidebar: () => void;
   onToggleTheme: () => void;
   onOpenTrash: () => void;
   onOpenSettings: () => void;
@@ -85,6 +87,8 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         activeProject={props.activeProject}
         menuTargetProject={props.menuTargetProject}
         themeMode={props.themeMode}
+        sidebarOpen={props.sidebarOpen}
+        onToggleSidebar={props.onToggleSidebar}
         onProjectClick={props.onProjectClick}
         onProjectContextMenu={props.onProjectContextMenu}
         onOpenProject={props.onOpenProject}
@@ -98,6 +102,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
       <SidebarPane
         project={props.activeProject}
         nodes={props.fileTree}
+        open={props.sidebarOpen}
         sidebarWidth={props.sidebarWidth}
         transition={props.sidebarTransition}
         gitOperation={props.gitOperation}
@@ -112,6 +117,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         onCopyPath={props.onCopyPath}
         onRename={props.onRename}
         onStartDragging={props.onStartDragging}
+        onCollapse={props.onToggleSidebar}
       />
 
       <MainPane

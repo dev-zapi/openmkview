@@ -15,6 +15,8 @@ describe('ActivityBar', () => {
         projects={projects}
         activeProject={projects[0]}
         themeMode="dark"
+        sidebarOpen={true}
+        onToggleSidebar={() => {}}
         onProjectClick={() => {}}
         onProjectContextMenu={() => {}}
         onOpenProject={() => {}}
@@ -37,12 +39,15 @@ describe('ActivityBar', () => {
     const onProjectClick = vi.fn();
     const onOpenProject = vi.fn();
     const onToggleTheme = vi.fn();
+    const onToggleSidebar = vi.fn();
 
     render(() => (
       <ActivityBar
         projects={projects}
         activeProject={projects[0]}
         themeMode="light"
+        sidebarOpen={true}
+        onToggleSidebar={onToggleSidebar}
         onProjectClick={onProjectClick}
         onProjectContextMenu={() => {}}
         onOpenProject={onOpenProject}
@@ -57,10 +62,12 @@ describe('ActivityBar', () => {
     fireEvent.click(screen.getByTitle('Alpha'));
     fireEvent.click(screen.getByTitle('Open Project'));
     fireEvent.click(screen.getByTitle('Theme: light (click to toggle)'));
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
 
     expect(onProjectClick).toHaveBeenCalledWith(projects[0]);
     expect(onOpenProject).toHaveBeenCalled();
     expect(onToggleTheme).toHaveBeenCalled();
+    expect(onToggleSidebar).toHaveBeenCalled();
   });
 
   it('updates active class when active project changes', () => {
@@ -71,6 +78,8 @@ describe('ActivityBar', () => {
         projects={projects}
         activeProject={activeProject()}
         themeMode="light"
+        sidebarOpen={true}
+        onToggleSidebar={() => {}}
         onProjectClick={() => {}}
         onProjectContextMenu={() => {}}
         onOpenProject={() => {}}

@@ -7,6 +7,8 @@ interface ActivityBarProps {
   activeProject: Project | null;
   menuTargetProject: Project | null;
   themeMode: ThemeMode;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
   onOpenProject: () => void;
@@ -64,6 +66,24 @@ export const ActivityBar: Component<ActivityBarProps> = (props) => {
       </button>
 
       <div class="activity-bar-bottom">
+        <button
+          class={props.activeProject && props.sidebarOpen ? 'active' : ''}
+          title={props.activeProject ? (props.sidebarOpen ? 'Collapse sidebar' : 'Open sidebar') : 'Open a project to show the sidebar'}
+          aria-label={props.sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
+          aria-controls="file-tree-sidebar"
+          aria-expanded={props.activeProject ? props.sidebarOpen : undefined}
+          disabled={!props.activeProject}
+          onClick={props.onToggleSidebar}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+            {props.sidebarOpen
+              ? <path d="m16 9-3 3 3 3" />
+              : <path d="m13 9 3 3-3 3" />}
+          </svg>
+        </button>
+
         <button
           class={props.themeMode === 'dark' ? 'active' : ''}
           title={`Theme: ${props.themeMode} (click to toggle)`}

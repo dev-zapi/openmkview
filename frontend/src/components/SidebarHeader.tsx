@@ -14,6 +14,7 @@ interface SidebarHeaderProps {
   onGitAction: (action: RemoteGitAction) => Promise<boolean>;
   onEdit: () => void;
   onCloseProject: () => void;
+  onCollapse: () => void;
 }
 
 const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
@@ -64,6 +65,19 @@ const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
           {renderIcon()}
         </span>
         <span class="sidebar-header-name">{props.project.name}</span>
+        <button
+          class="sidebar-header-collapse"
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+          aria-controls="file-tree-sidebar"
+          onClick={props.onCollapse}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <line x1="9" y1="3" x2="9" y2="21" />
+            <path d="m16 9-3 3 3 3" />
+          </svg>
+        </button>
         <Menu open={menuOpen()} onOpenChange={setMenuOpen}>
           <MenuTrigger class="sidebar-header-menu">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

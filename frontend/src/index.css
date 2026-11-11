@@ -682,9 +682,14 @@ body {
   transition: height 0.2s ease;
 }
 
-.activity-bar-bottom button:hover {
+.activity-bar-bottom button:hover:not(:disabled) {
   background: hsl(var(--muted));
   color: hsl(var(--foreground));
+}
+
+.activity-bar-bottom button:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 .activity-bar-bottom button:focus-visible {
@@ -710,6 +715,10 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   animation: slideInLeft 0.3s ease;
+}
+
+.sidebar[hidden] {
+  display: none;
 }
 
 .sidebar-header {
@@ -779,7 +788,8 @@ body {
   letter-spacing: 0;
 }
 
-.sidebar-header-menu {
+.sidebar-header-menu,
+.sidebar-header-collapse {
   background: none;
   border: none;
   color: var(--color-text);
@@ -794,8 +804,14 @@ body {
   flex-shrink: 0;
 }
 
-.sidebar-header-menu:hover {
+.sidebar-header-menu:hover,
+.sidebar-header-collapse:hover {
   background: var(--color-hover-bg);
+}
+
+.sidebar-header-collapse:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* ===== Unified popup menu (ui/Menu primitive + portaled menus) ===== */

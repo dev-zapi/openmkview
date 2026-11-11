@@ -265,6 +265,7 @@ const App: Component = () => {
           currentSearchResult={currentSearchResult()}
           searchRequestKey={editorSearchRequestKey()}
           fileTree={fileStore.fileTree()}
+          sidebarOpen={appStore.sidebarOpen()}
           sidebarWidth={appStore.sidebarWidth()}
           sidebarTransition={layoutHook.getSidebarTransitionStyle()}
           gitPanelOpen={appStore.gitPanelOpen()}
@@ -279,6 +280,7 @@ const App: Component = () => {
           onProjectClick={(project) => void projectHook.switchProject(project)}
           onProjectContextMenu={projectHook.openColorPicker}
           onOpenProject={projectHook.openProject}
+          onToggleSidebar={appStore.toggleSidebar}
           onToggleTheme={() => settingsStore.toggleThemeMode()}
           onOpenTrash={() => appStore.openTrashDialog()}
           onOpenSettings={() => appStore.setSettingsOpen(true)}

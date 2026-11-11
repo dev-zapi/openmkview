@@ -7,6 +7,7 @@ import SidebarHeader from './SidebarHeader';
 interface SidebarPaneProps {
   project: Project | null;
   nodes: FileNode[];
+  open: boolean;
   sidebarWidth: number;
   transition: string;
   gitOperation?: RemoteGitAction;
@@ -21,13 +22,16 @@ interface SidebarPaneProps {
   onCopyPath: (node: FileNode) => void;
   onRename: (node: FileNode) => void;
   onStartDragging: () => void;
+  onCollapse: () => void;
 }
 
 export const SidebarPane: Component<SidebarPaneProps> = (props) => {
   return (
     <Show when={props.project}>
       <aside
+        id="file-tree-sidebar"
         class="sidebar sidebar-enter"
+        hidden={!props.open}
         style={{ width: `${props.sidebarWidth}px`, transition: props.transition }}
       >
         <SidebarHeader
@@ -39,6 +43,7 @@ export const SidebarPane: Component<SidebarPaneProps> = (props) => {
           onGitAction={props.onGitAction}
           onEdit={props.onEdit}
           onCloseProject={props.onCloseProject}
+          onCollapse={props.onCollapse}
         />
         <div class="sidebar-content">
           <FileTree

@@ -10,6 +10,7 @@ const [outlineOpen, setOutlineOpen] = createSignal(false);
 const [settingsOpen, setSettingsOpen] = createSignal(false);
 const [isMobile, setIsMobile] = createSignal(false);
 const [sidebarWidth, setSidebarWidth] = createSignal(280);
+const [sidebarOpen, setSidebarOpen] = createSignal(true);
 const [isDragging, setIsDragging] = createSignal(false);
 const [outlineWidth, setOutlineWidth] = createSignal(DEFAULT_OUTLINE_WIDTH);
 const [isOutlineDragging, setIsOutlineDragging] = createSignal(false);
@@ -34,6 +35,8 @@ export const appStore = {
   setIsMobile,
   sidebarWidth,
   setSidebarWidth,
+  sidebarOpen,
+  setSidebarOpen,
   isDragging,
   setIsDragging,
   outlineWidth,
@@ -59,6 +62,10 @@ export const appStore = {
 
   toggleOutline() {
     setOutlineOpen(!outlineOpen());
+  },
+
+  toggleSidebar() {
+    setSidebarOpen(!sidebarOpen());
   },
 
   toggleSettings() {
