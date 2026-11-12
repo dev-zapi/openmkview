@@ -254,7 +254,7 @@ body {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at top left, hsl(var(--accent) / 0.14), transparent 32%),
+    radial-gradient(circle at bottom left, hsl(var(--accent) / 0.14), transparent 32%),
     linear-gradient(to bottom, hsl(var(--activity-bar-gradient-start)) 0%, hsl(var(--secondary)) 100%);
 }
 
