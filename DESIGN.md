@@ -14,6 +14,7 @@ colors:
   night-gray: "hsl(240 4% 14%)"
   night-hairline: "hsl(240 4% 16%)"
   chalk: "hsl(0 0% 98%)"
+  chalk-soft: "hsl(240 5% 90%)"
   moon-gray: "hsl(240 5% 64.9%)"
   cinnabar: "hsl(0 72% 51%)"
   jade: "hsl(142 71% 45%)"
@@ -157,7 +158,8 @@ One zinc-gray scale runs the whole app; both themes are the same room lit differ
 
 ### Primary
 - **Graphite** (hsl(240 5.9% 10%), ≈ #18181b): the light room's accent, primary buttons, active-tab underline, focus ring, selected-tree tint source. A near-black with a cool zinc cast — ink, not pure black.
-- **Chalk** (hsl(0 0% 98%), ≈ #fafafa): the dark room's accent and primary text. White ink on the night ground; the same inversion the study lamp makes.
+- **Chalk** (hsl(0 0% 98%), ≈ #fafafa): the dark room's accent — active states, links, primary fills. White ink on the night ground; the same inversion the study lamp makes.
+- **Chalk-soft** (hsl(240 5% 90%), ≈ #e4e4e7): dark primary text — shell titles and reading-pane body. One step off pure white so long reading sessions stay comfortable.
 
 ### Secondary (the four inks — theme-variant accents, user-poured)
 - **Amber Ink** (hsl(28 60% 35%), ≈ #8f5624): light-warm variant — a burned sienna that keeps long documents comfortable.

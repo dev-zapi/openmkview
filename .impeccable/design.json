@@ -16,6 +16,7 @@
       "night-gray": { "role": "neutral", "displayName": "Night Gray", "canonical": "hsl(240 4% 14%)", "tonalRamp": ["#09090b", "#18181a", "#222226", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"] },
       "night-hairline": { "role": "neutral", "displayName": "Night Hairline", "canonical": "hsl(240 4% 16%)", "tonalRamp": ["#09090b", "#18181b", "#222226", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"] },
       "chalk": { "role": "primary", "displayName": "Chalk", "canonical": "hsl(0 0% 98%)", "tonalRamp": ["#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#fafafa", "#ffffff"] },
+      "chalk-soft": { "role": "neutral", "displayName": "Chalk Soft", "canonical": "hsl(240 5% 90%)", "tonalRamp": ["#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#fafafa", "#ffffff"] },
       "moon-gray": { "role": "neutral", "displayName": "Moon Gray", "canonical": "hsl(240 5% 64.9%)", "tonalRamp": ["#09090b", "#18181b", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7"] },
       "cinnabar": { "role": "tertiary", "displayName": "Cinnabar", "canonical": "hsl(0 72% 51%)", "tonalRamp": ["#450a0a", "#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fecaca"] },
       "jade": { "role": "tertiary", "displayName": "Jade", "canonical": "hsl(142 71% 45%)", "tonalRamp": ["#052e16", "#14532d", "#15803d", "#22c55e", "#4ade80", "#86efac", "#bbf7d0", "#dcfce7"] },
