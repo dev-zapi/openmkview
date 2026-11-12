@@ -1397,6 +1397,28 @@ textarea {
   overflow: hidden;
 }
 
+/* Installed desktop windows get a deliberate edge; browser tabs stay full-bleed. */
+@media (display-mode: standalone) and (min-width: 769px) {
+  #root:has(> .app-container) {
+    background: var(--color-bg-subtle);
+  }
+
+  .app-container {
+    width: calc(100% - 12px);
+    height: calc(100% - 12px);
+    min-height: 0;
+    margin: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    transition: border-color 0.3s ease;
+  }
+
+  .activity-bar {
+    height: 100%;
+  }
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 10px;

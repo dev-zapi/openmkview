@@ -7,6 +7,7 @@ import { fileStore } from '../../stores/fileStore';
 describe('useLayout', () => {
   beforeEach(() => {
     appStore.setIsDragging(false);
+    appStore.setIsOutlineDragging(false);
     appStore.setSidebarWidth(280);
     appStore.setIsMobile(false);
     appStore.setOutlineOpen(false);
@@ -91,6 +92,34 @@ describe('useLayout', () => {
     expect(document.body.style.userSelect).toBe('');
 
     cleanup();
+  });
+
+  it('uses framed layout bounds for sidebar and outline drag offsets', () => {
+    const activityBar = document.createElement('div');
+    activityBar.className = 'activity-bar';
+    vi.spyOn(activityBar, 'getBoundingClientRect').mockReturnValue({ right: 59 } as DOMRect);
+
+    const appContainer = document.createElement('div');
+    appContainer.className = 'app-container';
+    appContainer.style.borderRightWidth = '1px';
+    vi.spyOn(appContainer, 'getBoundingClientRect').mockReturnValue({ right: 1193 } as DOMRect);
+    document.body.append(activityBar, appContainer);
+
+    const { setupResizeHandlers } = useLayout();
+    const cleanup = setupResizeHandlers();
+
+    appStore.setIsDragging(true);
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 500 }));
+    expect(appStore.sidebarWidth()).toBe(441);
+
+    appStore.setIsDragging(false);
+    appStore.setIsOutlineDragging(true);
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 }));
+    expect(appStore.outlineWidth()).toBe(292);
+
+    cleanup();
+    activityBar.remove();
+    appContainer.remove();
   });
 
   it('clamps sidebar width on resize', () => {

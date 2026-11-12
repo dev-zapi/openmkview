@@ -1,6 +1,4 @@
-import { onMount, onCleanup } from 'solid-js';
 import { appStore } from '../stores/appStore';
-import { settingsStore } from '../stores/settingsStore';
 import { 
   saveSidebarWidth, 
   getValidatedSidebarWidth,
@@ -15,12 +13,20 @@ export const useLayout = () => {
   const setupResizeHandlers = () => {
     const handleMouseMove = (e: MouseEvent) => {
       if (appStore.isDragging()) {
-        const newWidth = getValidatedSidebarWidth(e.clientX - 52);
+        const activityBar = document.querySelector<HTMLElement>('.activity-bar');
+        const sidebarStart = activityBar?.getBoundingClientRect().right ?? 52;
+        const newWidth = getValidatedSidebarWidth(e.clientX - sidebarStart);
         appStore.setSidebarWidth(newWidth);
         saveSidebarWidth(newWidth);
       }
       if (appStore.isOutlineDragging()) {
-        const newWidth = getValidatedOutlineWidth(window.innerWidth - e.clientX);
+        const appContainer = document.querySelector<HTMLElement>('.app-container');
+        const containerRect = appContainer?.getBoundingClientRect();
+        const rightBorder = appContainer
+          ? parseFloat(getComputedStyle(appContainer).borderRightWidth) || 0
+          : 0;
+        const contentRight = containerRect ? containerRect.right - rightBorder : window.innerWidth;
+        const newWidth = getValidatedOutlineWidth(contentRight - e.clientX);
         appStore.setOutlineWidth(newWidth);
         saveOutlineWidth(newWidth);
       }
