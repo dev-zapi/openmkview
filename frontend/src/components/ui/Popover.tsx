@@ -131,6 +131,9 @@ export const PopoverContent: Component<PopoverContentProps> = (props) => {
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    // Capture-phase document listener: ignore keys entirely while closed,
+    // otherwise every Escape in the app gets preventDefault'ed here.
+    if (!ctx.open()) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       ctx.setOpen(false);

@@ -177,6 +177,11 @@ export const MenuContent: Component<MenuContentProps> = (props) => {
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    // A closed menu must not touch the event: this listener runs in the
+    // capture phase on document, and an unconditional stopPropagation()
+    // here would swallow Escape app-wide (e.g. the diagram zoom modal's
+    // document-level Escape handler could never fire).
+    if (!ctx.open()) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
