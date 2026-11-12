@@ -1,8 +1,62 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import solid from 'vite-plugin-solid';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { mockServerPlugin } from './src/mock';
+
+// Impeccable live 助手只绑定 localhost，且 live.js 内部端点硬编码 http://localhost:8400，
+// 局域网设备（手机/平板）无法直连。此插件把助手代理到同源路径 /__impeccable，
+// 并注入 shim 把 fetch/EventSource 重定向过去 —— 仅在助手存活时生效，平时零影响。
+function impeccableLanProxy(): Plugin {
+  const HELPER_PORT = 8400;
+  const PROXY_BASE = '/__impeccable';
+  let alive = false;
+  let probedAt = 0;
+
+  async function probe(): Promise<boolean> {
+    if (Date.now() - probedAt < 5000) return alive;
+    probedAt = Date.now();
+    try {
+      const res = await fetch(`http://127.0.0.1:${HELPER_PORT}/`, {
+        signal: AbortSignal.timeout(400),
+      });
+      // 401/404 都说明助手在监听（未带 token 会被拒）
+      alive = res.status > 0;
+    } catch {
+      alive = false;
+    }
+    return alive;
+  }
+
+  return {
+    name: 'impeccable-lan-proxy',
+    apply: 'serve',
+    config() {
+      return {
+        server: {
+          proxy: {
+            [PROXY_BASE]: {
+              target: `http://127.0.0.1:${HELPER_PORT}`,
+              changeOrigin: true,
+              rewrite: (path) => path.replace(PROXY_BASE, ''),
+            },
+          },
+        },
+      };
+    },
+    async transformIndexHtml(html) {
+      if (!(await probe())) return html;
+      const rewritten = html.replace(
+        new RegExp(`http://localhost:${HELPER_PORT}/(live\\.js[^"']*)`, 'g'),
+        `${PROXY_BASE}/$1`,
+      );
+      if (rewritten === html) return html;
+      // 必须在 live.js 执行前生效；注入到 </head> 前保证顺序
+      const shim = `<script>(function(){var A='http://localhost:${HELPER_PORT}',B='${PROXY_BASE}';function r(u){return typeof u==='string'&&u.startsWith(A)?B+u.slice(A.length):u}var F=window.fetch;window.fetch=function(i,init){i=r(i);if(i&&i.url&&i.url.startsWith(A))i=new Request(B+i.url.slice(A.length),i);return F.call(this,i,init)};var E=window.EventSource;window.EventSource=function(u,c){return new E(r(u),c)}})();</script>`;
+      return rewritten.replace('</head>', `${shim}</head>`);
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   // 在开发模式下默认启用 mock
@@ -18,6 +72,7 @@ export default defineConfig(({ mode }) => {
       solid(),
       tailwindcss(),
       mockServerPlugin(),
+      impeccableLanProxy(),
       VitePWA({
         registerType: 'autoUpdate',
         // 使用 public/manifest.json 中已有的清单，插件不再生成
