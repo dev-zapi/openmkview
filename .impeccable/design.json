@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T03:45:00Z",
+  "title": "Design System: OpenMKView",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "hsl(0 0% 100%)", "tonalRamp": ["#ffffff", "#fafafa", "#f4f4f5", "#e4e4e7", "#d4d4d8", "#a1a1aa", "#71717a", "#52525b"] },
+      "paper-wash": { "role": "neutral", "displayName": "Paper Wash", "canonical": "hsl(240 5% 96%)", "tonalRamp": ["#ffffff", "#fafafa", "#f4f4f5", "#e4e4e7", "#d4d4d8", "#a1a1aa", "#71717a", "#52525b"] },
+      "paper-gray": { "role": "neutral", "displayName": "Paper Gray", "canonical": "hsl(240 5% 89%)", "tonalRamp": ["#ffffff", "#fafafa", "#f4f4f5", "#e4e4e7", "#d4d4d8", "#a1a1aa", "#71717a", "#52525b"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "hsl(240 10% 3.9%)", "tonalRamp": ["#09090b", "#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8"] },
+      "ink-soft": { "role": "neutral", "displayName": "Soft Ink", "canonical": "hsl(240 4% 35%)", "tonalRamp": ["#09090b", "#18181b", "#3f3f46", "#565659", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "hsl(240 6% 90%)", "tonalRamp": ["#ffffff", "#fafafa", "#f4f4f5", "#e4e4e7", "#e3e3e8", "#d4d4d8", "#a1a1aa", "#71717a"] },
+      "graphite": { "role": "primary", "displayName": "Graphite", "canonical": "hsl(240 5.9% 10%)", "tonalRamp": ["#09090b", "#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8"] },
+      "night": { "role": "neutral", "displayName": "Night", "canonical": "hsl(240 10% 3.9%)", "tonalRamp": ["#09090b", "#18181b", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8"] },
+      "night-wash": { "role": "neutral", "displayName": "Night Wash", "canonical": "hsl(240 4% 10%)", "tonalRamp": ["#09090b", "#18181a", "#222226", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"] },
+      "night-gray": { "role": "neutral", "displayName": "Night Gray", "canonical": "hsl(240 4% 14%)", "tonalRamp": ["#09090b", "#18181a", "#222226", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"] },
+      "night-hairline": { "role": "neutral", "displayName": "Night Hairline", "canonical": "hsl(240 4% 16%)", "tonalRamp": ["#09090b", "#18181b", "#222226", "#27272a", "#3f3f46", "#52525b", "#71717a", "#a1a1aa"] },
+      "chalk": { "role": "primary", "displayName": "Chalk", "canonical": "hsl(0 0% 98%)", "tonalRamp": ["#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7", "#f4f4f5", "#fafafa", "#ffffff"] },
+      "moon-gray": { "role": "neutral", "displayName": "Moon Gray", "canonical": "hsl(240 5% 64.9%)", "tonalRamp": ["#09090b", "#18181b", "#3f3f46", "#52525b", "#71717a", "#a1a1aa", "#d4d4d8", "#e4e4e7"] },
+      "cinnabar": { "role": "tertiary", "displayName": "Cinnabar", "canonical": "hsl(0 72% 51%)", "tonalRamp": ["#450a0a", "#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fecaca"] },
+      "jade": { "role": "tertiary", "displayName": "Jade", "canonical": "hsl(142 71% 45%)", "tonalRamp": ["#052e16", "#14532d", "#15803d", "#22c55e", "#4ade80", "#86efac", "#bbf7d0", "#dcfce7"] },
+      "amber": { "role": "tertiary", "displayName": "Amber", "canonical": "hsl(38 92% 50%)", "tonalRamp": ["#451a03", "#78350f", "#b45309", "#f59e0b", "#fbbf24", "#fcd34d", "#fde68a", "#fef3c7"] },
+      "amber-ink": { "role": "secondary", "displayName": "Amber Ink", "canonical": "hsl(28 60% 35%)", "tonalRamp": ["#2e1a0a", "#5c3313", "#8f5624", "#a96b34", "#c08447", "#d3a06a", "#e5c39b", "#f2e2cd"] },
+      "slate-ink": { "role": "secondary", "displayName": "Slate Ink", "canonical": "hsl(210 50% 35%)", "tonalRamp": ["#0f1e2e", "#1d3a55", "#2d5986", "#4878a4", "#6f97bd", "#9cb8d6", "#c3d6e9", "#e2eef6"] },
+      "blue-ink": { "role": "secondary", "displayName": "Blue Ink", "canonical": "hsl(212 92% 68%)", "tonalRamp": ["#0b2c5c", "#164a99", "#2668c8", "#4a8bef", "#62a8f8", "#8cc0fa", "#b7d8fd", "#ddebff"] },
+      "violet-ink": { "role": "secondary", "displayName": "Violet Ink", "canonical": "hsl(265 90% 76%)", "tonalRamp": ["#2e1a4d", "#4c2b7a", "#6d47a8", "#8f62cf", "#b98bf9", "#cfaefb", "#e0ccfd", "#efe1fe"] }
+    },
+    "typographyMeta": {
+      "display-welcome": { "displayName": "Display (Welcome)", "purpose": "The welcome screen's single title — the only place the shell speaks loudly." },
+      "shell-title": { "displayName": "Title", "purpose": "Panel titles, sidebar project name, dialog headings." },
+      "shell-body": { "displayName": "Body", "purpose": "Shell UI text — menus, tabs, tree rows, settings. Never exceeds 14px." },
+      "shell-label": { "displayName": "Label", "purpose": "Uppercase sidebar section headers with widened tracking." },
+      "reading-heading": { "displayName": "Reading Heading", "purpose": "Serif document headings; h1/h2 close with a 1px hairline." },
+      "reading-body": { "displayName": "Reading Body", "purpose": "Rendered Markdown — the core identity. User-tunable size and width, serif floor holds." },
+      "mono-code": { "displayName": "Mono Code", "purpose": "Source view, diffs, code blocks — JetBrains Mono." }
+    },
+    "shadows": [
+      { "name": "menu-float", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Dropdown menus and portaled popovers. Dark theme deepens to /0.5 and /0.4." },
+      { "name": "panel-float", "value": "0 12px 24px rgb(0 0 0 / 0.2)", "purpose": "Color/icon pickers and small floating cards. Dark theme /0.4." },
+      { "name": "dialog-halo", "value": "0 24px 80px rgb(0 0 0 / 0.18)", "purpose": "Login glass card and settings dialog — wide, diffuse, ambient." },
+      { "name": "modal-depth", "value": "0 25px 50px -12px rgb(0 0 0 / 0.35)", "purpose": "Diagram zoom modal — the deepest floating layer." },
+      { "name": "toast-lift", "value": "0 8px 24px rgb(0 0 0 / 0.2)", "purpose": "Transient toast notifications." },
+      { "name": "git-panel-veil", "value": "-4px 0 20px rgb(0 0 0 / 0.1)", "purpose": "Left edge of the overlaying git panel." },
+      { "name": "focus-ring", "value": "0 0 0 2px hsl(var(--ring))", "purpose": "Focus-visible ring on activity tiles and icon buttons; primitives use ring-2 ring-offset-2." }
+    ],
+    "motion": [
+      { "name": "state-ease", "value": "0.15s ease", "purpose": "Hover/focus color and background transitions; globally applied to button/a/input/select/textarea." },
+      { "name": "menu-ease", "value": "0.12s ease", "purpose": "Menu open (slide + fade from -4px) and menu-item hover fills." },
+      { "name": "enter-ease", "value": "0.2s–0.3s ease", "purpose": "Panel/view entrances: fadeIn, slideInLeft/Right/Up, scaleIn (0.2s)." },
+      { "name": "panel-slide", "value": "0.3s cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Drawers, sidebar width, git panel transform." },
+      { "name": "press-scale", "value": "transform scale(0.96) over 0.1s ease", "purpose": "Button press feedback; interactive-press uses 0.98." },
+      { "name": "ripple", "value": "0.6s ease-out", "purpose": "Click ripple expanding from center, fading to 0." },
+      { "name": "theme-crossfade", "value": "0.3s ease", "purpose": "Body background/color crossfade on theme switch." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "768px", "purpose": "Below this, the dedicated MobileLayout replaces the desktop shell (drawer tree, 40px top bar, fullscreen settings)." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The graphite action button for primary moves (save, submit).",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-family: 'MiSans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: hsl(var(--primary) / 0.9); } .ds-btn-primary:active { transform: scale(0.96); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring)), 0 0 0 4px hsl(var(--background)); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action — hairline border on paper, fills paper-gray on hover.",
+      "html": "<button class=\"ds-btn-outline\">Open project</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid hsl(var(--input)); border-radius: 8px; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: 'MiSans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-outline:hover { background: hsl(var(--secondary)); } .ds-btn-outline:active { transform: scale(0.96); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring)), 0 0 0 4px hsl(var(--background)); }"
+    },
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Borderless 36×36 icon button — the shell's default quiet action.",
+      "html": "<button class=\"ds-btn-ghost\" aria-label=\"Settings\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/></svg></button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: none; border-radius: 8px; background: transparent; color: hsl(var(--muted-foreground)); cursor: pointer; transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease; } .ds-btn-ghost:hover { background: hsl(var(--secondary)); color: hsl(var(--foreground)); } .ds-btn-ghost:active { transform: scale(0.96); } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring)); }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "36px text input — paper-gray fill, hairline border, ring on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search…\" />",
+      "css": ".ds-input { display: flex; align-items: center; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid hsl(var(--input)); border-radius: 8px; background: hsl(var(--secondary)); color: hsl(var(--foreground)); font-family: 'MiSans', sans-serif; font-size: 13px; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input::placeholder { color: hsl(var(--muted-foreground)); } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2); border-color: hsl(var(--ring)); } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Menu Panel",
+      "kind": "custom",
+      "refersTo": "menu-panel",
+      "description": "The unified popup menu — popover card with tint-hover items, separator, destructive item, count badge.",
+      "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 7h18M3 12h18M3 17h18\"/></svg>Rename project<span class=\"ds-menu-badge\">2</span></button><button class=\"ds-menu-item\">Show hidden files</button><div class=\"ds-menu-separator\"></div><button class=\"ds-menu-item ds-menu-item-destructive\">Delete project</button></div>",
+      "css": ".ds-menu { min-width: 180px; padding: 4px; border-radius: 8px; background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); border: 1px solid hsl(var(--border)); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); font-family: 'MiSans', sans-serif; font-size: 13px; animation: ds-menu-in 0.12s ease; } @keyframes ds-menu-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } } .ds-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; border: none; border-radius: 6px; background: none; color: inherit; font-family: inherit; font-size: 13px; line-height: 20px; cursor: pointer; text-align: left; transition: background-color 0.12s ease; } .ds-menu-item:hover, .ds-menu-item:focus-visible { background: hsl(var(--secondary)); color: hsl(var(--foreground)); outline: none; } .ds-menu-item-destructive, .ds-menu-item-destructive:hover { color: hsl(var(--destructive)); } .ds-menu-item-destructive:hover { background: hsl(var(--destructive) / 0.1); } .ds-menu-separator { height: 1px; margin: 4px; background: hsl(var(--border)); } .ds-menu-badge { margin-left: auto; background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }"
+    },
+    {
+      "name": "View Tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Preview / Source / Diff — tint pill + 60%-width accent underline grows from center on the active tab.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">Preview</button><button class=\"ds-tab\">Source</button><button class=\"ds-tab\">Diff</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 4px; font-family: 'MiSans', sans-serif; } .ds-tab { position: relative; padding: 8px 16px; border: none; background: none; border-radius: 6px; font-size: 13px; color: hsl(var(--muted-foreground)); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-tab::after { content: ''; position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%); width: 0; height: 2px; background: hsl(var(--accent)); border-radius: 2px 2px 0 0; transition: width 0.2s ease; } .ds-tab:hover { background: hsl(var(--card)); color: hsl(var(--foreground)); } .ds-tab-active { background: hsl(var(--accent) / 0.08); color: hsl(var(--accent)); font-weight: 500; } .ds-tab-active::after { width: 60%; } .ds-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring)); }"
+    },
+    {
+      "name": "Activity Bar Project Tiles",
+      "kind": "nav",
+      "refersTo": "project-tile",
+      "description": "52px rail tiles — 40×40 project squares; active = accent tint + accent border + accent text.",
+      "html": "<div class=\"ds-rail\"><button class=\"ds-tile ds-tile-active\"><span class=\"ds-tile-initial\">O</span></button><button class=\"ds-tile\"><span class=\"ds-tile-initial\">M</span></button><button class=\"ds-tile\"><span class=\"ds-tile-initial\">A</span></button></div>",
+      "css": ".ds-rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; width: 52px; background: linear-gradient(to bottom, hsl(var(--background)) 0%, hsl(var(--secondary)) 100%); border-right: 1px solid hsl(var(--border)); } .ds-tile { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid hsl(var(--border)); border-radius: 8px; color: hsl(var(--muted-foreground)); opacity: 0.7; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease; } .ds-tile:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); } .ds-tile:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring)); } .ds-tile-active { background: hsl(var(--accent) / 0.08); color: hsl(var(--accent)); border-color: hsl(var(--accent)); opacity: 1; } .ds-tile-initial { font-family: 'MiSans', sans-serif; font-size: 14px; font-weight: 700; line-height: 1; text-transform: uppercase; }"
+    },
+    {
+      "name": "Login Glass Card",
+      "kind": "card",
+      "refersTo": "login-panel",
+      "description": "Signature — the one moment of atmosphere: 20px glass card over a diagonal wash gradient with an accent radial.",
+      "html": "<div class=\"ds-login-scene\"><div class=\"ds-login\"><div class=\"ds-login-mark\">O</div><div><h1 class=\"ds-login-title\">OpenMKView</h1><p class=\"ds-login-sub\">Local Markdown, beautifully read</p></div></div></div>",
+      "css": ".ds-login-scene { display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(circle at top left, hsl(var(--accent) / 0.14), transparent 32%), linear-gradient(160deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%); } .ds-login { display: flex; align-items: center; gap: 16px; width: min(420px, 100%); padding: 28px; border-radius: 20px; border: 1px solid hsl(var(--border) / 0.9); background: hsl(var(--background) / 0.88); box-shadow: 0 24px 80px rgb(0 0 0 / 0.18); backdrop-filter: blur(18px); } .ds-login-mark { width: 52px; height: 52px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: hsl(var(--accent)); color: hsl(var(--primary-foreground)); font-family: 'MiSans', sans-serif; font-weight: 700; letter-spacing: 0.08em; } .ds-login-title { margin: 0; font-family: 'MiSans', sans-serif; font-size: 28px; color: hsl(var(--foreground)); } .ds-login-sub { margin: 6px 0 0; font-family: 'MiSans', sans-serif; font-size: 13px; color: hsl(var(--muted-foreground)); }"
+    },
+    {
+      "name": "Reading Room Block",
+      "kind": "custom",
+      "refersTo": "reading-room",
+      "description": "Signature — the serif reading pane: Georgia 16/1.7, hairline-ruled h1/h2, washed code block, quoted rule.",
+      "html": "<div class=\"ds-reading\"><h1 class=\"ds-rh1\">The Quiet Reading Room</h1><h2 class=\"ds-rh2\">Two rooms, one door</h2><p class=\"ds-rp\">The shell is a cool, colorless instrument. Cross into the document pane and the room changes character — Georgia serif at a generous line-height, where the file is the only voice.</p><blockquote class=\"ds-rquote\">Shadows belong exclusively to things that float.</blockquote><pre class=\"ds-rpre\"><code>cargo run</code></pre></div>",
+      "css": ".ds-reading { max-width: 720px; padding: 16px; font-family: Georgia, 'Noto Serif', serif; font-size: 16px; line-height: 1.7; color: hsl(var(--foreground)); } .ds-rh1 { margin: 1.5em 0 0.5em; font-size: 32px; font-weight: 600; line-height: 1.3; padding-bottom: 0.3em; border-bottom: 1px solid hsl(var(--border)); } .ds-rh2 { margin: 1.5em 0 0.5em; font-size: 24px; font-weight: 600; line-height: 1.3; padding-bottom: 0.3em; border-bottom: 1px solid hsl(var(--border)); } .ds-rp { margin-bottom: 1em; } .ds-rquote { margin: 0 0 1em; padding-left: 12px; border-left: 3px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); } .ds-rpre { position: relative; margin-bottom: 1em; padding: 16px; border-radius: 8px; border: 1px solid hsl(var(--border)); background: hsl(var(--muted)); overflow-x: auto; } .ds-rpre code { font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; font-size: 14px; line-height: 1.6; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Reading Room（静谧阅览室）",
+    "overview": "OpenMKView is two rooms with one door. The shell — activity bar, file tree, tabs, panels — is a cool, colorless instrument: zinc-gray steel, hairline borders, 13px sans labels, everything measured and quiet. Cross into the document pane and the room changes character: Georgia serif at 16px/1.7, generous leading, headings that rule themselves off with a hairline — a warm study where the file is the only voice. The system's job is to make that transition feel like walking from a workshop into a library, without either room raising its voice.\n\nThe temperament is calm restraint (冷静克制) and precision-instrument (精密工具感): monochrome by default, tint pills instead of fills, shadows only where surfaces float. The long-game goal is durability (耐看长期主义) — this is a daily tool that must not tire — with the warmth of a study (温润书房感) reserved for the reading experience. Interactive components are quiet at rest but answer the hand: ripple and press-scale feedback make every touch land, then settle back to silence.",
+    "keyCharacteristics": [
+      "Monochrome zinc scale; the default accent is graphite on paper (light) / chalk on night (dark) — hue only enters through the four ink variants or semantic tokens.",
+      "Two typefaces by room: MiSans shell, Georgia reading pane, JetBrains Mono for code — they never mix.",
+      "State language is tonal: hover = accent at 8% alpha, active/selected = 12%, plus a 2px accent underline for the active tab. New colors are never invented for states.",
+      "Flat docked surfaces separated by 1px hairlines; shadows exist only on floating layers (menus, dialogs, drawers, toasts).",
+      "Compact tool density on desktop (40px tiles, 46px header, ~24px tree rows); mobile is a first-class citizen with its own drawer-based layout, not a shrunken desktop."
+    ],
+    "rules": [
+      { "name": "The Ink-Only Color Rule", "body": "Hue enters the system only as poured ink — one of the four theme variants, or a semantic token (cinnabar/jade/amber). The default system is colorless; any new colored surface must justify itself as ink or it stays gray.", "section": "colors" },
+      { "name": "The 8/12 Tint Rule", "body": "Hover is accent / 0.08; active and selected are accent / 0.12. States are tints of existing tokens, never new colors, and never full-opacity fills.", "section": "colors" },
+      { "name": "The Two Rooms Rule", "body": "MiSans never renders inside the document pane; Georgia never renders in the shell. The font switch is the door between workshop and library — blurring it dissolves the identity.", "section": "typography" },
+      { "name": "The Floating-Only Shadow Rule", "body": "If a surface is docked, it has no shadow — it gets a hairline. Shadows are the visual proof that something floats; using them for emphasis on a docked panel breaks the physics of the room.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do express every hover/selected state as an accent tint at 8% / 12% alpha — the tint pill is the system's state language.",
+      "Do separate regions with 1px hairlines on the border token; halve opacity only when a divider must recede.",
+      "Do keep the reading pane serif, 16px, 1.7 line-height, with hairline-ruled h1/h2 — it is the core identity (核心身份).",
+      "Do use 0.15s ease for state transitions, 0.12s for menus, cubic-bezier(0.4, 0, 0.2, 1) for panel slides, and always answer presses with ripple/scale.",
+      "Do keep focus-visible rings (2px, ring token, offset 2) on every interactive element — keyboard users get the same precision.",
+      "Do build mobile as the drawer-based MobileLayout with safe-area insets and 16px form text; never shrink the desktop shell."
+    ],
+    "donts": [
+      "Don't introduce hue outside the four inks and three semantic tokens — gray is the default, color is a decision.",
+      "Don't put shadows on docked panels; a shadow claims \"I float.\"",
+      "Don't render MiSans inside the document pane or Georgia in the shell — the typeface switch is the room switch.",
+      "Don't exceed the radius scale (4/6/8/12/16, 20 for the login card) or the shell text ceiling (14px).",
+      "Don't replace tint fills with saturated solids for hover/active states, and don't animate state changes slower than 0.3s."
+    ]
+  }
+}
