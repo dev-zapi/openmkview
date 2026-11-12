@@ -49,6 +49,7 @@ test('frames only the installed desktop layout', async ({}, testInfo) => {
       borderWidth: '1px',
       borderRadius: '8px',
     });
+    await expect(appPage.locator('#root')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
 
     const appBounds = await appPage.locator('.app-container').boundingBox();
     const settingsBounds = await appPage.locator('.activity-bar button[title="Settings"]').boundingBox();
@@ -68,6 +69,7 @@ test('frames only the installed desktop layout', async ({}, testInfo) => {
       await appPage.locator('.activity-bar button[title^="Theme:"]').click();
     }
     await expect(appPage.locator('html')).toHaveClass(/dark-theme/);
+    await expect(appPage.locator('#root')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
     await appPage.waitForTimeout(350);
     await appPage.screenshot({ path: testInfo.outputPath('standalone-dark.png'), animations: 'disabled' });
 

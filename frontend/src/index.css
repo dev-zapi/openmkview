@@ -1400,7 +1400,11 @@ textarea {
 /* Installed desktop windows get a deliberate edge; browser tabs stay full-bleed. */
 @media (display-mode: standalone) and (min-width: 769px) {
   #root:has(> .app-container) {
-    background: var(--color-bg-subtle);
+    background: #fff;
+  }
+
+  .dark-theme #root:has(> .app-container) {
+    background: #000;
   }
 
   .app-container {
