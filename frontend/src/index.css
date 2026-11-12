@@ -255,7 +255,7 @@ body {
   justify-content: center;
   background:
     radial-gradient(circle at top left, hsl(var(--accent) / 0.14), transparent 32%),
-    linear-gradient(160deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+    linear-gradient(to bottom, hsl(var(--activity-bar-gradient-start)) 0%, hsl(var(--secondary)) 100%);
 }
 
 .login-loading {
