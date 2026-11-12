@@ -35,6 +35,42 @@ test.describe('Diagram zoom in markdown preview', () => {
     await expect(overlay).not.toBeVisible();
   });
 
+  test('zooming does not leave runaway timers behind', async ({ page }) => {
+    test.setTimeout(60_000);
+    // Regression: the measure effect used to self-schedule setTimeout(0)
+    // forever after any zoom interaction, making the page progressively
+    // laggy whether the modal was open or closed.
+    await expect(page.locator('.markdown-view')).toBeVisible({ timeout: 15000 });
+    await page.locator('.diagram-zoom-btn').first().click({ force: true });
+    await expect(page.locator('.diagram-zoom-transform svg')).toBeVisible({ timeout: 5000 });
+
+    const box = await page.locator('.diagram-zoom-content').boundingBox();
+    expect(box).toBeTruthy();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    for (let i = 0; i < 20; i++) {
+      await page.mouse.wheel(0, i % 2 ? -120 : 120);
+    }
+
+    await page.locator('.diagram-zoom-close').click();
+    await expect(page.locator('.diagram-zoom-overlay')).not.toBeVisible();
+
+    // Count setTimeout calls during 1.5s of complete idleness.
+    const scheduled = await page.evaluate(async () => {
+      let n = 0;
+      const orig = window.setTimeout.bind(window);
+      window.setTimeout = ((fn: Function, ms?: number, ...args: unknown[]) => {
+        n++;
+        return orig(fn as TimerHandler, ms, ...args);
+      }) as typeof setTimeout;
+      await new Promise((r) => orig(r, 1500));
+      window.setTimeout = orig;
+      return n;
+    });
+    // Healthy idle page schedules a handful of timers; the bug scheduled
+    // tens of thousands.
+    expect(scheduled).toBeLessThan(20);
+  });
+
   test('toggle between source and rendered diagram', async ({ page }) => {
     // Wait for the markdown preview
     await expect(page.locator('.markdown-wrapper')).toBeVisible({ timeout: 15000 });

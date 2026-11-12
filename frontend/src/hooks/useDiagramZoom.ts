@@ -88,10 +88,14 @@ export function useDiagramZoom() {
   const measure = (content: Size, container: Size) => {
     setNaturalSize(content);
     setContainerSize(container);
-    setState((prev) => ({
-      scale: prev.scale,
-      ...clampTranslate(prev.x, prev.y, prev.scale),
-    }));
+    setState((prev) => {
+      const clamped = clampTranslate(prev.x, prev.y, prev.scale);
+      // Return the previous reference when nothing moved so observers are
+      // not notified — measure() feeding a state-dependent effect must not
+      // be able to retrigger it.
+      if (clamped.x === prev.x && clamped.y === prev.y) return prev;
+      return { scale: prev.scale, ...clamped };
+    });
   };
 
   return {

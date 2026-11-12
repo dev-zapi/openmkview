@@ -68,10 +68,14 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
   });
 
   createEffect(() => {
-    // Re-measure whenever the SVG content or scale changes
-    svg();
-    state().scale;
-    window.setTimeout(() => {
+    // Re-measure when the rendered content changes. This effect must not
+    // depend on zoom state: measure() itself writes zoom state, so a state
+    // dependency creates a self-sustaining setTimeout loop (every fire
+    // reschedules the next) that churns the page forever — even after the
+    // modal closes. Translate clamping on zoom changes already happens in
+    // updateScale/updateTranslate.
+    if (!svg()) return;
+    const t = window.setTimeout(() => {
       if (transformRef && contentRef) {
         const contentRect = transformRef.getBoundingClientRect();
         const containerRect = contentRef.getBoundingClientRect();
@@ -81,6 +85,7 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
         );
       }
     }, 0);
+    onCleanup(() => window.clearTimeout(t));
   });
 
   const handlePointerDown = (e: PointerEvent) => {
