@@ -103,9 +103,12 @@ export const CssEditor: Component<CssEditorProps> = (props) => {
     }
   });
 
-  // Rebuild on theme change (deferred to skip initial mount)
-  createEffect(on(() => props.theme, () => {
-    if (!editorView) return;
+  // props.theme reads the whole settings signal, so only rebuild on a real theme change.
+  let appliedTheme = props.theme;
+
+  createEffect(on(() => props.theme, (theme) => {
+    if (!editorView || theme === appliedTheme) return;
+    appliedTheme = theme;
     const current = editorView.state.doc.toString();
     editorView.destroy();
     editorView = undefined;
