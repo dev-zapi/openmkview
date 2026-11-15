@@ -1690,6 +1690,29 @@ textarea {
   margin-bottom: 16px;
 }
 
+/* Themes list failed to load: name the problem, offer the recovery */
+.settings-load-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+.settings-retry {
+  border: none;
+  background: none;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: hsl(var(--accent));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .settings-item {
   margin-bottom: 16px;
 }
@@ -2097,8 +2120,42 @@ textarea {
     padding-top: calc(16px + var(--safe-top));
   }
 
+  /* Section navigation becomes a horizontal chip rail instead of vanishing:
+     without it Settings is a 3000px+ scroll with no way to jump sections. */
+  .settings-panel-body {
+    flex-direction: column;
+  }
+
   .settings-nav {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .settings-nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .settings-nav ul {
+    display: flex;
+    gap: 4px;
+    width: max-content;
+  }
+
+  .settings-nav button {
+    width: auto;
+    min-height: 44px;
+    border-left: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    white-space: nowrap;
   }
 
   .settings-panel-content {

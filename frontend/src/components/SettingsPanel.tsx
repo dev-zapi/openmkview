@@ -1,8 +1,7 @@
 import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
 import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
-import { DEFAULT_SETTINGS } from '../types/app';
 import { applyTheme } from '../utils/theme';
-import { saveSettings, CUSTOM_STYLESHEET_MAX } from '../utils/settings';
+import { CUSTOM_STYLESHEET_MAX } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
@@ -103,9 +102,21 @@ const codeThemeDarkPresets: PresetOption[] = [
   { label: 'Slack', value: 'slack' },
 ];
 
+// Mirrors get_builtin_themes() in src/models/theme.rs; keeps the pickers
+// functional when /api/themes fails so Settings never becomes a dead button.
+const FALLBACK_THEMES: Theme[] = [
+  { id: 'light-default', name: 'Default', type: 'light', builtin: true },
+  { id: 'light-warm', name: 'Warm', type: 'light', builtin: true },
+  { id: 'light-cool', name: 'Cool', type: 'light', builtin: true },
+  { id: 'dark-default', name: 'Default', type: 'dark', builtin: true },
+  { id: 'dark-blue', name: 'Blue', type: 'dark', builtin: true },
+  { id: 'dark-purple', name: 'Purple', type: 'dark', builtin: true },
+];
+
 const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [saved, setSaved] = createSignal(false);
   const [themes, setThemes] = createSignal<Theme[]>([]);
+  const [themesError, setThemesError] = createSignal(false);
   const [installing, setInstalling] = createSignal(false);
   const [installError, setInstallError] = createSignal<string | null>(null);
   const [saveError, setSaveError] = createSignal<string | null>(null);
@@ -190,12 +201,20 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   });
 
   const loadThemes = async () => {
+    setThemesError(false);
     try {
       const response = await fetch('/api/themes');
       const data = await response.json();
+      // An error body ({ error: ... }) or a failed proxy has no themes array;
+      // setting undefined here used to crash themes().filter below.
+      if (!response.ok || !Array.isArray(data?.themes)) {
+        throw new Error(`Themes unavailable (HTTP ${response.status})`);
+      }
       setThemes(data.themes);
     } catch (e) {
       console.error('Failed to load themes:', e);
+      setThemes(FALLBACK_THEMES);
+      setThemesError(true);
     }
   };
 
@@ -421,6 +440,15 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
 
               <div class="settings-section" id="settings-themes">
                 <h4>Themes</h4>
+
+                <Show when={themesError()}>
+                  <p class="settings-load-error">
+                    <span>Couldn't load the theme list — showing built-in themes.</span>
+                    <button type="button" class="settings-retry" onClick={() => void loadThemes()}>
+                      Retry
+                    </button>
+                  </p>
+                </Show>
 
                 <div class="settings-item">
                   <label for="theme-mode">Theme Mode</label>
