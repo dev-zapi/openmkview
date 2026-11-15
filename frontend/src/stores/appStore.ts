@@ -4,6 +4,13 @@ import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
 import { loadOutlineOpenByFileType, saveOutlineOpenByFileType } from '../utils/settings';
 import type { OutlineOpenByFileType } from '../utils/settings';
 
+// Single source of truth for the mobile-shell switch: ≤768px wide, or a
+// short landscape touch device (phone rotated) that still needs the shell.
+// Keep in sync with the gate in index.css:
+// `@media (max-width: 768px), (max-height: 500px) and (pointer: coarse)`.
+export const MOBILE_SHELL_MEDIA =
+  '(max-width: 768px), (max-height: 500px) and (pointer: coarse)';
+
 const [activeTab, setActiveTab] = createSignal<TabType>('preview');
 const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
 const [outlineOpen, setOutlineOpen] = createSignal(false);
@@ -112,7 +119,7 @@ export const appStore = {
   },
 
   checkMobile() {
-    setIsMobile(window.innerWidth < 768);
+    setIsMobile(window.matchMedia(MOBILE_SHELL_MEDIA).matches);
   },
 
   getOutlineOpenForFileType(fileType: 'markdown' | 'html' | 'other'): boolean {

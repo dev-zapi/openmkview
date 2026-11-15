@@ -32,12 +32,15 @@
   animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   border: 1px solid var(--color-border);
   border-left: none;
+  /* Landscape phones: drawer content must clear the notch */
+  padding-left: var(--safe-left);
 }
 
 .drawer.right {
   right: 0;
   transform: translateX(100%);
   animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  padding-right: var(--safe-right);
 }
 
 .drawerContent {

@@ -6,6 +6,9 @@
   min-height: 0;
   width: 100%;
   overflow: hidden;
+  /* Landscape phones: keep the bar and content off the notch side */
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* Mobile top bar with hamburger, title, and actions */
