@@ -96,6 +96,7 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     markdownFontSize: settings.markdownFontSize,
     codeFontFamily: settings.codeFontFamily,
     codeFontSize: settings.codeFontSize,
+    editorFontSize: settings.editorFontSize,
     codeBlockThemeLight: settings.codeBlockThemeLight,
     codeBlockThemeDark: settings.codeBlockThemeDark,
     protectedPaths: settings.protectedPaths,
@@ -200,6 +201,10 @@ export const applyFontSettings = (settings: Settings): void => {
   document.documentElement.style.setProperty('--markdown-size', settings.markdownFontSize);
   document.documentElement.style.setProperty('--code-font', settings.codeFontFamily);
   document.documentElement.style.setProperty('--code-size', settings.codeFontSize);
+  document.documentElement.style.setProperty(
+    '--editor-size',
+    settings.editorFontSize || settings.codeFontSize,
+  );
 };
 
 export const applyTableDensity = (settings: Settings): void => {
