@@ -59,3 +59,11 @@ _Avoid_: collapsed directory, pruned directory, lazy directory, system directory
 **Source Fallback**:
 The read-only, syntax-highlighted source rendering used for any text file without a dedicated renderer (markdown, HTML, and images keep their own). It is the only view for such files: no preview, edit, or diff.
 _Avoid_: code view, raw view, plain text view, unsupported file view
+
+**Edit Mode**:
+The viewing mode that opens a Markdown or HTML file in the editor, one of the three tabs alongside Preview and Diff. Offered only for Markdown and HTML files.
+_Avoid_: editor mode, editing view, edit tab, source editing
+
+**Editor Font Size**:
+The font size of the editor shown in Edit Mode. When unset, it follows the Code Block Font Size.
+_Avoid_: edit font size, editor zoom, code font size, editor text size
