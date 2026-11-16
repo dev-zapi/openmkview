@@ -297,6 +297,7 @@ onClick={() => {
             onCopyPath={props.onCopyPath}
             onRename={props.onRename}
             projectId={props.activeProject?.id}
+            itemHeight={44}
           />
         </Show>
       }

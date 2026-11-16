@@ -28,6 +28,7 @@ interface FileTreeProps {
   onRename?: (node: FileNode) => void;
   theme?: 'light' | 'dark';
   projectId?: number;
+  itemHeight?: number;
 }
 
 function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
@@ -276,6 +277,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
 
     model = new PierreTree({
       paths,
+      itemHeight: props.itemHeight,
       // One level open: the root starts expanded so a freshly opened project
       // shows its files instead of a single unlabeled collapsed chevron.
       initialExpansion: 1,
