@@ -9,6 +9,8 @@ interface MobileLayoutProps {
   sidebarContent?: JSX.Element;
   outlinePanelContent?: JSX.Element;
   headerContent?: JSX.Element;
+  /** Docked below the scroll area: the mobile bottom view bar. */
+  bottomBarContent?: JSX.Element;
   activeProjectName?: string;
   leftDrawerCloseOnEscape?: boolean;
   leftDrawerModal?: boolean;
@@ -22,7 +24,7 @@ interface MobileLayoutProps {
 
 export const MobileLayout: Component<MobileLayoutProps> = (props) => {
   return (
-    <div class={styles.mobileContainer}>
+    <div class={styles.mobileContainer} classList={{ [styles.hasBottomBar]: Boolean(props.bottomBarContent) }}>
       {/* Mobile top bar (hidden when the merged header content is being shown) */}
       <Show when={!props.hideTopBar}>
         <div class={styles.mobileTopBar}>
@@ -55,6 +57,9 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         <div class={styles.mobileContent}>
           {props.children}
         </div>
+        <Show when={props.bottomBarContent}>
+          {(content) => content()}
+        </Show>
       </div>
 
       {/* Left drawer - ActivityBar + FileTree */}
@@ -89,10 +94,18 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
                       title="Project options"
                       aria-label="Project options"
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="5" r="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <circle cx="12" cy="19" r="2" />
+                      {/* Sliders, not an ellipsis: the header's ⋯ owns document actions,
+                          this one owns project actions — same glyph would read as one menu. */}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="4" y1="21" x2="4" y2="14" />
+                        <line x1="4" y1="10" x2="4" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12" y2="3" />
+                        <line x1="20" y1="21" x2="20" y2="16" />
+                        <line x1="20" y1="12" x2="20" y2="3" />
+                        <line x1="1" y1="14" x2="7" y2="14" />
+                        <line x1="9" y1="8" x2="15" y2="8" />
+                        <line x1="17" y1="16" x2="23" y2="16" />
                       </svg>
                     </button>
                   </Show>

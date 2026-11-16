@@ -31,6 +31,10 @@ export interface MarkdownHeaderProps {
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
+  /** Full path (mobile): tapping the filename reveals it. */
+  filePath?: string;
+  /** Project name shown with the revealed path (mobile). */
+  projectName?: string;
   /** Render the header in compact mobile mode. */
   mobile?: boolean;
   /** Hamburger menu click handler (mobile mode only). */
@@ -161,6 +165,8 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         isDirty={props.isDirty}
         onSave={props.onSave}
         saving={props.saving}
+        filePath={props.filePath}
+        projectName={props.projectName}
         mobile={props.mobile}
         onMenuClick={props.onMenuClick}
       />

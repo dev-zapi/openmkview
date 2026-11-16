@@ -4,6 +4,36 @@ import type { FileType } from '../../types';
 
 export type TabType = 'preview' | 'source' | 'edit' | 'diff';
 
+export interface ViewTab {
+  id: TabType;
+  label: string;
+}
+
+const ALL_TABS: ViewTab[] = [
+  { id: 'preview', label: 'Preview' },
+  { id: 'source', label: 'Source' },
+  { id: 'edit', label: 'Edit' },
+  { id: 'diff', label: 'Diff' },
+];
+
+/**
+ * Which views exist for a file type. Shared by the desktop text tabs and the
+ * mobile bottom view bar so the two controls can never disagree.
+ */
+export const visibleViewTabs = (fileType?: FileType, binary?: boolean): ViewTab[] => {
+  if (binary) {
+    return [];
+  }
+  if (fileType === 'image') {
+    return ALL_TABS.filter(t => t.id === 'preview');
+  }
+  // Files without a dedicated renderer only have the read-only Source tab.
+  if (fileType === 'other') {
+    return ALL_TABS.filter(t => t.id === 'source');
+  }
+  return ALL_TABS;
+};
+
 export interface ViewTabsProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
@@ -14,30 +44,9 @@ export interface ViewTabsProps {
 }
 
 export const ViewTabs: Component<ViewTabsProps> = (props) => {
-  const tabs = [
-    { id: 'preview' as const, label: 'Preview' },
-    { id: 'source' as const, label: 'Source' },
-    { id: 'edit' as const, label: 'Edit' },
-    { id: 'diff' as const, label: 'Diff' },
-  ];
-
-  const visibleTabs = () => {
-    if (props.binary) {
-      return [];
-    }
-    if (props.fileType === 'image') {
-      return tabs.filter(t => t.id === 'preview');
-    }
-    // Files without a dedicated renderer only have the read-only Source tab.
-    if (props.fileType === 'other') {
-      return tabs.filter(t => t.id === 'source');
-    }
-    return tabs;
-  };
-
   return (
     <div class={styles.viewTabs}>
-      {visibleTabs().map((tab) => (
+      {visibleViewTabs(props.fileType, props.binary).map((tab) => (
         <button
           class={`${styles.tabItem} ${
             props.activeTab === tab.id ? styles.active : ''

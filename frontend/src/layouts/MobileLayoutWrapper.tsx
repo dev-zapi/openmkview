@@ -5,6 +5,7 @@ import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
 import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
+import { MobileViewBar } from '../components/markdown-header/MobileViewBar';
 import { useScrollSpy } from '../hooks/useScrollSpy';
 import type { Project, FileContent, FileType, Heading, FileNode } from '../types';
 import type { Settings, ThemeMode, ThemeType } from '../types/app';
@@ -148,6 +149,17 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
       leftDrawerModal={true}
       hideTopBar={Boolean(props.currentFile) || Boolean(props.imagePreviewUrl && props.currentFileType === 'image')}
       onProjectMenuOpen={props.activeProject ? handleTopBarMenuOpen : undefined}
+      bottomBarContent={
+        <Show when={props.currentFile}>
+          <MobileViewBar
+            activeTab={props.activeTab}
+            onTabChange={props.onTabChange}
+            fileType={props.currentFileType}
+            isDirty={props.isDirty}
+            binary={props.currentFile!.binary}
+          />
+        </Show>
+      }
       activityBarContent={
         <>
           <div class={styles.activityBarProjects}>
@@ -298,6 +310,8 @@ onClick={() => {
                content={props.currentFile!.content}
                fileType={props.currentFileType}
                binary={props.currentFile!.binary}
+               filePath={props.currentFile!.path}
+               projectName={props.activeProject?.name}
                isSearchOpen={props.isSearchOpen}
                searchQuery={props.searchQuery}
                searchResultCount={props.searchResultCount}

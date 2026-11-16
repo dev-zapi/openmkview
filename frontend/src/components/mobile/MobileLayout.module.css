@@ -77,6 +77,11 @@
   overscroll-behavior: contain;
 }
 
+/* When the bottom view bar is docked it owns the safe-bottom inset */
+.hasBottomBar .mobileContent {
+  padding-bottom: 12px;
+}
+
 /* Left drawer content */
 .leftDrawerContent {
   display: flex;

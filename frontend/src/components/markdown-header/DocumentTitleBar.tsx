@@ -1,4 +1,4 @@
-import { Component, For, Show } from 'solid-js';
+import { Component, createSignal, For, Show } from 'solid-js';
 import styles from './styles.module.css';
 import { ViewTabs } from './ViewTabs';
 import type { TabType } from './ViewTabs';
@@ -17,6 +17,10 @@ export interface DocumentTitleBarProps {
   fileType?: FileType;
   /** Binary files render a placeholder page; hide all view tabs. */
   binary?: boolean;
+  /** Full path (mobile): tapping the filename reveals it. */
+  filePath?: string;
+  /** Project name shown with the revealed path (mobile). */
+  projectName?: string;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
@@ -29,7 +33,7 @@ export interface DocumentTitleBarProps {
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
-  /** Render in compact mobile mode (hamburger + filename + tabs + overflow menu). */
+  /** Render in compact mobile mode (hamburger + filename + actions; views live in the bottom bar). */
   mobile?: boolean;
   /** Click handler for the hamburger menu button shown in mobile mode. */
   onMenuClick?: () => void;
@@ -115,13 +119,13 @@ const exportIcons: Record<ExportFormat, string> = {
 };
 
 export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
+  const [pathOpen, setPathOpen] = createSignal(false);
   const formattedSize = () =>
     props.fileSize !== undefined ? formatFileSize(props.fileSize) : '';
 
   const formattedTime = () =>
     props.lastModified ? formatTimeAgo(props.lastModified) : '';
 
-  const isImage = () => props.fileType === 'image';
   const isDocument = () => props.fileType === 'markdown' || props.fileType === 'html';
 
   /** Export targets by document type: markdown → PDF/HTML/MD source, html → PDF/HTML source. */
@@ -165,23 +169,31 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         </Show>
 
         <div class={styles.mobileTitleSection}>
-          <span class={styles.fileIcon}>{getFileIcon(props.fileName)}</span>
-          <span class={styles.fileName} data-testid="mobile-topbar-title">{props.fileName}</span>
-          <Show when={props.isDirty}>
-            <span class={styles.dirtyIndicator} aria-label="unsaved changes">*</span>
-          </Show>
+          <button
+            type="button"
+            class={styles.mobileFileNameButton}
+            onClick={() => setPathOpen(!pathOpen())}
+            disabled={!props.filePath}
+            title={props.filePath ? 'Show full path' : undefined}
+            aria-label="Show file path"
+            aria-expanded={props.filePath ? pathOpen() : undefined}
+          >
+            <span class={styles.fileName} data-testid="mobile-topbar-title">{props.fileName}</span>
+            <Show when={props.isDirty}>
+              <span class={styles.dirtyIndicator} aria-label="unsaved changes">*</span>
+            </Show>
+          </button>
         </div>
 
-        <div class={styles.mobileTabsSection}>
-          <Show when={!props.binary}>
-            <ViewTabs
-              activeTab={props.activeTab}
-              onTabChange={props.onTabChange}
-              fileType={props.fileType}
-              isDirty={props.isDirty}
-            />
-          </Show>
-        </div>
+        <Show when={pathOpen() && props.filePath}>
+          <div class={styles.pathPopoverBackdrop} onClick={() => setPathOpen(false)} aria-hidden="true" />
+          <div class={styles.pathPopover} role="dialog" aria-label="File path">
+            <Show when={props.projectName}>
+              <span class={styles.pathPopoverProject}>{props.projectName}</span>
+            </Show>
+            <span class={styles.pathPopoverPath}>{props.filePath}</span>
+          </div>
+        </Show>
 
         <div class={styles.documentRight}>
           <Show when={props.activeTab === 'edit' && props.onSave}>
