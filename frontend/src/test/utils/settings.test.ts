@@ -10,6 +10,8 @@ import {
   getValidatedOutlineWidth,
   getMarkdownStyle,
   applyFontSettings,
+  extractServerSettings,
+  normalizeSettings,
   applyTableDensity,
   applyTableWrap,
   applyCustomStylesheet,
@@ -190,6 +192,13 @@ describe('settings utils', () => {
     });
   });
 
+  describe('extractServerSettings', () => {
+    it('includes editor font size in the server payload', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS, editorFontSize: '18px' };
+      expect(extractServerSettings(settings).editorFontSize).toBe('18px');
+    });
+  });
+
   describe('applyFontSettings', () => {
     it('applies font settings to DOM', () => {
       const settings: Settings = {
@@ -204,6 +213,38 @@ describe('settings utils', () => {
       expect(document.body.style.fontSize).toBe('16px');
       expect(document.documentElement.style.getPropertyValue('--markdown-font')).toBe('Georgia');
       expect(document.documentElement.style.getPropertyValue('--markdown-size')).toBe('18px');
+    });
+
+    it('applies explicit editor font size independently of code size', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        codeFontSize: '13px',
+        editorFontSize: '18px',
+      };
+      applyFontSettings(settings);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('18px');
+      expect(document.documentElement.style.getPropertyValue('--code-size')).toBe('13px');
+    });
+
+    it('removes the editor size override when editor font size is empty', () => {
+      const explicit: Settings = {
+        ...DEFAULT_SETTINGS,
+        codeFontSize: '16px',
+        editorFontSize: '18px',
+      };
+      applyFontSettings(explicit);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('18px');
+
+      const following: Settings = { ...explicit, editorFontSize: '' };
+      applyFontSettings(following);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('');
+      expect(document.documentElement.style.getPropertyValue('--code-size')).toBe('16px');
+    });
+  });
+
+  describe('normalizeSettings', () => {
+    it('defaults editor font size to unset for partial settings', () => {
+      expect(normalizeSettings({ themeMode: 'dark' }).editorFontSize).toBe('');
     });
   });
 

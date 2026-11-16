@@ -21,6 +21,7 @@ export interface ServerSettings {
   markdownFontSize: string;
   codeFontFamily: string;
   codeFontSize: string;
+  editorFontSize: string;
   protectedPaths: string[];
   placeholderDirs: string[];
   ignoredFiles: string[];
@@ -50,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiFontSize: '14px',
   markdownFontSize: '16px',
   codeFontSize: '14px',
+  editorFontSize: '',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   placeholderDirs: ['node_modules', 'target', 'dist', 'build', '.git', '.svn', '.hg'],
   ignoredFiles: ['.DS_Store', 'Thumbs.db'],

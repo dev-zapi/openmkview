@@ -1,7 +1,8 @@
-import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
+import { Component, createSignal, createEffect, createMemo, Show, onMount, onCleanup, For } from 'solid-js';
+import type { JSX } from 'solid-js';
 import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
 import { applyTheme } from '../utils/theme';
-import { CUSTOM_STYLESHEET_MAX } from '../utils/settings';
+import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
@@ -75,7 +76,7 @@ const markdownFontSizePresets: PresetOption[] = [
   { label: '20px', value: '20px' },
 ];
 
-const codeFontSizePresets: PresetOption[] = [
+const fontSizePresets: PresetOption[] = [
   { label: '12px', value: '12px' },
   { label: '13px', value: '13px' },
   { label: '14px', value: '14px' },
@@ -127,6 +128,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   const [version, setVersion] = createSignal<string>("");
   const [buildTime, setBuildTime] = createSignal<string>("");
+  const settings = createMemo(() => settingsStore.settings());
   let observer: IntersectionObserver | null = null;
   let observerTimer: number | undefined;
   let contentRef: HTMLDivElement | undefined;
@@ -267,10 +269,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     void (async () => {
       setSaveError(null);
       try {
-        await settingsStore.saveServerSettings(settingsStore.settings());
+        await settingsStore.saveServerSettings(settings());
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
-        applyTheme(settingsStore.settings());
+        applyTheme(settings());
         props.onSave?.();
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : 'Failed to save settings');
@@ -379,7 +381,8 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const renderPresetButtons = <K extends StringSettingKey>(
     key: K,
     presets: PresetOption[],
-    className: string
+    className: string,
+    trailing?: JSX.Element
   ) => {
     return (
       <div class={className}>
@@ -390,6 +393,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             </Button>
           )}
         </For>
+        {trailing}
       </div>
     );
   };
@@ -454,7 +458,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="theme-mode">Theme Mode</label>
                   <Select
                     id="theme-mode"
-                    value={settingsStore.settings().themeMode}
+                    value={settings().themeMode}
                     onChange={(e) => updateSetting('themeMode', e.currentTarget.value as ThemeMode)}
                   >
                     <option value="system">Follow System</option>
@@ -467,7 +471,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="light-theme">Light Theme</label>
                   <Select
                     id="light-theme"
-                    value={settingsStore.settings().lightTheme}
+                    value={settings().lightTheme}
                     onChange={(e) => updateSetting('lightTheme', e.currentTarget.value)}
                   >
                     <For each={lightThemes()}>
@@ -480,7 +484,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="dark-theme">Dark Theme</label>
                   <Select
                     id="dark-theme"
-                    value={settingsStore.settings().darkTheme}
+                    value={settings().darkTheme}
                     onChange={(e) => updateSetting('darkTheme', e.currentTarget.value)}
                   >
                     <For each={darkThemes()}>
@@ -493,7 +497,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="code-theme-light">Code Theme (Light)</label>
                   <Select
                     id="code-theme-light"
-                    value={settingsStore.settings().codeBlockThemeLight}
+                    value={settings().codeBlockThemeLight}
                     onChange={(e) => updateSetting('codeBlockThemeLight', e.currentTarget.value)}
                   >
                     <For each={codeThemeLightPresets}>
@@ -506,7 +510,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="code-theme-dark">Code Theme (Dark)</label>
                   <Select
                     id="code-theme-dark"
-                    value={settingsStore.settings().codeBlockThemeDark}
+                    value={settings().codeBlockThemeDark}
                     onChange={(e) => updateSetting('codeBlockThemeDark', e.currentTarget.value)}
                   >
                     <For each={codeThemeDarkPresets}>
@@ -542,22 +546,22 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="content-width">Content Width</label>
                   <Select
                     id="content-width"
-                    value={settingsStore.settings().markdownWidth.mode}
-                    onChange={(e) => updateSetting('markdownWidth', { ...settingsStore.settings().markdownWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
+                    value={settings().markdownWidth.mode}
+                    onChange={(e) => updateSetting('markdownWidth', { ...settings().markdownWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
                   >
                     <option value="full">Full Width</option>
                     <option value="fixed">Fixed Width</option>
                   </Select>
                 </div>
 
-                <Show when={settingsStore.settings().markdownWidth.mode === 'fixed'}>
+                <Show when={settings().markdownWidth.mode === 'fixed'}>
                   <div class="settings-item">
                     <label for="fixed-width-value">Fixed Width Value</label>
                     <Input
                       id="fixed-width-value"
                       type="text"
-                      value={settingsStore.settings().markdownWidth.fixedWidth}
-                      onInput={(e) => updateSetting('markdownWidth', { ...settingsStore.settings().markdownWidth, fixedWidth: e.currentTarget.value })}
+                      value={settings().markdownWidth.fixedWidth}
+                      onInput={(e) => updateSetting('markdownWidth', { ...settings().markdownWidth, fixedWidth: e.currentTarget.value })}
                       placeholder="e.g., 900px, 70%"
                     />
                   </div>
@@ -567,7 +571,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="table-density">Table Density</label>
                   <Select
                     id="table-density"
-                    value={settingsStore.settings().tableDensity}
+                    value={settings().tableDensity}
                     onChange={(e) => updateSetting('tableDensity', e.currentTarget.value as 'small' | 'medium' | 'large')}
                   >
                     <option value="small">Small</option>
@@ -580,7 +584,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="table-wrap">Table Cell Wrapping</label>
                   <Select
                     id="table-wrap"
-                    value={settingsStore.settings().tableWrap}
+                    value={settings().tableWrap}
                     onChange={(e) => updateSetting('tableWrap', e.currentTarget.value as 'wrap' | 'nowrap')}
                   >
                     <option value="wrap">Wrap</option>
@@ -591,7 +595,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                 <div class="settings-item settings-item-column">
                   <label for="custom-stylesheet">Custom Stylesheet</label>
                   <CssEditor
-                    value={settingsStore.settings().customStylesheet}
+                    value={settings().customStylesheet}
                     onChange={(v) => updateSetting('customStylesheet', v.slice(0, CUSTOM_STYLESHEET_MAX))}
                     theme={settingsStore.effectiveTheme}
                   />
@@ -605,7 +609,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                       Clear
                     </Button>
                     <span style="font-size: 11px; color: var(--color-text); opacity: 0.7;">
-                      {settingsStore.settings().customStylesheet.length} / {CUSTOM_STYLESHEET_MAX}
+                      {settings().customStylesheet.length} / {CUSTOM_STYLESHEET_MAX}
                     </span>
                   </div>
                   <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
@@ -621,7 +625,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="ignored-files">Ignored Files (never shown)</label>
                   <TagListInput
                     id="ignored-files"
-                    values={settingsStore.settings().ignoredFiles}
+                    values={settings().ignoredFiles}
                     onChange={(values) => updateSetting('ignoredFiles', values)}
                     placeholder="e.g. .DS_Store"
                     addLabel="Ignored file"
@@ -635,7 +639,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="placeholder-dirs">Placeholder Directories (not expandable)</label>
                   <TagListInput
                     id="placeholder-dirs"
-                    values={settingsStore.settings().placeholderDirs}
+                    values={settings().placeholderDirs}
                     onChange={(values) => updateSetting('placeholderDirs', values)}
                     placeholder="e.g. node_modules"
                     addLabel="Placeholder directory"
@@ -657,7 +661,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                       type="number"
                       min="1"
                       max="10080"
-                      value={settingsStore.settings().sessionTimeoutMinutes}
+                      value={settings().sessionTimeoutMinutes}
                       onInput={(e) => updateSetting('sessionTimeoutMinutes', parseInt(e.currentTarget.value, 10) || 60)}
                     />
                     <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
@@ -758,7 +762,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     type="number"
                     min="1"
                     max="365"
-                    value={settingsStore.settings().trashExpireDays}
+                    value={settings().trashExpireDays}
                     onInput={(e) => updateSetting('trashExpireDays', parseInt(e.currentTarget.value) || 30)}
                   />
                   <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
@@ -770,7 +774,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <label for="protected-paths">Protected Paths (cannot be deleted)</label>
                   <TagListInput
                     id="protected-paths"
-                    values={settingsStore.settings().protectedPaths}
+                    values={settings().protectedPaths}
                     onChange={(values) => updateSetting('protectedPaths', values)}
                     placeholder="e.g. .github"
                     addLabel="Protected path"
@@ -789,7 +793,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <Input
                     id="ui-font-family"
                     type="text"
-                    value={settingsStore.settings().uiFontFamily}
+                    value={settings().uiFontFamily}
                     onInput={(e) => updateSetting('uiFontFamily', e.currentTarget.value)}
                     placeholder="e.g., MiSans, sans-serif"
                   />
@@ -801,7 +805,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <Input
                     id="ui-font-size"
                     type="text"
-                    value={settingsStore.settings().uiFontSize}
+                    value={settings().uiFontSize}
                     onInput={(e) => updateSetting('uiFontSize', e.currentTarget.value)}
                     placeholder="e.g., 14px"
                   />
@@ -813,7 +817,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <Input
                     id="markdown-font-family"
                     type="text"
-                    value={settingsStore.settings().markdownFontFamily}
+                    value={settings().markdownFontFamily}
                     onInput={(e) => updateSetting('markdownFontFamily', e.currentTarget.value)}
                     placeholder="e.g., Georgia, serif"
                   />
@@ -825,7 +829,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <Input
                     id="markdown-font-size"
                     type="text"
-                    value={settingsStore.settings().markdownFontSize}
+                    value={settings().markdownFontSize}
                     onInput={(e) => updateSetting('markdownFontSize', e.currentTarget.value)}
                     placeholder="e.g., 16px"
                   />
@@ -837,7 +841,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <Input
                     id="code-font-family"
                     type="text"
-                    value={settingsStore.settings().codeFontFamily}
+                    value={settings().codeFontFamily}
                     onInput={(e) => updateSetting('codeFontFamily', e.currentTarget.value)}
                     placeholder="e.g., JetBrains Mono, monospace"
                   />
@@ -849,11 +853,30 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   <Input
                     id="code-font-size"
                     type="text"
-                    value={settingsStore.settings().codeFontSize}
+                    value={settings().codeFontSize}
                     onInput={(e) => updateSetting('codeFontSize', e.currentTarget.value)}
                     placeholder="e.g., 14px"
                   />
-                  {renderPresetButtons('codeFontSize', codeFontSizePresets, 'size-presets')}
+                  {renderPresetButtons('codeFontSize', fontSizePresets, 'size-presets')}
+                </div>
+
+                <div class="settings-item">
+                  <label for="editor-font-size">Editor Font Size</label>
+                  <Input
+                    id="editor-font-size"
+                    type="text"
+                    value={settings().editorFontSize}
+                    onInput={(e) => updateSetting('editorFontSize', e.currentTarget.value)}
+                    placeholder={`Follows Code Block Font Size (currently ${resolvedEditorFontSize(settings())})`}
+                  />
+                  {renderPresetButtons('editorFontSize', fontSizePresets, 'size-presets',
+                    <Button type="button" variant="outline" size="sm" onClick={() => updateSetting('editorFontSize', '')}>
+                      Follow
+                    </Button>
+                  )}
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Leave empty to follow Code Block Font Size
+                  </p>
                 </div>
               </div>
             </div>
