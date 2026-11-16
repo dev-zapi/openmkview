@@ -53,3 +53,26 @@ test.describe('mobile touch targets', () => {
     expect(box?.height).toBeGreaterThanOrEqual(44);
   });
 });
+
+test.describe('mobile activity bar geometry', () => {
+  test.use({ viewport: { width: 440, height: 956 } });
+
+  test('project buttons are not clipped by the scroll container', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
+
+    const projects = page.locator('[class*="activityBarProjects"]');
+    await expect(projects.getByRole('button').first()).toBeVisible();
+    const clippedTitles = await projects.evaluate((container) => {
+      const clip = container.getBoundingClientRect();
+      return Array.from(container.querySelectorAll('button[title]'))
+        .filter((button) => {
+          const rect = button.getBoundingClientRect();
+          return rect.left < clip.left || rect.right > clip.right;
+        })
+        .map((button) => button.getAttribute('title'));
+    });
+
+    expect(clippedTitles).toEqual([]);
+  });
+});
