@@ -31,6 +31,10 @@ export interface MarkdownHeaderProps {
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
+  /** Full path (mobile): tapping the filename reveals it. */
+  filePath?: string;
+  /** Project name shown with the revealed path (mobile). */
+  projectName?: string;
   /** Render the header in compact mobile mode. */
   mobile?: boolean;
   /** Hamburger menu click handler (mobile mode only). */
@@ -46,13 +50,13 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
   const canSearch = () => isDocumentFile() && props.activeTab !== 'diff';
   const usesInlineSearch = () => canSearch() && props.activeTab !== 'edit';
   const searchButtonTitle = () => {
-    if (!isDocumentFile()) return '当前视图不支持搜索';
-    if (props.activeTab === 'edit') return '打开编辑器搜索';
-    if (props.activeTab === 'preview') return '搜索预览内容';
-    if (props.activeTab === 'source') return '搜索源码内容';
-    return 'Diff 视图暂不支持搜索';
+    if (!isDocumentFile()) return 'Search is unavailable in this view';
+    if (props.activeTab === 'edit') return 'Open the editor search';
+    if (props.activeTab === 'preview') return 'Search the preview';
+    if (props.activeTab === 'source') return 'Search the source';
+    return 'Search is unavailable in Diff view';
   };
-  const searchPlaceholder = () => (props.activeTab === 'source' ? '搜索源码内容...' : '搜索预览内容...');
+  const searchPlaceholder = () => (props.activeTab === 'source' ? 'Search the source…' : 'Search the preview…');
 
   const handleCopyClick = async () => {
     try {
@@ -161,6 +165,8 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         isDirty={props.isDirty}
         onSave={props.onSave}
         saving={props.saving}
+        filePath={props.filePath}
+        projectName={props.projectName}
         mobile={props.mobile}
         onMenuClick={props.onMenuClick}
       />

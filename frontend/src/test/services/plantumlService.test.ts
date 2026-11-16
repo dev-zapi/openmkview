@@ -25,12 +25,12 @@ describe('PlantUMLRenderer', () => {
     it('should return error for missing @startuml/@enduml', async () => {
       const invalidCode = 'A -> B';
       const result = await renderer.render(invalidCode, 'light');
-      expect(result).toContain('PlantUML 语法错误');
+      expect(result).toContain('PlantUML syntax error');
     });
 
     it('should return error for empty code', async () => {
       const result = await renderer.render('', 'light');
-      expect(result).toContain('PlantUML 渲染失败');
+      expect(result).toContain('PlantUML render failed');
     });
 
     it('should fetch SVG from PlantUML server', async () => {
@@ -50,7 +50,7 @@ describe('PlantUMLRenderer', () => {
 
       const code = '@startuml\nA -> B\n@enduml';
       const result = await renderer.render(code, 'light');
-      expect(result).toContain('PlantUML 服务器连接失败');
+      expect(result).toContain('Could not reach the PlantUML server');
     });
   });
 });

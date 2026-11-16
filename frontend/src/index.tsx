@@ -13,7 +13,7 @@ if ('serviceWorker' in navigator) {
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      if (confirm('有新版本可用,是否立即更新?\n\nNew version available, refresh now?')) {
+      if (confirm('New version available, refresh now?')) {
         updateSW(true)
       }
     },

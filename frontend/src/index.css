@@ -197,6 +197,8 @@
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
   --app-height: 100vh;
 }
 
@@ -1330,7 +1332,11 @@ textarea {
 .welcome p {
   font-size: 16px;
   color: var(--color-text);
-  opacity: 0.8;
+}
+
+/* Empty-state primary action (Button primitive) just needs breathing room */
+.welcome-cta {
+  margin-top: 20px;
 }
 
 /* Markdown Wrapper */
@@ -1688,6 +1694,29 @@ textarea {
   margin-bottom: 16px;
 }
 
+/* Themes list failed to load: name the problem, offer the recovery */
+.settings-load-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+.settings-retry {
+  border: none;
+  background: none;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: hsl(var(--accent));
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .settings-item {
   margin-bottom: 16px;
 }
@@ -1977,8 +2006,11 @@ textarea {
   opacity: 0.7;
 }
 
-/* Mobile Layout Styles */
-@media (max-width: 768px) {
+/* Mobile Layout Styles.
+   Gate mirrors appStore.MOBILE_SHELL_MEDIA — a landscape phone is wider than
+   768px but must still get the mobile shell, so the media list adds a
+   short-height coarse-pointer arm. Keep both in sync. */
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
   /* Ensure root doesn't force horizontal layout on mobile */
   #root {
     display: block;
@@ -2083,6 +2115,8 @@ textarea {
     height: var(--app-height);
     border-radius: 0;
     border: none;
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
   }
 
   .settings-panel-header {
@@ -2090,8 +2124,42 @@ textarea {
     padding-top: calc(16px + var(--safe-top));
   }
 
+  /* Section navigation becomes a horizontal chip rail instead of vanishing:
+     without it Settings is a 3000px+ scroll with no way to jump sections. */
+  .settings-panel-body {
+    flex-direction: column;
+  }
+
   .settings-nav {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .settings-nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .settings-nav ul {
+    display: flex;
+    gap: 4px;
+    width: max-content;
+  }
+
+  .settings-nav button {
+    width: auto;
+    min-height: 44px;
+    border-left: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    white-space: nowrap;
   }
 
   .settings-panel-content {
@@ -2157,6 +2225,31 @@ textarea {
   ::-webkit-scrollbar-thumb {
     border: none;
     border-radius: 2px;
+  }
+
+  /* Touch targets: 44px minimum on every surface the thumb uses */
+  .pierre-file-tree-host {
+    --trees-row-height: 44px;
+    --trees-item-height: 44px;
+  }
+
+  .outline-close-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-panel-header .close-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-panel-footer button {
+    min-height: 44px;
+  }
+
+  .open-project-close-btn {
+    width: 44px;
+    height: 44px;
   }
 
   /* Mobile project name in left drawer */

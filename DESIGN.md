@@ -223,7 +223,7 @@ A three-column instrument that the user tunes, not a fixed grid:
 - **Main column** — 46px header (tabs left, file name and actions right) above the content area; markdown padding 16px, content width user-set (full / % / px).
 - **Right panels** — outline panel and git panel (380px) dock as a fourth column with their own resize handles; the git panel carries a `-4px 0 20px` shadow because it overlays rather than dock.
 
-Density is compact and constant: ~24px tree rows, 40px touch tiles, 4px-base spacing rhythm (4/8/12/16/24). At ≤768px the layout is replaced, not squeezed: a dedicated mobile shell with a 40px top bar (hamburger + centered title + actions), the file tree in a slide-in drawer, compressed tabs (6px 10px, 12px), full-screen settings, 16px form text to stop iOS zoom, and safe-area insets top and bottom over a `100dvh` app height.
+Density is compact and constant: ~24px tree rows, 40px touch tiles, 4px-base spacing rhythm (4/8/12/16/24). At ≤768px (or a short landscape touch device, the breakpoint both JS and CSS share) the layout is replaced, not squeezed: a 44px header (hamburger + filename with ellipsis — tap reveals project and full path — plus only the current context's actions: Save in Edit, one ⋯ menu otherwise), view switching in a bottom icon bar (44px items, accent tint states, dirty dot on Edit) above the home indicator where the thumb lives, the file tree in a slide-in drawer that auto-opens when a project is activated (root pre-expanded), 44px touch targets and 44px tree rows throughout, full-screen settings with a horizontal category chip rail, 16px form text to stop iOS zoom, and safe-area insets on all four sides over a `100dvh` app height.
 
 ## Elevation & Depth
 
@@ -273,7 +273,7 @@ Small, consistent radii keep the instrument precise: 4px on icon buttons and inl
 - **Activity bar tiles:** 40×40, 8px radius, hairline border at 70% opacity, initial letter or favicon; hover fills paper-wash; active = accent 8% tint + accent border + accent text; menu-target gets a double-ring halo. Bottom icons gain a 3px accent edge bar (24px tall) when active.
 - **View tabs:** 13px, `8px 16px`, 6px radius; active = accent 8% tint + accent text + 500 weight + a 2px accent underline growing from center to 60% width (0.2s). Hover fills the card wash.
 - **File tree rows:** ~24px, 13px, 6px radius on hover/selected fills (Pierre tree, muted-override `rgba(0 0 0 / 0.1)` light, `rgba(255 255 255 / 0.14)` dark); two-tone filenames (dimmed extension); 12px search field above.
-- **Mobile:** 40px top bar buttons (40×40), centered truncating title, drawer for the tree with dimmed backdrop.
+- **Mobile:** 44px top-bar buttons, truncating filename that reveals project + full path on tap, the bottom icon view bar, a drawer for the tree with dimmed backdrop; the drawer's project menu uses a sliders glyph so it never reads as the header's ⋯.
 
 ### The Reading Room (signature — rendered Markdown)
 The document pane is the product's heart: Georgia 16px/1.7 on paper; h1 32px/h2 24px both closed by a 1px hairline; code in JetBrains Mono 14px on a paper-wash block with hairline border and 8px radius; blockquotes with a hairline left rule; tables with user-adjustable density (`4px 8px` → `16px 22px` cell padding) and wrap mode; the whole pane honors a user-set content width. Everything here optimizes for long reading sessions, and the user may retune it — but the shell never decorates its way in.

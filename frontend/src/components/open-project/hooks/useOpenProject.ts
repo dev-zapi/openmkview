@@ -128,7 +128,7 @@ export function useOpenProject(
    */
   const openProjectByPath = async (path: string) => {
     if (!path.trim()) {
-      setState(prev => ({ ...prev, error: '请输入项目路径' }));
+      setState(prev => ({ ...prev, error: 'Enter a project path' }));
       return;
     }
 
@@ -149,7 +149,7 @@ export function useOpenProject(
           setState(prev => ({
             ...prev,
             isLoading: false,
-            error: result.error || '打开项目失败',
+            error: result.error || 'Failed to open the project',
           }));
         });
       }
@@ -158,7 +158,7 @@ export function useOpenProject(
         setState(prev => ({
           ...prev,
           isLoading: false,
-          error: err instanceof Error ? err.message : '打开项目时发生错误',
+          error: err instanceof Error ? err.message : 'Unexpected error while opening the project',
         }));
       });
     }

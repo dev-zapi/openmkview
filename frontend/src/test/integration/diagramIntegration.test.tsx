@@ -675,7 +675,7 @@ A-->B
       const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
       expect(iconSource.style.display).not.toBe('none');
       expect(iconRender.style.display).toBe('none');
-      expect(toggleBtn.title).toBe('查看源码');
+      expect(toggleBtn.title).toBe('View source');
     });
 
     it('should show render icon and hide source icon after toggling to source mode', async () => {
@@ -719,7 +719,7 @@ A-->B
       // In source mode: render icon visible, source icon hidden
       expect(iconSource.style.display).toBe('none');
       expect(iconRender.style.display).not.toBe('none');
-      expect(toggleBtn.title).toBe('查看渲染图');
+      expect(toggleBtn.title).toBe('View rendered diagram');
     });
 
     it('should restore source icon after toggling back to render mode', async () => {
@@ -767,7 +767,7 @@ A-->B
       // Should be back to render mode: source icon visible, render icon hidden
       expect(iconSource.style.display).not.toBe('none');
       expect(iconRender.style.display).toBe('none');
-      expect(toggleBtn.title).toBe('查看源码');
+      expect(toggleBtn.title).toBe('View source');
     });
   });
 

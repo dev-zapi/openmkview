@@ -9,6 +9,7 @@ import CodeMirrorEditor from './CodeMirrorEditor';
 import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header/ViewTabs';
 import type { Settings } from '../types/app';
+import { Button } from './ui';
 import { diffStore } from '../stores/diffStore';
 import { fileStore } from '../stores/fileStore';
 
@@ -33,6 +34,10 @@ export interface FileContentViewProps {
   markdownStyle: Record<string, string>;
   diffMode: 'split' | 'unified';
   welcomeMessage?: string;
+  /** Heading for the empty state; defaults to the product name. */
+  welcomeTitle?: string;
+  /** Primary action shown under the empty-state message, e.g. "Open a project". */
+  welcomeAction?: { label: string; onClick: () => void };
   applyFadeClass?: boolean;
   searchQuery: string;
   currentSearchResult: number;
@@ -71,15 +76,22 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
           <div class="binary-placeholder-size">
             {formatFileSize(props.currentFile!.size ?? props.currentFile!.fileSize ?? 0)}
           </div>
-          <div class="binary-placeholder-message">二进制文件，无法预览</div>
+          <div class="binary-placeholder-message">Binary file — preview is not available</div>
         </div>
       </Show>
 
       <Show when={!props.loading && !fileStore.loadError() && !props.currentFile && props.activeTab === 'preview' && props.currentFileType === 'markdown'}>
         <div class="welcome">
-          <h1>OpenMKView</h1>
+          <h1>{props.welcomeTitle || 'OpenMKView'}</h1>
           <Show when={props.welcomeMessage} fallback={<p>Click a file to preview</p>}>
             <p>{props.welcomeMessage}</p>
+          </Show>
+          <Show when={props.welcomeAction}>
+            {(action) => (
+              <Button type="button" class="welcome-cta" onClick={action().onClick}>
+                {action().label}
+              </Button>
+            )}
           </Show>
         </div>
       </Show>
@@ -150,12 +162,12 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
         <div class={`source-view ${fadeClass}`}>
           <Show when={props.currentFile!.truncated}>
             <div class="source-notice" role="status">
-              文件超过 1 MB，内容已截断显示
+              File exceeds 1 MB; content is truncated
             </div>
           </Show>
           <Show when={props.currentFile!.lossy}>
             <div class="source-notice" role="status">
-              文件包含无效的 UTF-8 字节，已使用替换字符显示
+              File contains invalid UTF-8 bytes; replacement characters are shown
             </div>
           </Show>
           <SourceView

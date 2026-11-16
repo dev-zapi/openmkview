@@ -6,6 +6,9 @@
   min-height: 0;
   width: 100%;
   overflow: hidden;
+  /* Landscape phones: keep the bar and content off the notch side */
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* Mobile top bar with hamburger, title, and actions */
@@ -22,8 +25,8 @@
 }
 
 .menuButton {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,6 +77,11 @@
   overscroll-behavior: contain;
 }
 
+/* When the bottom view bar is docked it owns the safe-bottom inset */
+.hasBottomBar .mobileContent {
+  padding-bottom: 12px;
+}
+
 /* Left drawer content */
 .leftDrawerContent {
   display: flex;
@@ -119,12 +127,11 @@
 }
 
 .activityBarButton {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   margin-bottom: 8px;
   background: transparent;
   border: 1.5px solid var(--color-border);
-  opacity: 0.7;
   color: var(--color-text);
   cursor: pointer;
   border-radius: 8px;
@@ -191,8 +198,8 @@
 }
 
 .sidebarHeaderMenuButton {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;

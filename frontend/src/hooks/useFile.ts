@@ -67,8 +67,8 @@ export const useFile = () => {
       console.error('Failed to load file:', error);
       fileStore.setLoadError(
         offlineStore.online()
-          ? '文件加载失败'
-          : '当前处于离线模式，且此内容未缓存',
+          ? 'Failed to load the file'
+          : 'You are offline and this content is not cached',
       );
     } finally {
       fileStore.finishLoading();

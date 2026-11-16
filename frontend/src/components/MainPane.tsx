@@ -26,6 +26,10 @@ interface MainPaneProps {
   markdownStyle: Record<string, string>;
   diffMode: 'split' | 'unified';
   welcomeMessage: string;
+  /** Heading for the empty state; defaults to the product name. */
+  welcomeTitle?: string;
+  /** Primary action shown under the empty-state message. */
+  welcomeAction?: { label: string; onClick: () => void };
   applyFadeClass: boolean;
   isSearchOpen: boolean;
   searchQuery: string;
@@ -135,6 +139,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
                 markdownStyle={props.markdownStyle}
                 diffMode={props.diffMode}
                 welcomeMessage={props.welcomeMessage}
+                welcomeTitle={props.welcomeTitle}
+                welcomeAction={props.welcomeAction}
                 applyFadeClass={props.applyFadeClass}
                 searchQuery={props.searchQuery}
                 currentSearchResult={props.currentSearchResult}

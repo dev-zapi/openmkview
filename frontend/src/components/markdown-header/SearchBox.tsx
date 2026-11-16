@@ -73,13 +73,13 @@ export const SearchBox: Component<SearchBoxProps> = (props) => {
             ref={setInputRef}
             type="text"
             class={styles.searchInput}
-            placeholder={props.placeholder || '搜索内容...'}
+            placeholder={props.placeholder || 'Search…'}
             value={props.query}
             onInput={(e) => props.onQueryChange(e.currentTarget.value)}
           />
         </div>
         <span class="w-14 shrink-0 text-center text-xs tabular-nums text-muted-foreground">
-          {hasResults() ? `${props.currentResult || 0}/${props.resultCount}` : hasQuery() ? '无结果' : ''}
+          {hasResults() ? `${props.currentResult || 0}/${props.resultCount}` : hasQuery() ? 'No matches' : ''}
         </span>
         <Button
           variant="ghost"
@@ -87,8 +87,8 @@ export const SearchBox: Component<SearchBoxProps> = (props) => {
           class={styles.iconButton}
           disabled={!hasResults()}
           onClick={props.onPrevResult}
-          title="上一个 (Shift+Enter)"
-          aria-label="上一个匹配"
+          title="Previous match (Shift+Enter)"
+          aria-label="Previous match"
         >
           {chevronUpIcon}
         </Button>
@@ -98,8 +98,8 @@ export const SearchBox: Component<SearchBoxProps> = (props) => {
           class={styles.iconButton}
           disabled={!hasResults()}
           onClick={props.onNextResult}
-          title="下一个 (Enter)"
-          aria-label="下一个匹配"
+          title="Next match (Enter)"
+          aria-label="Next match"
         >
           {chevronDownIcon}
         </Button>
@@ -108,8 +108,8 @@ export const SearchBox: Component<SearchBoxProps> = (props) => {
           size="icon"
           class={styles.iconButton}
           onClick={props.onClose}
-          title="关闭 (ESC)"
-          aria-label="关闭搜索"
+          title="Close (ESC)"
+          aria-label="Close search"
         >
           {closeIcon}
         </Button>

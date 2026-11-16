@@ -405,8 +405,8 @@
 
   .toolbarButtonIcon {
     padding: 6px;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -429,8 +429,10 @@
   }
 }
 
-/* Mobile merged title bar (hamburger + filename + tabs + overflow menu) */
+/* Mobile merged title bar (hamburger + filename + overflow menu).
+   The filename popover anchors to this bar. */
 .mobileTitleBar {
+  position: relative;
   height: auto;
   min-height: 44px;
   padding-top: var(--safe-top);
@@ -444,8 +446,8 @@
 }
 
 .mobileMenuButton {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -469,55 +471,126 @@
   gap: 6px;
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
-.mobileTitleSection::-webkit-scrollbar {
-  display: none;
+/* The filename is the header's only stretchy content: full tap target,
+   ellipsis overflow, and a tap reveals the full path. */
+.mobileFileNameButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  margin-left: -4px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mobileTitleSection .fileName {
+.mobileFileNameButton:active {
+  background: var(--color-active-bg);
+}
+
+.mobileFileNameButton:disabled {
+  cursor: default;
+}
+
+.mobileFileNameButton .fileName {
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-h);
   white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.mobileTabsSection {
-  display: flex;
-  align-items: center;
-  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
 }
 
-.mobileTitleBar .tabItem {
-  padding: 4px 8px;
-  font-size: 12px;
+/* Full-path popover revealed by tapping the filename */
+.pathPopoverBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
 }
 
-@media (max-width: 480px) {
-  .mobileTitleBar {
-    flex-wrap: nowrap;
-  }
+.pathPopover {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 8px;
+  right: 8px;
+  z-index: 901;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
 
-  .mobileTitleSection {
-    order: 1;
-    flex: 1 1 0;
-    min-width: 0;
-  }
+.pathPopoverProject {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--color-text);
+}
 
-  .mobileTabsSection {
-    order: 3;
-    flex-shrink: 0;
-  }
+.pathPopoverPath {
+  font-family: var(--font-mono, 'JetBrains Mono', ui-monospace, Consolas, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-all;
+  color: var(--color-text);
+}
 
-  .documentRight {
-    order: 2;
-  }
+/* Bottom view bar (mobile): view switching lives in the thumb zone */
+.mobileViewBar {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  padding-bottom: max(4px, var(--safe-bottom));
+  background: var(--color-topbar-bg, var(--color-bg));
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.mobileViewBarItem {
+  flex: 1;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.mobileViewBarItem:active {
+  background: var(--color-active-bg);
+}
+
+.mobileViewBarActive {
+  background: var(--color-active-bg);
+  color: var(--color-text-h);
+}
+
+.mobileViewBarDirty {
+  position: absolute;
+  top: 8px;
+  right: calc(50% - 16px);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-warning, #f59f0a);
 }
 
 /* Toast notifications */

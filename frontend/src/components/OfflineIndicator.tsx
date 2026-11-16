@@ -5,7 +5,7 @@ import './OfflineIndicator.css';
 export const OfflineIndicator: Component = () => (
   <Show when={!offlineStore.online()}>
     <div class="offline-indicator" role="status">
-      离线模式
+      Offline
     </div>
   </Show>
 );

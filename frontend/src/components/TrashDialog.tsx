@@ -76,7 +76,7 @@ const TrashDialog: Component<TrashDialogProps> = (props) => {
 
   return (
     <Dialog open={props.isOpen} onOpenChange={(open) => { if (!open) props.onClose(); }}>
-      <DialogContent class="trash-dialog">
+      <DialogContent class="trash-dialog" aria-label="Trash">
         <div class="trash-header">
           <h2>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

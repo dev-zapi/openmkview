@@ -1,4 +1,4 @@
-import { Component, For, Show } from 'solid-js';
+import { Component, createSignal, For, Show } from 'solid-js';
 import styles from './styles.module.css';
 import { ViewTabs } from './ViewTabs';
 import type { TabType } from './ViewTabs';
@@ -17,6 +17,10 @@ export interface DocumentTitleBarProps {
   fileType?: FileType;
   /** Binary files render a placeholder page; hide all view tabs. */
   binary?: boolean;
+  /** Full path (mobile): tapping the filename reveals it. */
+  filePath?: string;
+  /** Project name shown with the revealed path (mobile). */
+  projectName?: string;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
   onFullscreenToggle: () => void;
@@ -29,7 +33,7 @@ export interface DocumentTitleBarProps {
   isDirty?: boolean;
   onSave?: () => void;
   saving?: boolean;
-  /** Render in compact mobile mode (hamburger + filename + tabs + overflow menu). */
+  /** Render in compact mobile mode (hamburger + filename + actions; views live in the bottom bar). */
   mobile?: boolean;
   /** Click handler for the hamburger menu button shown in mobile mode. */
   onMenuClick?: () => void;
@@ -50,21 +54,21 @@ const formatTimeAgo = (date: Date): string => {
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
   if (diffInSeconds < 60) {
-    return '刚刚';
+    return 'just now';
   }
   if (diffInSeconds < 3600) {
     const minutes = Math.floor(diffInSeconds / 60);
-    return `${minutes}分钟前`;
+    return `${minutes}m ago`;
   }
   if (diffInSeconds < 86400) {
     const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours}小时前`;
+    return `${hours}h ago`;
   }
   if (diffInSeconds < 604800) {
     const days = Math.floor(diffInSeconds / 86400);
-    return `${days}天前`;
+    return `${days}d ago`;
   }
-  return date.toLocaleDateString('zh-CN');
+  return date.toLocaleDateString();
 };
 
 const getFileIcon = (fileName: string): string => {
@@ -115,26 +119,26 @@ const exportIcons: Record<ExportFormat, string> = {
 };
 
 export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
+  const [pathOpen, setPathOpen] = createSignal(false);
   const formattedSize = () =>
     props.fileSize !== undefined ? formatFileSize(props.fileSize) : '';
 
   const formattedTime = () =>
     props.lastModified ? formatTimeAgo(props.lastModified) : '';
 
-  const isImage = () => props.fileType === 'image';
   const isDocument = () => props.fileType === 'markdown' || props.fileType === 'html';
 
   /** Export targets by document type: markdown → PDF/HTML/MD source, html → PDF/HTML source. */
   const exportOptions = (): { format: ExportFormat; label: string }[] =>
     props.fileType === 'html'
       ? [
-          { format: 'pdf', label: '导出为 PDF' },
-          { format: 'html', label: '导出为 HTML 源文件' },
+          { format: 'pdf', label: 'Export as PDF' },
+          { format: 'html', label: 'Export as HTML source' },
         ]
       : [
-          { format: 'pdf', label: '导出为 PDF' },
-          { format: 'html', label: '导出为 HTML' },
-          { format: 'md', label: '导出为 Markdown 源文件' },
+          { format: 'pdf', label: 'Export as PDF' },
+          { format: 'html', label: 'Export as HTML' },
+          { format: 'md', label: 'Export as Markdown source' },
         ];
 
   const exportTriggerIcon = (
@@ -165,23 +169,31 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         </Show>
 
         <div class={styles.mobileTitleSection}>
-          <span class={styles.fileIcon}>{getFileIcon(props.fileName)}</span>
-          <span class={styles.fileName} data-testid="mobile-topbar-title">{props.fileName}</span>
-          <Show when={props.isDirty}>
-            <span class={styles.dirtyIndicator} aria-label="unsaved changes">*</span>
-          </Show>
+          <button
+            type="button"
+            class={styles.mobileFileNameButton}
+            onClick={() => setPathOpen(!pathOpen())}
+            disabled={!props.filePath}
+            title={props.filePath ? 'Show full path' : undefined}
+            aria-label="Show file path"
+            aria-expanded={props.filePath ? pathOpen() : undefined}
+          >
+            <span class={styles.fileName} data-testid="mobile-topbar-title">{props.fileName}</span>
+            <Show when={props.isDirty}>
+              <span class={styles.dirtyIndicator} aria-label="unsaved changes">*</span>
+            </Show>
+          </button>
         </div>
 
-        <div class={styles.mobileTabsSection}>
-          <Show when={!props.binary}>
-            <ViewTabs
-              activeTab={props.activeTab}
-              onTabChange={props.onTabChange}
-              fileType={props.fileType}
-              isDirty={props.isDirty}
-            />
-          </Show>
-        </div>
+        <Show when={pathOpen() && props.filePath}>
+          <div class={styles.pathPopoverBackdrop} onClick={() => setPathOpen(false)} aria-hidden="true" />
+          <div class={styles.pathPopover} role="dialog" aria-label="File path">
+            <Show when={props.projectName}>
+              <span class={styles.pathPopoverProject}>{props.projectName}</span>
+            </Show>
+            <span class={styles.pathPopoverPath}>{props.filePath}</span>
+          </div>
+        </Show>
 
         <div class={styles.documentRight}>
           <Show when={props.activeTab === 'edit' && props.onSave}>
@@ -224,12 +236,12 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                 onClick={() => props.onSearchClick()}
               >
                 {searchIcon}
-                <span>{props.searchButtonTitle || '搜索'}</span>
+                <span>{props.searchButtonTitle || 'Search'}</span>
               </MenuItem>
 
               <MenuItem onClick={() => props.onCopyClick()}>
                 {copyIcon}
-                <span>复制全文</span>
+                <span>Copy All</span>
               </MenuItem>
 
               <Show when={isDocument()}>
@@ -247,7 +259,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
               <MenuSeparator />
               <MenuItem onClick={() => props.onOutlineToggle()}>
                 {outlineIcon}
-                <span>大纲</span>
+                <span>Outline</span>
                 <Show when={props.outlineCount > 0}>
                   <span class="ui-menu-badge">{props.outlineCount}</span>
                 </Show>
@@ -312,7 +324,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         <button
           class={`${styles.toolbarButtonIcon} ${props.isSearchActive ? styles.active : ''}`}
           onClick={props.onSearchClick}
-          title={props.searchButtonTitle || '搜索'}
+          title={props.searchButtonTitle || 'Search'}
           disabled={props.searchDisabled}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -324,7 +336,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         <button
           class={styles.toolbarButtonIcon}
           onClick={props.onCopyClick}
-          title="复制全文"
+          title="Copy all"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -334,7 +346,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
 
         <Show when={isDocument()}>
           <Menu>
-            <MenuTrigger class={styles.toolbarButtonIcon} title="导出">
+            <MenuTrigger class={styles.toolbarButtonIcon} title="Export">
               {exportTriggerIcon}
             </MenuTrigger>
             <MenuContent align="end">
@@ -353,7 +365,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         <button
           class={`${styles.toolbarButtonIcon} ${props.isOutlineOpen ? styles.active : ''}`}
           onClick={props.onOutlineToggle}
-          title="大纲"
+          title="Outline"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="4" y1="6" x2="20" y2="6"/>
@@ -368,7 +380,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         <button
           class={`${styles.toolbarButtonIcon} ${styles.fullscreenButton}`}
           onClick={props.onFullscreenToggle}
-          title={props.isFullscreen ? '退出全屏' : '全屏'}
+          title={props.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
           <Show when={props.isFullscreen} fallback={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

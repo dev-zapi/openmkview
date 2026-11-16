@@ -25,7 +25,7 @@ export class MermaidRenderer implements DiagramRenderer {
 
   async render(code: string, theme: 'light' | 'dark'): Promise<string> {
     if (!code || code.trim() === '') {
-      return this.createErrorTemplate('Mermaid 渲染失败', '图表代码为空', code);
+      return this.createErrorTemplate('Mermaid render failed', 'The diagram code is empty', code);
     }
 
     try {
@@ -36,8 +36,8 @@ export class MermaidRenderer implements DiagramRenderer {
       
       return svg;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      return this.createErrorTemplate('Mermaid 渲染失败', errorMessage, code);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return this.createErrorTemplate('Mermaid render failed', errorMessage, code);
     }
   }
 
