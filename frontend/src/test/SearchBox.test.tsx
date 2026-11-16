@@ -32,23 +32,23 @@ describe('SearchBox', () => {
       <SearchBox {...baseProps} isOpen={true} query="abc" resultCount={3} currentResult={2} />
     ));
     expect(screen.getByText('2/3')).toBeTruthy();
-    expect((screen.getByTitle('上一个 (Shift+Enter)') as HTMLButtonElement).disabled).toBe(false);
-    expect((screen.getByTitle('下一个 (Enter)') as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTitle('Previous match (Shift+Enter)') as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTitle('Next match (Enter)') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('shows 无结果 and disables nav buttons when a query has no matches', async () => {
+  it('shows no-match text and disables nav buttons when a query has no matches', async () => {
     render(() => (
       <SearchBox {...baseProps} isOpen={true} query="zzz" resultCount={0} currentResult={0} />
     ));
-    expect(screen.getByText('无结果')).toBeTruthy();
-    expect((screen.getByTitle('上一个 (Shift+Enter)') as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByTitle('下一个 (Enter)') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('No matches')).toBeTruthy();
+    expect((screen.getByTitle('Previous match (Shift+Enter)') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTitle('Next match (Enter)') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('emits onQueryChange when typing', async () => {
     const onQueryChange = vi.fn();
     render(() => <SearchBox {...baseProps} isOpen={true} onQueryChange={onQueryChange} />);
-    const input = screen.getByPlaceholderText('搜索内容...');
+    const input = screen.getByPlaceholderText('Search…');
     fireEvent.input(input, { target: { value: 'hello' } });
     expect(onQueryChange).toHaveBeenCalledWith('hello');
   });
@@ -69,11 +69,11 @@ describe('SearchBox', () => {
         onPrevResult={onPrevResult}
       />
     ));
-    fireEvent.click(screen.getByTitle('下一个 (Enter)'));
+    fireEvent.click(screen.getByTitle('Next match (Enter)'));
     expect(onNextResult).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTitle('上一个 (Shift+Enter)'));
+    fireEvent.click(screen.getByTitle('Previous match (Shift+Enter)'));
     expect(onPrevResult).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTitle('关闭 (ESC)'));
+    fireEvent.click(screen.getByTitle('Close (ESC)'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

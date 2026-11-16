@@ -41,12 +41,12 @@ describe('MermaidRenderer', () => {
     it('should return error for invalid syntax', async () => {
       const invalidCode = 'invalid mermaid code';
       const result = await renderer.render(invalidCode, 'light');
-      expect(result).toContain('Mermaid 渲染失败');
+      expect(result).toContain('Mermaid render failed');
     });
 
     it('should return error for empty code', async () => {
       const result = await renderer.render('', 'light');
-      expect(result).toContain('Mermaid 渲染失败');
+      expect(result).toContain('Mermaid render failed');
     });
   });
 });

@@ -41,7 +41,7 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
       renderZoomDiagram(source).then((html) => {
         setSvg(html);
       }).catch((err) => {
-        setError(err instanceof Error ? err.message : '图表加载失败');
+        setError(err instanceof Error ? err.message : 'Failed to load the diagram');
       }).finally(() => {
         setLoading(false);
       });
@@ -137,15 +137,15 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
             class="diagram-zoom-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="图表放大预览"
+            aria-label="Diagram zoom preview"
             onClick={(e) => e.stopPropagation()}
           >
             <div class="diagram-zoom-header">
-              <span class="diagram-zoom-title">{props.title || '图表预览'}</span>
+              <span class="diagram-zoom-title">{props.title || 'Diagram preview'}</span>
               <button
                 class="diagram-zoom-close"
                 onClick={props.onClose}
-                aria-label="关闭"
+                aria-label="Close"
                 type="button"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -167,7 +167,7 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
               <Show when={loading()}>
                 <div class="diagram-zoom-loading">
                   <div class="diagram-zoom-spinner" />
-                  正在加载高清图表…
+                  Loading the high-resolution diagram…
                 </div>
               </Show>
               <Show when={!loading() && error()}>
@@ -186,11 +186,11 @@ const DiagramZoomModal: Component<DiagramZoomModalProps> = (props) => {
             </div>
 
             <div class="diagram-zoom-controls">
-              <button type="button" class="diagram-zoom-btn" onClick={zoomOut} aria-label="缩小">−</button>
+              <button type="button" class="diagram-zoom-btn" onClick={zoomOut} aria-label="Zoom out">−</button>
               <span class="diagram-zoom-scale">{Math.round(state().scale * 100)}%</span>
-              <button type="button" class="diagram-zoom-btn" onClick={zoomIn} aria-label="放大">+</button>
+              <button type="button" class="diagram-zoom-btn" onClick={zoomIn} aria-label="Zoom in">+</button>
               <button type="button" class="diagram-zoom-btn diagram-zoom-reset" onClick={resetZoom}>
-                重置
+                Reset
               </button>
             </div>
           </div>

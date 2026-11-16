@@ -29,8 +29,8 @@ describe('DiagramZoomModal', () => {
 
     await waitFor(() => expect(document.body.querySelector('.diagram-zoom-transform svg')).toBeTruthy());
     expect(document.body.querySelector('.diagram-zoom-scale')?.textContent).toBe('100%');
-    expect(document.body.querySelector('[aria-label="放大"]')).toBeTruthy();
-    expect(document.body.querySelector('[aria-label="缩小"]')).toBeTruthy();
+    expect(document.body.querySelector('[aria-label="Zoom in"]')).toBeTruthy();
+    expect(document.body.querySelector('[aria-label="Zoom out"]')).toBeTruthy();
     unmount();
   });
 
@@ -57,7 +57,7 @@ describe('DiagramZoomModal', () => {
     await waitFor(() => expect(document.body.querySelector('.diagram-zoom-transform')).toBeTruthy());
     expect(document.body.querySelector('.diagram-zoom-scale')?.textContent).toBe('100%');
 
-    fireEvent.click(document.body.querySelector('[aria-label="放大"]')!);
+    fireEvent.click(document.body.querySelector('[aria-label="Zoom in"]')!);
     await waitFor(() => {
       const text = document.body.querySelector('.diagram-zoom-scale')?.textContent ?? '';
       expect(text).not.toBe('100%');

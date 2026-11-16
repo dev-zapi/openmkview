@@ -76,7 +76,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
           <div class="binary-placeholder-size">
             {formatFileSize(props.currentFile!.size ?? props.currentFile!.fileSize ?? 0)}
           </div>
-          <div class="binary-placeholder-message">二进制文件，无法预览</div>
+          <div class="binary-placeholder-message">Binary file — preview is not available</div>
         </div>
       </Show>
 
@@ -162,12 +162,12 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
         <div class={`source-view ${fadeClass}`}>
           <Show when={props.currentFile!.truncated}>
             <div class="source-notice" role="status">
-              文件超过 1 MB，内容已截断显示
+              File exceeds 1 MB; content is truncated
             </div>
           </Show>
           <Show when={props.currentFile!.lossy}>
             <div class="source-notice" role="status">
-              文件包含无效的 UTF-8 字节，已使用替换字符显示
+              File contains invalid UTF-8 bytes; replacement characters are shown
             </div>
           </Show>
           <SourceView

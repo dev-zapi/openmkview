@@ -61,7 +61,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       // Create copy button
       const copyBtn = document.createElement('button');
       copyBtn.className = 'copy-button';
-      copyBtn.textContent = ' 复制';
+      copyBtn.textContent = 'Copy';
       
       copyBtn.onclick = async () => {
         const code = pre.querySelector('code')?.textContent || '';
@@ -77,18 +77,18 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             document.execCommand('copy');
             document.body.removeChild(textarea);
           }
-          copyBtn.textContent = '已复制';
+          copyBtn.textContent = 'Copied';
           copyBtn.classList.add('copied');
           setTimeout(() => {
-            copyBtn.textContent = ' 复制';
+            copyBtn.textContent = 'Copy';
             copyBtn.classList.remove('copied');
           }, 2000);
         } catch (error) {
           console.error('Failed to copy code:', error);
-          copyBtn.textContent = '复制失败';
+          copyBtn.textContent = 'Copy failed';
           copyBtn.classList.add('failed');
           setTimeout(() => {
-            copyBtn.textContent = '📋 复制';
+            copyBtn.textContent = 'Copy';
             copyBtn.classList.remove('failed');
           }, 2000);
         }
@@ -134,8 +134,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'diagram-toggle-btn';
       toggleBtn.type = 'button';
-      toggleBtn.setAttribute('aria-label', '切换渲染图');
-      toggleBtn.title = '查看渲染图';
+      toggleBtn.setAttribute('aria-label', 'Toggle rendered diagram');
+      toggleBtn.title = 'View rendered diagram';
       toggleBtn.innerHTML = `
         <svg class="icon-source" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="16 18 22 12 16 6"/>
@@ -151,8 +151,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const zoomBtn = document.createElement('button');
       zoomBtn.className = 'diagram-zoom-btn';
       zoomBtn.type = 'button';
-      zoomBtn.setAttribute('aria-label', '放大查看');
-      zoomBtn.title = '放大查看';
+      zoomBtn.setAttribute('aria-label', 'Zoom in');
+      zoomBtn.title = 'Zoom in';
       zoomBtn.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"/>
@@ -181,7 +181,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           }
           wrapper.classList.add('diagram-mode');
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : '渲染失败';
+          const errorMessage = error instanceof Error ? error.message : 'Failed to render';
           const errorDiv = document.createElement('div');
           errorDiv.className = 'diagram-error';
           errorDiv.textContent = errorMessage;
@@ -196,7 +196,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const iconRender = toggleBtn.querySelector('.icon-render') as SVGElement;
       iconSource.style.display = '';
       iconRender.style.display = 'none';
-      toggleBtn.title = '查看源码';
+      toggleBtn.title = 'View source';
       zoomBtn.style.display = '';
 
       // Auto-render diagram on load
@@ -211,7 +211,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         if (isSourceMode) {
           iconSource.style.display = 'none';
           iconRender.style.display = '';
-          toggleBtn.title = '查看渲染图';
+          toggleBtn.title = 'View rendered diagram';
           zoomBtn.style.display = 'none';
           wrapper.classList.remove('diagram-mode');
           // Remove diagram div if present
@@ -226,7 +226,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         } else {
           iconSource.style.display = '';
           iconRender.style.display = 'none';
-          toggleBtn.title = '查看源码';
+          toggleBtn.title = 'View source';
           zoomBtn.style.display = '';
           if (!renderedSvg) {
             await renderDiagramContent();
@@ -496,7 +496,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         isOpen={zoomModalOpen()}
         onClose={() => setZoomModalOpen(false)}
         source={zoomSource()}
-        title="图表预览"
+        title="Diagram preview"
       />
     </div>
   );

@@ -5,7 +5,7 @@ import type { FileNode } from '../types';
  * decoration rather than a synthetic child path, so tree search can never
  * surface it as if it were a real file.
  */
-export const PLACEHOLDER_NOTICE_NAME = '(此目录不支持展开)';
+export const PLACEHOLDER_NOTICE_NAME = '(not expandable)';
 
 /** Remove trailing slashes so paths can be compared reliably. */
 export function normalizeTreePath(path: string): string {
