@@ -9,6 +9,7 @@ import CodeMirrorEditor from './CodeMirrorEditor';
 import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header/ViewTabs';
 import type { Settings } from '../types/app';
+import { Button } from './ui';
 import { diffStore } from '../stores/diffStore';
 import { fileStore } from '../stores/fileStore';
 
@@ -33,6 +34,10 @@ export interface FileContentViewProps {
   markdownStyle: Record<string, string>;
   diffMode: 'split' | 'unified';
   welcomeMessage?: string;
+  /** Heading for the empty state; defaults to the product name. */
+  welcomeTitle?: string;
+  /** Primary action shown under the empty-state message, e.g. "Open a project". */
+  welcomeAction?: { label: string; onClick: () => void };
   applyFadeClass?: boolean;
   searchQuery: string;
   currentSearchResult: number;
@@ -77,9 +82,16 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
 
       <Show when={!props.loading && !fileStore.loadError() && !props.currentFile && props.activeTab === 'preview' && props.currentFileType === 'markdown'}>
         <div class="welcome">
-          <h1>OpenMKView</h1>
+          <h1>{props.welcomeTitle || 'OpenMKView'}</h1>
           <Show when={props.welcomeMessage} fallback={<p>Click a file to preview</p>}>
             <p>{props.welcomeMessage}</p>
+          </Show>
+          <Show when={props.welcomeAction}>
+            {(action) => (
+              <Button type="button" class="welcome-cta" onClick={action().onClick}>
+                {action().label}
+              </Button>
+            )}
           </Show>
         </div>
       </Show>

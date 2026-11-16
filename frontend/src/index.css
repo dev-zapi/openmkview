@@ -1332,7 +1332,11 @@ textarea {
 .welcome p {
   font-size: 16px;
   color: var(--color-text);
-  opacity: 0.8;
+}
+
+/* Empty-state primary action (Button primitive) just needs breathing room */
+.welcome-cta {
+  margin-top: 20px;
 }
 
 /* Markdown Wrapper */

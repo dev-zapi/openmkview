@@ -10,12 +10,10 @@ test.describe('mobile header IA', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.locator('button[aria-label="Toggle navigation menu"]').click();
     await page.locator('button[aria-label="Open Project"]').click();
-    // Open Project dialog: pick the first project row.
+    // Open Project dialog: pick the first project row. The drawer re-opens
+    // automatically with the tree root expanded — open the README directly.
     await page.getByRole('dialog').getByRole('button', { name: /openmkview/i }).first().click();
     await expect(page.locator('.mobile-main-content')).toBeVisible();
-    // Open a markdown file from the tree (the root starts collapsed).
-    await page.locator('button[aria-label="Toggle navigation menu"]').click();
-    await page.getByRole('treeitem').first().click();
     await page.getByRole('treeitem', { name: /readme/i }).first().click();
     await expect(page.getByTestId('mobile-topbar-title')).toHaveText(/readme/i);
   });

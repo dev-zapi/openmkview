@@ -1,4 +1,4 @@
-import { Component, For, Show, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
+import { Component, For, Show, createSignal, createEffect, on, onCleanup, onMount, type JSX } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { MobileLayout, mobileLayoutStore } from '../components/mobile';
 import FileTree from '../components/FileTree';
@@ -110,6 +110,23 @@ export const MobileLayoutWrapper: Component<MobileLayoutWrapperProps> = (props) 
   const handleProjectClick = (project: Project) => {
     void props.onProjectClick(project);
   };
+
+  // Opening a project mid-session (dialog, rail) should surface the file tree
+  // so "pick a file" is one tap away. The active project also restores on app
+  // launch — that is a session restore, not a user action: bootSettled tells
+  // them apart (the restored project resolves while the project list is still
+  // settling, i.e. before the microtask flips the flag).
+  const [bootSettled, setBootSettled] = createSignal(false);
+  createEffect(() => {
+    if (props.projects.length > 0) {
+      queueMicrotask(() => setBootSettled(true));
+    }
+  });
+  createEffect(on(() => props.activeProject, (project) => {
+    if (bootSettled() && project && !props.currentFile) {
+      mobileLayoutStore.openLeftDrawer();
+    }
+  }));
 
   onMount(() => {
     const rootStyle = document.documentElement.style;
@@ -380,7 +397,17 @@ onClick={() => {
             currentSearchResult={props.currentSearchResult}
             searchRequestKey={props.searchRequestKey}
             diffMode="unified"
-            welcomeMessage="Tap the menu button to browse files"
+            welcomeTitle={props.activeProject?.name}
+            welcomeMessage={
+              props.activeProject
+                ? 'Pick a file to start reading'
+                : 'Open a local folder as a project and read it here'
+            }
+            welcomeAction={
+              props.activeProject
+                ? { label: 'Browse files', onClick: () => mobileLayoutStore.openLeftDrawer() }
+                : { label: 'Open a project', onClick: () => props.onOpenProject() }
+            }
             applyFadeClass={false}
              outlineWidth={props.outlineWidth ?? DEFAULT_OUTLINE_WIDTH}
              outlineTransition={props.outlineTransition ?? ''}
