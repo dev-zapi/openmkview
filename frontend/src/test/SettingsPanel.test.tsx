@@ -206,6 +206,42 @@ describe('SettingsPanel', () => {
     });
   });
 
+  it('renders editor font size with the resolved follow placeholder', () => {
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    const input = screen.getByLabelText('Editor Font Size') as HTMLInputElement;
+    expect(input.value).toBe('');
+    expect(input.placeholder).toBe('Follows Code Block size (currently 14px)');
+    expect(screen.getByText('Leave empty to follow Code Block Font Size')).toBeTruthy();
+  });
+
+  it('loads saved editor font size into the form', async () => {
+    const customSettings = { ...DEFAULT_SETTINGS, editorFontSize: '18px' };
+    localStorage.setItem('openmkview-settings', JSON.stringify(customSettings));
+    settingsStore.reloadSettings();
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Editor Font Size') as HTMLInputElement).value).toBe('18px');
+    });
+  });
+
+  it('Follow button clears editor font size back to unset', async () => {
+    settingsStore.updateSettings({ editorFontSize: '18px' });
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    const input = screen.getByLabelText('Editor Font Size') as HTMLInputElement;
+    expect(input.value).toBe('18px');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Follow' }));
+
+    await waitFor(() => {
+      expect(input.value).toBe('');
+      expect(input.placeholder).toBe('Follows Code Block size (currently 14px)');
+    });
+  });
+
   describe('navigation', () => {
     let scrollIntoViewMock: ReturnType<typeof vi.fn>;
     let IntersectionObserverMock: ReturnType<typeof vi.fn>;

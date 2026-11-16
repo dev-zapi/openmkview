@@ -10,6 +10,7 @@ import {
   getValidatedOutlineWidth,
   getMarkdownStyle,
   applyFontSettings,
+  extractServerSettings,
   applyTableDensity,
   applyTableWrap,
   applyCustomStylesheet,
@@ -190,6 +191,13 @@ describe('settings utils', () => {
     });
   });
 
+  describe('extractServerSettings', () => {
+    it('includes editor font size in the server payload', () => {
+      const settings: Settings = { ...DEFAULT_SETTINGS, editorFontSize: '18px' };
+      expect(extractServerSettings(settings).editorFontSize).toBe('18px');
+    });
+  });
+
   describe('applyFontSettings', () => {
     it('applies font settings to DOM', () => {
       const settings: Settings = {
@@ -204,6 +212,28 @@ describe('settings utils', () => {
       expect(document.body.style.fontSize).toBe('16px');
       expect(document.documentElement.style.getPropertyValue('--markdown-font')).toBe('Georgia');
       expect(document.documentElement.style.getPropertyValue('--markdown-size')).toBe('18px');
+    });
+
+    it('applies explicit editor font size independently of code size', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        codeFontSize: '13px',
+        editorFontSize: '18px',
+      };
+      applyFontSettings(settings);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('18px');
+      expect(document.documentElement.style.getPropertyValue('--code-size')).toBe('13px');
+    });
+
+    it('follows code block font size when editor font size is empty', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        codeFontSize: '16px',
+        editorFontSize: '',
+      };
+      applyFontSettings(settings);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('16px');
+      expect(document.documentElement.style.getPropertyValue('--code-size')).toBe('16px');
     });
   });
 

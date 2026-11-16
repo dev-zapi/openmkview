@@ -84,6 +84,8 @@ pub struct SystemSettings {
     pub code_font_family: String,
     #[serde(rename = "codeFontSize", default = "default_font_size")]
     pub code_font_size: String,
+    #[serde(rename = "editorFontSize", default)]
+    pub editor_font_size: String,
     #[serde(rename = "codeBlockThemeLight", default = "default_code_theme_light")]
     pub code_block_theme_light: String,
     #[serde(rename = "codeBlockThemeDark", default = "default_code_theme_dark")]
@@ -119,6 +121,7 @@ impl Default for SystemSettings {
             markdown_font_size: default_markdown_font_size(),
             code_font_family: default_code_font_family(),
             code_font_size: default_font_size(),
+            editor_font_size: String::new(),
             code_block_theme_light: default_code_theme_light(),
             code_block_theme_dark: default_code_theme_dark(),
             protected_paths: default_protected_paths(),
@@ -201,6 +204,24 @@ mod tests {
         let settings: SystemSettings = serde_json::from_str("{}").unwrap();
         assert_eq!(settings.table_density, TableDensity::Medium);
         assert_eq!(settings.custom_stylesheet, "");
+        assert_eq!(settings.editor_font_size, "");
+    }
+
+    #[test]
+    fn default_editor_font_size_is_empty() {
+        assert_eq!(SystemSettings::default().editor_font_size, "");
+    }
+
+    #[test]
+    fn editor_font_size_round_trips() {
+        let json = r#"{"editorFontSize":"18px"}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.editor_font_size, "18px");
+
+        let serialized = serde_json::to_string(&settings).unwrap();
+        assert!(serialized.contains(r#""editorFontSize":"18px""#));
+        let round_tripped: SystemSettings = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(round_tripped.editor_font_size, "18px");
     }
 
     #[test]

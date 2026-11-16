@@ -1,4 +1,5 @@
 import { Component, createSignal, createEffect, Show, onMount, onCleanup, For } from 'solid-js';
+import type { JSX } from 'solid-js';
 import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
 import { applyTheme } from '../utils/theme';
 import { CUSTOM_STYLESHEET_MAX } from '../utils/settings';
@@ -76,6 +77,14 @@ const markdownFontSizePresets: PresetOption[] = [
 ];
 
 const codeFontSizePresets: PresetOption[] = [
+  { label: '12px', value: '12px' },
+  { label: '13px', value: '13px' },
+  { label: '14px', value: '14px' },
+  { label: '15px', value: '15px' },
+  { label: '16px', value: '16px' },
+];
+
+const editorFontSizePresets: PresetOption[] = [
   { label: '12px', value: '12px' },
   { label: '13px', value: '13px' },
   { label: '14px', value: '14px' },
@@ -379,7 +388,8 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const renderPresetButtons = <K extends StringSettingKey>(
     key: K,
     presets: PresetOption[],
-    className: string
+    className: string,
+    extra?: JSX.Element
   ) => {
     return (
       <div class={className}>
@@ -390,6 +400,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             </Button>
           )}
         </For>
+        {extra}
       </div>
     );
   };
@@ -848,6 +859,25 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     placeholder="e.g., 14px"
                   />
                   {renderPresetButtons('codeFontSize', codeFontSizePresets, 'size-presets')}
+                </div>
+
+                <div class="settings-item">
+                  <label for="editor-font-size">Editor Font Size</label>
+                  <Input
+                    id="editor-font-size"
+                    type="text"
+                    value={settingsStore.settings().editorFontSize}
+                    onInput={(e) => updateSetting('editorFontSize', e.currentTarget.value)}
+                    placeholder={`Follows Code Block size (currently ${settingsStore.settings().editorFontSize || settingsStore.settings().codeFontSize})`}
+                  />
+                  {renderPresetButtons('editorFontSize', editorFontSizePresets, 'size-presets',
+                    <Button type="button" variant="outline" size="sm" onClick={() => updateSetting('editorFontSize', '')}>
+                      Follow
+                    </Button>
+                  )}
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Leave empty to follow Code Block Font Size
+                  </p>
                 </div>
               </div>
             </div>

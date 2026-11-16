@@ -13,6 +13,7 @@ const mockDefaultSettings = vi.hoisted(() => ({
   uiFontSize: '14px',
   markdownFontSize: '16px',
   codeFontSize: '14px',
+  editorFontSize: '',
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   placeholderDirs: ['node_modules', 'target', 'dist', 'build', '.git', '.svn', '.hg'],
   ignoredFiles: ['.DS_Store', 'Thumbs.db'],
