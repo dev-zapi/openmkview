@@ -11,6 +11,7 @@ import {
   getMarkdownStyle,
   applyFontSettings,
   extractServerSettings,
+  normalizeSettings,
   applyTableDensity,
   applyTableWrap,
   applyCustomStylesheet,
@@ -225,15 +226,25 @@ describe('settings utils', () => {
       expect(document.documentElement.style.getPropertyValue('--code-size')).toBe('13px');
     });
 
-    it('follows code block font size when editor font size is empty', () => {
-      const settings: Settings = {
+    it('removes the editor size override when editor font size is empty', () => {
+      const explicit: Settings = {
         ...DEFAULT_SETTINGS,
         codeFontSize: '16px',
-        editorFontSize: '',
+        editorFontSize: '18px',
       };
-      applyFontSettings(settings);
-      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('16px');
+      applyFontSettings(explicit);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('18px');
+
+      const following: Settings = { ...explicit, editorFontSize: '' };
+      applyFontSettings(following);
+      expect(document.documentElement.style.getPropertyValue('--editor-size')).toBe('');
       expect(document.documentElement.style.getPropertyValue('--code-size')).toBe('16px');
+    });
+  });
+
+  describe('normalizeSettings', () => {
+    it('defaults editor font size to unset for partial settings', () => {
+      expect(normalizeSettings({ themeMode: 'dark' }).editorFontSize).toBe('');
     });
   });
 

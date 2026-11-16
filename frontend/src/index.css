@@ -2180,6 +2180,7 @@ textarea {
   .size-presets button {
     padding: 6px 12px;
     font-size: 13px;
+    min-height: 44px;
   }
 
   /* Prevent iOS zoom on input focus */

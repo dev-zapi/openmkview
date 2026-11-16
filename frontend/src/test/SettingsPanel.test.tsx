@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
+import { render, screen, fireEvent, waitFor, within } from '@solidjs/testing-library';
 import SettingsPanel from '../components/SettingsPanel';
 import { DEFAULT_SETTINGS } from '../types/app';
 import { authStore } from '../stores/authStore';
@@ -211,8 +211,17 @@ describe('SettingsPanel', () => {
 
     const input = screen.getByLabelText('Editor Font Size') as HTMLInputElement;
     expect(input.value).toBe('');
-    expect(input.placeholder).toBe('Follows Code Block size (currently 14px)');
+    expect(input.placeholder).toBe('Follows Code Block Font Size (currently 14px)');
     expect(screen.getByText('Leave empty to follow Code Block Font Size')).toBeTruthy();
+  });
+
+  it('applies editor font size preset buttons', () => {
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+    const item = screen.getByLabelText('Editor Font Size').closest('.settings-item') as HTMLElement;
+    fireEvent.click(within(item).getByRole('button', { name: '16px' }));
+
+    expect((screen.getByLabelText('Editor Font Size') as HTMLInputElement).value).toBe('16px');
   });
 
   it('loads saved editor font size into the form', async () => {
@@ -238,7 +247,7 @@ describe('SettingsPanel', () => {
 
     await waitFor(() => {
       expect(input.value).toBe('');
-      expect(input.placeholder).toBe('Follows Code Block size (currently 14px)');
+      expect(input.placeholder).toBe('Follows Code Block Font Size (currently 14px)');
     });
   });
 
