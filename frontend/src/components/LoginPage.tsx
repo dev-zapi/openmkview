@@ -73,6 +73,9 @@ const LoginPage: Component = () => {
           </Show>
 
           <Button class="login-submit" type="submit" disabled={submitting()}>
+            <Show when={submitting()}>
+              <span class="btn-spinner" aria-hidden="true" />
+            </Show>
             {submitting() ? 'Signing in...' : 'Sign in'}
           </Button>
 
@@ -88,6 +91,9 @@ const LoginPage: Component = () => {
               onClick={() => void handlePasskeyLogin()}
               disabled={passkeySubmitting()}
             >
+              <Show when={passkeySubmitting()}>
+                <span class="btn-spinner" aria-hidden="true" />
+              </Show>
               {passkeySubmitting() ? 'Waiting for Passkey...' : 'Sign in with Passkey'}
             </Button>
           </Show>

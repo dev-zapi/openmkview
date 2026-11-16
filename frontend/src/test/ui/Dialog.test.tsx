@@ -92,7 +92,7 @@ describe('Dialog', () => {
   it('uses scaleIn animation classes', () => {
     render(() => <TestDialog open={true} />);
     const dialog = screen.getByRole('dialog');
-    expect(dialog.className).toContain('animate-in');
+    expect(dialog.className).toContain('animate-scale-in');
   });
 
   it('accepts an extra class for legacy test contracts', () => {

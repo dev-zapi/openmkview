@@ -252,7 +252,8 @@ Small, consistent radii keep the instrument precise: 4px on icon buttons and inl
 - **Outline:** hairline border on paper; hover fills paper-gray.
 - **Ghost:** no border; hover fills paper-gray. The default for icon buttons.
 - **Destructive:** cinnabar fill for irreversible actions; menu items use cinnabar text on a 10% tint instead.
-- **Focus:** 2px ring offset 2px on background. **Press:** ripple at 60% + scale to 0.96–0.98 (0.1s) — quiet at rest, tactile under the finger.
+- **Focus:** 2px ring offset 2px on background. **Press:** ripple at 60% + scale to 0.96–0.98 (0.1s) — quiet at rest, tactile under the finger. Wired once on the `Button` baseline (`.btn-ripple`/`.btn-scale`) so every consumer inherits it; ripple tints with `currentColor` so it reads on fill and outline alike.
+- **Busy/Success:** while waiting, an inline 14px `currentColor` spinner (`.btn-spinner`) rides beside the label; success may pop a check via `scaleIn 0.15s` (`.save-check`).
 
 ### Chips (menu badge, count pills)
 - **Style:** accent fill, accent-foreground text, 11px semibold, 10px pill radius, `1px 6px` padding.
@@ -279,7 +280,7 @@ Small, consistent radii keep the instrument precise: 4px on icon buttons and inl
 The document pane is the product's heart: Georgia 16px/1.7 on paper; h1 32px/h2 24px both closed by a 1px hairline; code in JetBrains Mono 14px on a paper-wash block with hairline border and 8px radius; blockquotes with a hairline left rule; tables with user-adjustable density (`4px 8px` → `16px 22px` cell padding) and wrap mode; the whole pane honors a user-set content width. Everything here optimizes for long reading sessions, and the user may retune it — but the shell never decorates its way in.
 
 ### Login Card (signature)
-A 420px glass card (`background / 0.88`, `blur(18px)`, 20px radius, dialog-halo shadow) floating on a diagonal paper→wash gradient with a soft accent radial in the top-left corner; 52px accent mark tile, 28px title, 12px hairline divider flanked "or" text. The one moment the instrument allows itself atmosphere.
+A 420px glass card (`background / 0.88`, `blur(18px)`, 20px radius, dialog-halo shadow) floating on a diagonal paper→wash gradient with a soft accent radial in the top-left corner; 52px accent mark tile, 28px title, 12px hairline divider flanked "or" text. The one moment the instrument allows itself atmosphere — including its entrance: the card rises and fades in (0.2s), contents staggering in behind it (header 50ms, fields 100/150ms, submit 200ms, each 0.15s; the whole sequence inside 0.4s). The passkey divider/button enter undelayed whenever the availability check resolves.
 
 ## Do's and Don'ts
 
@@ -289,6 +290,8 @@ A 420px glass card (`background / 0.88`, `blur(18px)`, 20px radius, dialog-halo 
 - **Do** keep the reading pane serif, 16px, 1.7 line-height, with hairline-ruled h1/h2 — it is the core identity (核心身份).
 - **Do** use 0.15s ease for state transitions, 0.12s for menus, `cubic-bezier(0.4, 0, 0.2, 1)` for panel slides, and always answer presses with ripple/scale.
 - **Do** keep focus-visible rings (2px, `ring` token, offset 2) on every interactive element — keyboard users get the same precision.
+- **Do** fade overlays 0.2s and scale-in dialogs 0.2s / popovers 0.12s via the shared keyframe utilities (`.dialog-overlay`, `.animate-scale-in`, `.animate-pop-in`) — never per-surface one-offs.
+- **Do** honor `prefers-reduced-motion`: skip entrances, ripples, and press scaling; keep color transitions instant-but-animated.
 - **Do** build mobile as the drawer-based MobileLayout with safe-area insets and 16px form text; never shrink the desktop shell.
 
 ### Don't:

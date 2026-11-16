@@ -161,7 +161,7 @@ export const PopoverContent: Component<PopoverContentProps> = (props) => {
           role="dialog"
           class={cn(
             'z-50 w-72 rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-lg',
-            'animate-in fade-in-0 zoom-in-95',
+            'animate-pop-in',
             local.class,
           )}
           classList={local.classList}

@@ -718,6 +718,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                               disabled={passkeyBusyId() === credential.id}
                               onClick={() => void handlePasskeyDelete(credential.id)}
                             >
+                              <Show when={passkeyBusyId() === credential.id}>
+                                <span class="btn-spinner" aria-hidden="true" />
+                              </Show>
                               {passkeyBusyId() === credential.id ? 'Removing...' : 'Remove'}
                             </Button>
                           </div>
@@ -732,6 +735,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                       disabled={passkeyBusyId() === '__register__' || !authStore.passkeyConfigured()}
                       onClick={() => void handlePasskeyRegister()}
                     >
+                      <Show when={passkeyBusyId() === '__register__'}>
+                        <span class="btn-spinner" aria-hidden="true" />
+                      </Show>
                       {passkeyBusyId() === '__register__'
                         ? 'Waiting for Passkey...'
                         : authStore.passkeyConfigured()
@@ -863,7 +869,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
               </div>
             </Show>
             <Button class="settings-save-btn" onClick={handleSave}>
-              {saved() ? '✓ Saved!' : 'Save Settings'}
+              <Show when={saved()}>
+                <span class="save-check" aria-hidden="true">✓</span>
+              </Show>
+              {saved() ? ' Saved!' : 'Save Settings'}
             </Button>
           </div>
         </div>
