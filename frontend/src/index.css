@@ -25,6 +25,32 @@
   --success: 142 71% 45%;
   --warning: 38 92% 50%;
 
+  /* Tailwind v4 generates color utilities (bg-primary, text-foreground, …)
+     only from --color-* keys — the raw triplets above alone emit no utilities.
+     Alias them through var() so theme overrides of --primary & friends cascade
+     and alpha modifiers (bg-primary/90) keep working via color-mix. */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+
   --radius: 0.5rem;
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
@@ -271,13 +297,27 @@ body {
   background: hsl(var(--background) / 0.88);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(18px);
+  animation: slideInUp 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
+/* Login entrance choreography: panel first, contents stagger in behind it
+   (header 50ms, fields 100/150ms, submit 200ms; whole sequence ≤0.4s).
+   Divider/passkey enter undelayed — they mount only once the passkey
+   availability check resolves, which may fall outside the sequence. */
 .login-panel-header {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
+  animation: slideInUp 0.15s ease 50ms both;
+}
+
+.login-field:nth-of-type(1) {
+  animation: slideInUp 0.15s ease 100ms both;
+}
+
+.login-field:nth-of-type(2) {
+  animation: slideInUp 0.15s ease 150ms both;
 }
 
 .login-panel-header h1 {
@@ -332,6 +372,7 @@ body {
   background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
   font-size: 12px;
+  animation: slideInUp 0.15s ease both;
 }
 
 /* .login-submit: visual rules now supplied by <Button> */
@@ -339,6 +380,7 @@ body {
   margin-top: 4px;
   padding: 12px 16px;
   border-radius: var(--radius-lg);
+  animation: slideInUp 0.15s ease 200ms both;
 }
 
 .login-submit:disabled {
@@ -353,6 +395,7 @@ body {
   color: hsl(var(--muted-foreground));
   opacity: 0.6;
   font-size: 12px;
+  animation: slideInUp 0.15s ease both;
 }
 
 .login-divider::before,
@@ -368,6 +411,7 @@ body {
 .login-passkey {
   padding: 12px 16px;
   border-radius: var(--radius-lg);
+  animation: slideInUp 0.15s ease both;
 }
 
 .login-passkey:disabled {
@@ -463,14 +507,47 @@ body {
   animation: spin 1s linear infinite;
 }
 
-/* Button click ripple effect */
+.animate-pop-in {
+  animation: popIn 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Popover entrance: animates the individual `scale` property so it composes
+   with centering transforms (e.g. align="center" sets translateX(-50%))
+   instead of replacing them mid-animation */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* Dialog overlay fade (ui/Dialog passes the .dialog-overlay class) */
+.dialog-overlay {
+  animation: fadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Inline busy spinner for buttons; currentColor tracks the variant text */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Button click ripple effect — plays once per press via the :active trigger */
 @keyframes ripple {
   0% {
-    transform: scale(0);
+    transform: translate(-50%, -50%) scale(0);
     opacity: 0.6;
   }
   100% {
-    transform: scale(4);
+    transform: translate(-50%, -50%) scale(4);
     opacity: 0;
   }
 }
@@ -487,14 +564,29 @@ body {
   left: 50%;
   width: 5px;
   height: 5px;
-  background: rgba(255, 255, 255, 0.5);
+  background: currentColor;
   opacity: 0;
   border-radius: 50%;
   transform: translate(-50%, -50%) scale(1);
+}
+
+.btn-ripple:active::before {
   animation: ripple 0.6s ease-out;
 }
 
-/* Button scale effect on click */
+/* Button scale effect on click. Longhands re-declare the color transitions
+   because this unlayered rule would otherwise override Tailwind's layered
+   `transition-colors` on the Button baseline. */
+.btn-scale {
+  transition:
+    transform 0.1s ease,
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    outline-color 0.15s ease,
+    text-decoration-color 0.15s ease;
+}
+
 .btn-scale:active {
   transform: scale(0.96) !important;
 }
@@ -506,6 +598,44 @@ body {
 
 .interactive-press:active {
   transform: scale(0.98);
+}
+
+/* Reduced motion: skip entrances, ripples, and press scaling app-wide;
+   color feedback stays instant. Final states are the base styles, so
+   nothing depends on an animation to become visible. */
+@media (prefers-reduced-motion: reduce) {
+  .btn-ripple:active::before,
+  .btn-spinner,
+  .animate-fade-in,
+  .animate-slide-in-left,
+  .animate-slide-in-right,
+  .animate-slide-in-up,
+  .animate-scale-in,
+  .animate-pop-in,
+  .animate-pulse,
+  .animate-spin,
+  .login-panel,
+  .login-panel-header,
+  .login-field,
+  .login-field:nth-of-type(1),
+  .login-field:nth-of-type(2),
+  .login-submit,
+  .login-error,
+  .login-divider,
+  .login-passkey,
+  .settings-overlay,
+  .settings-panel,
+  .save-check,
+  .dialog-overlay {
+    animation: none;
+  }
+
+  .btn-scale:active,
+  .interactive-press:active,
+  .settings-nav button:active,
+  .settings-retry:active {
+    transform: none;
+  }
 }
 
 /* Activity Bar */
@@ -1660,6 +1790,10 @@ textarea {
   font-weight: 500;
 }
 
+.settings-nav button:active {
+  transform: scale(0.98);
+}
+
 .settings-panel-content {
   flex: 1;
   overflow-y: auto;
@@ -1715,6 +1849,11 @@ textarea {
   color: hsl(var(--accent));
   text-decoration: underline;
   cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.settings-retry:active {
+  transform: scale(0.98);
 }
 
 .settings-item {
@@ -1833,6 +1972,12 @@ textarea {
    kept only for legacy class selector compatibility */
 .settings-save-btn {
   /* Button primitive handles padding, background, color, radius, hover */
+}
+
+/* Success check on the save button pops in beside the label */
+.save-check {
+  display: inline-block;
+  animation: scaleIn 0.15s ease both;
 }
 
 /* Git Panel */

@@ -35,6 +35,12 @@ describe('Button', () => {
     expect(container.querySelector('button')!.className).toContain('focus-visible:ring-2');
   });
 
+  it('includes press-motion classes on the baseline', () => {
+    const { container } = render(() => <Button>x</Button>);
+    expect(container.querySelector('button')!.className).toContain('btn-ripple');
+    expect(container.querySelector('button')!.className).toContain('btn-scale');
+  });
+
   it('forwards click handlers', () => {
     const onClick = vi.fn();
     render(() => <Button onClick={onClick}>x</Button>);
