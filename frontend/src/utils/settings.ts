@@ -194,6 +194,10 @@ export const getMarkdownStyle = (settings: Settings): Record<string, string> => 
   return {};
 };
 
+export const resolvedEditorFontSize = (settings: Settings): string => {
+  return settings.editorFontSize || settings.codeFontSize;
+};
+
 export const applyFontSettings = (settings: Settings): void => {
   document.body.style.fontFamily = settings.uiFontFamily;
   document.body.style.fontSize = settings.uiFontSize;
@@ -201,10 +205,11 @@ export const applyFontSettings = (settings: Settings): void => {
   document.documentElement.style.setProperty('--markdown-size', settings.markdownFontSize);
   document.documentElement.style.setProperty('--code-font', settings.codeFontFamily);
   document.documentElement.style.setProperty('--code-size', settings.codeFontSize);
-  document.documentElement.style.setProperty(
-    '--editor-size',
-    settings.editorFontSize || settings.codeFontSize,
-  );
+  if (settings.editorFontSize) {
+    document.documentElement.style.setProperty('--editor-size', resolvedEditorFontSize(settings));
+  } else {
+    document.documentElement.style.removeProperty('--editor-size');
+  }
 };
 
 export const applyTableDensity = (settings: Settings): void => {
