@@ -1,13 +1,16 @@
 import { test, expect } from '@playwright/test';
 
-// The mock server has no /api/themes route (404), which is exactly the
-// failure that used to turn the Settings gear into a dead button:
+// A failing /api/themes used to turn the Settings gear into a dead button:
 // loadThemes set themes to undefined and themes().filter crashed the panel.
+// The mock now serves themes, so this spec forces the failure with a route.
 
 test.describe('mobile settings', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('settings panel survives a themes API failure', async ({ page }) => {
+  await page.route('**/api/themes', (route) =>
+    route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not Found' }) })
+  );
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   // Open the left drawer and start Settings from the activity rail.

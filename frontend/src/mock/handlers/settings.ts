@@ -1,9 +1,21 @@
 import type { Connect } from 'vite';
 import { DEFAULT_SETTINGS } from '../../types/app';
+import type { Theme } from '../../types/app';
 
 type NextFunction = () => void;
 
 let currentSettings = { ...DEFAULT_SETTINGS };
+
+// Mirrors get_builtin_themes() in src/models/theme.rs so the Settings pickers
+// see the same list as a real backend.
+const builtinThemes: Theme[] = [
+  { id: 'light-default', name: 'Default', type: 'light', builtin: true },
+  { id: 'light-warm', name: 'Warm', type: 'light', builtin: true },
+  { id: 'light-cool', name: 'Cool', type: 'light', builtin: true },
+  { id: 'dark-default', name: 'Default', type: 'dark', builtin: true },
+  { id: 'dark-blue', name: 'Blue', type: 'dark', builtin: true },
+  { id: 'dark-purple', name: 'Purple', type: 'dark', builtin: true },
+];
 
 function sendJson(res: any, data: any, status = 200) {
   res.statusCode = status;
@@ -47,6 +59,11 @@ export async function handleSettingsApi(
       ...(await parseBody<typeof DEFAULT_SETTINGS>(req)),
     };
     sendJson(res, currentSettings);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/themes') {
+    sendJson(res, { themes: builtinThemes });
     return true;
   }
 

@@ -124,12 +124,15 @@ export async function handleProjectsApi(
     const body = await parseBody<OpenProjectRequest>(req);
     const path = body.path;
 
-    // Simulate opening project
+    // Simulate opening project. The real backend returns the numeric project id
+    // as a string; the frontend runs parseInt on it, so keep ids numeric here —
+    // a "mock-..." id leaks into the URL as /project/NaN.
+    const known = mockProjects.find((p) => p.path === path);
     const projectName = path.split('/').pop() || 'project';
     sendJson(res, {
       success: true,
       project: {
-        id: `mock-${Date.now()}`,
+        id: known ? String(known.id) : String(Date.now()),
         name: projectName,
         path,
         last_opened_at: new Date().toISOString(),
