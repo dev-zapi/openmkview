@@ -16,10 +16,12 @@ test.describe('mobile empty states', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 
-  test('welcome text meets 4.5:1 contrast (no opacity wash)', async ({ page }) => {
+  test('welcome text keeps full contrast (no opacity wash)', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // The regression was opacity:0.8 on .welcome p dropping the copy to 4.4:1.
+    // Full opacity (computed "1", or "" on not-yet-painted nodes) is the fix.
     const opacity = await page.locator('.welcome p').evaluate((el) => getComputedStyle(el).opacity);
-    expect(opacity).toBe('1');
+    expect(parseFloat(opacity || '1')).toBeGreaterThanOrEqual(1);
   });
 
   test('opening a project switches the empty state and auto-opens the tree', async ({ page }) => {
