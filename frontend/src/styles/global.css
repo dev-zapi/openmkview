@@ -603,6 +603,15 @@
   outline-offset: 2px;
 }
 
+/* Touch target: keep the code-copy control thumb-sized on mobile
+   (gate mirrors appStore.MOBILE_SHELL_MEDIA / index.css) */
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
+  .copy-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* Source View Styles */
 .source-view-wrapper {
   background: transparent;

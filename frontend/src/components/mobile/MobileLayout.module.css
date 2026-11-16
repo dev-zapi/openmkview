@@ -25,8 +25,8 @@
 }
 
 .menuButton {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -127,8 +127,8 @@
 }
 
 .activityBarButton {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   margin-bottom: 8px;
   background: transparent;
   border: 1.5px solid var(--color-border);
@@ -199,8 +199,8 @@
 }
 
 .sidebarHeaderMenuButton {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;

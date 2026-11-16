@@ -2227,6 +2227,31 @@ textarea {
     border-radius: 2px;
   }
 
+  /* Touch targets: 44px minimum on every surface the thumb uses */
+  .pierre-file-tree-host {
+    --trees-row-height: 44px;
+    --trees-item-height: 44px;
+  }
+
+  .outline-close-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-panel-header .close-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .settings-panel-footer button {
+    min-height: 44px;
+  }
+
+  .open-project-close-btn {
+    width: 44px;
+    height: 44px;
+  }
+
   /* Mobile project name in left drawer */
   .mobile-project-name {
     font-size: 14px;
