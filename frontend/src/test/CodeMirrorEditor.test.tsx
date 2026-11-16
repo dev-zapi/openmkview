@@ -8,6 +8,7 @@ describe('CodeMirrorEditor', () => {
   });
 
   afterEach(() => {
+    document.documentElement.style.removeProperty('--editor-size');
     vi.useRealTimers();
   });
 
@@ -16,6 +17,22 @@ describe('CodeMirrorEditor', () => {
       <CodeMirrorEditor initialContent="# Hello World" fileName="test.md" />
     ));
     expect(container.querySelector('.codemirror-editor-container')).toBeTruthy();
+  });
+
+  it('applies the configured editor font size in dark mode', async () => {
+    document.documentElement.style.setProperty('--editor-size', '24px');
+    const { container } = render(() => (
+      <CodeMirrorEditor initialContent="# Test" theme="dark" />
+    ));
+
+    await vi.runAllTimersAsync();
+
+    const content = container.querySelector('.cm-content');
+    expect(content).toBeTruthy();
+    expect(getComputedStyle(content as Element).fontSize).toBe(
+      'var(--editor-size, var(--code-size, 14px))',
+    );
+    expect(getComputedStyle(content as Element).getPropertyValue('--editor-size')).toBe('24px');
   });
 
   it('renders status bar with file name', () => {

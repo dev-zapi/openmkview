@@ -72,6 +72,12 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       }
     });
 
+    const fontExtension = EditorView.theme({
+      '.cm-content': {
+        fontSize: 'var(--editor-size, var(--code-size, 14px))',
+      },
+    });
+
     const themeExtension = props.theme === 'dark' ? oneDark : EditorView.theme({
       '&': {
         backgroundColor: 'var(--color-bg)',
@@ -80,7 +86,6 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       '.cm-content': {
         caretColor: 'var(--color-text-h)',
         fontFamily: 'var(--code-font, "JetBrains Mono", ui-monospace, Consolas, monospace)',
-        fontSize: 'var(--editor-size, var(--code-size, 14px))',
       },
       '.cm-cursor': {
         borderLeftColor: 'var(--color-text-h)',
@@ -106,6 +111,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       history(),
       languageExtension(),
       themeExtension,
+      fontExtension,
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       updateListener,
