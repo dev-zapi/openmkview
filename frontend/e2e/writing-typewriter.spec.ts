@@ -1,4 +1,4 @@
-import { test, expect, openReadme, openReadmeInEdit } from './fixtures';
+import { test, expect, openReadmeInEdit } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // Typewriter Scrolling is the Writing Mode sub-toggle that keeps the caret's
