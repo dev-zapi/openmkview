@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
+import { render, screen, fireEvent } from '@solidjs/testing-library';
 import { EditorView } from '@codemirror/view';
 import CodeMirrorEditor from '../components/CodeMirrorEditor';
 import { writingModeStore } from '../stores/writingModeStore';
@@ -162,7 +162,7 @@ describe('CodeMirrorEditor', () => {
       expect(screen.queryByRole('button', { name: 'Writing' })).toBeNull();
     });
 
-    it('does not offer the Focus sub-toggle before Writing Mode is on', async () => {
+    it('does not offer the sub-toggles before Writing Mode is on', async () => {
       render(() => (
         <CodeMirrorEditor
           initialContent="# Test"
@@ -175,7 +175,72 @@ describe('CodeMirrorEditor', () => {
       await vi.runAllTimersAsync();
 
       expect(screen.queryByRole('button', { name: 'Focus' })).toBeNull();
-      // Typewriter Scrolling is a sibling ticket and not offered yet.
+      // Sub-toggles are only offered inside Writing Mode.
+      expect(screen.queryByRole('button', { name: 'Typewriter' })).toBeNull();
+    });
+
+    it('shows the Typewriter sub-toggle when writing mode turns on, defaulting to on', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          projectId={1}
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+
+      const typewriter = screen.getByRole('button', { name: 'Typewriter' });
+      expect(typewriter.getAttribute('aria-pressed')).toBe('true');
+
+      fireEvent.click(typewriter);
+      expect(typewriter.getAttribute('aria-pressed')).toBe('false');
+
+      fireEvent.click(typewriter);
+      expect(typewriter.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('remembers the typewriter preference across writing mode toggles', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          projectId={1}
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      const writing = screen.getByRole('button', { name: 'Writing' });
+      fireEvent.click(writing);
+      fireEvent.click(screen.getByRole('button', { name: 'Typewriter' }));
+      expect(screen.getByRole('button', { name: 'Typewriter' }).getAttribute('aria-pressed')).toBe('false');
+
+      fireEvent.click(writing);
+      expect(screen.queryByRole('button', { name: 'Typewriter' })).toBeNull();
+
+      fireEvent.click(writing);
+      expect(screen.getByRole('button', { name: 'Typewriter' }).getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('never shows the Typewriter sub-toggle for HTML files', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="<p>Test</p>"
+          fileName="page.html"
+          filePath="page.html"
+          fileType="html"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
       expect(screen.queryByRole('button', { name: 'Typewriter' })).toBeNull();
     });
 

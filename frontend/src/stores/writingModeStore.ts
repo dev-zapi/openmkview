@@ -33,6 +33,19 @@ const toggleWriting = (path: string) => {
   setSessions(new Map(sessions()).set(path, next));
 };
 
+const toggleTypewriter = (path: string) => {
+  const current = sessions().get(path);
+
+  // The sub-toggle only exists inside Writing Mode; an unseen path has no
+  // session to adjust, so leave it untouched rather than conjuring one.
+  if (!current) return;
+
+  setSessions(new Map(sessions()).set(path, {
+    ...current,
+    typewriter: !current.typewriter,
+  }));
+};
+
 const toggleFocus = (path: string) => {
   const current = sessions().get(path);
   // Paragraph Focus only exists inside a Writing Mode session.
@@ -51,6 +64,7 @@ export const writingModeStore = {
   sessions,
   getSession,
   toggleWriting,
+  toggleTypewriter,
   toggleFocus,
   reset,
 };

@@ -93,9 +93,6 @@ async function lineOpacity(page: Page, text: string): Promise<number | null> {
   }, text);
 }
 
-const dimmed = (opacity: number | null) => opacity !== null && opacity < 0.5;
-const fullContrast = (opacity: number | null) => opacity !== null && opacity > 0.9;
-
 test.describe('writing mode on desktop', () => {
   test.beforeEach(async ({ page }) => {
     // Cold Vite dev-server module compilation can exceed the 30s default.
@@ -108,8 +105,7 @@ test.describe('writing mode on desktop', () => {
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
-    // Sub-toggles are hidden until Writing Mode is on; Typewriter is a
-    // sibling ticket and is not offered yet.
+    // Sub-toggles stay hidden until Writing Mode is on.
     await expect(page.getByRole('button', { name: 'Focus' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Typewriter' })).toHaveCount(0);
 

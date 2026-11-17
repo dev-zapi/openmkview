@@ -39,6 +39,71 @@ const WRITING_THEME = EditorView.theme({
   },
 });
 
+/** How far the caret may sit from the viewport middle before we recenter it. */
+const TYPEWRITER_CENTER_TOLERANCE_PX = 24;
+
+/**
+ * Center the caret's line unless it is already within the middle band.
+ * Dispatching an explicit scroll (rather than reserving scroll margins) keeps
+ * mouse drag-selection from treating half the viewport as an auto-scroll zone.
+ */
+const centerCaret = (view: EditorView) => {
+  const head = view.state.selection.main.head;
+
+  let caret: { top: number; bottom: number } | null;
+  try {
+    caret = view.coordsAtPos(head);
+  } catch {
+    // Layout-less environments (jsdom in unit tests) cannot measure text.
+    return;
+  }
+
+  if (caret) {
+    const viewport = view.scrollDOM.getBoundingClientRect();
+    const caretMid = (caret.top + caret.bottom) / 2;
+    const viewportMid = (viewport.top + viewport.bottom) / 2;
+    if (Math.abs(caretMid - viewportMid) <= TYPEWRITER_CENTER_TOLERANCE_PX) return;
+  }
+
+  view.dispatch({ effects: EditorView.scrollIntoView(head, { y: 'center' }) });
+};
+
+/**
+ * Typewriter Scrolling: recenter the caret after typing-like edits only.
+ * Selection-only changes (mouse drags, clicks, scrolling) and programmatic
+ * document swaps are left alone, so they never move the scroll position.
+ * The centered scroll is scheduled for the next frame because dispatching
+ * during a CodeMirror update is not allowed; it produces no document change,
+ * so it cannot loop back into this plugin.
+ */
+const TYPEWRITER_CENTER = ViewPlugin.fromClass(
+  class {
+    private frame: number | null = null;
+    private destroyed = false;
+
+    update(update: ViewUpdate) {
+      if (!update.docChanged) return;
+
+      const typingEdit = update.transactions.some(
+        (tr) => tr.isUserEvent('input') || tr.isUserEvent('delete'),
+      );
+      if (!typingEdit) return;
+
+      if (this.frame !== null) cancelAnimationFrame(this.frame);
+      this.frame = requestAnimationFrame(() => {
+        this.frame = null;
+        if (!this.destroyed) centerCaret(update.view);
+      });
+    }
+
+    destroy() {
+      this.destroyed = true;
+      if (this.frame !== null) cancelAnimationFrame(this.frame);
+      this.frame = null;
+    }
+  },
+);
+
 /** A prose line that is not in the caret's block is dimmed. */
 const FOCUS_DIM_LINE = Decoration.line({ class: 'cm-focus-dim' });
 
@@ -135,7 +200,9 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorView: EditorView | undefined;
   let editorExtensions: Extension[] = [];
   let lastSearchRequestKey = props.searchRequestKey;
+  let previousTypewriterActive = false;
   const writingCompartment = new Compartment();
+  const typewriterCompartment = new Compartment();
   const focusCompartment = new Compartment();
 
   const canWrite = () => props.fileType === 'markdown';
@@ -149,12 +216,20 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
   const isWritingActive = () => canWrite() && writingModeStore.getSession(writingKey()).writing;
 
+  const isTypewriterActive = () =>
+    isWritingActive() && writingModeStore.getSession(writingKey()).typewriter;
+
   const isFocusActive = () =>
     isWritingActive() && writingModeStore.getSession(writingKey()).focus;
 
   const toggleWriting = () => {
     if (!canWrite()) return;
     writingModeStore.toggleWriting(writingKey());
+  };
+
+  const toggleTypewriter = () => {
+    if (!isWritingActive()) return;
+    writingModeStore.toggleTypewriter(writingKey());
   };
 
   const toggleFocus = () => {
@@ -197,7 +272,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     const saveKeybinding = keymap.of([
       {
         key: 'Mod-s',
-        run: (view: EditorView) => {
+        run: () => {
           if (props.onSave) {
             props.onSave();
           }
@@ -261,6 +336,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       themeExtension,
       fontExtension,
       writingCompartment.of(isWritingActive() ? writingExtension() : []),
+      typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_CENTER : []),
       focusCompartment.of(focusExtension()),
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
@@ -335,6 +411,27 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   createEffect(() => {
     if (!editorView) return;
 
+    const active = isTypewriterActive();
+
+    // Only an inactive -> active transition changes the extension; other
+    // session updates (Paragraph Focus, another file) must leave scroll alone.
+    if (active === previousTypewriterActive) return;
+    previousTypewriterActive = active;
+
+    editorView.dispatch({
+      effects: typewriterCompartment.reconfigure(active ? TYPEWRITER_CENTER : []),
+    });
+
+    // Entering Typewriter (or Writing Mode with it on) centers immediately
+    // rather than waiting for the next keystroke.
+    if (active) {
+      centerCaret(editorView);
+    }
+  });
+
+  createEffect(() => {
+    if (!editorView) return;
+
     editorView.dispatch({
       effects: focusCompartment.reconfigure(focusExtension()),
     });
@@ -374,6 +471,15 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
             </button>
           </Show>
           <Show when={isWritingActive()}>
+            <button
+              type="button"
+              class="writing-toggle"
+              title="Toggle Typewriter Scrolling"
+              aria-pressed={isTypewriterActive()}
+              onClick={toggleTypewriter}
+            >
+              Typewriter
+            </button>
             <button
               type="button"
               class="writing-toggle focus-toggle"
