@@ -133,6 +133,24 @@ test.describe('typewriter scrolling', () => {
 
     const after = await scroller.evaluate((el) => el.scrollTop);
     expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+
+    // Re-enabling Typewriter recenters the existing caret immediately, without
+    // needing another keystroke: scroll the caret away, toggle off and on.
+    await page.mouse.move(startX, startY);
+    await page.mouse.wheel(0, -400);
+
+    const typewriter = page.getByRole('button', { name: 'Typewriter' });
+    await typewriter.click();
+    await expect(typewriter).toHaveAttribute('aria-pressed', 'false');
+    await typewriter.click();
+    await expect(typewriter).toHaveAttribute('aria-pressed', 'true');
+
+    await expect
+      .poll(async () => {
+        const geometry = await readCaretGeometry(page);
+        return Math.abs(geometry.caretMid - geometry.viewportMid);
+      })
+      .toBeLessThan(80);
   });
 
   test('the caret line stays centered while typing with it on and scrolls away with it off', async ({ page }) => {
