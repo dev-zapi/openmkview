@@ -33,6 +33,13 @@ const toggleWriting = (path: string) => {
   setSessions(new Map(sessions()).set(path, next));
 };
 
+const toggleFocus = (path: string) => {
+  const current = sessions().get(path) ?? OFF_SESSION;
+  const next: WritingSession = { ...current, focus: !current.focus };
+
+  setSessions(new Map(sessions()).set(path, next));
+};
+
 const reset = () => {
   setSessions(new Map());
 };
@@ -41,6 +48,7 @@ export const writingModeStore = {
   sessions,
   getSession,
   toggleWriting,
+  toggleFocus,
   reset,
 };
 
