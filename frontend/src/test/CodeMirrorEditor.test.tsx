@@ -562,6 +562,38 @@ describe('CodeMirrorEditor', () => {
         expect(isDimmed(container, 'Last paragraph.')).toBe(true);
       });
 
+      it('paints the caret block as a rounded highlight card', async () => {
+        const { container } = render(editor);
+        await vi.runAllTimersAsync();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+        await vi.runAllTimersAsync();
+
+        // Single-line heading block carries first+last corner classes together.
+        const heading = lineByText(container, '# Heading')!;
+        expect(heading.classList.contains('cm-focus-active')).toBe(true);
+        expect(heading.classList.contains('cm-focus-active-first')).toBe(true);
+        expect(heading.classList.contains('cm-focus-active-last')).toBe(true);
+
+        // Dimmed blocks never carry highlight classes.
+        const dimmed = lineByText(container, 'First paragraph line one.')!;
+        expect(dimmed.classList.contains('cm-focus-active')).toBe(false);
+
+        // A multi-line block rounds only its outer corners.
+        moveCaret(container, 7);
+        await vi.runAllTimersAsync();
+        const first = lineByText(container, '- list item one')!;
+        const middle = lineByText(container, '- list item two')!;
+        const last = lineByText(container, '- list item three')!;
+        expect(first.classList.contains('cm-focus-active-first')).toBe(true);
+        expect(first.classList.contains('cm-focus-active-last')).toBe(false);
+        expect(middle.classList.contains('cm-focus-active')).toBe(true);
+        expect(middle.classList.contains('cm-focus-active-first')).toBe(false);
+        expect(middle.classList.contains('cm-focus-active-last')).toBe(false);
+        expect(last.classList.contains('cm-focus-active-last')).toBe(true);
+        expect(last.classList.contains('cm-focus-active-first')).toBe(false);
+      });
+
       it('treats contiguous list lines as a single block', async () => {
         const { container } = render(editor);
         await vi.runAllTimersAsync();

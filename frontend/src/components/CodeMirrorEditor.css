@@ -221,6 +221,31 @@
   transition: opacity 0.15s ease;
 }
 
+/* Writing Mode: all prose lines share inner breathing room so the focus
+   highlight can extend past the text measure without shifting it. */
+.codemirror-editor-container.writing-mode .cm-line {
+  padding-inline: 8px;
+  margin-inline: -8px;
+}
+
+/* The caret's block: an accent-wash card with the system radius. */
+.codemirror-editor-container .cm-line.cm-focus-active {
+  background: var(--color-hover-bg);
+}
+
+.codemirror-editor-container .cm-line.cm-focus-active-first {
+  border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+}
+
+.codemirror-editor-container .cm-line.cm-focus-active-last {
+  border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+}
+
+.codemirror-editor-container
+  .cm-line.cm-focus-active-first.cm-focus-active-last {
+  border-radius: var(--radius-md, 8px);
+}
+
 .dirty-badge {
   background: var(--color-warning, #f59e0b);
   color: white;

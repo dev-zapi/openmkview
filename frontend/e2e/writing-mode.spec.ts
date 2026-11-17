@@ -141,6 +141,32 @@ test.describe('writing mode on desktop', () => {
     await expect.poll(() => lineOpacity(page, '## Features')).toBeGreaterThan(0.9);
     await expect.poll(() => lineOpacity(page, '# OpenMKView')).toBeLessThan(0.5);
 
+    // The caret's block is painted as a rounded accent card; dimmed blocks
+    // get neither the wash nor the radius.
+    const cardPaint = () =>
+      page.evaluate(() => {
+        const find = (text: string) =>
+          Array.from(document.querySelectorAll('.cm-line')).find(
+            (candidate) => candidate.textContent === text,
+          );
+        const active = find('## Features');
+        const dimmed = find('# OpenMKView');
+        if (!active || !dimmed) return null;
+        const activeStyle = getComputedStyle(active);
+        return {
+          activeTopLeft: activeStyle.borderTopLeftRadius,
+          activeBottomRight: activeStyle.borderBottomRightRadius,
+          activeWashPainted: activeStyle.backgroundColor !== 'rgba(0, 0, 0, 0)',
+          dimmedPlain: getComputedStyle(dimmed).backgroundColor === 'rgba(0, 0, 0, 0)',
+        };
+      });
+    await expect.poll(cardPaint).toEqual({
+      activeTopLeft: '8px',
+      activeBottomRight: '8px',
+      activeWashPainted: true,
+      dimmedPlain: true,
+    });
+
     // Turning Focus off restores full contrast everywhere.
     await focus.click();
     await expect(focus).toHaveAttribute('aria-pressed', 'false');

@@ -109,6 +109,22 @@ const TYPEWRITER_CENTER = ViewPlugin.fromClass(
 const FOCUS_DIM_LINE = Decoration.line({ class: 'cm-focus-dim' });
 
 /**
+ * The caret's block is painted as a rounded highlight card: every line of the
+ * block carries the active class, and the block's first/last lines carry the
+ * corner classes so CSS can round only the outer corners.
+ */
+const FOCUS_ACTIVE_LINE = Decoration.line({ class: 'cm-focus-active' });
+const FOCUS_ACTIVE_FIRST = Decoration.line({
+  class: 'cm-focus-active cm-focus-active-first',
+});
+const FOCUS_ACTIVE_LAST = Decoration.line({
+  class: 'cm-focus-active cm-focus-active-last',
+});
+const FOCUS_ACTIVE_SOLO = Decoration.line({
+  class: 'cm-focus-active cm-focus-active-first cm-focus-active-last',
+});
+
+/**
  * Paragraph Focus: the blank-line-delimited block containing the caret keeps
  * full contrast, every other block is dimmed. A block is a maximal run of
  * non-blank lines, so contiguous list lines naturally form one block.
@@ -151,7 +167,21 @@ const focusDecorations = (view: EditorView): DecorationSet => {
 
   const ranges: Range<Decoration>[] = [];
   blocks.forEach((block, index) => {
-    if (index === highlighted) return;
+    if (index === highlighted) {
+      for (let lineNumber = block.from; lineNumber <= block.to; lineNumber += 1) {
+        const isBlockStart = lineNumber === block.from;
+        const isBlockEnd = lineNumber === block.to;
+        const deco = isBlockStart && isBlockEnd
+          ? FOCUS_ACTIVE_SOLO
+          : isBlockStart
+            ? FOCUS_ACTIVE_FIRST
+            : isBlockEnd
+              ? FOCUS_ACTIVE_LAST
+              : FOCUS_ACTIVE_LINE;
+        ranges.push(deco.range(doc.line(lineNumber).from));
+      }
+      return;
+    }
     for (let lineNumber = block.from; lineNumber <= block.to; lineNumber += 1) {
       ranges.push(FOCUS_DIM_LINE.range(doc.line(lineNumber).from));
     }
