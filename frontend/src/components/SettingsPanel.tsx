@@ -930,7 +930,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     type="text"
                     value={settings().writingFontSize}
                     onInput={(e) => updateSetting('writingFontSize', e.currentTarget.value)}
-                    placeholder={`Follows Editor Font Size (currently ${resolvedWritingFontSize(settings())})`}
+                    placeholder={`Follows Editor Font Size${settings().editorFontSize ? '' : ' → Code Block'} (currently ${resolvedWritingFontSize(settings())})`}
                   />
                   {renderPresetButtons('writingFontSize', fontSizePresets, 'size-presets',
                     <Button type="button" variant="outline" size="sm" onClick={() => updateSetting('writingFontSize', '')}>

@@ -296,7 +296,15 @@ describe('SettingsPanel', () => {
 
       const input = screen.getByLabelText('Writing Font Size') as HTMLInputElement;
       expect(input.value).toBe('');
-      expect(input.placeholder).toBe('Follows Editor Font Size (currently 13px)');
+      expect(input.placeholder).toBe('Follows Editor Font Size → Code Block (currently 13px)');
+    });
+
+    it('names the editor link when Editor Font Size resolves the writing size', () => {
+      settingsStore.updateSettings({ writingFontSize: '', editorFontSize: '16px' });
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const input = screen.getByLabelText('Writing Font Size') as HTMLInputElement;
+      expect(input.placeholder).toBe('Follows Editor Font Size (currently 16px)');
     });
 
     it('Follow button clears the writing font size back to unset', () => {
