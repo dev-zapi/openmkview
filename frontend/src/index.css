@@ -107,6 +107,20 @@
   --color-warning: hsl(var(--warning));
 }
 
+/* Shared top-bar material: translucent enough to reveal the backdrop, opaque
+   enough to keep compact labels and controls legible in either theme. */
+.topbar-glass {
+  background: hsl(var(--muted) / 0.76);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  backdrop-filter: blur(16px) saturate(120%);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .topbar-glass {
+    background: hsl(var(--muted));
+  }
+}
+
 /* Dark mode via system preference */
 @media (prefers-color-scheme: dark) {
   :root {

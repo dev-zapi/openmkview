@@ -64,7 +64,7 @@ export const SearchBox: Component<SearchBoxProps> = (props) => {
   // body runs once, so an early return on `props.isOpen` would freeze the box closed.
   return (
     <Show when={props.isOpen}>
-      <div class={styles.searchBox} role="search">
+      <div class={`${styles.searchBox} topbar-glass`} role="search">
         <div class="relative min-w-0 flex-1">
           <span class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
             {searchIcon}

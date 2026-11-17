@@ -27,7 +27,7 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
     <div class={styles.mobileContainer} classList={{ [styles.hasBottomBar]: Boolean(props.bottomBarContent) }}>
       {/* Mobile top bar (hidden when the merged header content is being shown) */}
       <Show when={!props.hideTopBar}>
-        <div class={styles.mobileTopBar}>
+        <div class={`${styles.mobileTopBar} topbar-glass`}>
           <button
             class={styles.menuButton}
             onClick={() => mobileLayoutStore.toggleLeftDrawer()}
