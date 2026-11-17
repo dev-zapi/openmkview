@@ -61,9 +61,21 @@ The read-only, syntax-highlighted source rendering used for any text file withou
 _Avoid_: code view, raw view, plain text view, unsupported file view
 
 **Edit Mode**:
-The viewing mode that opens a Markdown or HTML file in the editor, one of the three tabs alongside Preview and Diff. Offered only for Markdown and HTML files.
+The viewing mode that opens a Markdown or HTML file in the editor, one of the four tabs alongside Preview, Source, and Diff. Offered only for Markdown and HTML files.
 _Avoid_: editor mode, editing view, edit tab, source editing
 
 **Editor Font Size**:
 The font size of the editor shown in Edit Mode. When unset, it follows the Code Block Font Size.
 _Avoid_: edit font size, editor zoom, code font size, editor text size
+
+**Writing Mode**:
+A sub-mode of Edit Mode, offered only for Markdown files, that restyles the editor for prose with proportional typography in a centered column. Session-scoped and per-file: never persisted, and each file keeps its own state only until reload.
+_Avoid_: focus mode, zen mode, typewriter mode, 沉浸模式, 专注模式
+
+**Typewriter Scrolling**:
+An optional Writing Mode enhancement that keeps the caret vertically centered in the viewport while typing. Toggleable per file, session-scoped like Writing Mode itself.
+_Avoid_: caret centering, center scrolling, auto-scroll
+
+**Paragraph Focus**:
+An optional Writing Mode enhancement that dims every paragraph except the one holding the caret; a paragraph is a blank-line-separated block. Toggleable per file, session-scoped like Writing Mode itself.
+_Avoid_: focus dimming, sentence focus, highlight paragraph, dim mode
