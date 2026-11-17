@@ -187,6 +187,7 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             initialContent={props.initialContent}
             fileName={props.currentFile!.fileName}
             filePath={props.currentFile!.path}
+            projectId={props.activeProjectId}
             fileType={props.currentFileType}
             theme={props.theme}
             onSave={props.onSave}

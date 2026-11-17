@@ -22,11 +22,35 @@ export const WRITING_FONT_FAMILY = 'Georgia, "Noto Serif SC", "Songti SC", "Noto
 export const WRITING_FONT_SIZE = '18px';
 export const WRITING_COLUMN_WIDTH = '65ch';
 
+/**
+ * Centered prose column, only mounted while Writing Mode is active. Created
+ * once: CodeMirror's style modules are never pruned, so building a fresh one
+ * per toggle would leak dead rules.
+ */
+const WRITING_THEME = EditorView.theme({
+  // CodeMirror theme modules are order-sensitive; the doubled class gives the
+  // prose font priority over the code theme's `.cm-content` font rule in both
+  // light and dark themes.
+  '.cm-content.cm-content': {
+    fontFamily: WRITING_FONT_FAMILY,
+    fontSize: WRITING_FONT_SIZE,
+    lineHeight: '1.7',
+    maxWidth: WRITING_COLUMN_WIDTH,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+  },
+  '.cm-gutters': {
+    display: 'none',
+  },
+});
+
 export interface CodeMirrorEditorProps {
   initialContent: string;
   fileName?: string;
   /** Full project-relative path; keys the per-file Writing Mode session. */
   filePath?: string;
+  /** Owns the file; the session is per file per project. */
+  projectId?: number;
   /** Authoritative file category; only Markdown files offer Writing Mode. */
   fileType?: FileType;
   theme?: 'light' | 'dark';
@@ -46,7 +70,12 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
   const canWrite = () => props.fileType === 'markdown';
 
-  const writingKey = () => props.filePath || props.fileName || '';
+  /**
+   * Project-relative paths repeat across projects (`README.md` exists in both
+   * project A and project B), so the session key carries the project identity.
+   */
+  const writingKey = () =>
+    `${props.projectId ?? 'unknown'}:${props.filePath || props.fileName || ''}`;
 
   const isWritingActive = () => canWrite() && writingModeStore.getSession(writingKey()).writing;
 
@@ -56,23 +85,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   };
 
   /** Centered prose column; only included while Writing Mode is active. */
-  const writingExtension = () =>
-    EditorView.theme({
-      // CodeMirror theme modules are order-sensitive; the doubled class gives
-      // the prose font priority over the code theme's `.cm-content` font rule
-      // in both light and dark themes.
-      '.cm-content.cm-content': {
-        fontFamily: WRITING_FONT_FAMILY,
-        fontSize: WRITING_FONT_SIZE,
-        lineHeight: '1.7',
-        maxWidth: WRITING_COLUMN_WIDTH,
-        marginLeft: 'auto',
-        marginRight: 'auto',
-      },
-      '.cm-gutters': {
-        display: 'none',
-      },
-    });
+  const writingExtension = () => WRITING_THEME;
 
   const getCurrentContent = () => {
     return editorView?.state.doc.toString() || '';
@@ -255,7 +268,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
             <button
               type="button"
               class="writing-toggle"
-              title="Toggle Writing Mode (Ctrl+Alt+W)"
+              title="Toggle Writing Mode (Ctrl+Alt+W / ⌘+Alt+W)"
               aria-pressed={isWritingActive()}
               onClick={toggleWriting}
             >

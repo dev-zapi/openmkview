@@ -115,6 +115,7 @@ describe('CodeMirrorEditor', () => {
           fileName="notes.md"
           filePath="notes/notes.md"
           fileType="markdown"
+          projectId={1}
         />
       ));
 
@@ -123,6 +124,9 @@ describe('CodeMirrorEditor', () => {
       const toggle = screen.getByRole('button', { name: 'Writing' });
       expect(toggle).toBeTruthy();
       expect(toggle.getAttribute('aria-pressed')).toBe('false');
+      // Shortcut label is cross-platform, matching the Search toolbar precedent.
+      expect(toggle.getAttribute('title')).toContain('Ctrl+Alt+W');
+      expect(toggle.getAttribute('title')).toContain('⌘+Alt+W');
     });
 
     it('never shows the Writing toggle for HTML files', async () => {
@@ -171,12 +175,38 @@ describe('CodeMirrorEditor', () => {
       const toggle = screen.getByRole('button', { name: 'Writing' });
       fireEvent.click(toggle);
 
-      expect(writingModeStore.getSession('notes/notes.md').writing).toBe(true);
       expect(toggle.getAttribute('aria-pressed')).toBe('true');
 
       fireEvent.click(toggle);
-      expect(writingModeStore.getSession('notes/notes.md').writing).toBe(false);
       expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('keeps the same file path isolated between projects', async () => {
+      const editor = (projectId: number) => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="README.md"
+          filePath="README.md"
+          fileType="markdown"
+          projectId={projectId}
+        />
+      );
+
+      const projectA = render(() => editor(1));
+      await vi.runAllTimersAsync();
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+      expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('true');
+      projectA.unmount();
+
+      const projectB = render(() => editor(2));
+      await vi.runAllTimersAsync();
+      expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('false');
+      projectB.unmount();
+
+      // Returning to project A resumes its own session state.
+      render(() => editor(1));
+      await vi.runAllTimersAsync();
+      expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('true');
     });
 
     it('restyles as centered serif prose and hides gutters when writing mode is on', async () => {
@@ -207,7 +237,7 @@ describe('CodeMirrorEditor', () => {
     });
 
     it('applies writing typography in the dark theme too', async () => {
-      writingModeStore.toggleWriting('notes/notes.md');
+      writingModeStore.toggleWriting('1:notes/notes.md');
 
       const { container } = render(() => (
         <CodeMirrorEditor
@@ -215,6 +245,7 @@ describe('CodeMirrorEditor', () => {
           fileName="notes.md"
           filePath="notes/notes.md"
           fileType="markdown"
+          projectId={1}
           theme="dark"
         />
       ));

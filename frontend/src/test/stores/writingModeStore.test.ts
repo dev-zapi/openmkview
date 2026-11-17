@@ -57,6 +57,12 @@ describe('writingModeStore', () => {
       expect(writingModeStore.getSession('notes/a.md').writing).toBe(false);
       expect(writingModeStore.getSession('notes/b.md').writing).toBe(true);
     });
+
+    it('keeps the same path isolated across projects when keys carry the project id', () => {
+      writingModeStore.toggleWriting('1:README.md');
+      expect(writingModeStore.getSession('2:README.md').writing).toBe(false);
+      expect(writingModeStore.getSession('1:README.md').writing).toBe(true);
+    });
   });
 
   describe('reset', () => {
