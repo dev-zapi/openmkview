@@ -71,6 +71,19 @@ async function openReadmeInEdit(page: Page) {
   await expect(page.locator('.editor-status-bar')).toBeVisible();
 }
 
+/** Computed opacity of the rendered line whose text is exactly `text`. */
+async function lineOpacity(page: Page, text: string): Promise<number | null> {
+  return page.evaluate((lineText) => {
+    const line = Array.from(document.querySelectorAll('.cm-line')).find(
+      (candidate) => candidate.textContent === lineText,
+    );
+    return line ? parseFloat(getComputedStyle(line).opacity) : null;
+  }, text);
+}
+
+const dimmed = (opacity: number | null) => opacity !== null && opacity < 0.5;
+const fullContrast = (opacity: number | null) => opacity !== null && opacity > 0.9;
+
 test.describe('writing mode on desktop', () => {
   test.beforeEach(async ({ page }) => {
     // Cold Vite dev-server module compilation can exceed the 30s default.
@@ -83,15 +96,21 @@ test.describe('writing mode on desktop', () => {
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
-    // Sub-toggle buttons belong to later tickets and must not appear yet.
-    await expect(page.getByRole('button', { name: 'Typewriter' })).toHaveCount(0);
+    // Sub-toggles are hidden until Writing Mode is on; Typewriter is a
+    // sibling ticket and is not offered yet.
     await expect(page.getByRole('button', { name: 'Focus' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Typewriter' })).toHaveCount(0);
 
     const codePaint = await readWritingPaint(page);
     expect(codePaint.gutterDisplay).not.toBe('none');
 
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    // Paragraph Focus is available and on by default on first entry.
+    const focus = page.getByRole('button', { name: 'Focus' });
+    await expect(focus).toBeVisible();
+    await expect(focus).toHaveAttribute('aria-pressed', 'true');
 
     await expect.poll(async () => (await readWritingPaint(page)).fontFamily).toContain('serif');
 
@@ -121,6 +140,37 @@ test.describe('writing mode on desktop', () => {
     await page.keyboard.press('Control+Alt+w');
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     expect((await readWritingPaint(page)).gutterDisplay).not.toBe('none');
+  });
+
+  test('Paragraph Focus dims non-caret blocks and toggles back to full contrast', async ({ page }) => {
+    await page.getByRole('button', { name: 'Writing' }).click();
+    const focus = page.getByRole('button', { name: 'Focus' });
+    await expect(focus).toHaveAttribute('aria-pressed', 'true');
+
+    // The caret starts in the first block; the following block recedes.
+    await expect.poll(() => lineOpacity(page, '# OpenMKView')).toBeGreaterThan(0.9);
+    await expect
+      .poll(() => lineOpacity(page, 'A modern Markdown viewer and Git Diff tool.'))
+      .toBeLessThan(0.5);
+
+    // Moving the caret into another block moves the highlight.
+    await page.locator('.cm-line', { hasText: '## Features' }).click();
+    await expect.poll(() => lineOpacity(page, '## Features')).toBeGreaterThan(0.9);
+    await expect.poll(() => lineOpacity(page, '# OpenMKView')).toBeLessThan(0.5);
+
+    // Turning Focus off restores full contrast everywhere.
+    await focus.click();
+    await expect(focus).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(() => lineOpacity(page, '# OpenMKView')).toBeGreaterThan(0.9);
+    await expect.poll(() => lineOpacity(page, '## Features')).toBeGreaterThan(0.9);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            Array.from(document.querySelectorAll('.cm-line.cm-focus-dim')).length,
+        ),
+      )
+      .toBe(0);
   });
 
   test('switching theme keeps the writing typography', async ({ page }) => {
