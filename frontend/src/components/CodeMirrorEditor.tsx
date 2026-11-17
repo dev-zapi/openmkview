@@ -200,6 +200,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorView: EditorView | undefined;
   let editorExtensions: Extension[] = [];
   let lastSearchRequestKey = props.searchRequestKey;
+  let previousTypewriterActive = false;
   const writingCompartment = new Compartment();
   const typewriterCompartment = new Compartment();
   const focusCompartment = new Compartment();
@@ -271,7 +272,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     const saveKeybinding = keymap.of([
       {
         key: 'Mod-s',
-        run: (view: EditorView) => {
+        run: () => {
           if (props.onSave) {
             props.onSave();
           }
@@ -411,6 +412,12 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     if (!editorView) return;
 
     const active = isTypewriterActive();
+
+    // Only an inactive -> active transition changes the extension; other
+    // session updates (Paragraph Focus, another file) must leave scroll alone.
+    if (active === previousTypewriterActive) return;
+    previousTypewriterActive = active;
+
     editorView.dispatch({
       effects: typewriterCompartment.reconfigure(active ? TYPEWRITER_CENTER : []),
     });

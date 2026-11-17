@@ -67,6 +67,16 @@ async function pressKeys(page: Page, key: string, times: number) {
   }
 }
 
+/** Wait two frames so any pending typewriter scroll animation has settled. */
+async function settleFrames(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+
 test.describe('typewriter scrolling', () => {
   test.beforeEach(async ({ page }) => {
     // Cold Vite dev-server module compilation can exceed the 30s default.
@@ -116,6 +126,7 @@ test.describe('typewriter scrolling', () => {
     await expect
       .poll(async () => scroller.evaluate((el) => el.scrollTop))
       .toBeGreaterThan(100);
+    await settleFrames(page);
 
     const before = await scroller.evaluate((el) => el.scrollTop);
     const contentBox = await page.locator('.cm-content').boundingBox();
@@ -151,6 +162,44 @@ test.describe('typewriter scrolling', () => {
         return Math.abs(geometry.caretMid - geometry.viewportMid);
       })
       .toBeLessThan(80);
+  });
+
+  test('toggling Paragraph Focus does not move the scroll position', async ({ page }) => {
+    const writing = page.getByRole('button', { name: 'Writing' });
+    await writing.click();
+    await expect(page.getByRole('button', { name: 'Typewriter' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await focusEditor(page);
+    await page.keyboard.press('Control+Home');
+    await pressKeys(page, 'ArrowDown', 25);
+    await page.keyboard.type('x');
+
+    const scroller = page.locator('.cm-scroller');
+    await expect
+      .poll(async () => scroller.evaluate((el) => el.scrollTop))
+      .toBeGreaterThan(100);
+
+    const contentBox = await page.locator('.cm-content').boundingBox();
+    const scrollerBox = await scroller.boundingBox();
+    if (!contentBox || !scrollerBox) throw new Error('editor has no layout box');
+
+    // Wheel away from the centered caret, then toggle an unrelated sub-toggle.
+    await page.mouse.move(contentBox.x + contentBox.width / 2, scrollerBox.y + 80);
+    await page.mouse.wheel(0, -250);
+    await settleFrames(page);
+
+    const before = await scroller.evaluate((el) => el.scrollTop);
+    const focus = page.getByRole('button', { name: 'Focus' });
+    await expect(focus).toHaveAttribute('aria-pressed', 'true');
+    await focus.click();
+    await expect(focus).toHaveAttribute('aria-pressed', 'false');
+    await settleFrames(page);
+
+    const after = await scroller.evaluate((el) => el.scrollTop);
+    expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
   });
 
   test('the caret line stays centered while typing with it on and scrolls away with it off', async ({ page }) => {
