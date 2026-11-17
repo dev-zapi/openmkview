@@ -44,6 +44,18 @@ const WRITING_THEME = EditorView.theme({
   },
 });
 
+/**
+ * Typewriter Scrolling: CodeMirror treats scroll margins as extra space that
+ * must stay visible around the caret. Giving it half a viewport on each side
+ * shrinks the "visible" band to the middle line, so the built-in minimal
+ * scroll-into-view pins the caret's line at the vertical center while typing.
+ * It never scrolls by itself, so manual scrolling is left alone.
+ */
+const TYPEWRITER_SCROLL = EditorView.scrollMargins.of((view) => {
+  const halfViewport = view.scrollDOM.clientHeight / 2;
+  return { top: halfViewport, bottom: halfViewport };
+});
+
 export interface CodeMirrorEditorProps {
   initialContent: string;
   fileName?: string;
@@ -67,6 +79,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorExtensions: Extension[] = [];
   let lastSearchRequestKey = props.searchRequestKey;
   const writingCompartment = new Compartment();
+  const typewriterCompartment = new Compartment();
 
   const canWrite = () => props.fileType === 'markdown';
 
@@ -79,9 +92,16 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
   const isWritingActive = () => canWrite() && writingModeStore.getSession(writingKey()).writing;
 
+  const isTypewriterActive = () => isWritingActive() && writingModeStore.getSession(writingKey()).typewriter;
+
   const toggleWriting = () => {
     if (!canWrite()) return;
     writingModeStore.toggleWriting(writingKey());
+  };
+
+  const toggleTypewriter = () => {
+    if (!isWritingActive()) return;
+    writingModeStore.toggleTypewriter(writingKey());
   };
 
   /** Centered prose column; only included while Writing Mode is active. */
@@ -180,6 +200,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       themeExtension,
       fontExtension,
       writingCompartment.of(isWritingActive() ? writingExtension() : []),
+      typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_SCROLL : []),
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       updateListener,
@@ -243,6 +264,14 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   });
 
   createEffect(() => {
+    if (!editorView) return;
+
+    editorView.dispatch({
+      effects: typewriterCompartment.reconfigure(isTypewriterActive() ? TYPEWRITER_SCROLL : []),
+    });
+  });
+
+  createEffect(() => {
     if (!editorView || props.searchRequestKey === undefined || props.searchRequestKey === lastSearchRequestKey) {
       return;
     }
@@ -273,6 +302,17 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
               onClick={toggleWriting}
             >
               Writing
+            </button>
+          </Show>
+          <Show when={isWritingActive()}>
+            <button
+              type="button"
+              class="writing-toggle"
+              title="Toggle Typewriter Scrolling"
+              aria-pressed={isTypewriterActive()}
+              onClick={toggleTypewriter}
+            >
+              Typewriter
             </button>
           </Show>
           <span class="save-hint">Ctrl+S to save</span>
