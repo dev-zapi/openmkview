@@ -1,4 +1,4 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp } from './fixtures';
+import { test, expect, openReadme, openReadmeInEdit } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // Typewriter Scrolling is the Writing Mode sub-toggle that keeps the caret's
@@ -29,31 +29,6 @@ async function readCaretGeometry(page: Page): Promise<CaretGeometry> {
       viewportBottom: viewport.bottom,
     };
   });
-}
-
-async function openReadme(page: Page) {
-  await expect(page.getByRole('tree')).toBeVisible();
-
-  const readme = page.getByRole('treeitem', { name: /readme/i }).first();
-  if ((await readme.count()) === 0) {
-    // The file tree starts collapsed; expand the project root row.
-    await page.getByRole('treeitem').first().click();
-  }
-  await expect(readme).toBeVisible();
-  await readme.click();
-}
-
-async function openReadmeInEdit(page: Page) {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await loginIfNeeded(page);
-  await waitForDesktopApp(page);
-
-  await page.locator('.activity-bar-projects button[title="openmkview"]').click();
-  await expect(page.locator('.sidebar-header-name')).toHaveText('openmkview');
-
-  await openReadme(page);
-  await page.locator('[class*="viewTabs"]').getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.locator('.editor-status-bar')).toBeVisible();
 }
 
 /** Clicking status-bar buttons steals focus; put the caret back in the editor. */

@@ -1,4 +1,4 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp } from './fixtures';
+import { test, expect, openReadme, openReadmeInEdit } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // Writing Mode is a per-file sub-mode of Edit for Markdown: prose typography
@@ -56,31 +56,6 @@ async function openFontsSettings(page: Page) {
   await expect(panel).toBeVisible();
   await panel.locator('.settings-nav button', { hasText: 'Fonts' }).click();
   await expect(page.locator('#settings-fonts')).toBeInViewport();
-}
-
-async function openReadme(page: Page) {
-  await expect(page.getByRole('tree')).toBeVisible();
-
-  const readme = page.getByRole('treeitem', { name: /readme/i }).first();
-  if ((await readme.count()) === 0) {
-    // The file tree starts collapsed; expand the project root row.
-    await page.getByRole('treeitem').first().click();
-  }
-  await expect(readme).toBeVisible();
-  await readme.click();
-}
-
-async function openReadmeInEdit(page: Page) {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await loginIfNeeded(page);
-  await waitForDesktopApp(page);
-
-  await page.locator('.activity-bar-projects button[title="openmkview"]').click();
-  await expect(page.locator('.sidebar-header-name')).toHaveText('openmkview');
-
-  await openReadme(page);
-  await page.locator('[class*="viewTabs"]').getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.locator('.editor-status-bar')).toBeVisible();
 }
 
 /** Computed opacity of the rendered line whose text is exactly `text`. */
