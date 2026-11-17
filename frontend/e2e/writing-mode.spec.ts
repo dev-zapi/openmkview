@@ -68,6 +68,19 @@ async function lineOpacity(page: Page, text: string): Promise<number | null> {
   }, text);
 }
 
+/**
+ * The writing column morphs between widths (0.2s). While the transition runs,
+ * computed max-width reports a calc() mix of percent and px, so geometry
+ * assertions must wait for it to settle to a plain px value.
+ */
+async function waitForColumnSettled(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => getComputedStyle(document.querySelector('.cm-content')!).maxWidth.endsWith('px'),
+    undefined,
+    { timeout: 5_000 },
+  );
+}
+
 test.describe('writing mode on desktop', () => {
   test.beforeEach(async ({ page }) => {
     // Cold Vite dev-server module compilation can exceed the 30s default.
@@ -97,6 +110,8 @@ test.describe('writing mode on desktop', () => {
 
     await expect.poll(async () => (await readWritingPaint(page)).fontFamily).toContain('serif');
 
+    // The column morphs in; let the transition settle before measuring.
+    await waitForColumnSettled(page);
     const prosePaint = await readWritingPaint(page);
     expect(prosePaint.fontFamily).toContain('serif');
     // CJK fallbacks are part of the serif preset.
@@ -107,6 +122,12 @@ test.describe('writing mode on desktop', () => {
     // Centered column: the content is inset equally on both sides.
     expect(prosePaint.leftGap).toBeGreaterThan(0);
     expect(Math.abs(prosePaint.leftGap - prosePaint.rightGap)).toBeLessThanOrEqual(2);
+
+    // The column narrows with a smooth morph, not a snap.
+    const contentMotion = await page.evaluate(
+      () => getComputedStyle(document.querySelector('.cm-content')!).transitionProperty,
+    );
+    expect(contentMotion).toContain('max-width');
   });
 
   test('Mod+Alt+W toggles writing mode from the keyboard', async ({ page }) => {
@@ -157,6 +178,7 @@ test.describe('writing mode on desktop', () => {
           activeTopLeft: activeStyle.borderTopLeftRadius,
           activeBottomRight: activeStyle.borderBottomRightRadius,
           activeWashPainted: activeStyle.backgroundColor !== 'rgba(0, 0, 0, 0)',
+          activeCrossfades: activeStyle.transitionProperty.includes('background-color'),
           dimmedPlain: getComputedStyle(dimmed).backgroundColor === 'rgba(0, 0, 0, 0)',
         };
       });
@@ -164,6 +186,7 @@ test.describe('writing mode on desktop', () => {
       activeTopLeft: '8px',
       activeBottomRight: '8px',
       activeWashPainted: true,
+      activeCrossfades: true,
       dimmedPlain: true,
     });
 
@@ -207,6 +230,8 @@ test.describe('writing mode on desktop', () => {
         .poll(() => page.evaluate(() => document.documentElement.className))
         .toMatch(/(light|dark)-theme/);
 
+      // The rebuild re-triggers the column morph; let it settle.
+      await waitForColumnSettled(page);
       const paint = await readWritingPaint(page);
       expect(paint.fontFamily).toContain('serif');
       expect(Math.abs(paint.maxWidthPx - 65 * paint.chWidth)).toBeLessThanOrEqual(paint.chWidth);

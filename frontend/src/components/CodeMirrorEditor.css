@@ -19,6 +19,10 @@
 .codemirror-editor-container .cm-content {
   padding: 0;
   min-height: 100%;
+  /* Baseline cap so entering/leaving Writing Mode — and live width-knob
+     changes — morph the column smoothly instead of snapping. */
+  max-width: 100%;
+  transition: max-width 0.2s ease, font-size 0.2s ease;
 }
 
 .codemirror-editor-container .cm-line {
@@ -218,14 +222,19 @@
 /* Paragraph Focus: blocks away from the caret recede. */
 .codemirror-editor-container .cm-line.cm-focus-dim {
   opacity: 0.35;
-  transition: opacity 0.15s ease;
 }
 
 /* Writing Mode: all prose lines share inner breathing room so the focus
-   highlight can extend past the text measure without shifting it. */
+   highlight can extend past the text measure without shifting it. The
+   transition lives on this persistent selector so dim/highlight classes
+   animate on both add and remove — the card crossfades between blocks. */
 .codemirror-editor-container.writing-mode .cm-line {
   padding-inline: 8px;
   margin-inline: -8px;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    border-radius 0.15s ease;
 }
 
 /* The caret's block: an accent-wash card with the system radius. */
@@ -291,5 +300,13 @@
 
   .codemirror-editor-container .cm-line {
     padding: 0;
+  }
+}
+
+/* Reduced motion: skip the layout morphs (column width, size); color and
+   opacity crossfades stay, per the app-wide reduced-motion policy. */
+@media (prefers-reduced-motion: reduce) {
+  .codemirror-editor-container .cm-content {
+    transition: none;
   }
 }

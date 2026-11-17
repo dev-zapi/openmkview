@@ -490,7 +490,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
           <Show when={canWrite()}>
             <button
               type="button"
-              class="writing-toggle"
+              class="writing-toggle btn-scale"
               title="Toggle Writing Mode (Ctrl+Alt+W / ⌘+Alt+W)"
               aria-pressed={isWritingActive()}
               onClick={toggleWriting}
@@ -501,7 +501,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
           <Show when={isWritingActive()}>
             <button
               type="button"
-              class="writing-toggle"
+              class="writing-toggle btn-scale"
               title="Toggle Typewriter Scrolling"
               aria-pressed={isTypewriterActive()}
               onClick={toggleTypewriter}
@@ -510,7 +510,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
             </button>
             <button
               type="button"
-              class="writing-toggle focus-toggle"
+              class="writing-toggle focus-toggle btn-scale"
               title="Toggle Paragraph Focus"
               aria-pressed={isFocusActive()}
               onClick={toggleFocus}
