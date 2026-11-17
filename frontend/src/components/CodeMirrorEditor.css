@@ -252,6 +252,12 @@
     font-size: max(16px, var(--editor-size, 16px)) !important;
   }
 
+  /* Writing Mode uses its own size knob, but the same iOS zoom floor applies:
+     explicit writing sizes below 16px must still not trigger focus zoom. */
+  .codemirror-editor-container.writing-mode .cm-content {
+    font-size: max(16px, var(--writing-size, 16px)) !important;
+  }
+
   .codemirror-editor-container .cm-line {
     padding: 0;
   }
