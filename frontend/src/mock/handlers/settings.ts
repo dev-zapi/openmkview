@@ -67,5 +67,10 @@ export async function handleSettingsApi(
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/version') {
+    sendJson(res, { version: 'v0.2.0-dev-mock' });
+    return true;
+  }
+
   return false;
 }
