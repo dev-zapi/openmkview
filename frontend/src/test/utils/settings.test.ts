@@ -12,6 +12,8 @@ import {
   applyFontSettings,
   extractServerSettings,
   normalizeSettings,
+  resolvedWritingFontSize,
+  WRITING_FONT_FAMILIES,
   applyTableDensity,
   applyTableWrap,
   applyCustomStylesheet,
@@ -245,6 +247,118 @@ describe('settings utils', () => {
   describe('normalizeSettings', () => {
     it('defaults editor font size to unset for partial settings', () => {
       expect(normalizeSettings({ themeMode: 'dark' }).editorFontSize).toBe('');
+    });
+  });
+
+  describe('writing settings', () => {
+    it('defaults writing typography for partial settings', () => {
+      const settings = normalizeSettings({ themeMode: 'dark' });
+      expect(settings.writingFontFamily).toBe('serif');
+      expect(settings.writingFontSize).toBe('');
+      expect(settings.writingWidth).toEqual({ mode: 'fixed', fixedWidth: '65ch' });
+    });
+
+    it('clamps an invalid writing font family to serif', () => {
+      const settings = normalizeSettings({ writingFontFamily: 'monospace' as any });
+      expect(settings.writingFontFamily).toBe('serif');
+    });
+
+    it('clamps a non-string writing font size to unset', () => {
+      const settings = normalizeSettings({ writingFontSize: 42 as any });
+      expect(settings.writingFontSize).toBe('');
+    });
+
+    it('preserves a valid writing font family and size', () => {
+      const settings = normalizeSettings({ writingFontFamily: 'sans', writingFontSize: '20px' });
+      expect(settings.writingFontFamily).toBe('sans');
+      expect(settings.writingFontSize).toBe('20px');
+    });
+
+    it('clamps an invalid writing width to the default centered column', () => {
+      const settings = normalizeSettings({ writingWidth: { mode: 'bogus', fixedWidth: 7 } as any });
+      expect(settings.writingWidth).toEqual({ mode: 'fixed', fixedWidth: '65ch' });
+    });
+
+    it('preserves a valid writing width including full mode', () => {
+      const fixed = normalizeSettings({ writingWidth: { mode: 'fixed', fixedWidth: '70ch' } });
+      expect(fixed.writingWidth).toEqual({ mode: 'fixed', fixedWidth: '70ch' });
+
+      const full = normalizeSettings({ writingWidth: { mode: 'full', fixedWidth: '70ch' } });
+      expect(full.writingWidth.mode).toBe('full');
+    });
+
+    it('resolves writing font size through writing → editor → code chain', () => {
+      const followCode: Settings = {
+        ...DEFAULT_SETTINGS,
+        writingFontSize: '',
+        editorFontSize: '',
+        codeFontSize: '13px',
+      };
+      expect(resolvedWritingFontSize(followCode)).toBe('13px');
+
+      const followEditor: Settings = {
+        ...followCode,
+        editorFontSize: '16px',
+      };
+      expect(resolvedWritingFontSize(followEditor)).toBe('16px');
+    });
+
+    it('lets an explicit writing size win over the chain', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        writingFontSize: '21px',
+        editorFontSize: '16px',
+        codeFontSize: '13px',
+      };
+      expect(resolvedWritingFontSize(settings)).toBe('21px');
+    });
+
+    it('includes writing settings in the server payload', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        writingFontFamily: 'sans',
+        writingFontSize: '20px',
+        writingWidth: { mode: 'full', fixedWidth: '70ch' },
+      };
+      const payload = extractServerSettings(settings);
+      expect(payload.writingFontFamily).toBe('sans');
+      expect(payload.writingFontSize).toBe('20px');
+      expect(payload.writingWidth).toEqual({ mode: 'full', fixedWidth: '70ch' });
+    });
+
+    it('maps each writing font family preset to a CSS stack', () => {
+      expect(WRITING_FONT_FAMILIES.serif).toContain('serif');
+      expect(WRITING_FONT_FAMILIES.serif).toContain('Noto Serif SC');
+      expect(WRITING_FONT_FAMILIES.sans).toContain('sans-serif');
+      expect(WRITING_FONT_FAMILIES.sans).toContain('Noto Sans SC');
+      expect(WRITING_FONT_FAMILIES.system).toContain('system-ui');
+    });
+
+    it('applies the writing font, size and width CSS variables', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        writingFontFamily: 'sans',
+        writingFontSize: '',
+        editorFontSize: '',
+        codeFontSize: '13px',
+        writingWidth: { mode: 'fixed', fixedWidth: '70ch' },
+      };
+      applyFontSettings(settings);
+
+      expect(document.documentElement.style.getPropertyValue('--writing-font')).toBe(
+        WRITING_FONT_FAMILIES.sans,
+      );
+      expect(document.documentElement.style.getPropertyValue('--writing-size')).toBe('13px');
+      expect(document.documentElement.style.getPropertyValue('--writing-width')).toBe('70ch');
+    });
+
+    it('applies none as the writing width for full mode', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        writingWidth: { mode: 'full', fixedWidth: '65ch' },
+      };
+      applyFontSettings(settings);
+      expect(document.documentElement.style.getPropertyValue('--writing-width')).toBe('none');
     });
   });
 

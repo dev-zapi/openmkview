@@ -1,5 +1,6 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type ThemeType = 'light' | 'dark';
+export type WritingFontFamily = 'serif' | 'sans' | 'system';
 
 export interface Theme {
   id: string;
@@ -22,6 +23,9 @@ export interface ServerSettings {
   codeFontFamily: string;
   codeFontSize: string;
   editorFontSize: string;
+  writingFontFamily: WritingFontFamily;
+  writingFontSize: string;
+  writingWidth: MarkdownWidthSetting;
   protectedPaths: string[];
   placeholderDirs: string[];
   ignoredFiles: string[];
@@ -52,6 +56,9 @@ export const DEFAULT_SETTINGS: Settings = {
   markdownFontSize: '16px',
   codeFontSize: '14px',
   editorFontSize: '',
+  writingFontFamily: 'serif',
+  writingFontSize: '',
+  writingWidth: { mode: 'fixed', fixedWidth: '65ch' },
   protectedPaths: ['.git', '.github', '.svn', '.hg', 'node_modules', 'target', 'dist', 'build'],
   placeholderDirs: ['node_modules', 'target', 'dist', 'build', '.git', '.svn', '.hg'],
   ignoredFiles: ['.DS_Store', 'Thumbs.db'],
