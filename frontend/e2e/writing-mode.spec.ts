@@ -73,6 +73,8 @@ async function openReadmeInEdit(page: Page) {
 
 test.describe('writing mode on desktop', () => {
   test.beforeEach(async ({ page }) => {
+    // Cold Vite dev-server module compilation can exceed the 30s default.
+    test.setTimeout(120000);
     await openReadmeInEdit(page);
   });
 
@@ -127,10 +129,24 @@ test.describe('writing mode on desktop', () => {
     await expect.poll(async () => (await readWritingPaint(page)).fontFamily).toContain('serif');
 
     // The theme control cycles light → dark → system; whichever theme lands,
-    // the editor rebuild must recompute the writing extension.
+    // the editor rebuild must recompute the writing extension. Wait for the
+    // theme mode to actually advance before checking typography.
+    const themeButton = page.locator('button[title^="Theme:"]');
+    let previousTitle = await themeButton.getAttribute('title');
+
     for (let i = 0; i < 3; i += 1) {
-      await page.click('button[title^="Theme:"]');
-      await page.waitForTimeout(150);
+      await themeButton.click();
+      await expect
+        .poll(() => themeButton.getAttribute('title'), {
+          message: 'theme mode should advance on each click',
+        })
+        .not.toBe(previousTitle);
+      previousTitle = await themeButton.getAttribute('title');
+
+      // A light/dark theme class proves the new theme was applied.
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.className))
+        .toMatch(/(light|dark)-theme/);
 
       const paint = await readWritingPaint(page);
       expect(paint.fontFamily).toContain('serif');
@@ -144,6 +160,8 @@ test.describe('writing mode on mobile', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('the Writing toggle is reachable and works on a phone viewport', async ({ page }) => {
+    // Cold Vite dev-server module compilation can exceed the 30s default.
+    test.setTimeout(120000);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.locator('button[aria-label="Toggle navigation menu"]').click();
     await page
