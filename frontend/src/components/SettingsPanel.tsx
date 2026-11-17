@@ -7,6 +7,14 @@ import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
 import { Button, Input, Select, TagListInput } from './ui';
+// PROTOTYPE: variant switcher for the version-refresh placement question.
+import {
+  prototypeVariant,
+  VariantAFooter,
+  VariantBAboutCard,
+  VariantCFooter,
+  VersionRefreshSwitcher,
+} from './prototype/versionRefreshPrototype';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -362,6 +370,15 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     }
 
     return date.toLocaleString();
+  };
+
+  // PROTOTYPE fallbacks keep the footer visible in dev, where the mock server
+  // does not serve /api/version.
+  const displayVersion = () => version() || 'v0.2.0-dev (mock)';
+  const displayBuildTime = () => {
+    if (buildTime()) return buildTime();
+    const buildStamp = import.meta.env.VITE_FRONTEND_BUILD_TIME;
+    return buildStamp ? new Date(buildStamp).toLocaleString() : 'unknown';
   };
 
   const lightThemes = () => themes().filter(t => t.type === 'light');
@@ -879,17 +896,24 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   </p>
                 </div>
               </div>
+
+              {/* PROTOTYPE variant B: version + refresh live in a dedicated About card. */}
+              <Show when={prototypeVariant() === 'B'}>
+                <VariantBAboutCard version={displayVersion()} buildTime={displayBuildTime()} />
+              </Show>
             </div>
           </div>
 
           <div class="settings-panel-footer">
-            <Show when={version()}>
-              <div class="settings-version-info">
-                <span class="settings-version">{version()}</span>
-                <Show when={buildTime()}>
-                  <span class="settings-build-time">Build Time: {buildTime()}</span>
-                </Show>
-              </div>
+            {/* PROTOTYPE: the winning variant gets folded into the footer here. */}
+            <Show when={prototypeVariant() === 'A'}>
+              <VariantAFooter version={displayVersion()} buildTime={displayBuildTime()} />
+            </Show>
+            <Show when={prototypeVariant() === 'C'}>
+              <VariantCFooter version={displayVersion()} buildTime={displayBuildTime()} />
+            </Show>
+            <Show when={prototypeVariant() === 'B'}>
+              <span class="settings-version" style="opacity:0.7;">{displayVersion()}</span>
             </Show>
             <Button class="settings-save-btn" onClick={handleSave}>
               <Show when={saved()}>
@@ -899,6 +923,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             </Button>
           </div>
         </div>
+        <VersionRefreshSwitcher />
       </div>
     </Show>
   );
