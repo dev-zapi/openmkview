@@ -1,4 +1,4 @@
-import type { Settings, ServerSettings, ThemeMode, MarkdownWidthSetting } from '../types/app';
+import type { Settings, ServerSettings, ThemeMode, MarkdownWidthSetting, WritingFontFamily } from '../types/app';
 import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH_RATIO } from '../types/app';
 
 const SETTINGS_KEY = 'openmkview-settings';
@@ -23,6 +23,17 @@ const isThemeMode = (value: unknown): value is ThemeMode => {
   return value === 'light' || value === 'dark' || value === 'system';
 };
 
+const isWritingFontFamily = (value: unknown): value is WritingFontFamily => {
+  return value === 'serif' || value === 'sans' || value === 'system';
+};
+
+/** CSS font stacks behind the three Writing Mode family presets. */
+export const WRITING_FONT_FAMILIES: Record<WritingFontFamily, string> = {
+  serif: 'Georgia, "Noto Serif SC", "Songti SC", "Noto Serif", serif',
+  sans: '"Noto Sans SC", "PingFang SC", "Segoe UI", Roboto, sans-serif',
+  system: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+};
+
 export const loadSettings = (): Settings => {
   try {
     const saved = localStorage.getItem(SETTINGS_KEY);
@@ -45,26 +56,38 @@ export const loadSettings = (): Settings => {
   }
 };
 
-const normalizeMarkdownWidth = (raw: unknown, legacyFixedWidth?: unknown): MarkdownWidthSetting => {
-  // Handle old flat format: markdownWidth was a string 'full' | 'fixed'
+const normalizeWidthSetting = (
+  raw: unknown,
+  defaults: MarkdownWidthSetting,
+  legacyFixedWidth?: unknown,
+): MarkdownWidthSetting => {
+  // Handle old flat format: the width setting used to be a string 'full' | 'fixed'
   if (typeof raw === 'string') {
     return {
-      mode: raw === 'fixed' ? 'fixed' : 'full',
+      mode: raw === 'fixed' || raw === 'full' ? raw : defaults.mode,
       fixedWidth: typeof legacyFixedWidth === 'string' && legacyFixedWidth
         ? legacyFixedWidth
-        : DEFAULT_SETTINGS.markdownWidth.fixedWidth,
+        : defaults.fixedWidth,
     };
   }
   if (raw && typeof raw === 'object' && 'mode' in raw) {
     const obj = raw as Record<string, unknown>;
     return {
-      mode: obj.mode === 'fixed' ? 'fixed' : 'full',
+      mode: obj.mode === 'fixed' || obj.mode === 'full' ? obj.mode : defaults.mode,
       fixedWidth: typeof obj.fixedWidth === 'string' && obj.fixedWidth
         ? obj.fixedWidth
-        : DEFAULT_SETTINGS.markdownWidth.fixedWidth,
+        : defaults.fixedWidth,
     };
   }
-  return DEFAULT_SETTINGS.markdownWidth;
+  return { ...defaults };
+};
+
+const normalizeMarkdownWidth = (raw: unknown, legacyFixedWidth?: unknown): MarkdownWidthSetting => {
+  return normalizeWidthSetting(raw, DEFAULT_SETTINGS.markdownWidth, legacyFixedWidth);
+};
+
+const normalizeWritingWidth = (raw: unknown): MarkdownWidthSetting => {
+  return normalizeWidthSetting(raw, DEFAULT_SETTINGS.writingWidth);
 };
 
 export const normalizeSettings = (settings: (Partial<Settings> & Record<string, unknown>) | Settings): Settings => {
@@ -78,6 +101,14 @@ export const normalizeSettings = (settings: (Partial<Settings> & Record<string, 
     ...s,
     themeMode,
     markdownWidth: normalizeMarkdownWidth(s.markdownWidth, s['fixedWidth']),
+    writingFontFamily: isWritingFontFamily(s.writingFontFamily)
+      ? s.writingFontFamily
+      : DEFAULT_SETTINGS.writingFontFamily,
+    writingFontSize:
+      typeof s.writingFontSize === 'string'
+        ? s.writingFontSize
+        : DEFAULT_SETTINGS.writingFontSize,
+    writingWidth: normalizeWritingWidth(s.writingWidth),
     lightTheme: s.lightTheme || DEFAULT_SETTINGS.lightTheme,
     darkTheme: s.darkTheme || DEFAULT_SETTINGS.darkTheme,
     sessionTimeoutMinutes:
@@ -97,6 +128,9 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     codeFontFamily: settings.codeFontFamily,
     codeFontSize: settings.codeFontSize,
     editorFontSize: settings.editorFontSize,
+    writingFontFamily: settings.writingFontFamily,
+    writingFontSize: settings.writingFontSize,
+    writingWidth: settings.writingWidth,
     codeBlockThemeLight: settings.codeBlockThemeLight,
     codeBlockThemeDark: settings.codeBlockThemeDark,
     protectedPaths: settings.protectedPaths,
@@ -198,6 +232,14 @@ export const resolvedEditorFontSize = (settings: Settings): string => {
   return settings.editorFontSize || settings.codeFontSize;
 };
 
+/**
+ * Writing Mode size falls back to the same chain as regular Edit Mode:
+ * an explicit Writing size wins, then Editor Font Size, then Code Block.
+ */
+export const resolvedWritingFontSize = (settings: Settings): string => {
+  return settings.writingFontSize || settings.editorFontSize || settings.codeFontSize;
+};
+
 export const applyFontSettings = (settings: Settings): void => {
   document.body.style.fontFamily = settings.uiFontFamily;
   document.body.style.fontSize = settings.uiFontSize;
@@ -210,6 +252,22 @@ export const applyFontSettings = (settings: Settings): void => {
   } else {
     document.documentElement.style.removeProperty('--editor-size');
   }
+
+  document.documentElement.style.setProperty(
+    '--writing-font',
+    WRITING_FONT_FAMILIES[settings.writingFontFamily] ?? WRITING_FONT_FAMILIES.serif,
+  );
+  const writingSize = resolvedWritingFontSize(settings);
+  if (writingSize) {
+    document.documentElement.style.setProperty('--writing-size', writingSize);
+  } else {
+    document.documentElement.style.removeProperty('--writing-size');
+  }
+  const writingWidth =
+    settings.writingWidth.mode === 'fixed' && settings.writingWidth.fixedWidth
+      ? settings.writingWidth.fixedWidth
+      : 'none';
+  document.documentElement.style.setProperty('--writing-width', writingWidth);
 };
 
 export const applyTableDensity = (settings: Settings): void => {

@@ -242,14 +242,116 @@ describe('SettingsPanel', () => {
     settingsStore.updateSettings({ editorFontSize: '18px' });
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
 
-    const input = screen.getByLabelText('Editor Font Size') as HTMLInputElement;
+    const item = screen.getByLabelText('Editor Font Size').closest('.settings-item') as HTMLElement;
+    const input = within(item).getByLabelText('Editor Font Size') as HTMLInputElement;
     expect(input.value).toBe('18px');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Follow' }));
+    fireEvent.click(within(item).getByRole('button', { name: 'Follow' }));
 
     await waitFor(() => {
       expect(input.value).toBe('');
       expect(input.placeholder).toBe('Follows Code Block Font Size (currently 14px)');
+    });
+  });
+
+  describe('Writing typography knobs', () => {
+    beforeEach(() => {
+      settingsStore.reloadSettings();
+    });
+
+    it('renders the three writing controls in the Fonts section', () => {
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const fonts = document.querySelector('#settings-fonts') as HTMLElement;
+      expect(within(fonts).getByLabelText('Writing Font Family')).toBeTruthy();
+      expect(within(fonts).getByLabelText('Writing Font Size')).toBeTruthy();
+      expect(within(fonts).getByLabelText('Writing Column Width')).toBeTruthy();
+      expect(within(fonts).getByLabelText('Writing Column Width Value')).toBeTruthy();
+    });
+
+    it('offers serif, sans, and follow-system family presets', () => {
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const select = screen.getByLabelText('Writing Font Family') as HTMLSelectElement;
+      expect(select.value).toBe('serif');
+      expect(within(select).getByRole('option', { name: 'Serif' })).toBeTruthy();
+      expect(within(select).getByRole('option', { name: 'Sans' })).toBeTruthy();
+      expect(within(select).getByRole('option', { name: 'Follow System' })).toBeTruthy();
+    });
+
+    it('updates the writing font family and persists it locally', () => {
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const select = screen.getByLabelText('Writing Font Family') as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: 'sans' }, currentTarget: { value: 'sans' } });
+
+      expect(select.value).toBe('sans');
+      const saved = JSON.parse(localStorage.getItem('openmkview-settings') || '{}');
+      expect(saved.writingFontFamily).toBe('sans');
+    });
+
+    it('resolves the writing size follow placeholder through the chain', () => {
+      settingsStore.updateSettings({ writingFontSize: '', editorFontSize: '', codeFontSize: '13px' });
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const input = screen.getByLabelText('Writing Font Size') as HTMLInputElement;
+      expect(input.value).toBe('');
+      expect(input.placeholder).toBe('Follows Editor Font Size → Code Block (currently 13px)');
+    });
+
+    it('names the editor link when Editor Font Size resolves the writing size', () => {
+      settingsStore.updateSettings({ writingFontSize: '', editorFontSize: '16px' });
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const input = screen.getByLabelText('Writing Font Size') as HTMLInputElement;
+      expect(input.placeholder).toBe('Follows Editor Font Size (currently 16px)');
+    });
+
+    it('Follow button clears the writing font size back to unset', () => {
+      settingsStore.updateSettings({ writingFontSize: '20px' });
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const item = screen.getByLabelText('Writing Font Size').closest('.settings-item') as HTMLElement;
+      const input = within(item).getByLabelText('Writing Font Size') as HTMLInputElement;
+      expect(input.value).toBe('20px');
+
+      fireEvent.click(within(item).getByRole('button', { name: 'Follow' }));
+
+      expect(input.value).toBe('');
+    });
+
+    it('shows the writing width value only when the width mode is fixed', () => {
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      const select = screen.getByLabelText('Writing Column Width') as HTMLSelectElement;
+      expect(select.value).toBe('fixed');
+      expect(screen.getByLabelText('Writing Column Width Value')).toBeTruthy();
+
+      fireEvent.change(select, { target: { value: 'full' }, currentTarget: { value: 'full' } });
+      expect(screen.queryByLabelText('Writing Column Width Value')).toBeNull();
+
+      fireEvent.change(select, { target: { value: 'fixed' }, currentTarget: { value: 'fixed' } });
+      expect(screen.getByLabelText('Writing Column Width Value')).toBeTruthy();
+    });
+
+    it('loads saved writing settings into the form', async () => {
+      const customSettings = {
+        ...DEFAULT_SETTINGS,
+        writingFontFamily: 'system' as const,
+        writingFontSize: '21px',
+        writingWidth: { mode: 'full' as const, fixedWidth: '70ch' },
+      };
+      localStorage.setItem('openmkview-settings', JSON.stringify(customSettings));
+      settingsStore.reloadSettings();
+
+      render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+
+      await waitFor(() => {
+        expect((screen.getByLabelText('Writing Font Family') as HTMLSelectElement).value).toBe('system');
+        expect((screen.getByLabelText('Writing Font Size') as HTMLInputElement).value).toBe('21px');
+        expect((screen.getByLabelText('Writing Column Width') as HTMLSelectElement).value).toBe('full');
+      });
+      expect(screen.queryByLabelText('Writing Column Width Value')).toBeNull();
     });
   });
 

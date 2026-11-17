@@ -1,8 +1,8 @@
 import { Component, createSignal, createEffect, createMemo, Show, onMount, onCleanup, For } from 'solid-js';
 import type { JSX } from 'solid-js';
-import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary } from '../types/app';
+import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary, WritingFontFamily } from '../types/app';
 import { applyTheme } from '../utils/theme';
-import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize } from '../utils/settings';
+import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize, resolvedWritingFontSize } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
@@ -906,6 +906,69 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     Leave empty to follow Code Block Font Size
                   </p>
                 </div>
+
+                <div class="settings-item">
+                  <label for="writing-font-family">Writing Font Family</label>
+                  <Select
+                    id="writing-font-family"
+                    value={settings().writingFontFamily}
+                    onChange={(e) => updateSetting('writingFontFamily', e.currentTarget.value as WritingFontFamily)}
+                  >
+                    <option value="serif">Serif</option>
+                    <option value="sans">Sans</option>
+                    <option value="system">Follow System</option>
+                  </Select>
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Serif and Sans presets include CJK fallbacks.
+                  </p>
+                </div>
+
+                <div class="settings-item">
+                  <label for="writing-font-size">Writing Font Size</label>
+                  <Input
+                    id="writing-font-size"
+                    type="text"
+                    value={settings().writingFontSize}
+                    onInput={(e) => updateSetting('writingFontSize', e.currentTarget.value)}
+                    placeholder={`Follows Editor Font Size${settings().editorFontSize ? '' : ' → Code Block'} (currently ${resolvedWritingFontSize(settings())})`}
+                  />
+                  {renderPresetButtons('writingFontSize', fontSizePresets, 'size-presets',
+                    <Button type="button" variant="outline" size="sm" onClick={() => updateSetting('writingFontSize', '')}>
+                      Follow
+                    </Button>
+                  )}
+                  <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                    Leave empty to follow Editor Font Size, then Code Block Font Size
+                  </p>
+                </div>
+
+                <div class="settings-item">
+                  <label for="writing-column-width">Writing Column Width</label>
+                  <Select
+                    id="writing-column-width"
+                    value={settings().writingWidth.mode}
+                    onChange={(e) => updateSetting('writingWidth', { ...settings().writingWidth, mode: e.currentTarget.value as 'full' | 'fixed' })}
+                  >
+                    <option value="fixed">Fixed Width</option>
+                    <option value="full">Full Width</option>
+                  </Select>
+                </div>
+
+                <Show when={settings().writingWidth.mode === 'fixed'}>
+                  <div class="settings-item">
+                    <label for="writing-fixed-width-value">Writing Column Width Value</label>
+                    <Input
+                      id="writing-fixed-width-value"
+                      type="text"
+                      value={settings().writingWidth.fixedWidth}
+                      onInput={(e) => updateSetting('writingWidth', { ...settings().writingWidth, fixedWidth: e.currentTarget.value })}
+                      placeholder="e.g., 65ch, 900px"
+                    />
+                    <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                      Default 65ch keeps a readable line length.
+                    </p>
+                  </div>
+                </Show>
               </div>
 
               <div class="settings-section" id="settings-about">

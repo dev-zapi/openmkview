@@ -38,6 +38,33 @@ export async function waitForDesktopApp(page: Page) {
   }).toBeGreaterThan(0);
 }
 
+/** Click the first README in the file tree, expanding the root when collapsed. */
+export async function openReadme(page: Page) {
+  await expect(page.getByRole('tree')).toBeVisible();
+
+  const readme = page.getByRole('treeitem', { name: /readme/i }).first();
+  if ((await readme.count()) === 0) {
+    // The file tree starts collapsed; expand the project root row.
+    await page.getByRole('treeitem').first().click();
+  }
+  await expect(readme).toBeVisible();
+  await readme.click();
+}
+
+/** Open the configured project's README and switch the view tabs to Edit. */
+export async function openReadmeInEdit(page: Page) {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await loginIfNeeded(page);
+  await waitForDesktopApp(page);
+
+  await page.locator('.activity-bar-projects button[title="openmkview"]').click();
+  await expect(page.locator('.sidebar-header-name')).toHaveText('openmkview');
+
+  await openReadme(page);
+  await page.locator('[class*="viewTabs"]').getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.locator('.editor-status-bar')).toBeVisible();
+}
+
 // 扩展 test fixture，添加控制台日志收集
 export const test = base.extend<TestFixtures>({
   consoleMessages: async ({ page }, use) => {

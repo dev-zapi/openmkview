@@ -19,6 +19,10 @@
 .codemirror-editor-container .cm-content {
   padding: 0;
   min-height: 100%;
+  /* Baseline cap so entering/leaving Writing Mode — and live width-knob
+     changes — morph the column smoothly instead of snapping. */
+  max-width: 100%;
+  transition: max-width 0.2s ease, font-size 0.2s ease;
 }
 
 .codemirror-editor-container .cm-line {
@@ -178,6 +182,79 @@
   color: var(--color-text-h);
 }
 
+.status-bar-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.status-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.writing-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.writing-toggle:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.writing-toggle[aria-pressed='true'] {
+  background: var(--color-active-bg);
+  border-color: var(--color-accent, #3b82f6);
+  color: var(--color-text-h);
+}
+
+/* Paragraph Focus: blocks away from the caret recede. */
+.codemirror-editor-container .cm-line.cm-focus-dim {
+  opacity: 0.35;
+}
+
+/* Writing Mode: all prose lines share inner breathing room so the focus
+   highlight can extend past the text measure without shifting it. The
+   transition lives on this persistent selector so dim/highlight classes
+   animate on both add and remove — the card crossfades between blocks. */
+.codemirror-editor-container.writing-mode .cm-line {
+  padding-inline: 8px;
+  margin-inline: -8px;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease,
+    border-radius 0.15s ease;
+}
+
+/* The caret's block: an accent-wash card with the system radius. */
+.codemirror-editor-container .cm-line.cm-focus-active {
+  background: var(--color-hover-bg);
+}
+
+.codemirror-editor-container .cm-line.cm-focus-active-first {
+  border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+}
+
+.codemirror-editor-container .cm-line.cm-focus-active-last {
+  border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+}
+
+.codemirror-editor-container
+  .cm-line.cm-focus-active-first.cm-focus-active-last {
+  border-radius: var(--radius-md, 8px);
+}
+
 .dirty-badge {
   background: var(--color-warning, #f59e0b);
   color: white;
@@ -203,6 +280,11 @@
     display: none;
   }
 
+  /* Writing Mode must stay reachable in the thumb-zone status bar. */
+  .writing-toggle {
+    padding: 1px 8px;
+  }
+
   .codemirror-editor-container .cm-content {
     padding: 0;
     /* Prevent iOS zoom on editor focus (theme injects styles at
@@ -210,7 +292,21 @@
     font-size: max(16px, var(--editor-size, 16px)) !important;
   }
 
+  /* Writing Mode uses its own size knob, but the same iOS zoom floor applies:
+     explicit writing sizes below 16px must still not trigger focus zoom. */
+  .codemirror-editor-container.writing-mode .cm-content {
+    font-size: max(16px, var(--writing-size, 16px)) !important;
+  }
+
   .codemirror-editor-container .cm-line {
     padding: 0;
+  }
+}
+
+/* Reduced motion: skip the layout morphs (column width, size); color and
+   opacity crossfades stay, per the app-wide reduced-motion policy. */
+@media (prefers-reduced-motion: reduce) {
+  .codemirror-editor-container .cm-content {
+    transition: none;
   }
 }
