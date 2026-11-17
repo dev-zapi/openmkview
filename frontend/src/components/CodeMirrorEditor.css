@@ -178,6 +178,43 @@
   color: var(--color-text-h);
 }
 
+.status-bar-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.status-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.writing-toggle {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.writing-toggle:hover {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.writing-toggle[aria-pressed='true'] {
+  background: var(--color-active-bg);
+  border-color: var(--color-accent, #3b82f6);
+  color: var(--color-text-h);
+}
+
 .dirty-badge {
   background: var(--color-warning, #f59e0b);
   color: white;
@@ -201,6 +238,11 @@
 
   .save-hint {
     display: none;
+  }
+
+  /* Writing Mode must stay reachable in the thumb-zone status bar. */
+  .writing-toggle {
+    padding: 1px 8px;
   }
 
   .codemirror-editor-container .cm-content {
