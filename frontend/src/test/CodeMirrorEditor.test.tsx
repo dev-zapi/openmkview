@@ -12,6 +12,9 @@ describe('CodeMirrorEditor', () => {
 
   afterEach(() => {
     document.documentElement.style.removeProperty('--editor-size');
+    document.documentElement.style.removeProperty('--writing-font');
+    document.documentElement.style.removeProperty('--writing-size');
+    document.documentElement.style.removeProperty('--writing-width');
     vi.useRealTimers();
   });
 
@@ -337,7 +340,9 @@ describe('CodeMirrorEditor', () => {
       await vi.runAllTimersAsync();
 
       expect(getComputedStyle(content).fontFamily).toContain('serif');
-      expect(getComputedStyle(content).maxWidth).toBe('65ch');
+      expect(getComputedStyle(content).fontFamily).toContain('var(--writing-font');
+      expect(getComputedStyle(content).fontSize).toContain('var(--writing-size');
+      expect(getComputedStyle(content).maxWidth).toContain('var(--writing-width');
 
       const gutters = container.querySelector('.cm-gutters');
       expect(gutters).toBeTruthy();
@@ -362,7 +367,35 @@ describe('CodeMirrorEditor', () => {
 
       const content = markdownEditor(container);
       expect(getComputedStyle(content).fontFamily).toContain('serif');
-      expect(getComputedStyle(content).maxWidth).toBe('65ch');
+      expect(getComputedStyle(content).fontFamily).toContain('var(--writing-font');
+      expect(getComputedStyle(content).fontSize).toContain('var(--writing-size');
+      expect(getComputedStyle(content).maxWidth).toContain('var(--writing-width');
+    });
+
+    it('reads writing typography from the settings CSS variables', async () => {
+      document.documentElement.style.setProperty('--writing-font', 'Arial, sans-serif');
+      document.documentElement.style.setProperty('--writing-size', '21px');
+      document.documentElement.style.setProperty('--writing-width', '70ch');
+
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+      await vi.runAllTimersAsync();
+
+      const content = markdownEditor(container);
+      // CodeMirror themes emit the var() reference literally; the browser
+      // resolves it against the custom properties applied by settings.
+      expect(getComputedStyle(content).fontFamily).toContain('var(--writing-font');
+      expect(getComputedStyle(content).fontSize).toContain('var(--writing-size');
+      expect(getComputedStyle(content).maxWidth).toContain('var(--writing-width');
     });
 
     describe('Paragraph Focus', () => {

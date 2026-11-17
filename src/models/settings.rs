@@ -49,6 +49,18 @@ fn default_code_font_family() -> String {
     "\"JetBrains Mono\", ui-monospace, Consolas, monospace".to_string()
 }
 
+fn default_writing_font_family() -> String {
+    "serif".to_string()
+}
+
+fn default_writing_width() -> String {
+    "65ch".to_string()
+}
+
+fn default_writing_width_mode() -> WidthMode {
+    WidthMode::Fixed
+}
+
 fn default_font_size() -> String {
     "14px".to_string()
 }
@@ -86,6 +98,12 @@ pub struct SystemSettings {
     pub code_font_size: String,
     #[serde(rename = "editorFontSize", default)]
     pub editor_font_size: String,
+    #[serde(rename = "writingFontFamily", default = "default_writing_font_family")]
+    pub writing_font_family: String,
+    #[serde(rename = "writingFontSize", default)]
+    pub writing_font_size: String,
+    #[serde(rename = "writingWidth", default)]
+    pub writing_width: WritingWidthSetting,
     #[serde(rename = "codeBlockThemeLight", default = "default_code_theme_light")]
     pub code_block_theme_light: String,
     #[serde(rename = "codeBlockThemeDark", default = "default_code_theme_dark")]
@@ -122,6 +140,9 @@ impl Default for SystemSettings {
             code_font_family: default_code_font_family(),
             code_font_size: default_font_size(),
             editor_font_size: String::new(),
+            writing_font_family: default_writing_font_family(),
+            writing_font_size: String::new(),
+            writing_width: WritingWidthSetting::default(),
             code_block_theme_light: default_code_theme_light(),
             code_block_theme_dark: default_code_theme_dark(),
             protected_paths: default_protected_paths(),
@@ -163,6 +184,25 @@ pub enum WidthMode {
     #[default]
     Full,
     Fixed,
+}
+
+/// Writing Mode's centered prose column. Unlike the Markdown preview width it
+/// defaults to a fixed, readable measure rather than full width.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WritingWidthSetting {
+    #[serde(default = "default_writing_width_mode")]
+    pub mode: WidthMode,
+    #[serde(rename = "fixedWidth", default = "default_writing_width")]
+    pub fixed_width: String,
+}
+
+impl Default for WritingWidthSetting {
+    fn default() -> Self {
+        Self {
+            mode: default_writing_width_mode(),
+            fixed_width: default_writing_width(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -210,6 +250,51 @@ mod tests {
     #[test]
     fn default_editor_font_size_is_empty() {
         assert_eq!(SystemSettings::default().editor_font_size, "");
+    }
+
+    #[test]
+    fn default_writing_typography() {
+        let settings = SystemSettings::default();
+        assert_eq!(settings.writing_font_family, "serif");
+        assert_eq!(settings.writing_font_size, "");
+        assert_eq!(settings.writing_width.mode, WidthMode::Fixed);
+        assert_eq!(settings.writing_width.fixed_width, "65ch");
+    }
+
+    #[test]
+    fn empty_json_yields_defaults_for_writing_typography() {
+        let settings: SystemSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(settings.writing_font_family, "serif");
+        assert_eq!(settings.writing_font_size, "");
+        assert_eq!(settings.writing_width.mode, WidthMode::Fixed);
+        assert_eq!(settings.writing_width.fixed_width, "65ch");
+    }
+
+    #[test]
+    fn writing_typography_round_trips() {
+        let json = r#"{"writingFontFamily":"sans","writingFontSize":"20px","writingWidth":{"mode":"fixed","fixedWidth":"60ch"}}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.writing_font_family, "sans");
+        assert_eq!(settings.writing_font_size, "20px");
+        assert_eq!(settings.writing_width.mode, WidthMode::Fixed);
+        assert_eq!(settings.writing_width.fixed_width, "60ch");
+
+        let serialized = serde_json::to_string(&settings).unwrap();
+        assert!(serialized.contains(r#""writingFontFamily":"sans""#));
+        assert!(serialized.contains(r#""writingFontSize":"20px""#));
+        assert!(serialized.contains(r#""writingWidth":{"mode":"fixed","fixedWidth":"60ch"}"#));
+        let round_tripped: SystemSettings = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(round_tripped.writing_font_family, "sans");
+        assert_eq!(round_tripped.writing_font_size, "20px");
+        assert_eq!(round_tripped.writing_width.fixed_width, "60ch");
+    }
+
+    #[test]
+    fn writing_width_accepts_full_mode() {
+        let json = r#"{"writingWidth":{"mode":"full"}}"#;
+        let settings: SystemSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(settings.writing_width.mode, WidthMode::Full);
+        assert_eq!(settings.writing_width.fixed_width, "65ch");
     }
 
     #[test]
