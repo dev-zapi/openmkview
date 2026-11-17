@@ -1,4 +1,5 @@
 import { Component, createSignal, For, Show } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import styles from './styles.module.css';
 import { ViewTabs } from './ViewTabs';
 import type { TabType } from './ViewTabs';
@@ -152,7 +153,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
   // ----- Mobile rendering -----
   if (props.mobile) {
     return (
-      <div class={`${styles.documentTitleBar} ${styles.mobileTitleBar}`}>
+      <div class={`${styles.documentTitleBar} ${styles.mobileTitleBar} topbar-glass`}>
         <Show when={props.onMenuClick}>
           <button
             class={styles.mobileMenuButton}
@@ -186,7 +187,9 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
         </div>
 
         <Show when={pathOpen() && props.filePath}>
-          <div class={styles.pathPopoverBackdrop} onClick={() => setPathOpen(false)} aria-hidden="true" />
+          <Portal>
+            <div class={styles.pathPopoverBackdrop} onClick={() => setPathOpen(false)} aria-hidden="true" />
+          </Portal>
           <div class={styles.pathPopover} role="dialog" aria-label="File path">
             <Show when={props.projectName}>
               <span class={styles.pathPopoverProject}>{props.projectName}</span>
@@ -273,7 +276,7 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
 
   // ----- Desktop rendering (original) -----
   return (
-    <div class={styles.documentTitleBar}>
+    <div class={`${styles.documentTitleBar} topbar-glass`}>
       <div class={styles.documentLeft}>
         <div class={styles.documentTitle}>
           <span class={styles.fileIcon}>{getFileIcon(props.fileName)}</span>

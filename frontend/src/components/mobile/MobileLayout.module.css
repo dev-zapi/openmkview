@@ -18,7 +18,6 @@
   min-height: var(--mobile-topbar-height);
   padding: 0 8px;
   padding-top: var(--safe-top);
-  background: var(--color-topbar-bg, var(--color-bg));
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   gap: 4px;

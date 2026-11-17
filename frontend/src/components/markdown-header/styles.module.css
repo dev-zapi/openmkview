@@ -1,5 +1,5 @@
 .markdownHeader {
-  background: var(--color-bg);
+  background: transparent;
 }
 
 .documentTitleBar {
@@ -8,7 +8,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background: var(--color-bg);
   gap: 16px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -277,7 +276,6 @@
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: hsl(var(--background));
   border-bottom: 1px solid hsl(var(--border));
   animation: slideDown 0.15s ease;
 }
@@ -441,7 +439,6 @@
   gap: 4px;
   flex-wrap: nowrap !important;
   align-items: center;
-  background: var(--color-topbar-bg, var(--color-bg));
   justify-content: flex-start !important;
 }
 
