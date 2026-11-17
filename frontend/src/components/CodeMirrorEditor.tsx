@@ -10,14 +10,15 @@ import { keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
 import { basicSetup } from 'codemirror';
 import type { FileType } from '../types';
-import { writingModeStore } from '../stores/writingModeStore';
+import { writingModeStore, writingSessionKey } from '../stores/writingModeStore';
 import './CodeMirrorEditor.css';
 
 /**
  * Writing Mode typography is settings-driven: applyFontSettings publishes
  * `--writing-font` / `--writing-size` / `--writing-width` on the document root,
- * so a knob change restyles an open editor without rebuilding it. The
- * fallbacks match the pre-settings defaults for the moment before effects run.
+ * so a knob change restyles an open editor without rebuilding it. The font
+ * fallback is the full serif preset (CJK families included), so the frame
+ * before settings effects run still renders CJK text coherently.
  *
  * Created once: CodeMirror's style modules are never pruned, so building a
  * fresh one per toggle would leak dead rules.
@@ -27,7 +28,7 @@ const WRITING_THEME = EditorView.theme({
   // prose font priority over the code theme's `.cm-content` font rule in both
   // light and dark themes.
   '.cm-content.cm-content': {
-    fontFamily: 'var(--writing-font, serif)',
+    fontFamily: 'var(--writing-font, Georgia, "Noto Serif SC", "Songti SC", "Noto Serif", serif)',
     fontSize: 'var(--writing-size, 18px)',
     lineHeight: '1.7',
     maxWidth: 'var(--writing-width, 65ch)',
@@ -212,7 +213,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
    * project A and project B), so the session key carries the project identity.
    */
   const writingKey = () =>
-    `${props.projectId ?? 'unknown'}:${props.filePath || props.fileName || ''}`;
+    writingSessionKey(props.projectId, props.filePath || props.fileName || '');
 
   const isWritingActive = () => canWrite() && writingModeStore.getSession(writingKey()).writing;
 
@@ -236,9 +237,6 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     if (!isWritingActive()) return;
     writingModeStore.toggleFocus(writingKey());
   };
-
-  /** Centered prose column; only included while Writing Mode is active. */
-  const writingExtension = () => WRITING_THEME;
 
   /** Paragraph dimming; only included while Writing Mode and Focus are on. */
   const focusExtension = () => (isFocusActive() ? PARAGRAPH_FOCUS_EXTENSION : []);
@@ -335,7 +333,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       languageExtension(),
       themeExtension,
       fontExtension,
-      writingCompartment.of(isWritingActive() ? writingExtension() : []),
+      writingCompartment.of(isWritingActive() ? WRITING_THEME : []),
       typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_CENTER : []),
       focusCompartment.of(focusExtension()),
       saveKeybinding,
@@ -404,7 +402,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     if (!editorView) return;
 
     editorView.dispatch({
-      effects: writingCompartment.reconfigure(isWritingActive() ? writingExtension() : []),
+      effects: writingCompartment.reconfigure(isWritingActive() ? WRITING_THEME : []),
     });
   });
 

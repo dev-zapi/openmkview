@@ -1,9 +1,31 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { writingModeStore } from '../../stores/writingModeStore';
+import { writingModeStore, writingSessionKey } from '../../stores/writingModeStore';
 
 describe('writingModeStore', () => {
   beforeEach(() => {
     writingModeStore.reset();
+  });
+
+  describe('writingSessionKey', () => {
+    it('scopes the same path to each project', () => {
+      expect(writingSessionKey(1, 'README.md')).toBe('1:README.md');
+      expect(writingSessionKey(2, 'README.md')).toBe('2:README.md');
+    });
+
+    it('falls back to one unknown scope when the project id is missing', () => {
+      // Documented limitation: without a project id two distinct files that
+      // present the same path share the `'unknown'` scope, so their Writing
+      // Mode sessions merge. Different paths still stay separate.
+      const samePathFromA = writingSessionKey(undefined, 'README.md');
+      const samePathFromB = writingSessionKey(undefined, 'README.md');
+      expect(samePathFromA).toBe('unknown:README.md');
+      expect(samePathFromB).toBe(samePathFromA);
+      expect(writingSessionKey(undefined, 'notes/a.md')).toBe('unknown:notes/a.md');
+
+      writingModeStore.toggleWriting(samePathFromA);
+      expect(writingModeStore.getSession(samePathFromB).writing).toBe(true);
+      expect(writingModeStore.getSession(writingSessionKey(undefined, 'notes/a.md')).writing).toBe(false);
+    });
   });
 
   describe('unseen files', () => {

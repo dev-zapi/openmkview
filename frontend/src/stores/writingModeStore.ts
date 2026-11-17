@@ -21,6 +21,20 @@ const FIRST_ENTRY_SESSION: WritingSession = { writing: true, typewriter: true, f
 
 const [sessions, setSessions] = createSignal<Map<string, WritingSession>>(new Map());
 
+/**
+ * Build the per-file session key.
+ *
+ * In production the project id always comes from the active project
+ * (FileContentView passes `activeProjectId`), so the key is unique per file
+ * per project. When projectId is missing we fall back to one shared `'unknown'`
+ * scope: files remain independent by path, but two distinct files presented
+ * with the same path and no project identity share a session. There is no
+ * per-file identity to tell them apart without the project id, so this fallback
+ * is an explicit limitation, not a safe default.
+ */
+export const writingSessionKey = (projectId: number | undefined, filePath: string): string =>
+  `${projectId ?? 'unknown'}:${filePath}`;
+
 const getSession = (path: string): WritingSession => sessions().get(path) ?? OFF_SESSION;
 
 const toggleWriting = (path: string) => {
