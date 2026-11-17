@@ -34,7 +34,10 @@ const toggleWriting = (path: string) => {
 };
 
 const toggleFocus = (path: string) => {
-  const current = sessions().get(path) ?? OFF_SESSION;
+  const current = sessions().get(path);
+  // Paragraph Focus only exists inside a Writing Mode session.
+  if (!current) return;
+
   const next: WritingSession = { ...current, focus: !current.focus };
 
   setSessions(new Map(sessions()).set(path, next));

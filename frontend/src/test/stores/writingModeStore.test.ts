@@ -124,6 +124,13 @@ describe('writingModeStore', () => {
     it('reports Paragraph Focus off for an unseen path', () => {
       expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
     });
+
+    it('does nothing for a file that never entered Writing Mode', () => {
+      writingModeStore.toggleFocus('notes/a.md');
+
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+      expect(writingModeStore.sessions().has('notes/a.md')).toBe(false);
+    });
   });
 
   describe('reset', () => {

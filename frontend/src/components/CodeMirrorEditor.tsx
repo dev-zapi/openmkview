@@ -1,4 +1,4 @@
-import { Component, onMount, onCleanup, createEffect, Show } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, Show, untrack } from 'solid-js';
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { Compartment, EditorState, type Extension, type Range } from '@codemirror/state';
 import { html } from '@codemirror/lang-html';
@@ -73,9 +73,24 @@ const focusDecorations = (view: EditorView): DecorationSet => {
     (block) => caretLine >= block.from && caretLine <= block.to,
   );
 
+  let highlighted = activeBlock;
+  if (highlighted === -1) {
+    // The caret sits on a blank separator line, which belongs to no block. Keep
+    // the nearest block readable rather than dimming the whole document.
+    let nearestDistance = Infinity;
+    blocks.forEach((block, index) => {
+      const distance =
+        caretLine < block.from ? block.from - caretLine : caretLine - block.to;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        highlighted = index;
+      }
+    });
+  }
+
   const ranges: Range<Decoration>[] = [];
   blocks.forEach((block, index) => {
-    if (index === activeBlock) return;
+    if (index === highlighted) return;
     for (let lineNumber = block.from; lineNumber <= block.to; lineNumber += 1) {
       ranges.push(FOCUS_DIM_LINE.range(doc.line(lineNumber).from));
     }
@@ -299,11 +314,19 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   });
 
   createEffect(() => {
-    if (editorView && props.theme) {
-      const currentContent = getCurrentContent();
-      editorView.destroy();
-      createEditor(currentContent);
-    }
+    // This effect must depend on the theme prop alone. createEditor reads the
+    // per-file session store, so without untrack a Writing/Focus toggle would
+    // re-run it and rebuild the editor, resetting the caret, scroll, and undo
+    // history. Store changes flow through the compartment effects below.
+    const theme = props.theme;
+
+    untrack(() => {
+      if (editorView && theme) {
+        const currentContent = getCurrentContent();
+        editorView.destroy();
+        createEditor(currentContent);
+      }
+    });
   });
 
   createEffect(() => {

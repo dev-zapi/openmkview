@@ -109,6 +109,20 @@ describe('CodeMirrorEditor', () => {
       return content as Element;
     };
 
+    const caretDocLine = (container: HTMLElement) => {
+      const content = container.querySelector('.cm-content') as HTMLElement;
+      const view = EditorView.findFromDOM(content);
+      expect(view).toBeTruthy();
+      return view!.state.doc.lineAt(view!.state.selection.main.head).number;
+    };
+
+    const moveCaret = (container: HTMLElement, lineNumber: number) => {
+      const content = container.querySelector('.cm-content') as HTMLElement;
+      const view = EditorView.findFromDOM(content);
+      expect(view).toBeTruthy();
+      view!.dispatch({ selection: { anchor: view!.state.doc.line(lineNumber).from } });
+    };
+
     it('shows the Writing toggle for Markdown files in Edit view', async () => {
       render(() => (
         <CodeMirrorEditor
@@ -181,6 +195,33 @@ describe('CodeMirrorEditor', () => {
 
       fireEvent.click(toggle);
       expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('keeps the caret where it was when Writing Mode is toggled', async () => {
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent={'first line\nsecond line\nthird line'}
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          theme="light"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      moveCaret(container, 2);
+      await vi.runAllTimersAsync();
+      expect(caretDocLine(container)).toBe(2);
+
+      // Turning Writing Mode on used to rebuild the editor and reset the caret.
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+      await vi.runAllTimersAsync();
+      expect(caretDocLine(container)).toBe(2);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+      await vi.runAllTimersAsync();
+      expect(caretDocLine(container)).toBe(2);
     });
 
     it('keeps the same file path isolated between projects', async () => {
@@ -282,6 +323,7 @@ describe('CodeMirrorEditor', () => {
           filePath="notes/notes.md"
           fileType="markdown"
           projectId={1}
+          theme="light"
         />
       );
 
@@ -360,6 +402,46 @@ describe('CodeMirrorEditor', () => {
 
         expect(isDimmed(container, 'First paragraph line one.')).toBe(false);
         expect(isDimmed(container, 'First paragraph line two.')).toBe(false);
+        expect(isDimmed(container, '# Heading')).toBe(true);
+        expect(isDimmed(container, 'Last paragraph.')).toBe(true);
+      });
+
+      it('keeps the caret where it was when Focus is toggled', async () => {
+        const { container } = render(editor);
+        await vi.runAllTimersAsync();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+        await vi.runAllTimersAsync();
+
+        moveCaret(container, 3);
+        await vi.runAllTimersAsync();
+        expect(caretDocLine(container)).toBe(3);
+
+        const focus = screen.getByRole('button', { name: 'Focus' });
+        fireEvent.click(focus);
+        await vi.runAllTimersAsync();
+        expect(caretDocLine(container)).toBe(3);
+
+        fireEvent.click(focus);
+        await vi.runAllTimersAsync();
+        expect(caretDocLine(container)).toBe(3);
+      });
+
+      it('keeps a block at full contrast when the caret sits on a blank line', async () => {
+        const { container } = render(editor);
+        await vi.runAllTimersAsync();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+        await vi.runAllTimersAsync();
+
+        // Line 5 is the blank separator between the paragraph and the list.
+        moveCaret(container, 5);
+        await vi.runAllTimersAsync();
+
+        // The nearest block stays readable instead of dimming the whole doc.
+        expect(isDimmed(container, 'First paragraph line one.')).toBe(false);
+        expect(isDimmed(container, 'First paragraph line two.')).toBe(false);
+        expect(isDimmed(container, '- list item one')).toBe(true);
         expect(isDimmed(container, '# Heading')).toBe(true);
         expect(isDimmed(container, 'Last paragraph.')).toBe(true);
       });
