@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createSignal } from 'solid-js';
 import { render, screen, fireEvent } from '@solidjs/testing-library';
 import { EditorView } from '@codemirror/view';
 import CodeMirrorEditor from '../components/CodeMirrorEditor';
@@ -320,6 +321,105 @@ describe('CodeMirrorEditor', () => {
       expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('true');
     });
 
+    it('keeps a file session when switching to another file and back in the same project', async () => {
+      const editor = (filePath: string) => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName={filePath.split('/').pop()}
+          filePath={filePath}
+          fileType="markdown"
+          projectId={1}
+        />
+      );
+
+      const fileA = render(() => editor('notes/a.md'));
+      await vi.runAllTimersAsync();
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+      expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('true');
+      fileA.unmount();
+
+      // A different file in the same project starts in Edit Mode.
+      const fileB = render(() => editor('notes/b.md'));
+      await vi.runAllTimersAsync();
+      expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('false');
+      fileB.unmount();
+
+      // Returning to file A resumes its own session state.
+      render(() => editor('notes/a.md'));
+      await vi.runAllTimersAsync();
+      expect(screen.getByRole('button', { name: 'Writing' }).getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('calls onSave when Ctrl+S is pressed in Writing Mode', async () => {
+      const onSave = vi.fn();
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          projectId={1}
+          onSave={onSave}
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+
+      const content = container.querySelector('.cm-content') as HTMLElement;
+      fireEvent.keyDown(content, { key: 's', ctrlKey: true });
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the Modified dirty badge after typing in Writing Mode', async () => {
+      const [isDirty, setIsDirty] = createSignal(false);
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          projectId={1}
+          isDirty={isDirty()}
+          onDirtyChange={setIsDirty}
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+
+      const content = container.querySelector('.cm-content') as HTMLElement;
+      const view = EditorView.findFromDOM(content);
+      expect(view).toBeTruthy();
+      view!.dispatch({ changes: { from: 0, insert: '>' } });
+      await vi.runAllTimersAsync();
+
+      expect(screen.getByText('Modified')).toBeTruthy();
+    });
+
+    it('opens the search panel when searchRequestKey changes in Writing Mode', async () => {
+      const [searchRequestKey, setSearchRequestKey] = createSignal(0);
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          projectId={1}
+          searchRequestKey={searchRequestKey()}
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+
+      setSearchRequestKey(1);
+      await vi.runAllTimersAsync();
+
+      expect(container.querySelector('.cm-search')).toBeTruthy();
+    });
+
     it('restyles as centered serif prose and hides gutters when writing mode is on', async () => {
       const { container } = render(() => (
         <CodeMirrorEditor
@@ -436,13 +536,6 @@ describe('CodeMirrorEditor', () => {
         return line!.classList.contains('cm-focus-dim');
       };
 
-      const moveCaretToDocLine = (container: HTMLElement, lineNumber: number) => {
-        const content = container.querySelector('.cm-content') as HTMLElement;
-        const view = EditorView.findFromDOM(content);
-        expect(view).toBeTruthy();
-        view!.dispatch({ selection: { anchor: view!.state.doc.line(lineNumber).from } });
-      };
-
       it('shows the Focus toggle, on by default, once Writing Mode is on', async () => {
         render(editor);
         await vi.runAllTimersAsync();
@@ -477,7 +570,7 @@ describe('CodeMirrorEditor', () => {
         await vi.runAllTimersAsync();
 
         // Move the caret into the middle of the list run.
-        moveCaretToDocLine(container, 7);
+        moveCaret(container, 7);
         await vi.runAllTimersAsync();
 
         expect(isDimmed(container, '- list item one')).toBe(false);
@@ -495,7 +588,7 @@ describe('CodeMirrorEditor', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
         await vi.runAllTimersAsync();
 
-        moveCaretToDocLine(container, 3);
+        moveCaret(container, 3);
         await vi.runAllTimersAsync();
 
         expect(isDimmed(container, 'First paragraph line one.')).toBe(false);
