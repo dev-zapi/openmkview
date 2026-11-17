@@ -1918,6 +1918,46 @@ textarea {
   opacity: 0.5;
 }
 
+.settings-about-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+}
+
+.settings-about-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-about-version {
+  font-size: 15px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.settings-about-build {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.7;
+}
+
+.settings-about-description {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.85;
+}
+
+.settings-about-refresh {
+  align-self: flex-start;
+}
+
 .passkey-list {
   display: flex;
   flex-direction: column;

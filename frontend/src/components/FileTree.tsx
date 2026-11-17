@@ -278,9 +278,8 @@ const FileTree: Component<FileTreeProps> = (props) => {
     model = new PierreTree({
       paths,
       itemHeight: props.itemHeight,
-      // One level open: the root starts expanded so a freshly opened project
-      // shows its files instead of a single unlabeled collapsed chevron.
-      initialExpansion: 1,
+      // Keep the tree collapsed until the user expands it.
+      initialExpansion: 'closed',
       flattenEmptyDirectories: true,
       search: true,
       icons: getFileTreeIcons(),

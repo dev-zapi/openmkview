@@ -7,6 +7,7 @@ import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
 import { Button, Input, Select, TagListInput } from './ui';
+import { forceRefreshApp, type ForceRefreshStatus } from '../services/pwaRefresh';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ const categories: SettingsCategory[] = [
   { id: 'settings-passkeys', label: 'Passkeys' },
   { id: 'settings-trash', label: 'Trash' },
   { id: 'settings-fonts', label: 'Fonts' },
+  { id: 'settings-about', label: 'About' },
 ];
 
 const uiFontPresets: PresetOption[] = [
@@ -127,7 +129,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [passkeyError, setPasskeyError] = createSignal<string | null>(null);
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   const [version, setVersion] = createSignal<string>("");
-  const [buildTime, setBuildTime] = createSignal<string>("");
+  const [refreshStatus, setRefreshStatus] = createSignal<ForceRefreshStatus | null>(null);
   const settings = createMemo(() => settingsStore.settings());
   let observer: IntersectionObserver | null = null;
   let observerTimer: number | undefined;
@@ -251,9 +253,6 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       const response = await fetch('/api/version');
       const data = await response.json();
       setVersion(data.version);
-      const frontendBuildTime = import.meta.env.VITE_FRONTEND_BUILD_TIME;
-      const localTime = new Date(frontendBuildTime).toLocaleString();
-      setBuildTime(localTime);
     } catch (e) {
       console.error('Failed to load version:', e);
     }
@@ -362,6 +361,35 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     }
 
     return date.toLocaleString();
+  };
+
+  const buildTimeLabel = () => {
+    const stamp = import.meta.env.VITE_FRONTEND_BUILD_TIME;
+    if (!stamp) {
+      return 'unknown';
+    }
+    const date = new Date(stamp);
+    return Number.isNaN(date.getTime()) ? 'unknown' : date.toLocaleString();
+  };
+
+  const handleForceRefresh = () => {
+    if (refreshStatus()) {
+      return;
+    }
+    void forceRefreshApp(setRefreshStatus);
+  };
+
+  const refreshLabel = () => {
+    switch (refreshStatus()) {
+      case 'checking':
+        return 'Checking…';
+      case 'updating':
+        return 'Refreshing…';
+      case 'reloading':
+        return 'Reloading…';
+      default:
+        return 'Force refresh app';
+    }
   };
 
   const lightThemes = () => themes().filter(t => t.type === 'light');
@@ -879,6 +907,31 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                   </p>
                 </div>
               </div>
+
+              <div class="settings-section" id="settings-about">
+                <h4>About</h4>
+
+                <div class="settings-about-card">
+                  <div class="settings-about-header">
+                    <span class="settings-about-version">{version() || 'Unknown version'}</span>
+                    <span class="settings-about-build">Build Time: {buildTimeLabel()}</span>
+                  </div>
+                  <p class="settings-about-description">
+                    Refreshing clears cached app files and loads the newest version. Unsaved settings changes will be lost.
+                  </p>
+                  <Button
+                    type="button"
+                    class="settings-about-refresh"
+                    disabled={refreshStatus() !== null}
+                    onClick={handleForceRefresh}
+                  >
+                    <Show when={refreshStatus() !== null}>
+                      <span class="btn-spinner" aria-hidden="true" />
+                    </Show>
+                    {refreshLabel()}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -886,9 +939,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
             <Show when={version()}>
               <div class="settings-version-info">
                 <span class="settings-version">{version()}</span>
-                <Show when={buildTime()}>
-                  <span class="settings-build-time">Build Time: {buildTime()}</span>
-                </Show>
+                <span class="settings-build-time">Build Time: {buildTimeLabel()}</span>
               </div>
             </Show>
             <Button class="settings-save-btn" onClick={handleSave}>
