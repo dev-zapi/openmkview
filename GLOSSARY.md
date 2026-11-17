@@ -91,3 +91,11 @@ _Avoid_: position, offset, 行号引用, location reference
 **Outdated**:
 The visible state of an Annotation whose Anchor no longer matches the document after edits. Kept and displayed with a badge rather than silently dropped or mispositioned.
 _Avoid_: stale, orphan, broken, 失效批注
+
+**Reply**:
+A note appended to an Annotation's thread after its first note, ordered by time. Single-user by design: a reply extends the annotation, it is not a conversation turn.
+_Avoid_: response, follow-up comment, message
+
+**Resolved**:
+The state of an Annotation thread marked as dealt with. Applies to the whole thread, never to individual Replies. Resolved annotations keep their highlights in a dimmed style and can be filtered out in the annotation column.
+_Avoid_: done, closed, finished, 已完成
