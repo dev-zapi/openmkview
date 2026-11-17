@@ -98,6 +98,43 @@ test.describe('typewriter scrolling', () => {
     await expect(typewriter).toHaveAttribute('aria-pressed', 'false');
   });
 
+  test('mouse drag-selection does not auto-scroll the editor', async ({ page }) => {
+    const writing = page.getByRole('button', { name: 'Writing' });
+    await writing.click();
+    await expect(page.getByRole('button', { name: 'Typewriter' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await focusEditor(page);
+    await page.keyboard.press('Control+Home');
+    // Sit mid-document and type once so Typewriter scrolls the view down.
+    await pressKeys(page, 'ArrowDown', 25);
+    await page.keyboard.type('x');
+
+    const scroller = page.locator('.cm-scroller');
+    await expect
+      .poll(async () => scroller.evaluate((el) => el.scrollTop))
+      .toBeGreaterThan(100);
+
+    const before = await scroller.evaluate((el) => el.scrollTop);
+    const contentBox = await page.locator('.cm-content').boundingBox();
+    const scrollerBox = await scroller.boundingBox();
+    if (!contentBox || !scrollerBox) throw new Error('editor has no layout box');
+
+    // Drag inside the upper part of the viewport. A margin-based typewriter
+    // would treat that band as invisible and auto-scroll the view.
+    const startX = contentBox.x + contentBox.width / 2;
+    const startY = scrollerBox.y + 80;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 30, startY + 100, { steps: 12 });
+    await page.mouse.up();
+
+    const after = await scroller.evaluate((el) => el.scrollTop);
+    expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+  });
+
   test('the caret line stays centered while typing with it on and scrolls away with it off', async ({ page }) => {
     const writing = page.getByRole('button', { name: 'Writing' });
     const typewriter = page.getByRole('button', { name: 'Typewriter' });

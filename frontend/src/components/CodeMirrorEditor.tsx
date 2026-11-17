@@ -1,6 +1,6 @@
-import { Component, onMount, onCleanup, createEffect, Show } from 'solid-js';
-import { EditorView } from '@codemirror/view';
-import { Compartment, EditorState, type Extension } from '@codemirror/state';
+import { Component, onMount, onCleanup, createEffect, Show, untrack } from 'solid-js';
+import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { Compartment, EditorState, type Extension, type Range } from '@codemirror/state';
 import { html } from '@codemirror/lang-html';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -44,17 +44,144 @@ const WRITING_THEME = EditorView.theme({
   },
 });
 
+/** How far the caret may sit from the viewport middle before we recenter it. */
+const TYPEWRITER_CENTER_TOLERANCE_PX = 24;
+
 /**
- * Typewriter Scrolling: CodeMirror treats scroll margins as extra space that
- * must stay visible around the caret. Giving it half a viewport on each side
- * shrinks the "visible" band to the middle line, so the built-in minimal
- * scroll-into-view pins the caret's line at the vertical center while typing.
- * It never scrolls by itself, so manual scrolling is left alone.
+ * Center the caret's line unless it is already within the middle band.
+ * Dispatching an explicit scroll (rather than reserving scroll margins) keeps
+ * mouse drag-selection from treating half the viewport as an auto-scroll zone.
  */
-const TYPEWRITER_SCROLL = EditorView.scrollMargins.of((view) => {
-  const halfViewport = view.scrollDOM.clientHeight / 2;
-  return { top: halfViewport, bottom: halfViewport };
-});
+const centerCaret = (view: EditorView) => {
+  const head = view.state.selection.main.head;
+
+  let caret: { top: number; bottom: number } | null;
+  try {
+    caret = view.coordsAtPos(head);
+  } catch {
+    // Layout-less environments (jsdom in unit tests) cannot measure text.
+    return;
+  }
+
+  if (caret) {
+    const viewport = view.scrollDOM.getBoundingClientRect();
+    const caretMid = (caret.top + caret.bottom) / 2;
+    const viewportMid = (viewport.top + viewport.bottom) / 2;
+    if (Math.abs(caretMid - viewportMid) <= TYPEWRITER_CENTER_TOLERANCE_PX) return;
+  }
+
+  view.dispatch({ effects: EditorView.scrollIntoView(head, { y: 'center' }) });
+};
+
+/**
+ * Typewriter Scrolling: recenter the caret after typing-like edits only.
+ * Selection-only changes (mouse drags, clicks, scrolling) and programmatic
+ * document swaps are left alone, so they never move the scroll position.
+ * The centered scroll is scheduled for the next frame because dispatching
+ * during a CodeMirror update is not allowed; it produces no document change,
+ * so it cannot loop back into this plugin.
+ */
+const TYPEWRITER_CENTER = ViewPlugin.fromClass(
+  class {
+    private frame: number | null = null;
+    private destroyed = false;
+
+    update(update: ViewUpdate) {
+      if (!update.docChanged) return;
+
+      const typingEdit = update.transactions.some(
+        (tr) => tr.isUserEvent('input') || tr.isUserEvent('delete'),
+      );
+      if (!typingEdit) return;
+
+      if (this.frame !== null) cancelAnimationFrame(this.frame);
+      this.frame = requestAnimationFrame(() => {
+        this.frame = null;
+        if (!this.destroyed) centerCaret(update.view);
+      });
+    }
+
+    destroy() {
+      this.destroyed = true;
+      if (this.frame !== null) cancelAnimationFrame(this.frame);
+      this.frame = null;
+    }
+  },
+);
+
+/** A prose line that is not in the caret's block is dimmed. */
+const FOCUS_DIM_LINE = Decoration.line({ class: 'cm-focus-dim' });
+
+/**
+ * Paragraph Focus: the blank-line-delimited block containing the caret keeps
+ * full contrast, every other block is dimmed. A block is a maximal run of
+ * non-blank lines, so contiguous list lines naturally form one block.
+ */
+const focusDecorations = (view: EditorView): DecorationSet => {
+  const doc = view.state.doc;
+  const caretLine = doc.lineAt(view.state.selection.main.head).number;
+
+  const blocks: { from: number; to: number }[] = [];
+  let blockStart: number | null = null;
+  for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber += 1) {
+    const blank = doc.line(lineNumber).text.trim().length === 0;
+    if (!blank) {
+      if (blockStart === null) blockStart = lineNumber;
+    } else if (blockStart !== null) {
+      blocks.push({ from: blockStart, to: lineNumber - 1 });
+      blockStart = null;
+    }
+  }
+  if (blockStart !== null) blocks.push({ from: blockStart, to: doc.lines });
+
+  const activeBlock = blocks.findIndex(
+    (block) => caretLine >= block.from && caretLine <= block.to,
+  );
+
+  let highlighted = activeBlock;
+  if (highlighted === -1) {
+    // The caret sits on a blank separator line, which belongs to no block. Keep
+    // the nearest block readable rather than dimming the whole document.
+    let nearestDistance = Infinity;
+    blocks.forEach((block, index) => {
+      const distance =
+        caretLine < block.from ? block.from - caretLine : caretLine - block.to;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        highlighted = index;
+      }
+    });
+  }
+
+  const ranges: Range<Decoration>[] = [];
+  blocks.forEach((block, index) => {
+    if (index === highlighted) return;
+    for (let lineNumber = block.from; lineNumber <= block.to; lineNumber += 1) {
+      ranges.push(FOCUS_DIM_LINE.range(doc.line(lineNumber).from));
+    }
+  });
+
+  return Decoration.set(ranges, true);
+};
+
+const PARAGRAPH_FOCUS_EXTENSION = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = focusDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet) {
+        this.decorations = focusDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
+);
 
 export interface CodeMirrorEditorProps {
   initialContent: string;
@@ -80,6 +207,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let lastSearchRequestKey = props.searchRequestKey;
   const writingCompartment = new Compartment();
   const typewriterCompartment = new Compartment();
+  const focusCompartment = new Compartment();
 
   const canWrite = () => props.fileType === 'markdown';
 
@@ -92,7 +220,11 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
   const isWritingActive = () => canWrite() && writingModeStore.getSession(writingKey()).writing;
 
-  const isTypewriterActive = () => isWritingActive() && writingModeStore.getSession(writingKey()).typewriter;
+  const isTypewriterActive = () =>
+    isWritingActive() && writingModeStore.getSession(writingKey()).typewriter;
+
+  const isFocusActive = () =>
+    isWritingActive() && writingModeStore.getSession(writingKey()).focus;
 
   const toggleWriting = () => {
     if (!canWrite()) return;
@@ -104,8 +236,16 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     writingModeStore.toggleTypewriter(writingKey());
   };
 
+  const toggleFocus = () => {
+    if (!isWritingActive()) return;
+    writingModeStore.toggleFocus(writingKey());
+  };
+
   /** Centered prose column; only included while Writing Mode is active. */
   const writingExtension = () => WRITING_THEME;
+
+  /** Paragraph dimming; only included while Writing Mode and Focus are on. */
+  const focusExtension = () => (isFocusActive() ? PARAGRAPH_FOCUS_EXTENSION : []);
 
   const getCurrentContent = () => {
     return editorView?.state.doc.toString() || '';
@@ -200,7 +340,8 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       themeExtension,
       fontExtension,
       writingCompartment.of(isWritingActive() ? writingExtension() : []),
-      typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_SCROLL : []),
+      typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_CENTER : []),
+      focusCompartment.of(focusExtension()),
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       updateListener,
@@ -248,11 +389,19 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   });
 
   createEffect(() => {
-    if (editorView && props.theme) {
-      const currentContent = getCurrentContent();
-      editorView.destroy();
-      createEditor(currentContent);
-    }
+    // This effect must depend on the theme prop alone. createEditor reads the
+    // per-file session store, so without untrack a Writing/Focus toggle would
+    // re-run it and rebuild the editor, resetting the caret, scroll, and undo
+    // history. Store changes flow through the compartment effects below.
+    const theme = props.theme;
+
+    untrack(() => {
+      if (editorView && theme) {
+        const currentContent = getCurrentContent();
+        editorView.destroy();
+        createEditor(currentContent);
+      }
+    });
   });
 
   createEffect(() => {
@@ -266,8 +415,23 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   createEffect(() => {
     if (!editorView) return;
 
+    const active = isTypewriterActive();
     editorView.dispatch({
-      effects: typewriterCompartment.reconfigure(isTypewriterActive() ? TYPEWRITER_SCROLL : []),
+      effects: typewriterCompartment.reconfigure(active ? TYPEWRITER_CENTER : []),
+    });
+
+    // Entering Typewriter (or Writing Mode with it on) centers immediately
+    // rather than waiting for the next keystroke.
+    if (active) {
+      centerCaret(editorView);
+    }
+  });
+
+  createEffect(() => {
+    if (!editorView) return;
+
+    editorView.dispatch({
+      effects: focusCompartment.reconfigure(focusExtension()),
     });
   });
 
@@ -313,6 +477,15 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
               onClick={toggleTypewriter}
             >
               Typewriter
+            </button>
+            <button
+              type="button"
+              class="writing-toggle focus-toggle"
+              title="Toggle Paragraph Focus"
+              aria-pressed={isFocusActive()}
+              onClick={toggleFocus}
+            >
+              Focus
             </button>
           </Show>
           <span class="save-hint">Ctrl+S to save</span>
