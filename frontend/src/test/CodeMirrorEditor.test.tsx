@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
 import CodeMirrorEditor from '../components/CodeMirrorEditor';
+import { writingModeStore } from '../stores/writingModeStore';
 
 describe('CodeMirrorEditor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    writingModeStore.reset();
   });
 
   afterEach(() => {
@@ -97,5 +99,131 @@ describe('CodeMirrorEditor', () => {
     if (editorEl) {
       fireEvent.keyDown(editorEl, { key: 's', ctrlKey: true });
     }
+  });
+
+  describe('Writing Mode', () => {
+    const markdownEditor = (container: HTMLElement) => {
+      const content = container.querySelector('.cm-content');
+      expect(content).toBeTruthy();
+      return content as Element;
+    };
+
+    it('shows the Writing toggle for Markdown files in Edit view', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      const toggle = screen.getByRole('button', { name: 'Writing' });
+      expect(toggle).toBeTruthy();
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('never shows the Writing toggle for HTML files', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="<p>Test</p>"
+          fileName="page.html"
+          filePath="page.html"
+          fileType="html"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      expect(screen.queryByRole('button', { name: 'Writing' })).toBeNull();
+    });
+
+    it('does not offer Typewriter or Focus sub-toggles in this ticket', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      expect(screen.queryByRole('button', { name: 'Typewriter' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Focus' })).toBeNull();
+    });
+
+    it('toggles writing state for the current file when the button is clicked', async () => {
+      render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      const toggle = screen.getByRole('button', { name: 'Writing' });
+      fireEvent.click(toggle);
+
+      expect(writingModeStore.getSession('notes/notes.md').writing).toBe(true);
+      expect(toggle.getAttribute('aria-pressed')).toBe('true');
+
+      fireEvent.click(toggle);
+      expect(writingModeStore.getSession('notes/notes.md').writing).toBe(false);
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('restyles as centered serif prose and hides gutters when writing mode is on', async () => {
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      // Code typography by default.
+      const content = markdownEditor(container);
+      expect(getComputedStyle(content).fontFamily).toContain('monospace');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Writing' }));
+      await vi.runAllTimersAsync();
+
+      expect(getComputedStyle(content).fontFamily).toContain('serif');
+      expect(getComputedStyle(content).maxWidth).toBe('65ch');
+
+      const gutters = container.querySelector('.cm-gutters');
+      expect(gutters).toBeTruthy();
+      expect(getComputedStyle(gutters as Element).display).toBe('none');
+    });
+
+    it('applies writing typography in the dark theme too', async () => {
+      writingModeStore.toggleWriting('notes/notes.md');
+
+      const { container } = render(() => (
+        <CodeMirrorEditor
+          initialContent="# Test"
+          fileName="notes.md"
+          filePath="notes/notes.md"
+          fileType="markdown"
+          theme="dark"
+        />
+      ));
+
+      await vi.runAllTimersAsync();
+
+      const content = markdownEditor(container);
+      expect(getComputedStyle(content).fontFamily).toContain('serif');
+      expect(getComputedStyle(content).maxWidth).toBe('65ch');
+    });
   });
 });
