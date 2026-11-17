@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@solidjs/testing-library';
+import { render, screen, fireEvent } from '@solidjs/testing-library';
 import { EditorView } from '@codemirror/view';
 import CodeMirrorEditor from '../components/CodeMirrorEditor';
 import { writingModeStore } from '../stores/writingModeStore';

@@ -93,9 +93,6 @@ async function lineOpacity(page: Page, text: string): Promise<number | null> {
   }, text);
 }
 
-const dimmed = (opacity: number | null) => opacity !== null && opacity < 0.5;
-const fullContrast = (opacity: number | null) => opacity !== null && opacity > 0.9;
-
 test.describe('writing mode on desktop', () => {
   test.beforeEach(async ({ page }) => {
     // Cold Vite dev-server module compilation can exceed the 30s default.
