@@ -65,6 +65,74 @@ describe('writingModeStore', () => {
     });
   });
 
+  describe('toggleFocus', () => {
+    it('starts on when Writing Mode is first entered for a file', () => {
+      writingModeStore.toggleWriting('notes/a.md');
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(true);
+    });
+
+    it('turns Paragraph Focus off while leaving the other toggles untouched', () => {
+      writingModeStore.toggleWriting('notes/a.md');
+      writingModeStore.toggleFocus('notes/a.md');
+
+      expect(writingModeStore.getSession('notes/a.md')).toEqual({
+        writing: true,
+        typewriter: true,
+        focus: false,
+      });
+    });
+
+    it('turns Paragraph Focus back on again', () => {
+      writingModeStore.toggleWriting('notes/a.md');
+      writingModeStore.toggleFocus('notes/a.md');
+      writingModeStore.toggleFocus('notes/a.md');
+
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(true);
+    });
+
+    it('survives turning Writing Mode off and on', () => {
+      writingModeStore.toggleWriting('notes/a.md');
+      writingModeStore.toggleFocus('notes/a.md');
+      writingModeStore.toggleWriting('notes/a.md');
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+
+      writingModeStore.toggleWriting('notes/a.md');
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+    });
+
+    it('keeps each file isolated', () => {
+      writingModeStore.toggleWriting('notes/a.md');
+      writingModeStore.toggleWriting('notes/b.md');
+      writingModeStore.toggleFocus('notes/a.md');
+
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+      expect(writingModeStore.getSession('notes/b.md').focus).toBe(true);
+
+      writingModeStore.toggleFocus('notes/b.md');
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+      expect(writingModeStore.getSession('notes/b.md').focus).toBe(false);
+    });
+
+    it('keeps the same path isolated across projects when keys carry the project id', () => {
+      writingModeStore.toggleWriting('1:README.md');
+      writingModeStore.toggleFocus('1:README.md');
+
+      expect(writingModeStore.getSession('1:README.md').focus).toBe(false);
+      expect(writingModeStore.getSession('2:README.md').focus).toBe(false);
+    });
+
+    it('reports Paragraph Focus off for an unseen path', () => {
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+    });
+
+    it('does nothing for a file that never entered Writing Mode', () => {
+      writingModeStore.toggleFocus('notes/a.md');
+
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
+      expect(writingModeStore.sessions().has('notes/a.md')).toBe(false);
+    });
+  });
+
   describe('reset', () => {
     it('forgets every per-file session', () => {
       writingModeStore.toggleWriting('notes/a.md');
@@ -72,6 +140,14 @@ describe('writingModeStore', () => {
       writingModeStore.reset();
       expect(writingModeStore.getSession('notes/a.md').writing).toBe(false);
       expect(writingModeStore.getSession('notes/b.md').writing).toBe(false);
+    });
+
+    it('clears Paragraph Focus state too', () => {
+      writingModeStore.toggleWriting('notes/a.md');
+      writingModeStore.toggleFocus('notes/a.md');
+      writingModeStore.reset();
+      // A reset file is unseen, so first-entry defaults apply again.
+      expect(writingModeStore.getSession('notes/a.md').focus).toBe(false);
     });
   });
 });

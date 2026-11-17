@@ -1,6 +1,6 @@
-import { Component, onMount, onCleanup, createEffect, Show } from 'solid-js';
-import { EditorView } from '@codemirror/view';
-import { Compartment, EditorState, type Extension } from '@codemirror/state';
+import { Component, onMount, onCleanup, createEffect, Show, untrack } from 'solid-js';
+import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { Compartment, EditorState, type Extension, type Range } from '@codemirror/state';
 import { html } from '@codemirror/lang-html';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -44,6 +44,80 @@ const WRITING_THEME = EditorView.theme({
   },
 });
 
+/** A prose line that is not in the caret's block is dimmed. */
+const FOCUS_DIM_LINE = Decoration.line({ class: 'cm-focus-dim' });
+
+/**
+ * Paragraph Focus: the blank-line-delimited block containing the caret keeps
+ * full contrast, every other block is dimmed. A block is a maximal run of
+ * non-blank lines, so contiguous list lines naturally form one block.
+ */
+const focusDecorations = (view: EditorView): DecorationSet => {
+  const doc = view.state.doc;
+  const caretLine = doc.lineAt(view.state.selection.main.head).number;
+
+  const blocks: { from: number; to: number }[] = [];
+  let blockStart: number | null = null;
+  for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber += 1) {
+    const blank = doc.line(lineNumber).text.trim().length === 0;
+    if (!blank) {
+      if (blockStart === null) blockStart = lineNumber;
+    } else if (blockStart !== null) {
+      blocks.push({ from: blockStart, to: lineNumber - 1 });
+      blockStart = null;
+    }
+  }
+  if (blockStart !== null) blocks.push({ from: blockStart, to: doc.lines });
+
+  const activeBlock = blocks.findIndex(
+    (block) => caretLine >= block.from && caretLine <= block.to,
+  );
+
+  let highlighted = activeBlock;
+  if (highlighted === -1) {
+    // The caret sits on a blank separator line, which belongs to no block. Keep
+    // the nearest block readable rather than dimming the whole document.
+    let nearestDistance = Infinity;
+    blocks.forEach((block, index) => {
+      const distance =
+        caretLine < block.from ? block.from - caretLine : caretLine - block.to;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        highlighted = index;
+      }
+    });
+  }
+
+  const ranges: Range<Decoration>[] = [];
+  blocks.forEach((block, index) => {
+    if (index === highlighted) return;
+    for (let lineNumber = block.from; lineNumber <= block.to; lineNumber += 1) {
+      ranges.push(FOCUS_DIM_LINE.range(doc.line(lineNumber).from));
+    }
+  });
+
+  return Decoration.set(ranges, true);
+};
+
+const PARAGRAPH_FOCUS_EXTENSION = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = focusDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet) {
+        this.decorations = focusDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: (plugin) => plugin.decorations,
+  },
+);
+
 export interface CodeMirrorEditorProps {
   initialContent: string;
   fileName?: string;
@@ -67,6 +141,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   let editorExtensions: Extension[] = [];
   let lastSearchRequestKey = props.searchRequestKey;
   const writingCompartment = new Compartment();
+  const focusCompartment = new Compartment();
 
   const canWrite = () => props.fileType === 'markdown';
 
@@ -79,13 +154,24 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
   const isWritingActive = () => canWrite() && writingModeStore.getSession(writingKey()).writing;
 
+  const isFocusActive = () =>
+    isWritingActive() && writingModeStore.getSession(writingKey()).focus;
+
   const toggleWriting = () => {
     if (!canWrite()) return;
     writingModeStore.toggleWriting(writingKey());
   };
 
+  const toggleFocus = () => {
+    if (!isWritingActive()) return;
+    writingModeStore.toggleFocus(writingKey());
+  };
+
   /** Centered prose column; only included while Writing Mode is active. */
   const writingExtension = () => WRITING_THEME;
+
+  /** Paragraph dimming; only included while Writing Mode and Focus are on. */
+  const focusExtension = () => (isFocusActive() ? PARAGRAPH_FOCUS_EXTENSION : []);
 
   const getCurrentContent = () => {
     return editorView?.state.doc.toString() || '';
@@ -180,6 +266,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       themeExtension,
       fontExtension,
       writingCompartment.of(isWritingActive() ? writingExtension() : []),
+      focusCompartment.of(focusExtension()),
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       updateListener,
@@ -227,11 +314,19 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   });
 
   createEffect(() => {
-    if (editorView && props.theme) {
-      const currentContent = getCurrentContent();
-      editorView.destroy();
-      createEditor(currentContent);
-    }
+    // This effect must depend on the theme prop alone. createEditor reads the
+    // per-file session store, so without untrack a Writing/Focus toggle would
+    // re-run it and rebuild the editor, resetting the caret, scroll, and undo
+    // history. Store changes flow through the compartment effects below.
+    const theme = props.theme;
+
+    untrack(() => {
+      if (editorView && theme) {
+        const currentContent = getCurrentContent();
+        editorView.destroy();
+        createEditor(currentContent);
+      }
+    });
   });
 
   createEffect(() => {
@@ -239,6 +334,14 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
     editorView.dispatch({
       effects: writingCompartment.reconfigure(isWritingActive() ? writingExtension() : []),
+    });
+  });
+
+  createEffect(() => {
+    if (!editorView) return;
+
+    editorView.dispatch({
+      effects: focusCompartment.reconfigure(focusExtension()),
     });
   });
 
@@ -273,6 +376,17 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
               onClick={toggleWriting}
             >
               Writing
+            </button>
+          </Show>
+          <Show when={isWritingActive()}>
+            <button
+              type="button"
+              class="writing-toggle focus-toggle"
+              title="Toggle Paragraph Focus"
+              aria-pressed={isFocusActive()}
+              onClick={toggleFocus}
+            >
+              Focus
             </button>
           </Show>
           <span class="save-hint">Ctrl+S to save</span>

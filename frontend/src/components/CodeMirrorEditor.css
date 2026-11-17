@@ -215,6 +215,12 @@
   color: var(--color-text-h);
 }
 
+/* Paragraph Focus: blocks away from the caret recede. */
+.codemirror-editor-container .cm-line.cm-focus-dim {
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+
 .dirty-badge {
   background: var(--color-warning, #f59e0b);
   color: white;
