@@ -8,6 +8,8 @@ import type { Page } from '@playwright/test';
 
 type WritingPaint = {
   fontFamily: string;
+  fontSizePx: number;
+  maxWidth: string;
   maxWidthPx: number;
   chWidth: number;
   gutterDisplay: string;
@@ -37,6 +39,8 @@ async function readWritingPaint(page: Page): Promise<WritingPaint> {
 
     return {
       fontFamily: cs.fontFamily,
+      fontSizePx: parseFloat(cs.fontSize),
+      maxWidth: cs.maxWidth,
       maxWidthPx: parseFloat(cs.maxWidth),
       chWidth,
       gutterDisplay: gutter ? getComputedStyle(gutter).display : 'missing',
@@ -44,6 +48,14 @@ async function readWritingPaint(page: Page): Promise<WritingPaint> {
       rightGap: Math.round(scrollerRect.right - contentRect.right),
     };
   });
+}
+
+async function openFontsSettings(page: Page) {
+  await page.locator('button[title="Settings"]').click();
+  const panel = page.locator('.settings-panel');
+  await expect(panel).toBeVisible();
+  await panel.locator('.settings-nav button', { hasText: 'Fonts' }).click();
+  await expect(page.locator('#settings-fonts')).toBeInViewport();
 }
 
 async function openReadme(page: Page) {
@@ -204,6 +216,39 @@ test.describe('writing mode on desktop', () => {
       expect(paint.gutterDisplay).toBe('none');
     }
   });
+
+  test('settings knobs restyle an open writing editor live', async ({ page }) => {
+    const toggle = page.getByRole('button', { name: 'Writing' });
+    await toggle.click();
+    await expect.poll(async () => (await readWritingPaint(page)).fontFamily).toContain('serif');
+
+    await openFontsSettings(page);
+
+    // Font family preset: serif → sans, without leaving or rebuilding the editor.
+    await page.getByLabel('Writing Font Family').selectOption('sans');
+    await expect
+      .poll(async () => (await readWritingPaint(page)).fontFamily)
+      .toContain('sans-serif');
+    expect((await readWritingPaint(page)).gutterDisplay).toBe('none');
+
+    // Explicit writing size wins over the editor/code chain.
+    await page.getByLabel('Writing Font Size').fill('22px');
+    await expect.poll(async () => (await readWritingPaint(page)).fontSizePx).toBe(22);
+
+    // Full width drops the centered column cap...
+    await page.getByLabel('Writing Column Width', { exact: true }).selectOption('full');
+    await expect.poll(async () => (await readWritingPaint(page)).maxWidth).toBe('none');
+
+    // ...and fixed mode honors the configured width value.
+    await page.getByLabel('Writing Column Width', { exact: true }).selectOption('fixed');
+    await page.getByLabel('Writing Column Width Value').fill('50ch');
+    await expect
+      .poll(async () => {
+        const paint = await readWritingPaint(page);
+        return Math.abs(paint.maxWidthPx - 50 * paint.chWidth) <= paint.chWidth;
+      })
+      .toBe(true);
+  });
 });
 
 test.describe('writing mode on mobile', () => {
@@ -236,5 +281,36 @@ test.describe('writing mode on mobile', () => {
 
     const paint = await readWritingPaint(page);
     expect(paint.gutterDisplay).toBe('none');
+  });
+
+  test('an explicit writing size below 16px is floored on mobile', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.locator('button[aria-label="Toggle navigation menu"]').click();
+    await page
+      .getByRole('dialog', { name: 'Navigation drawer' })
+      .getByRole('button', { name: 'openmkview', exact: true })
+      .click();
+    await expect(page.locator('.mobile-main-content')).toBeVisible();
+    await openReadme(page);
+
+    const bar = page.locator('nav[aria-label="View"]');
+    await bar.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.locator('.editor-status-bar')).toBeVisible();
+
+    const toggle = page.getByRole('button', { name: 'Writing' });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('button[aria-label="Toggle navigation menu"]').click();
+    await page.locator('button[title="Settings"]').click();
+    const panel = page.locator('.settings-panel');
+    await expect(panel).toBeVisible();
+    await panel.locator('.settings-nav button', { hasText: 'Fonts' }).click();
+    await page.getByLabel('Writing Font Size').fill('12px');
+    await page.locator('.settings-panel .close-btn').click();
+
+    // The iOS focus-zoom guard floors the writing size at 16px on phones.
+    await expect.poll(async () => (await readWritingPaint(page)).fontSizePx).toBe(16);
   });
 });

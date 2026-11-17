@@ -14,28 +14,23 @@ import { writingModeStore } from '../stores/writingModeStore';
 import './CodeMirrorEditor.css';
 
 /**
- * Writing Mode typography defaults. Hardcoded for the first release (ticket
- * #9); ticket #10 replaces these with settings-driven values, so keep them
- * together behind one resolver rather than inlining them in the extension.
- */
-export const WRITING_FONT_FAMILY = 'Georgia, "Noto Serif SC", "Songti SC", "Noto Serif", serif';
-export const WRITING_FONT_SIZE = '18px';
-export const WRITING_COLUMN_WIDTH = '65ch';
-
-/**
- * Centered prose column, only mounted while Writing Mode is active. Created
- * once: CodeMirror's style modules are never pruned, so building a fresh one
- * per toggle would leak dead rules.
+ * Writing Mode typography is settings-driven: applyFontSettings publishes
+ * `--writing-font` / `--writing-size` / `--writing-width` on the document root,
+ * so a knob change restyles an open editor without rebuilding it. The
+ * fallbacks match the pre-settings defaults for the moment before effects run.
+ *
+ * Created once: CodeMirror's style modules are never pruned, so building a
+ * fresh one per toggle would leak dead rules.
  */
 const WRITING_THEME = EditorView.theme({
   // CodeMirror theme modules are order-sensitive; the doubled class gives the
   // prose font priority over the code theme's `.cm-content` font rule in both
   // light and dark themes.
   '.cm-content.cm-content': {
-    fontFamily: WRITING_FONT_FAMILY,
-    fontSize: WRITING_FONT_SIZE,
+    fontFamily: 'var(--writing-font, serif)',
+    fontSize: 'var(--writing-size, 18px)',
     lineHeight: '1.7',
-    maxWidth: WRITING_COLUMN_WIDTH,
+    maxWidth: 'var(--writing-width, 65ch)',
     marginLeft: 'auto',
     marginRight: 'auto',
   },
