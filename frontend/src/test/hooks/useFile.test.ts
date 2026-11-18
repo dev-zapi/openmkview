@@ -106,14 +106,86 @@ describe('useFile', () => {
     expect(alertMock).not.toHaveBeenCalled();
   });
 
-  it('shows placeholder alert when renaming to a new name', () => {
+  it('renames the file through the API and refreshes the tree', async () => {
     const { renameFile } = useFile();
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
     vi.spyOn(window, 'prompt').mockReturnValue('GUIDE.md');
+    const rename = vi.spyOn(api, 'renameFile').mockResolvedValue(undefined);
+    vi.spyOn(api, 'getFileTree').mockResolvedValue([]);
+
+    await renameFile(node);
+
+    expect(rename).toHaveBeenCalledWith('docs/README.md', 'GUIDE.md', 1);
+    expect(api.getFileTree).toHaveBeenCalledWith(1);
+    expect(fileStore.fileTree()).toEqual([]);
+  });
+
+  it('reopens the current file under its renamed path', async () => {
+    const { renameFile } = useFile();
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
+    fileStore.openDocumentFile(
+      { content: '# Readme', fileName: 'README.md', path: 'docs/README.md' },
+      'markdown'
+    );
+    vi.spyOn(window, 'prompt').mockReturnValue('GUIDE.md');
+    vi.spyOn(api, 'renameFile').mockResolvedValue(undefined);
+    vi.spyOn(api, 'getFileTree').mockResolvedValue([{
+      id: 'docs/GUIDE.md',
+      name: 'GUIDE.md',
+      path: 'docs/GUIDE.md',
+      isFolder: false,
+      fileType: 'markdown',
+    }]);
+    vi.spyOn(api, 'getFileContent').mockResolvedValue({
+      content: '# Readme',
+      fileName: 'GUIDE.md',
+      path: 'docs/GUIDE.md',
+    });
+
+    await renameFile(node);
+
+    expect(api.getFileContent).toHaveBeenCalledWith('docs/GUIDE.md', 1);
+    expect(fileStore.currentFile()?.path).toBe('docs/GUIDE.md');
+  });
+
+  it('reopens a file nested inside a renamed directory', async () => {
+    const { renameFile } = useFile();
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
+    fileStore.openDocumentFile(
+      { content: '# Readme', fileName: 'README.md', path: 'docs/README.md' },
+      'markdown'
+    );
+    vi.spyOn(window, 'prompt').mockReturnValue('guides');
+    vi.spyOn(api, 'renameFile').mockResolvedValue(undefined);
+    vi.spyOn(api, 'getFileTree').mockResolvedValue([{
+      id: 'guides/README.md',
+      name: 'README.md',
+      path: 'guides/README.md',
+      isFolder: false,
+      fileType: 'markdown',
+    }]);
+    vi.spyOn(api, 'getFileContent').mockResolvedValue({
+      content: '# Readme',
+      fileName: 'README.md',
+      path: 'guides/README.md',
+    });
+
+    await renameFile({ id: 'docs', name: 'docs', path: 'docs', isFolder: true });
+
+    expect(api.getFileContent).toHaveBeenCalledWith('guides/README.md', 1);
+    expect(fileStore.currentFile()?.path).toBe('guides/README.md');
+  });
+
+  it('alerts when the rename request fails', async () => {
+    const { renameFile } = useFile();
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
+    vi.spyOn(window, 'prompt').mockReturnValue('GUIDE.md');
+    vi.spyOn(api, 'renameFile').mockRejectedValue(new Error('Target file already exists'));
     const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
 
-    renameFile(node);
+    await renameFile(node);
 
-    expect(alertMock).toHaveBeenCalledWith('Rename functionality will be implemented in future version');
+    expect(alertMock).toHaveBeenCalledWith('Failed to rename: Target file already exists');
   });
 
   it('closes the left drawer before opening a file on mobile', async () => {

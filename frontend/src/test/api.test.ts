@@ -222,6 +222,42 @@ describe('api service', () => {
   });
 
   describe('Trash API', () => {
+    describe('renameFile', () => {
+      it('sends a snake_case rename request', async () => {
+        (global.fetch as any).mockResolvedValueOnce({ ok: true });
+
+        const { api } = await import('../services/api');
+        await api.renameFile('docs/old.md', 'new.md', 1);
+
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/files',
+          expect.objectContaining({
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'rename',
+              project_id: 1,
+              path: 'docs/old.md',
+              new_name: 'new.md',
+            }),
+          })
+        );
+      });
+
+      it('surfaces rename errors', async () => {
+        (global.fetch as any).mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: 'Target file already exists' }),
+        });
+
+        const { api } = await import('../services/api');
+        await expect(api.renameFile('docs/old.md', 'new.md', 1)).rejects.toThrow(
+          'Target file already exists'
+        );
+      });
+    });
+
     describe('moveToTrash', () => {
       it('moves file to trash', async () => {
         const mockTrashItem = {

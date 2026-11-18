@@ -116,6 +116,20 @@ export const api = {
     await checkResponse(res);
   },
 
+  async renameFile(path: string, newName: string, projectId: number): Promise<void> {
+    const res = await request('/api/files', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'rename',
+        project_id: projectId,
+        path,
+        new_name: newName,
+      }),
+    });
+    await checkResponse(res);
+  },
+
   async moveToTrash(path: string, projectId: number, isFolder: boolean): Promise<TrashItem> {
     const res = await request('/api/trash/move', {
       method: 'POST',

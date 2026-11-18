@@ -10,6 +10,24 @@ import { settingsStore } from '../stores/settingsStore';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
 import type { FileNode } from '../types';
 
+/** Map the open file's path when its own path or an ancestor directory is renamed. */
+function mapPathAfterRename(
+  currentPath: string,
+  renamedPath: string,
+  newName: string
+): string | null {
+  const parent = renamedPath.includes('/')
+    ? renamedPath.slice(0, renamedPath.lastIndexOf('/') + 1)
+    : '';
+  const replacement = `${parent}${newName}`;
+
+  if (currentPath === renamedPath) return replacement;
+  if (currentPath.startsWith(`${renamedPath}/`)) {
+    return `${replacement}${currentPath.slice(renamedPath.length)}`;
+  }
+  return null;
+}
+
 export const useFile = () => {
   const confirmDiscardIfDirty = (): boolean => {
     if (editorStore.isDirty() && appStore.activeTab() === 'edit') {
@@ -122,11 +140,32 @@ export const useFile = () => {
     }
   };
 
-  const renameFile = (node: FileNode) => {
+  const renameFile = async (node: FileNode) => {
+    const project = projectStore.state.activeProject;
+    if (!project) return;
+
     const newName = prompt('Enter new name:', node.name);
     if (!newName || newName === node.name) return;
-    
-    alert('Rename functionality will be implemented in future version');
+
+    try {
+      await api.renameFile(node.path, newName, project.id);
+
+      const tree = await api.getFileTree(project.id);
+      fileStore.setFileTree(tree);
+
+      // Annotations follow the file because the backend migrated their
+      // stored relative paths; reopen the current file under its new path.
+      const currentPath = fileStore.currentFile()?.path;
+      const nextPath = currentPath
+        ? mapPathAfterRename(currentPath, node.path, newName)
+        : null;
+      if (nextPath) {
+        await openFile(nextPath, true);
+      }
+    } catch (error) {
+      console.error('Failed to rename:', error);
+      alert(`Failed to rename: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const mobileFileClick = async (path: string, updateUrl?: boolean) => {

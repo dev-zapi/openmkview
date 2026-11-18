@@ -3,25 +3,61 @@ use crate::db::init_db;
 use crate::db::ProjectRepository;
 use crate::errors::AppError;
 use crate::models::CreateAnnotationRequest;
+use crate::paths::AppPaths;
+use crate::services::TrashService;
 use serde_json::{json, Value};
 use std::fs;
+use std::path::PathBuf;
 use tempfile::TempDir;
 
-fn setup() -> (TempDir, rusqlite::Connection, i64) {
+struct Fixture {
+    temp_dir: TempDir,
+    paths: AppPaths,
+    conn: rusqlite::Connection,
+    project_id: i64,
+    project_dir: PathBuf,
+}
+
+fn fixture_with_files(files: &[(&str, &str)]) -> Fixture {
     let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
+    let paths = AppPaths {
+        config_dir: temp_dir.path().join("config"),
+        data_dir: temp_dir.path().join("data"),
+    };
+    paths.ensure_dirs().unwrap();
+
+    let db_path = paths.data_dir.join("test.db");
     let conn = init_db(&db_path).unwrap();
 
     let project_dir = temp_dir.path().join("project");
     fs::create_dir_all(&project_dir).unwrap();
-    fs::write(project_dir.join("doc.md"), "# Title\n\nparagraph\n").unwrap();
-    fs::write(project_dir.join("other.md"), "# Other\n").unwrap();
+    for (relative_path, content) in files {
+        let path = project_dir.join(relative_path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, content).unwrap();
+    }
 
     let project = ProjectRepository::new(&conn)
         .create(project_dir.to_str().unwrap(), "project")
         .unwrap();
 
-    (temp_dir, conn, project.id)
+    Fixture {
+        temp_dir,
+        paths,
+        conn,
+        project_id: project.id,
+        project_dir,
+    }
+}
+
+fn setup() -> (TempDir, rusqlite::Connection, i64) {
+    let fixture = fixture_with_files(&[
+        ("doc.md", "# Title\n\nparagraph\n"),
+        ("other.md", "# Other\n"),
+    ]);
+    (fixture.temp_dir, fixture.conn, fixture.project_id)
 }
 
 fn block_anchor() -> Value {
@@ -167,4 +203,176 @@ fn create_rejects_path_traversal() {
     let result = service.create(create_request(project_id, "../escape.md", "note"));
 
     assert!(matches!(result, Err(AppError::ValidationError(_))));
+}
+
+#[test]
+fn rename_moves_annotations_to_the_new_relative_path() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+
+    let created = service
+        .create(create_request(fixture.project_id, "doc.md", "kept note"))
+        .expect("create annotation");
+
+    fs::rename(
+        fixture.project_dir.join("doc.md"),
+        fixture.project_dir.join("renamed.md"),
+    )
+    .expect("rename file on disk");
+
+    let moved = service
+        .migrate_paths(fixture.project_id, "doc.md", "renamed.md")
+        .expect("migrate annotation paths");
+    assert_eq!(moved, 1);
+
+    let listed = service
+        .list_for_file(fixture.project_id, "renamed.md")
+        .expect("list moved annotations");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, created.id);
+    assert_eq!(listed[0].relative_path, "renamed.md");
+    assert_eq!(listed[0].notes[0].body, "kept note");
+
+    assert!(service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list old path")
+        .is_empty());
+}
+
+#[test]
+fn directory_rename_moves_descendants_and_ignores_sibling_prefixes() {
+    let fixture = fixture_with_files(&[
+        ("docs/a.md", "# A\n"),
+        ("docs/nested/b.md", "# B\n"),
+        ("docs-other/c.md", "# C\n"),
+    ]);
+    let service = AnnotationService::new(&fixture.conn);
+
+    service
+        .create(create_request(fixture.project_id, "docs/a.md", "a note"))
+        .expect("create a");
+    service
+        .create(create_request(
+            fixture.project_id,
+            "docs/nested/b.md",
+            "b note",
+        ))
+        .expect("create b");
+    let sibling = service
+        .create(create_request(
+            fixture.project_id,
+            "docs-other/c.md",
+            "c note",
+        ))
+        .expect("create c");
+
+    fs::rename(
+        fixture.project_dir.join("docs"),
+        fixture.project_dir.join("renamed"),
+    )
+    .expect("rename directory on disk");
+
+    let moved = service
+        .migrate_paths(fixture.project_id, "docs", "renamed")
+        .expect("migrate descendants");
+    assert_eq!(moved, 2);
+
+    assert_eq!(
+        service
+            .list_for_file(fixture.project_id, "renamed/a.md")
+            .expect("list renamed a")
+            .len(),
+        1
+    );
+    assert_eq!(
+        service
+            .list_for_file(fixture.project_id, "renamed/nested/b.md")
+            .expect("list renamed b")
+            .len(),
+        1
+    );
+
+    let untouched = service
+        .list_for_file(fixture.project_id, "docs-other/c.md")
+        .expect("list sibling");
+    assert_eq!(untouched.len(), 1);
+    assert_eq!(untouched[0].id, sibling.id);
+}
+
+#[test]
+fn trash_hides_annotations_and_restore_brings_them_back() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+
+    let created = service
+        .create(create_request(fixture.project_id, "doc.md", "trash note"))
+        .expect("create annotation");
+
+    let trashed = TrashService::move_to_trash(
+        &fixture.project_dir,
+        "doc.md",
+        false,
+        fixture.project_id,
+        &fixture.paths,
+    )
+    .expect("move file to trash");
+    assert!(!fixture.project_dir.join("doc.md").exists());
+    assert!(service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list while trashed")
+        .is_empty());
+
+    TrashService::restore_from_trash(
+        &fixture.project_dir,
+        &trashed.id,
+        fixture.project_id,
+        &fixture.paths,
+    )
+    .expect("restore file");
+
+    let listed = service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list after restore");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, created.id);
+    assert_eq!(listed[0].notes[0].body, "trash note");
+}
+
+#[test]
+fn external_rename_keeps_annotation_rows_queryable() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+
+    let created = service
+        .create(create_request(
+            fixture.project_id,
+            "doc.md",
+            "external note",
+        ))
+        .expect("create annotation");
+
+    fs::rename(
+        fixture.project_dir.join("doc.md"),
+        fixture.project_dir.join("moved.md"),
+    )
+    .expect("rename file outside the app");
+
+    // The old path is gone from the document surface, and the annotation was
+    // not silently re-associated with some other file at the new path.
+    assert!(service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list orphaned path")
+        .is_empty());
+    assert!(service
+        .list_for_file(fixture.project_id, "moved.md")
+        .expect("list new path")
+        .is_empty());
+
+    // Data is retained under its original path for the management panel.
+    let retained = AnnotationRepository::new(&fixture.conn)
+        .find_by_id(created.id)
+        .expect("load retained annotation")
+        .expect("annotation row remains");
+    assert_eq!(retained.relative_path, "doc.md");
+    assert_eq!(retained.notes[0].body, "external note");
 }

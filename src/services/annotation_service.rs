@@ -1,8 +1,9 @@
 use crate::db::{AnnotationRepository, ProjectRepository};
 use crate::errors::{AppError, AppResult};
-use crate::models::{Annotation, CreateAnnotationRequest};
+use crate::models::{Annotation, CreateAnnotationRequest, Project};
 use crate::services::FileService;
 use rusqlite::Connection;
+use std::path::Path;
 
 pub struct AnnotationService<'a> {
     annotation_repo: AnnotationRepository<'a>,
@@ -22,8 +23,16 @@ impl<'a> AnnotationService<'a> {
         project_id: i64,
         relative_path: &str,
     ) -> AppResult<Vec<Annotation>> {
-        self.require_project(project_id)?;
+        let project = self.require_project(project_id)?;
         FileService::validate_relative_path(relative_path)?;
+
+        // Documents only surface annotations for files that currently exist at
+        // the stored path. Trashed files and files renamed outside the app are
+        // hidden here while their rows stay in the database (ADR-0006).
+        if !Path::new(&project.path).join(relative_path).is_file() {
+            return Ok(Vec::new());
+        }
+
         self.annotation_repo
             .list_for_file(project_id, relative_path)
     }
@@ -53,11 +62,21 @@ impl<'a> AnnotationService<'a> {
         }
     }
 
-    fn require_project(&self, project_id: i64) -> AppResult<()> {
-        if self.project_repo.find_by_id(project_id)?.is_none() {
-            return Err(AppError::NotFound("Project not found".into()));
-        }
-        Ok(())
+    /// Follow a file or directory that was renamed/moved inside the app.
+    ///
+    /// The filesystem stays the source of truth: only annotation rows are
+    /// rewritten, and nothing is ever written into the project directory.
+    pub fn migrate_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
+        self.require_project(project_id)?;
+        FileService::validate_relative_path(from)?;
+        FileService::validate_relative_path(to)?;
+        self.annotation_repo.move_paths(project_id, from, to)
+    }
+
+    fn require_project(&self, project_id: i64) -> AppResult<Project> {
+        self.project_repo
+            .find_by_id(project_id)?
+            .ok_or_else(|| AppError::NotFound("Project not found".into()))
     }
 }
 
