@@ -101,11 +101,24 @@ export function segmentAnchorText(segment: unknown): string | null {
   return null;
 }
 
+/**
+ * Compact excerpt for every Annotation surface (column, popover, chooser,
+ * management table). Quote segments contribute the selected text; block
+ * segments contribute the block text.
+ */
+export function anchorExcerpt(
+  anchor: AnnotationAnchor | null | undefined,
+  separator = ' … '
+): string {
+  return (anchor?.segments ?? [])
+    .map((segment) => segmentAnchorText(segment))
+    .map((text) => text?.trim())
+    .filter((text): text is string => Boolean(text))
+    .join(separator);
+}
+
 export function snapshotFromAnchor(anchor: AnnotationAnchor): string {
-  return (anchor.segments ?? [])
-    .map((segment) => segmentAnchorText(segment) ?? '')
-    .filter((text) => text.length > 0)
-    .join('\n\n');
+  return anchorExcerpt(anchor, '\n\n');
 }
 
 export function outdatedFromAnchor(
@@ -201,20 +214,33 @@ export function exactMatchScore(
   return text.slice(quoteStart, quoteEnd) === quote ? EXACT_MATCH_BONUS : 0;
 }
 
+/** The normalized selected text of a text-range segment ('' when absent). */
+export function segmentQuote(segment: AnchorSegment): string {
+  return normalizeBlockText(segmentStringField(segment, 'quote'));
+}
+
+export interface QuoteMatch {
+  /** Inclusive character offset in the searched text. */
+  start: number;
+  /** Exclusive end offset. */
+  end: number;
+}
+
 /**
  * Exact and case-drifted occurrences are scored together. Returning exact
  * matches alone would discard a case-only edit elsewhere that the stored
  * context clearly identifies (and vice versa). Equal indices are deduped.
+ * Quote normalization happens once, here.
  */
-export function findQuoteOccurrences(text: string, quote: string): number[] {
+export function findQuoteMatches(text: string, quote: string): QuoteMatch[] {
   const needle = normalizeBlockText(quote);
   if (!needle) return [];
 
-  const starts = new Set<number>();
+  const matches = new Map<number, QuoteMatch>();
   const collect = (haystack: string, target: string): void => {
     let index = haystack.indexOf(target);
     while (index !== -1) {
-      starts.add(index);
+      matches.set(index, { start: index, end: index + target.length });
       index = haystack.indexOf(target, index + 1);
     }
   };
@@ -228,7 +254,64 @@ export function findQuoteOccurrences(text: string, quote: string): number[] {
     collect(lowerText, lowerNeedle);
   }
 
-  return [...starts].sort((left, right) => left - right);
+  return [...matches.values()].sort((left, right) => left.start - right.start);
+}
+
+/**
+ * Full ADR-0005 score for one quote occurrence: the block's own identity
+ * signal (computed once per candidate) plus surrounding context plus the
+ * exact-case tiebreak. Both resolution edges use this formula.
+ */
+export function occurrenceScore(
+  blockScore: number,
+  text: string,
+  match: QuoteMatch,
+  segment: AnchorSegment,
+  quote: string
+): number {
+  return (
+    blockScore +
+    contextScore(
+      text,
+      match.start,
+      match.end,
+      segmentStringField(segment, 'prefix'),
+      segmentStringField(segment, 'suffix')
+    ) +
+    exactMatchScore(text, match.start, match.end, quote)
+  );
+}
+
+/**
+ * Whole-block Anchors resolve only against complete blocks whose text equals
+ * the stored block text. Among those, the highest content score wins; equal
+ * best scores with different tie keys are ambiguous and resolve to nothing.
+ * The tie key is the caller's identity semantics (recomputed block id in the
+ * Preview, source line range in the Source echo).
+ */
+export function selectWholeBlock<C>(
+  candidates: readonly C[],
+  blockOf: (candidate: C) => ScorableBlock,
+  segment: AnchorSegment,
+  tieKey: (candidate: C) => string
+): C | null {
+  const blockText = normalizeBlockText(segmentStringField(segment, 'blockText'));
+  if (!blockText) return null;
+
+  const occurrences: ScoredOccurrence<C>[] = [];
+  candidates.forEach((candidate, index) => {
+    const block = blockOf(candidate);
+    if (block.text !== blockText) return;
+    occurrences.push({
+      candidate,
+      start: index,
+      end: index + 1,
+      score: blockMatchScore(block, segment),
+    });
+  });
+
+  return selectBestOccurrence(occurrences, (occurrence) => tieKey(occurrence.candidate))
+    ?.candidate ?? null;
 }
 
 /**

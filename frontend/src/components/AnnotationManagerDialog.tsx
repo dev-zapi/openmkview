@@ -17,24 +17,31 @@ interface AnnotationManagerDialogProps {
   onOpenFile?: (path: string) => void;
 }
 
-/** The annotation store grows `isOutdated` when #19 lands; probe it optionally. */
-type AnnotationStoreWithOutdated = typeof annotationStore & {
-  isOutdated?: (annotationId: number) => boolean;
-};
-
 /**
- * Outdated state is resolved per rendered document (#19) and exposed by the
- * annotation store when that ticket is present; the optional payload field is
- * the generic fallback. The panel renders the flag, not #19's badge/snapshot.
+ * The rendered file publishes canonical status; every other row is resolved
+ * lazily by the store against its own file's content.
  */
 function isRowOutdated(row: ManagedAnnotation): boolean {
-  if (row.outdated === true) return true;
-  return (annotationStore as AnnotationStoreWithOutdated).isOutdated?.(row.id) === true;
+  if (annotationStore.isOutdated(row.id)) return true;
+  if (
+    annotationStore.isLoadedFile(row.projectId, row.relativePath) &&
+    annotationStore.previewOutdatedResolved()
+  ) {
+    return false;
+  }
+  return annotationStore.isManagedOutdated(row.id);
+}
+
+function outdatedSnapshot(row: ManagedAnnotation): string | null {
+  return (
+    annotationStore.outdatedSnapshot(row.id) ??
+    annotationStore.managedOutdatedSnapshot(row.id)
+  );
 }
 
 /**
  * Project-wide management fallback for annotations (#22). Lists every row in
- * the Active Project — including Outdated and path-orphaned ones — and offers
+ * the Active Project — including Outdated and Missing File ones — and offers
  * batch Resolved changes, batch delete, and a confirmed clear-all.
  */
 const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props) => {
@@ -112,7 +119,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
   };
 
   const jump = (row: ManagedAnnotation) => {
-    if (row.orphaned || isRowOutdated(row)) return;
+    if (row.missingFile || isRowOutdated(row)) return;
     annotationStore.requestJumpInFile(row.projectId, row.relativePath, row.id);
     if (row.relativePath !== props.currentFilePath) {
       // A cancelled/failed open cancels this pending jump inside useFile.
@@ -191,9 +198,15 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
               <tbody>
                 <For each={rows()}>
                   {(row) => {
-                    const state = annotationState(row, isRowOutdated(row));
+                    // A function: project-wide Outdated resolution fills in
+                    // progressively, so the state cell must stay reactive.
+                    const state = () => annotationState(row, isRowOutdated(row));
                     return (
-                      <tr class={row.orphaned ? 'annotation-manager-row-orphaned' : ''}>
+                      <tr
+                        class={
+                          row.missingFile ? 'annotation-manager-row-missing-file' : ''
+                        }
+                      >
                         <td>
                           <input
                             type="checkbox"
@@ -204,33 +217,39 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                         </td>
                         <td class="annotation-manager-file">{row.relativePath}</td>
                         <td class="annotation-manager-excerpt">
-                          {annotationExcerpt(row, annotationStore.outdatedSnapshot(row.id))}
+                          {annotationExcerpt(row, outdatedSnapshot(row))}
                         </td>
                         <td class="annotation-manager-note">{annotationNotePreview(row)}</td>
                         <td>
                           <span
-                            class={`annotation-state ${row.resolved ? 'resolved' : ''}`}
+                            class={`annotation-state ${
+                              state().outdated
+                                ? 'outdated'
+                                : row.resolved
+                                  ? 'resolved'
+                                  : ''
+                            }`}
                           >
-                            {state.label}
+                            {state().label}
                           </span>
-                          <Show when={state.outdated}>
+                          <Show when={state().outdated}>
                             <span class="annotation-manager-badge">Outdated</span>
                           </Show>
                         </td>
                         <td class="annotation-manager-time">{annotationTime(row)}</td>
                         <td>
                           <Show
-                            when={!row.orphaned}
+                            when={!row.missingFile}
                             fallback={
-                              <span class="annotation-manager-orphan">
+                              <span class="annotation-manager-missing-file">
                                 File missing — cannot jump
                               </span>
                             }
                           >
                             <Show
-                              when={!state.outdated}
+                              when={!state().outdated}
                               fallback={
-                                <span class="annotation-manager-orphan">
+                                <span class="annotation-manager-outdated">
                                   Outdated — cannot locate text
                                 </span>
                               }

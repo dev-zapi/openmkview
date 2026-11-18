@@ -4,6 +4,7 @@ import { escapeHtml } from '../utils/html';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 import { annotationStore } from '../stores/annotationStore';
 import { locateAnchorInSource } from '../utils/sourceAnchorLocator';
+import { anchorExcerpt } from '../utils/anchorScoring';
 import type { Annotation } from '../types';
 
 interface SourceViewProps {
@@ -152,12 +153,6 @@ const SourceView: Component<SourceViewProps> = (props) => {
     }
   });
 
-  const annotationExcerpt = (annotation: Annotation): string =>
-    (annotation.anchor?.segments ?? [])
-      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-      .filter((text) => Boolean(text))
-      .join(' … ');
-
   /**
    * Read-only Source echo. Line highlights are best-effort; an unlocatable
    * Anchor degrades to the Outdated badge instead of a wrong line. Status is
@@ -203,7 +198,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
       if (previewResolved) {
         const canonicalSnapshot = canonicalOutdated.get(annotation.id);
         if (canonicalSnapshot !== undefined) {
-          outdated.push({ excerpt: canonicalSnapshot || annotationExcerpt(annotation) });
+          outdated.push({ excerpt: canonicalSnapshot || anchorExcerpt(annotation.anchor) });
           continue;
         }
 
@@ -218,7 +213,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
       if (location.status === 'outdated') {
         const snapshot = annotation.snapshot?.trim() || location.snapshot;
         sourceSnapshots.set(annotation.id, snapshot);
-        outdated.push({ excerpt: snapshot || annotationExcerpt(annotation) });
+        outdated.push({ excerpt: snapshot || anchorExcerpt(annotation.anchor) });
         continue;
       }
 
@@ -242,7 +237,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
       }
 
       const label = entries
-        .map((entry) => annotationExcerpt(entry))
+        .map((entry) => anchorExcerpt(entry.anchor))
         .filter((text) => text.length > 0)
         .join(' … ');
       element.setAttribute('role', 'mark');
@@ -261,6 +256,50 @@ const SourceView: Component<SourceViewProps> = (props) => {
     // highlight pass must also observe that transition.
     isLoading();
     applySourceHighlights(annotationStore.annotations(), annotationStore.visible());
+  });
+
+  /**
+   * Honor a column jump while the Source tab is active. The Preview is not
+   * mounted to consume the request, and leaving it armed would replay the
+   * jump on a later Preview mount. The source locator already computes the
+   * anchored lines, so scroll to the first one and consume the request.
+   */
+  let handledJumpNonce = 0;
+  createEffect(() => {
+    const jump = annotationStore.jumpRequest();
+    if (!jump || jump.nonce === handledJumpNonce) return;
+    // Wait until the highlighted source exists; this effect reruns as it does.
+    if (isLoading() || !highlightedRef) return;
+
+    handledJumpNonce = jump.nonce;
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === jump.annotationId
+    );
+    if (!annotation) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    const location = locateAnchorInSource(props.content, annotation.anchor);
+    const line =
+      location.status === 'located'
+        ? Array.from(
+            highlightedRef.querySelectorAll<HTMLElement>('pre code > .line')
+          )[location.ranges[0]?.start - 1]
+        : undefined;
+    if (!line) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    line.classList.add('annotation-jump-target');
+    line.setAttribute('tabindex', '-1');
+    line.focus({ preventScroll: true });
+    setTimeout(() => line.classList.remove('annotation-jump-target'), 1600);
+
+    // Consume it here so a later Preview mount cannot replay the jump.
+    annotationStore.clearJump();
   });
 
   return (

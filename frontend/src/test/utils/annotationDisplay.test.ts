@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAnnotationTimestamp } from '../../utils/annotationDisplay';
+import { formatAnnotationTimestamp, parseAnnotationTimestamp } from '../../utils/annotationDisplay';
 
 describe('annotation timestamp parsing', () => {
   it('treats SQLite datetime strings as UTC, not local time', () => {
@@ -27,5 +27,12 @@ describe('annotation timestamp parsing', () => {
   it('returns null for empty or invalid values', () => {
     expect(parseAnnotationTimestamp('')).toBeNull();
     expect(parseAnnotationTimestamp('not a date')).toBeNull();
+  });
+
+  it('renders every timestamp through the same localized UTC path', () => {
+    expect(formatAnnotationTimestamp('2026-11-18 05:16:27')).toBe(
+      new Date('2026-11-18T05:16:27Z').toLocaleString()
+    );
+    expect(formatAnnotationTimestamp('not a date')).toBe('not a date');
   });
 });

@@ -1,4 +1,5 @@
-import type { Annotation } from '../types';
+import type { Annotation, AnnotationNote } from '../types';
+import { anchorExcerpt } from './anchorScoring';
 
 /**
  * The text an annotation is anchored to, for compact list surfaces. When the
@@ -10,11 +11,7 @@ export function annotationExcerpt(
 ): string {
   const snapshot = outdatedSnapshot?.trim();
   if (snapshot) return snapshot;
-  const parts = (annotation.anchor?.segments ?? [])
-    .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part));
-  return parts.join(' … ') || annotation.snapshot?.trim() || 'Anchored content';
+  return anchorExcerpt(annotation.anchor) || annotation.snapshot?.trim() || 'Anchored content';
 }
 
 /** First note body, condensed for the management table. */
@@ -23,10 +20,10 @@ export function annotationNotePreview(annotation: Annotation): string {
   return body || 'No note text';
 }
 
-/** Short label for the thread state, including the optional Outdated flag. */
+/** Short label for the thread state, including its Outdated flag. */
 export function annotationState(
   annotation: Annotation,
-  outdated = annotation.outdated === true
+  outdated: boolean
 ): {
   label: 'Active' | 'Resolved';
   outdated: boolean;
@@ -52,9 +49,18 @@ export function parseAnnotationTimestamp(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Display timestamp for the management table. */
-export function annotationTime(annotation: Annotation): string {
-  const value = annotation.updatedAt || annotation.createdAt;
+/** The one localized rendering for every Annotation timestamp. */
+export function formatAnnotationTimestamp(value: string): string {
   const date = parseAnnotationTimestamp(value);
   return date ? date.toLocaleString() : value;
+}
+
+/** Display timestamp for the management table. */
+export function annotationTime(annotation: Annotation): string {
+  return formatAnnotationTimestamp(annotation.updatedAt || annotation.createdAt);
+}
+
+/** Display timestamp for one note in a thread. */
+export function annotationNoteTime(note: AnnotationNote): string {
+  return formatAnnotationTimestamp(note.createdAt);
 }

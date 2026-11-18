@@ -92,6 +92,10 @@ _Avoid_: position, offset, 行号引用, location reference
 The visible state of an Annotation whose Anchor no longer matches the document after edits. Kept and displayed with a badge rather than silently dropped or mispositioned.
 _Avoid_: stale, orphan, broken, 失效批注
 
+**Missing File**:
+The state of an Annotation whose stored path no longer exists in the Active Project, typically after the file was deleted or moved outside the app. The Annotation is retained in SQLite and stays reachable from the management panel; it is not Outdated because its Anchor cannot be evaluated without the file.
+_Avoid_: orphan, orphaned row, path-orphaned, orphaned annotation
+
 **Reply**:
 A note appended to an Annotation's thread after its first note, ordered by time. Single-user by design: a reply extends the annotation, it is not a conversation turn.
 _Avoid_: response, follow-up comment, message

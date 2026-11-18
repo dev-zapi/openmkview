@@ -32,9 +32,20 @@ function jsonResponse(value: unknown): Response {
   return { ok: true, json: async () => value } as unknown as Response;
 }
 
+/** URL-routed fetch mock: management loads now also fetch each row's file. */
+function mockFetchRoutes(routes: Array<[string, unknown]>): void {
+  (global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input);
+    const match = routes.find(([fragment]) => url.includes(fragment));
+    if (!match) return Promise.reject(new Error(`unexpected request: ${url}`));
+    return Promise.resolve(jsonResponse(match[1]));
+  });
+}
+
 describe('annotationStore', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    (global.fetch as any).mockReset();
     const { annotationStore } = await import('../../stores/annotationStore');
     annotationStore.reset();
   });
@@ -53,39 +64,13 @@ describe('annotationStore', () => {
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.load(1, 'a.md');
     expect(annotationStore.annotations()).toEqual([first]);
-    expect(annotationStore.byBlockHash('blk-a')?.[0]?.id).toBe(1);
 
     const second = annotationStore.load(1, 'b.md');
     expect(annotationStore.annotations()).toEqual([]);
-    expect(annotationStore.byBlockHash('blk-a')).toEqual([]);
 
     (globalThis as any).__resolveSecond(jsonResponse([annotationFor(2, 1, 'b.md', 'blk-b')]));
     await second;
-    expect(annotationStore.annotations()).toHaveLength(1);
-    expect(annotationStore.byBlockHash('blk-b')?.[0]?.id).toBe(2);
-  });
-
-  it('returns every annotation targeting the same block', async () => {
-    const first = annotationFor(1, 1, 'a.md', 'blk-shared');
-    const second = annotationFor(2, 1, 'a.md', 'blk-shared');
-    (global.fetch as any).mockResolvedValueOnce(jsonResponse([first, second]));
-
-    const { annotationStore } = await import('../../stores/annotationStore');
-    await annotationStore.load(1, 'a.md');
-
-    expect(annotationStore.byBlockHash('blk-shared').map((annotation) => annotation.id)).toEqual([
-      1, 2,
-    ]);
-  });
-
-  it('does not resolve a block hash from a different file', async () => {
-    const annotation = annotationFor(1, 2, 'other.md', 'blk-shared');
-    (global.fetch as any).mockResolvedValueOnce(jsonResponse([annotation]));
-
-    const { annotationStore } = await import('../../stores/annotationStore');
-    await annotationStore.load(1, 'current.md');
-    // The annotation belongs to project 2 / other.md, so it is not current.
-    expect(annotationStore.byBlockHash('blk-shared')).toEqual([]);
+    expect(annotationStore.annotations().map((annotation) => annotation.id)).toEqual([2]);
   });
 
   it('re-anchors an Outdated annotation and clears its status', async () => {
@@ -236,17 +221,21 @@ describe('annotationStore', () => {
 describe('annotationStore management panel', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    (global.fetch as any).mockReset();
     const { annotationStore } = await import('../../stores/annotationStore');
     annotationStore.reset();
   });
 
   function managedFor(id: number, relativePath = 'a.md') {
-    return { ...annotationFor(id, 1, relativePath, `blk-${id}`), orphaned: false };
+    return { ...annotationFor(id, 1, relativePath, `blk-${id}`), missingFile: false };
   }
 
   it('loads the project-wide management list', async () => {
     const rows = [managedFor(1), managedFor(2, 'b.md')];
-    (global.fetch as any).mockResolvedValueOnce(jsonResponse(rows));
+    mockFetchRoutes([
+      ['/api/annotations/manage', rows],
+      ['/api/files/content', { content: '# File\n' }],
+    ]);
 
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.loadForProject(1);
@@ -257,12 +246,17 @@ describe('annotationStore management panel', () => {
   });
 
   it('surfaces a management-list load failure', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Server Error',
-      json: async () => ({ error: 'boom' }),
-    } as unknown as Response);
+    (global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).includes('/api/annotations/manage')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Server Error',
+          json: async () => ({ error: 'boom' }),
+        } as unknown as Response);
+      }
+      return Promise.reject(new Error(`unexpected request: ${input}`));
+    });
 
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.loadForProject(1);
@@ -271,8 +265,44 @@ describe('annotationStore management panel', () => {
     expect(annotationStore.managedError()).toBe('boom');
   });
 
+  it('resolves Outdated across files and skips Missing File rows', async () => {
+    const healthy = managedFor(1, 'a.md');
+    const outdated = managedFor(2, 'b.md');
+    const missing = { ...managedFor(3, 'gone.md'), missingFile: true };
+    (global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/annotations/manage')) {
+        return Promise.resolve(jsonResponse([healthy, outdated, missing]));
+      }
+      if (url.includes('relativePath=a.md')) {
+        return Promise.resolve(jsonResponse({ content: '# A\n\ntext\n' }));
+      }
+      if (url.includes('relativePath=b.md')) {
+        return Promise.resolve(jsonResponse({ content: '# B\n\nnothing here\n' }));
+      }
+      return Promise.reject(new Error(`unexpected request: ${url}`));
+    });
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.loadForProject(1);
+    await vi.waitFor(() => expect(annotationStore.isManagedOutdated(2)).toBe(true));
+
+    expect(annotationStore.isManagedOutdated(1)).toBe(false);
+    expect(annotationStore.managedOutdatedSnapshot(2)).toBe('text');
+
+    const contentFetches = () =>
+      (global.fetch as any).mock.calls.filter(([input]: [string]) =>
+        String(input).includes('/api/files/content')
+      ).length;
+    // Missing File rows are not fetched: a.md and b.md only.
+    expect(contentFetches()).toBe(2);
+  });
+
   it('toggles individual rows and the whole selection', async () => {
-    (global.fetch as any).mockResolvedValueOnce(jsonResponse([managedFor(1), managedFor(2)]));
+    mockFetchRoutes([
+      ['/api/annotations/manage', [managedFor(1), managedFor(2)]],
+      ['/api/files/content', { content: '# File\n' }],
+    ]);
 
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.loadForProject(1);
@@ -291,10 +321,15 @@ describe('annotationStore management panel', () => {
   });
 
   it('batch delete updates both surfaces and prunes the selection', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-1'), annotationFor(2, 1, 'a.md', 'blk-2')]))
-      .mockResolvedValueOnce(jsonResponse([managedFor(1), managedFor(2)]))
-      .mockResolvedValueOnce(jsonResponse({ deleted: 1 }));
+    mockFetchRoutes([
+      ['/api/annotations/manage', [managedFor(1), managedFor(2)]],
+      [
+        '/api/annotations?',
+        [annotationFor(1, 1, 'a.md', 'blk-1'), annotationFor(2, 1, 'a.md', 'blk-2')],
+      ],
+      ['/api/annotations/batch-delete', { deleted: 1 }],
+      ['/api/files/content', { content: '# File\n' }],
+    ]);
 
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.load(1, 'a.md');
@@ -310,10 +345,15 @@ describe('annotationStore management panel', () => {
   });
 
   it('batch resolve flips the resolved flag on both surfaces', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-1'), annotationFor(2, 1, 'a.md', 'blk-2')]))
-      .mockResolvedValueOnce(jsonResponse([managedFor(1), managedFor(2)]))
-      .mockResolvedValueOnce(jsonResponse({ updated: 1 }));
+    mockFetchRoutes([
+      ['/api/annotations/manage', [managedFor(1), managedFor(2)]],
+      [
+        '/api/annotations?',
+        [annotationFor(1, 1, 'a.md', 'blk-1'), annotationFor(2, 1, 'a.md', 'blk-2')],
+      ],
+      ['/api/annotations/batch-resolve', { updated: 1 }],
+      ['/api/files/content', { content: '# File\n' }],
+    ]);
 
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.load(1, 'a.md');
@@ -328,10 +368,12 @@ describe('annotationStore management panel', () => {
   });
 
   it('clear project empties both surfaces and the selection', async () => {
-    (global.fetch as any)
-      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-1')]))
-      .mockResolvedValueOnce(jsonResponse([managedFor(1)]))
-      .mockResolvedValueOnce(jsonResponse({ deleted: 1 }));
+    mockFetchRoutes([
+      ['/api/annotations/manage', [managedFor(1)]],
+      ['/api/annotations?', [annotationFor(1, 1, 'a.md', 'blk-1')]],
+      ['/api/annotations/project/', { deleted: 1 }],
+      ['/api/files/content', { content: '# File\n' }],
+    ]);
 
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.load(1, 'a.md');
@@ -349,6 +391,7 @@ describe('annotationStore management panel', () => {
 describe('annotationStore cross-file jump', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    (global.fetch as any).mockReset();
     const { annotationStore } = await import('../../stores/annotationStore');
     annotationStore.reset();
   });

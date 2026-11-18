@@ -1,7 +1,7 @@
 import { Component, For, Show, createSignal } from 'solid-js';
 import type { Annotation } from '../types';
 import { annotationStore } from '../stores/annotationStore';
-import { annotationExcerpt } from '../utils/annotationDisplay';
+import { annotationExcerpt, annotationTime } from '../utils/annotationDisplay';
 import AnnotationThread from './AnnotationThread';
 import AnnotationManagerDialog from './AnnotationManagerDialog';
 
@@ -14,10 +14,6 @@ interface AnnotationColumnProps {
 }
 
 const COLUMN_WIDTH = 300;
-
-function timeFor(annotation: Annotation): string {
-  return annotation.updatedAt || annotation.createdAt;
-}
 
 /**
  * Independent per-file annotation overview. A sibling of the outline panel,
@@ -159,7 +155,7 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
                     >
                       {outdated() ? 'Outdated' : annotation.resolved ? 'Resolved' : 'Active'}
                     </span>
-                    <span class="annotation-column-time">{timeFor(annotation)}</span>
+                    <span class="annotation-column-time">{annotationTime(annotation)}</span>
                   </span>
                 </button>
 

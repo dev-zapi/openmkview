@@ -18,6 +18,8 @@ import {
   type RenderedBlock,
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
+import { anchorExcerpt } from '../utils/anchorScoring';
+import { resolveAnchor } from '../utils/anchorResolver';
 import { createMarkdownPipeline, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import AnnotationThread from './AnnotationThread';
@@ -302,9 +304,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       return;
     }
 
-    const excerpt = anchor.segments
-      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-      .join(' … ');
+    const excerpt = anchorExcerpt(anchor);
     const buttonWidth = 116;
     let left = rect.right + 8;
     if (left + buttonWidth > window.innerWidth - 8) {
@@ -449,14 +449,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       return;
     }
 
-    const escaped = segment.blockHash.replace(/["\\]/g, '\\$&');
     const timer = setTimeout(() => {
       const mark = contentRef?.querySelector<HTMLElement>(
         `mark[data-annotation-id="${annotation.id}"]`,
       );
-      const block = contentRef?.querySelector<HTMLElement>(
-        `.annotation-block[data-block-id="${escaped}"]`,
+      // Recompute the block identity instead of trusting the stored hash:
+      // after an identical block is inserted above, the old hash now names the
+      // new block and a stored-hash query would silently miss.
+      const resolution = resolveAnchor(
+        renderedBlockList.map((rendered) => rendered.model),
+        annotation.anchor,
       );
+      const resolvedBlockId =
+        resolution.status === 'resolved' ? resolution.segments[0]?.blockId : undefined;
+      const block = resolvedBlockId ? renderedBlocks.get(resolvedBlockId)?.element : undefined;
       const target = mark ?? block;
       if (!target) {
         annotationStore.clearJump();
@@ -958,7 +964,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
     return (
       <div class="annotation-viewer">
-        <p class="annotation-anchor-excerpt">{annotationExcerpt(annotation)}</p>
+        <p class="annotation-anchor-excerpt">{anchorExcerpt(annotation.anchor).slice(0, 120)}</p>
         <Show when={outdated()}>
           <div class="annotation-outdated" role="status">
             <span class="annotation-outdated-badge">Outdated</span>
@@ -985,12 +991,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
-  const annotationExcerpt = (annotation: Annotation): string =>
-    annotation.anchor.segments
-      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-      .join(' … ')
-      .slice(0, 120);
-
   const renderChooser = (current: AnnotationPanel) => {
     if (current.mode !== 'chooser') return null;
     return (
@@ -1011,7 +1011,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                   })
                 }
               >
-                <span class="annotation-chooser-excerpt">{annotationExcerpt(annotation)}</span>
+                <span class="annotation-chooser-excerpt">{anchorExcerpt(annotation.anchor).slice(0, 120)}</span>
                 <span class="annotation-chooser-note">
                   {annotation.notes[0]?.body ?? ''}
                 </span>

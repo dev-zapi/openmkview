@@ -4,16 +4,17 @@ import type {
   BlockAnchorSegment,
   TextAnchorSegment,
 } from '../types';
-import { normalizeBlockText, type BlockModel } from './blockModel';
+import { type BlockModel } from './blockModel';
 import {
   blockMatchScore,
-  contextScore,
-  exactMatchScore,
-  findQuoteOccurrences,
+  findQuoteMatches,
   isBlockSegment,
   isTextSegment,
+  occurrenceScore,
   outdatedFromAnchor,
+  segmentQuote,
   selectBestOccurrence,
+  selectWholeBlock,
   type OutdatedResult,
   type ScoredOccurrence,
 } from './anchorScoring';
@@ -59,23 +60,19 @@ function bestOccurrence(
   blocks: BlockModel[],
   segment: TextAnchorSegment
 ): QuoteOccurrence | null {
-  const quote = normalizeBlockText(segment.quote);
+  const quote = segmentQuote(segment);
   if (!quote) return null;
 
   const occurrences: ScoredOccurrence<BlockModel>[] = [];
 
   for (const candidate of blocks) {
     const baseScore = blockMatchScore(candidate, segment);
-    for (const start of findQuoteOccurrences(candidate.text, quote)) {
-      const end = start + quote.length;
+    for (const match of findQuoteMatches(candidate.text, quote)) {
       occurrences.push({
         candidate,
-        start,
-        end,
-        score:
-          baseScore +
-          contextScore(candidate.text, start, end, segment.prefix, segment.suffix) +
-          exactMatchScore(candidate.text, start, end, quote),
+        start: match.start,
+        end: match.end,
+        score: occurrenceScore(baseScore, candidate.text, match, segment, quote),
       });
     }
   }
@@ -97,25 +94,10 @@ function resolveBlockSegment(
   blocks: BlockModel[],
   segment: BlockAnchorSegment
 ): ResolvedBlockSegment | null {
-  const normalizedText = normalizeBlockText(segment.blockText);
-  let bestScore = Number.NEGATIVE_INFINITY;
-  let top: BlockModel[] = [];
-
-  for (const candidate of blocks) {
-    // A whole-block anchor resolves by its text reference. The hash alone is
-    // not sufficient: it may now identify an identical inserted block.
-    if (candidate.text !== normalizedText) continue;
-    const score = blockMatchScore(candidate, segment);
-    if (score > bestScore) {
-      bestScore = score;
-      top = [candidate];
-    } else if (score === bestScore) {
-      top.push(candidate);
-    }
-  }
-
-  if (top.length === 0 || top.length > 1) return null;
-  return { kind: 'block', blockId: top[0].id };
+  // A whole-block anchor resolves by its text reference. The hash alone is
+  // not sufficient: it may now identify an identical inserted block.
+  const best = selectWholeBlock(blocks, (block) => block, segment, (block) => block.id);
+  return best ? { kind: 'block', blockId: best.id } : null;
 }
 
 function resolveTextSegment(

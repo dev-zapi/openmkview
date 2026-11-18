@@ -101,16 +101,15 @@ export interface Annotation {
   anchor: AnnotationAnchor;
   snapshot: string | null;
   resolved: boolean;
-  /** True when the Anchor no longer matches the rendered document (#19). */
-  outdated?: boolean;
   createdAt: string;
   updatedAt: string;
   notes: AnnotationNote[];
 }
 
-/** A management-panel row: the annotation plus whether its file still exists. */
+/** A management-panel row: the annotation plus whether its file is missing. */
 export interface ManagedAnnotation extends Annotation {
-  orphaned: boolean;
+  /** Missing File: the stored path no longer exists on disk. */
+  missingFile: boolean;
 }
 
 export interface CreateAnnotationRequest {

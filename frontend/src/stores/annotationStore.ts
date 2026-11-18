@@ -1,7 +1,9 @@
 import { createSignal } from 'solid-js';
-import type { Annotation, AnnotationAnchor, AnnotationNote, ManagedAnnotation } from '../types';
+import type { Annotation, AnnotationAnchor, ManagedAnnotation } from '../types';
 import { api } from '../services/api';
 import { offlineStore } from './offlineStore';
+import { hashBlockContent } from '../utils/blockModel';
+import { locateAnchorInSource } from '../utils/sourceAnchorLocator';
 import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
 
 const [annotations, setAnnotations] = createSignal<Annotation[]>([]);
@@ -12,6 +14,11 @@ const [managed, setManaged] = createSignal<ManagedAnnotation[]>([]);
 const [managedSelection, setManagedSelection] = createSignal<Set<number>>(new Set());
 const [managedLoading, setManagedLoading] = createSignal<boolean>(false);
 const [managedError, setManagedError] = createSignal<string | null>(null);
+/**
+ * Project-wide Outdated snapshots for management rows, resolved lazily from
+ * each row's file content. Keyed by annotation id; value is the snapshot.
+ */
+const [managedOutdated, setManagedOutdated] = createSignal<Map<number, string>>(new Map());
 const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
 /**
  * Anchor resolution results published by the rendered document. Keyed by
@@ -51,6 +58,13 @@ let jumpNonce = 0;
 let viewNonce = 0;
 /** A jump waiting for another file's annotations to load. */
 let pendingJump: { projectId: number; relativePath: string; annotationId: number } | null = null;
+/** Guards the lazily filled management Outdated map against stale opens. */
+let managedResolveToken = 0;
+/**
+ * Project-wide resolution cache keyed by (project, path, content), so
+ * unchanged content is not re-resolved when the manager reopens.
+ */
+const managedOutdatedCache = new Map<string, Map<number, string>>();
 
 function requestJumpNow(annotationId: number): void {
   jumpNonce += 1;
@@ -85,6 +99,66 @@ function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
 }
 
+function managedContentKey(
+  projectId: number,
+  relativePath: string,
+  content: string
+): string {
+  return `${fileKey(projectId, relativePath)}\u0000${content.length}\u0000${hashBlockContent(content)}`;
+}
+
+/**
+ * Fill Outdated state for every management row from its own file's content.
+ * Lazy and progressive: each file resolves independently and the table fills
+ * as responses arrive. Missing files are skipped because the row's Missing
+ * File state already explains why its Anchor cannot be evaluated.
+ */
+async function resolveManagedOutdated(
+  projectId: number,
+  rows: ManagedAnnotation[],
+  token: number
+): Promise<void> {
+  const byPath = new Map<string, ManagedAnnotation[]>();
+  for (const row of rows) {
+    if (row.missingFile) continue;
+    const entries = byPath.get(row.relativePath) ?? [];
+    entries.push(row);
+    byPath.set(row.relativePath, entries);
+  }
+
+  await Promise.all(
+    [...byPath.entries()].map(async ([relativePath, fileRows]) => {
+      try {
+        const file = await api.getFileContent(relativePath, projectId);
+        if (token !== managedResolveToken) return;
+
+        const cacheKey = managedContentKey(projectId, relativePath, file.content);
+        let snapshots = managedOutdatedCache.get(cacheKey);
+        if (!snapshots) {
+          snapshots = new Map<number, string>();
+          for (const row of fileRows) {
+            const location = locateAnchorInSource(file.content, row.anchor);
+            if (location.status === 'outdated') {
+              snapshots.set(row.id, row.snapshot?.trim() || location.snapshot);
+            }
+          }
+          managedOutdatedCache.set(cacheKey, snapshots);
+        }
+
+        if (token !== managedResolveToken || snapshots.size === 0) return;
+        setManagedOutdated((current) => {
+          const next = new Map(current);
+          for (const [id, snapshot] of snapshots!) next.set(id, snapshot);
+          return next;
+        });
+      } catch {
+        // A vanished/unreadable file stays unresolved here; its row already
+        // carries the Missing File state from the management list.
+      }
+    })
+  );
+}
+
 function replaceAnnotation(updated: Annotation): void {
   setAnnotations((current) =>
     current.map((annotation) => (annotation.id === updated.id ? updated : annotation)),
@@ -101,6 +175,36 @@ function applyManaged(next: ManagedAnnotation[]): void {
   });
 }
 
+/**
+ * The one local removal path for delete, batch delete, and clear-all: every
+ * list surface and the Outdated map are pruned together. Passing null means
+ * "everything".
+ */
+function removeLocally(ids: ReadonlySet<number> | null): void {
+  if (ids === null) {
+    setAnnotations([]);
+    applyManaged([]);
+    setOutdatedSnapshotsSignal(new Map());
+    setManagedOutdated(new Map());
+    return;
+  }
+
+  setAnnotations((current) => current.filter((annotation) => !ids.has(annotation.id)));
+  applyManaged(managed().filter((annotation) => !ids.has(annotation.id)));
+  setOutdatedSnapshotsSignal((current) => {
+    if (![...ids].some((id) => current.has(id))) return current;
+    const next = new Map(current);
+    for (const id of ids) next.delete(id);
+    return next;
+  });
+  setManagedOutdated((current) => {
+    if (![...ids].some((id) => current.has(id))) return current;
+    const next = new Map(current);
+    for (const id of ids) next.delete(id);
+    return next;
+  });
+}
+
 export const annotationStore = {
   annotations,
   loading,
@@ -109,6 +213,7 @@ export const annotationStore = {
   managedSelection,
   managedLoading,
   managedError,
+  managedOutdated,
   visible,
   outdatedSnapshots,
   previewOutdatedResolved,
@@ -155,6 +260,20 @@ export const annotationStore = {
 
   outdatedSnapshot(id: number): string | null {
     return outdatedSnapshots().get(id) ?? null;
+  },
+
+  /** Whether the management resolution found the row's Anchor Outdated. */
+  isManagedOutdated(id: number): boolean {
+    return managedOutdated().has(id);
+  },
+
+  managedOutdatedSnapshot(id: number): string | null {
+    return managedOutdated().get(id) ?? null;
+  },
+
+  /** Whether the given file is the one whose annotations are loaded. */
+  isLoadedFile(projectId: number, relativePath: string): boolean {
+    return loadedKey === fileKey(projectId, relativePath);
   },
 
   /** Arm manual re-anchoring for an Outdated annotation. */
@@ -244,6 +363,9 @@ export const annotationStore = {
     applyManaged([]);
     setManagedLoading(false);
     setManagedError(null);
+    managedResolveToken += 1;
+    setManagedOutdated(new Map());
+    managedOutdatedCache.clear();
   },
 
   async create(
@@ -261,12 +383,7 @@ export const annotationStore = {
 
   async remove(id: number): Promise<void> {
     await api.deleteAnnotation(id);
-    setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
-    setOutdatedSnapshotsSignal((current) => {
-      const next = new Map(current);
-      next.delete(id);
-      return next;
-    });
+    removeLocally(new Set([id]));
   },
 
   /**
@@ -324,16 +441,22 @@ export const annotationStore = {
 
   /** Loads every annotation in the project for the management panel. */
   async loadForProject(projectId: number): Promise<void> {
+    const token = ++managedResolveToken;
     setManagedLoading(true);
     setManagedError(null);
+    setManagedOutdated(new Map());
     try {
       const loaded = await api.listProjectAnnotations(projectId);
+      if (token !== managedResolveToken) return;
       applyManaged(loaded);
+      // Progressive: rows render immediately, Outdated fills per file.
+      void resolveManagedOutdated(projectId, loaded, token);
     } catch (err) {
+      if (token !== managedResolveToken) return;
       applyManaged([]);
       setManagedError(err instanceof Error ? err.message : 'Failed to load annotations');
     } finally {
-      setManagedLoading(false);
+      if (token === managedResolveToken) setManagedLoading(false);
     }
   },
 
@@ -363,9 +486,7 @@ export const annotationStore = {
   /** Multi-select delete in one project. Updates both list surfaces in place. */
   async batchDelete(projectId: number, ids: number[]): Promise<void> {
     await api.batchDeleteAnnotations(projectId, ids);
-    const removed = new Set(ids);
-    applyManaged(managed().filter((annotation) => !removed.has(annotation.id)));
-    setAnnotations((current) => current.filter((annotation) => !removed.has(annotation.id)));
+    removeLocally(new Set(ids));
   },
 
   /** Multi-select Resolved toggle in one project. */
@@ -383,8 +504,7 @@ export const annotationStore = {
   /** Deletes every annotation in the project after explicit confirmation. */
   async clearProject(projectId: number): Promise<void> {
     await api.clearProjectAnnotations(projectId);
-    applyManaged([]);
-    setAnnotations([]);
+    removeLocally(null);
   },
 
   /**
@@ -420,33 +540,9 @@ export const annotationStore = {
     pendingJump = null;
   },
 
-  /** All annotations whose Anchor references the given block, in list order. */
-  annotationsForBlock(blockHash: string): Annotation[] {
-    return annotations().filter(
-      (annotation) =>
-        annotation.projectId === currentProjectId &&
-        annotation.relativePath === currentRelativePath &&
-        annotation.anchor?.segments?.some(
-          (segment) =>
-            (segment.kind === 'block' || segment.kind === 'text') &&
-            segment.blockHash === blockHash
-        )
-    );
-  },
-
-  /** Alias for annotationsForBlock: both return every matching annotation. */
-  byBlockHash(blockHash: string): Annotation[] {
-    return annotationStore.annotationsForBlock(blockHash);
-  },
-
   /** Clears a handled jump so a remount cannot replay it. */
   clearJump(): void {
     setJumpRequest(null);
-  },
-
-  /** All note bodies for a thread, in time order (the API already orders them). */
-  notesFor(annotationId: number): AnnotationNote[] {
-    return annotations().find((annotation) => annotation.id === annotationId)?.notes ?? [];
   },
 };
 
