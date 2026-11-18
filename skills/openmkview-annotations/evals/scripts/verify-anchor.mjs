@@ -1,23 +1,21 @@
 #!/usr/bin/env node
 /**
- * eval anchor verifier.
+ * eval anchor comparison (structural, NOT the Active/Outdated oracle).
  *
  * Reads one annotation back from a running instance and checks whether its
- * stored Anchor is the one the CLI would build from the same file content and
- * quote. The builder is the seam the frontend vitest suite
- * (frontend/src/test/skills/omkCli.test.ts) proves resolves Active against the
- * real Preview block model, so stored == builder means Active, and a mismatch
- * means the anchor would resolve Outdated.
- *
- * This deliberately goes through HTTP (not the create path's in-memory value),
- * so it tests what the server actually persisted.
+ * stored Anchor is byte-equal (order-insensitive) to the one the CLI would
+ * build from the same file content and quote. This catches persistence and
+ * projection drift, but it does NOT decide Active vs Outdated: the resolver
+ * ignores blockHash, scores blockText as only one signal, and can still resolve
+ * a differing anchor. The real oracle is `resolver-status.mjs`, which runs the
+ * frontend `resolveAnchor` over rendered blocks.
  *
  * Usage:
  *   verify-anchor.mjs --url URL --project-id N --relative-path PATH \
  *     --annotation-id N [--quote TEXT] [--token TOKEN]
  *
  * Output: one JSON object on stdout. Exit 0 when the anchor matches the CLI
- * builder, 3 when it would be Outdated, 2 on usage/config errors.
+ * builder, 3 when it differs, 2 on usage/config errors.
  */
 
 import process from 'node:process';
@@ -120,7 +118,7 @@ async function main() {
     storedTextSegmentCount: storedTextSegments.length,
     blockTextInProjection,
     storedMatchesCliBuilder: matchesBuilder,
-    verdict: matchesBuilder ? 'Active' : 'Outdated',
+    builderComparison: matchesBuilder ? 'matches' : 'differs',
   };
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

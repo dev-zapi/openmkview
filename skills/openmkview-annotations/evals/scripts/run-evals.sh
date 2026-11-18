@@ -8,13 +8,13 @@
 #      commands SKILL.md teaches) and once "without" (raw HTTP + a naive,
 #      hand-crafted Anchor; evals/scripts/baseline-raw.mjs).
 #   3. Checks quantitative assertions and writes skill-creator-shaped
-#      grading.json files under evals/results/iteration-1/.
+#      grading.json files under evals/results/iteration-2/.
 #   4. Runs an auth-mode smoke for the init-first flow and 401 handling.
 #
 # Usage:
 #   evals/scripts/run-evals.sh [RESULTS_DIR]
 #
-# Default RESULTS_DIR: evals/results/iteration-1
+# Default RESULTS_DIR: evals/results/iteration-2
 # Requires: bash, curl, node >= 18, and a built binary (cargo build).
 # /tmp is deliberately avoided.
 
@@ -29,8 +29,15 @@ STOP="$SCRIPT_DIR/stop-fixture.sh"
 ASSERT="$SCRIPT_DIR/assert.mjs"
 SUMMARIZE="$SCRIPT_DIR/summarize-list.mjs"
 VERIFY="$SCRIPT_DIR/verify-anchor.mjs"
+RESOLVER="$SCRIPT_DIR/resolver-status.mjs"
 BASELINE="$SCRIPT_DIR/baseline-raw.mjs"
-RESULTS="${1:-$SKILL_DIR/evals/results/iteration-1}"
+DIFFERENTIAL="$SCRIPT_DIR/differential-anchor-check.mjs"
+BROWSER="$SCRIPT_DIR/browser-review.mjs"
+MERGE="$SCRIPT_DIR/merge-grading.mjs"
+AGENT_EVALS="$SCRIPT_DIR/run-agent-evals.sh"
+RESULTS="${1:-$SKILL_DIR/evals/results/iteration-2}"
+mkdir -p "$RESULTS"
+RESULTS="$(cd "$RESULTS" && pwd)"
 
 if [[ ! -x "${OPENMKVIEW_BIN:-$REPO_ROOT/target/debug/openmkview}" ]]; then
   echo "FAIL: build the binary first: cargo build" >&2
@@ -42,7 +49,9 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 # Clear generated artifacts but keep hand-written review notes in the same dir.
-rm -rf "$RESULTS"/eval-* "$RESULTS"/smoke-* "$RESULTS"/benchmark.json "$RESULTS"/benchmark.md
+rm -rf "$RESULTS"/eval-* "$RESULTS"/smoke-* "$RESULTS"/agent-runs \
+  "$RESULTS"/browser-review "$RESULTS"/differential \
+  "$RESULTS"/benchmark.json "$RESULTS"/benchmark.md
 mkdir -p "$RESULTS"
 OPEN_ROOT=""
 AUTH_ROOT=""
@@ -117,6 +126,12 @@ OPEN_ROOT="$(echo "$BOOT_OUT" | sed -n 's/^root=//p')"
 # shellcheck disable=SC1090
 source "$OPEN_ROOT/env.sh"
 PROJECT_ID="$OPENMKVIEW_EVAL_PROJECT_ID"
+# The auth smoke later sources a different env.sh; keep the open-instance
+# values for the browser review that runs after it.
+OPEN_INSTANCE_URL="$OPENMKVIEW_URL"
+OPEN_INSTANCE_AGENT_CONFIG="$OPENMKVIEW_AGENT_CONFIG"
+OPEN_INSTANCE_PROJECT_ID="$PROJECT_ID"
+OPEN_INSTANCE_ROOT="$EVAL_ROOT"
 
 # --------------------------------------------------------------------------
 # Eval 1 — read human feedback
@@ -156,12 +171,15 @@ else
   fail "eval1 with-skill authorship"
 fi
 
-if grep -q "Node 18" "$E1/with_skill/outputs/answer.md" && grep -qi "placeholder" "$E1/with_skill/outputs/answer.md"; then
-  grade "$E1/with_skill" true "With skill: the answer names both requested changes" "answer.md mentions Node 18 and the placeholder sentence"
-  pass "eval1 with-skill answer"
+# Deterministic read layer: the two requests are separate threads with the
+# anchored spans the human selected. The answer-synthesis check belongs to the
+# real-agent layer (run-agent-evals.sh), where a model writes the answer.
+if node -e 'const fs=require("node:fs");const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const snaps=d.map(a=>a.snapshot).sort();process.exit(d.length===2&&snaps[0]==="Install the dependencies"&&snaps[1]==="fox jumps"?0:1)' "$E1/with_skill/outputs/list.json"; then
+  grade "$E1/with_skill" true "With skill (read layer): the two requests are distinct threads with the expected anchored spans" 'snapshots "Install the dependencies" and "fox jumps"'
+  pass "eval1 with-skill distinct threads"
 else
-  grade "$E1/with_skill" false "With skill: the answer names both requested changes" "answer.md missing one request"
-  fail "eval1 with-skill answer"
+  grade "$E1/with_skill" false "With skill (read layer): the two requests are distinct threads with the expected anchored spans" "snapshots differ"
+  fail "eval1 with-skill distinct threads"
 fi
 
 reset_annotations
@@ -192,12 +210,12 @@ else
   grade "$E1/without_skill" false "Baseline: every note exposes author alice and isAgent false" "author/isAgent mismatch"
   fail "eval1 baseline authorship"
 fi
-if grep -q "Node 18" "$E1/without_skill/outputs/answer.md" && grep -qi "placeholder" "$E1/without_skill/outputs/answer.md"; then
-  grade "$E1/without_skill" true "Baseline: the answer names both requested changes" "answer.md mentions Node 18 and the placeholder sentence"
-  pass "eval1 baseline answer"
+if node -e 'const fs=require("node:fs");const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const snaps=d.map(a=>a.snapshot).sort();process.exit(d.length===2&&snaps[0]==="Install the dependencies"&&snaps[1]==="fox jumps"?0:1)' "$E1/without_skill/outputs/list.json"; then
+  grade "$E1/without_skill" true "Baseline (read layer): the two requests are distinct threads with the expected anchored spans" 'snapshots "Install the dependencies" and "fox jumps"'
+  pass "eval1 baseline distinct threads"
 else
-  grade "$E1/without_skill" false "Baseline: the answer names both requested changes" "answer.md missing one request"
-  fail "eval1 baseline answer"
+  grade "$E1/without_skill" false "Baseline (read layer): the two requests are distinct threads with the expected anchored spans" "snapshots differ"
+  fail "eval1 baseline distinct threads"
 fi
 
 # --------------------------------------------------------------------------
@@ -218,6 +236,16 @@ node "$VERIFY" --url "$OPENMKVIEW_URL" --project-id "$PROJECT_ID" \
   --relative-path README.md --annotation-id "$ID" --quote "$QUOTE" \
   > "$E2/with_skill/outputs/verify-anchor.json" 2> "$E2/with_skill/outputs/verify-anchor.err" || VERIFY_STATUS=$?
 
+# The real oracle: render the document and run the frontend resolveAnchor on
+# the stored Anchor, with a deliberately raw-line block as a negative control.
+node -e 'const fs=require("node:fs");const markdown=fs.readFileSync(process.argv[1],"utf8");const created=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));const bad={version:1,segments:[{kind:"block",blockHash:"blk-00000000",blockText:"fox jumps over",blockType:"p",headingPath:["OpenMKView Fixture","Overview"]}]};fs.writeFileSync(process.argv[3],JSON.stringify([{name:"with_skill",markdown,anchor:created.anchor},{name:"bad_control",markdown,anchor:bad}],null,2));' \
+  "$EVAL_ROOT/docs/README.md" "$E2/with_skill/outputs/create.json" "$E2/with_skill/outputs/resolver-cases.json"
+node "$RESOLVER" --cases "$E2/with_skill/outputs/resolver-cases.json" \
+  --out "$E2/with_skill/outputs/resolver-status.json" \
+  > "$E2/with_skill/outputs/resolver.log" 2>&1 || true
+WITH_STATUS="$(jget "$E2/with_skill/outputs/resolver-status.json" 'd.find(x=>x.name==="with_skill").status')"
+BAD_CONTROL_STATUS="$(jget "$E2/with_skill/outputs/resolver-status.json" 'd.find(x=>x.name==="bad_control").status')"
+
 if jget "$E2/with_skill/outputs/create.json" 'Number.isInteger(d.id)' | grep -q true; then
   grade "$E2/with_skill" true "With skill: create response parses as JSON with an annotation id" "id=$ID"
   pass "eval2 with-skill create id"
@@ -233,18 +261,18 @@ else
   fail "eval2 with-skill authorship"
 fi
 if [[ "$(jget "$E2/with_skill/outputs/create.json" 'd.anchor.segments.some(s=>s.kind==="text"&&s.quote==="fox jumps")')" == "true" ]]; then
-  grade "$E2/with_skill" true "With skill: stored anchor quotes the requested span" 'text segment quote="fox jumps"'
+  grade "$E2/with_skill" true "With skill: stored anchor references the requested span" 'text segment quote="fox jumps"'
   pass "eval2 with-skill quote"
 else
-  grade "$E2/with_skill" false "With skill: stored anchor quotes the requested span" "quote missing"
+  grade "$E2/with_skill" false "With skill: stored anchor references the requested span" "quote missing"
   fail "eval2 with-skill quote"
 fi
 if [[ "$VERIFY_STATUS" -eq 0 && "$(jget "$E2/with_skill/outputs/verify-anchor.json" 'd.storedMatchesCliBuilder')" == "true" ]]; then
-  grade "$E2/with_skill" true "With skill: CLI-computed anchor is Active (stored anchor equals the CLI builder on the same content)" "verifier: $(jget "$E2/with_skill/outputs/verify-anchor.json" 'd.verdict'); blockText=$(jget "$E2/with_skill/outputs/verify-anchor.json" 'd.expectedBlockText')"
-  pass "eval2 with-skill anchor Active"
+  grade "$E2/with_skill" true "With skill: stored anchor equals the CLI builder on the same content (structural)" "blockText=$(jget "$E2/with_skill/outputs/verify-anchor.json" 'd.expectedBlockText')"
+  pass "eval2 with-skill builder match"
 else
-  grade "$E2/with_skill" false "With skill: CLI-computed anchor is Active (stored anchor equals the CLI builder on the same content)" "verifier exit $VERIFY_STATUS"
-  fail "eval2 with-skill anchor Active"
+  grade "$E2/with_skill" false "With skill: stored anchor equals the CLI builder on the same content (structural)" "verifier exit $VERIFY_STATUS"
+  fail "eval2 with-skill builder match"
 fi
 if [[ "$(jget "$E2/with_skill/outputs/verify-anchor.json" 'd.blockTextInProjection')" == "true" && "$(jget "$E2/with_skill/outputs/verify-anchor.json" 'd.expectedBlockText')" == "The quick brownfox jumps overthe lazy dog." ]]; then
   grade "$E2/with_skill" true "With skill: hard-wrapped prose projects to rendered text (soft breaks concatenate)" "blockText='The quick brownfox jumps overthe lazy dog.'"
@@ -253,9 +281,22 @@ else
   grade "$E2/with_skill" false "With skill: hard-wrapped prose projects to rendered text (soft breaks concatenate)" "projection mismatch"
   fail "eval2 with-skill projection"
 fi
+if [[ "$WITH_STATUS" == "resolved" ]]; then
+  grade "$E2/with_skill" true "With skill: the stored anchor resolves Active through the real frontend resolver" "resolver status=$WITH_STATUS"
+  pass "eval2 with-skill real resolver"
+else
+  grade "$E2/with_skill" false "With skill: the stored anchor resolves Active through the real frontend resolver" "resolver status=$WITH_STATUS"
+  fail "eval2 with-skill real resolver"
+fi
+if [[ "$BAD_CONTROL_STATUS" == "outdated" ]]; then
+  grade "$E2/with_skill" true "Oracle sanity: the raw-line control anchor resolves Outdated in the same run" "control status=$BAD_CONTROL_STATUS"
+  pass "eval2 oracle control"
+else
+  grade "$E2/with_skill" false "Oracle sanity: the raw-line control anchor resolves Outdated in the same run" "control status=$BAD_CONTROL_STATUS"
+  fail "eval2 oracle control"
+fi
 
-# The verifier above proves stored == CLI builder. The frontend suite proves
-# that builder resolves Active through the real Preview resolver seam.
+# The frontend suite additionally checks the projection across constructs.
 SEAM_STATUS=0
 ( cd "$REPO_ROOT/frontend" && npx vitest run src/test/skills/omkCli.test.ts ) \
   > "$E2/with_skill/outputs/resolver-seam.txt" 2>&1 || SEAM_STATUS=$?
@@ -263,11 +304,11 @@ SEAM_STATUS=0
 node -e 'const fs=require("node:fs");const p=process.argv[1];const root=process.argv[2];fs.writeFileSync(p,fs.readFileSync(p,"utf8").split(root).join("<repo>"));' \
   "$E2/with_skill/outputs/resolver-seam.txt" "$REPO_ROOT"
 if [[ "$SEAM_STATUS" -eq 0 ]]; then
-  grade "$E2/with_skill" true "With skill: the frontend resolver seam resolves CLI-built anchors as Active" "vitest src/test/skills/omkCli.test.ts passed"
-  pass "eval2 with-skill resolver seam"
+  grade "$E2/with_skill" true "With skill: the frontend projection suite passes over the fixture constructs" "vitest src/test/skills/omkCli.test.ts passed"
+  pass "eval2 with-skill projection suite"
 else
-  grade "$E2/with_skill" false "With skill: the frontend resolver seam resolves CLI-built anchors as Active" "vitest exited $SEAM_STATUS"
-  fail "eval2 with-skill resolver seam"
+  grade "$E2/with_skill" false "With skill: the frontend projection suite passes over the fixture constructs" "vitest exited $SEAM_STATUS"
+  fail "eval2 with-skill projection suite"
 fi
 
 reset_annotations
@@ -279,6 +320,16 @@ VERIFY_STATUS_B=0
 node "$VERIFY" --url "$OPENMKVIEW_URL" --project-id "$PROJECT_ID" \
   --relative-path README.md --annotation-id "$IDB" --quote "$QUOTE" \
   > "$E2/without_skill/outputs/verify-anchor.json" 2> "$E2/without_skill/outputs/verify-anchor.err" || VERIFY_STATUS_B=$?
+
+# Same oracle, opposite control: a CLI-built anchor must still resolve, so a
+# failing baseline status cannot be blamed on a broken pipeline.
+node -e 'const fs=require("node:fs");const markdown=fs.readFileSync(process.argv[1],"utf8");const created=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));import(process.argv[4]).then(m=>{const good=m.buildAnchorFromMarkdown(markdown,"fox jumps");fs.writeFileSync(process.argv[3],JSON.stringify([{name:"baseline_stored",markdown,anchor:created.anchor},{name:"good_control",markdown,anchor:good}],null,2));});' \
+  "$EVAL_ROOT/docs/README.md" "$E2/without_skill/outputs/create.json" "$E2/without_skill/outputs/resolver-cases.json" "file://$OMK"
+node "$RESOLVER" --cases "$E2/without_skill/outputs/resolver-cases.json" \
+  --out "$E2/without_skill/outputs/resolver-status.json" \
+  > "$E2/without_skill/outputs/resolver.log" 2>&1 || true
+BASE_STATUS="$(jget "$E2/without_skill/outputs/resolver-status.json" 'd.find(x=>x.name==="baseline_stored").status')"
+GOOD_CONTROL_STATUS="$(jget "$E2/without_skill/outputs/resolver-status.json" 'd.find(x=>x.name==="good_control").status')"
 
 if jget "$E2/without_skill/outputs/create.json" 'Number.isInteger(d.id)' | grep -q true; then
   grade "$E2/without_skill" true "Baseline: create response parses as JSON with an annotation id" "id=$IDB"
@@ -294,19 +345,19 @@ else
   grade "$E2/without_skill" false "Baseline: created note carries author claude and isAgent true" "author/isAgent wrong"
   fail "eval2 baseline authorship"
 fi
-if [[ "$(jget "$E2/without_skill/outputs/create.json" 'd.anchor.segments.some(s=>s.kind==="text"&&s.quote==="fox jumps")')" == "true" ]]; then
-  grade "$E2/without_skill" true "Baseline: stored anchor quotes the requested span" 'text segment quote="fox jumps"'
-  pass "eval2 baseline quote"
+if node -e 'const fs=require("node:fs");const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const s=(d.anchor.segments||[])[0]||{};const ok=s.kind==="text"?s.quote==="fox jumps":String(s.blockText||"").includes("fox jumps");process.exit(ok?0:1)' "$E2/without_skill/outputs/create.json"; then
+  grade "$E2/without_skill" true "Baseline: stored anchor references the requested span" "raw-line blockText contains the quote"
+  pass "eval2 baseline quote reference"
 else
-  grade "$E2/without_skill" false "Baseline: stored anchor quotes the requested span" "quote missing"
-  fail "eval2 baseline quote"
+  grade "$E2/without_skill" false "Baseline: stored anchor references the requested span" "span missing"
+  fail "eval2 baseline quote reference"
 fi
 if [[ "$VERIFY_STATUS_B" -eq 0 && "$(jget "$E2/without_skill/outputs/verify-anchor.json" 'd.storedMatchesCliBuilder')" == "true" ]]; then
-  grade "$E2/without_skill" true "Baseline: hand-crafted anchor is Active" "verifier: Active"
-  pass "eval2 baseline anchor Active"
+  grade "$E2/without_skill" true "Baseline: stored anchor equals the CLI builder (structural)" "matches"
+  pass "eval2 baseline builder match"
 else
-  grade "$E2/without_skill" false "Baseline: hand-crafted anchor is Active" "verifier: $(jget "$E2/without_skill/outputs/verify-anchor.json" 'd.verdict'); storedBlockText=$(jget "$E2/without_skill/outputs/verify-anchor.json" 'd.storedBlockTexts[0]')"
-  expected_fail "eval2 baseline anchor Outdated"
+  grade "$E2/without_skill" false "Baseline: stored anchor equals the CLI builder (structural)" "differs: raw source line"
+  expected_fail "eval2 baseline builder mismatch"
 fi
 if [[ "$(jget "$E2/without_skill/outputs/verify-anchor.json" 'd.blockTextInProjection')" == "true" ]]; then
   grade "$E2/without_skill" true "Baseline: stored blockText is a projected rendered block" "blockTextInProjection=true"
@@ -314,6 +365,20 @@ if [[ "$(jget "$E2/without_skill/outputs/verify-anchor.json" 'd.blockTextInProje
 else
   grade "$E2/without_skill" false "Baseline: stored blockText is a projected rendered block" "storedBlockText=$(jget "$E2/without_skill/outputs/verify-anchor.json" 'd.storedBlockTexts[0]') is a raw source line"
   expected_fail "eval2 baseline projection"
+fi
+if [[ "$BASE_STATUS" == "resolved" ]]; then
+  grade "$E2/without_skill" true "Baseline: the raw-line anchor resolves Active through the real frontend resolver" "resolver status=$BASE_STATUS"
+  pass "eval2 baseline real resolver"
+else
+  grade "$E2/without_skill" false "Baseline: the raw-line anchor resolves Active through the real frontend resolver" "resolver status=$BASE_STATUS"
+  expected_fail "eval2 baseline real resolver"
+fi
+if [[ "$GOOD_CONTROL_STATUS" == "resolved" ]]; then
+  grade "$E2/without_skill" true "Oracle sanity: a CLI anchor resolves Active in the same run" "control status=$GOOD_CONTROL_STATUS"
+  pass "eval2 baseline oracle control"
+else
+  grade "$E2/without_skill" false "Oracle sanity: a CLI anchor resolves Active in the same run" "control status=$GOOD_CONTROL_STATUS"
+  fail "eval2 baseline oracle control"
 fi
 
 # --------------------------------------------------------------------------
@@ -327,7 +392,6 @@ reset_annotations
 seed_resolve_fixture "$E3/with_skill/outputs"
 node "$OMK" list --project "$PROJECT_ID" --author claude --unresolved > "$E3/with_skill/outputs/before.json"
 BEFORE_COUNT="$(jget "$E3/with_skill/outputs/before.json" 'd.length')"
-CLAUDE_IDS="$(jget "$E3/with_skill/outputs/before.json" 'd.map(x=>x.id)')"
 read -r -a ID_ARRAY <<< "$(node -e 'const fs=require("node:fs");const d=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(d.map(x=>x.id).join(" "))' "$E3/with_skill/outputs/before.json")"
 node "$OMK" batch-resolve "${ID_ARRAY[@]}" --project "$PROJECT_ID" > "$E3/with_skill/outputs/resolve.json"
 node "$OMK" list --project "$PROJECT_ID" --author claude --unresolved > "$E3/with_skill/outputs/after.json"
@@ -468,6 +532,80 @@ if [[ "$(jget "$SMOKE/outputs/list-after-login.json" 'Array.isArray(d)')" == "tr
 else
   grade "$SMOKE" false "Auth: login re-exchanges and restores access" "list failed after login"
   fail "smoke relogin"
+fi
+
+# --------------------------------------------------------------------------
+# Differential check — documented Python helper vs the CLI
+# --------------------------------------------------------------------------
+echo "== differential: api.md Python helper vs CLI =="
+DIFF_DIR="$RESULTS/differential"
+mkdir -p "$DIFF_DIR"
+DIFF_STATUS=0
+node "$DIFFERENTIAL" --out "$DIFF_DIR/differential-anchor-check.json" || DIFF_STATUS=$?
+if [[ -f "$DIFF_DIR/differential-anchor-check.json" ]]; then
+  DIFF_PASSED="$(jget "$DIFF_DIR/differential-anchor-check.json" 'd.passed')"
+  DIFF_TOTAL="$(jget "$DIFF_DIR/differential-anchor-check.json" 'd.total')"
+else
+  DIFF_PASSED=0
+  DIFF_TOTAL=0
+fi
+if [[ "$DIFF_STATUS" -eq 0 ]]; then
+  grade "$DIFF_DIR" true "Python Anchor helper in references/api.md matches the CLI on the fixture and edge cases" "$DIFF_PASSED/$DIFF_TOTAL cases (escaped pipes, deep list continuations)"
+  pass "differential anchor helper"
+else
+  grade "$DIFF_DIR" false "Python Anchor helper in references/api.md matches the CLI on the fixture and edge cases" "$DIFF_PASSED/$DIFF_TOTAL cases"
+  fail "differential anchor helper"
+fi
+
+# --------------------------------------------------------------------------
+# Browser review — real web UI, Active vs Outdated, author + Agent badge
+# --------------------------------------------------------------------------
+echo "== browser review: Active/Outdated and authorship in the web UI =="
+BROWSER_DIR="$RESULTS/browser-review"
+mkdir -p "$BROWSER_DIR"
+if [[ ! -f "$REPO_ROOT/dist/index.html" ]]; then
+  echo "  building frontend for the browser review"
+  ( cd "$REPO_ROOT/frontend" && npm run build ) > "$BROWSER_DIR/frontend-build.log" 2>&1 \
+    || fail "frontend build failed; see $BROWSER_DIR/frontend-build.log"
+fi
+if [[ -x "${OPENMKVIEW_BIN:-$REPO_ROOT/target/debug/openmkview}" ]]; then
+  curl -sf -X DELETE "$OPEN_INSTANCE_URL/api/annotations/project/$OPEN_INSTANCE_PROJECT_ID" >/dev/null
+  OPENMKVIEW_URL="$OPEN_INSTANCE_URL" OPENMKVIEW_AGENT_CONFIG="$OPEN_INSTANCE_AGENT_CONFIG" \
+    node "$OMK" create --file "$OPEN_INSTANCE_ROOT/docs/README.md" --quote "fox jumps" \
+    --body "Browser review: explain what the fox represents." --author claude \
+    > "$BROWSER_DIR/with-skill-create.json"
+  BROWSER_WITH_ID="$(jget "$BROWSER_DIR/with-skill-create.json" 'd.id')"
+  node "$BASELINE" create --url "$OPEN_INSTANCE_URL" --project-id "$OPEN_INSTANCE_PROJECT_ID" \
+    --relative-path README.md --quote "Thank you for reading" \
+    --body "Browser review: raw-line baseline." --author claude \
+    > "$BROWSER_DIR/baseline-create.json"
+  BROWSER_BASE_ID="$(jget "$BROWSER_DIR/baseline-create.json" 'd.id')"
+  BROWSER_STATUS=0
+  node "$BROWSER" --url "$OPEN_INSTANCE_URL" --project-id "$OPEN_INSTANCE_PROJECT_ID" \
+    --relative-path README.md --with-id "$BROWSER_WITH_ID" \
+    --baseline-id "$BROWSER_BASE_ID" --out-dir "$BROWSER_DIR" || BROWSER_STATUS=$?
+  if [[ -f "$BROWSER_DIR/browser-review.json" ]]; then
+    node "$MERGE" "$BROWSER_DIR/grading.json" "$BROWSER_DIR/browser-review.json" >/dev/null
+  fi
+  if [[ "$BROWSER_STATUS" -eq 0 ]]; then
+    pass "browser review (Active + Agent badge + Outdated control)"
+  else
+    fail "browser review (see $BROWSER_DIR/browser-review.json)"
+  fi
+else
+  fail "browser review needs the built openmkview binary"
+fi
+
+# --------------------------------------------------------------------------
+# Agent runs — real claude -p sessions with the skill installed
+# --------------------------------------------------------------------------
+echo "== agent runs: real claude -p sessions =="
+AGENT_STATUS=0
+"$AGENT_EVALS" "$RESULTS" || AGENT_STATUS=$?
+if [[ "$AGENT_STATUS" -eq 0 ]]; then
+  pass "agent runs (eval 1 synthesis, eval 2 created Active annotation)"
+else
+  fail "agent runs (see $RESULTS/agent-runs)"
 fi
 
 # --------------------------------------------------------------------------

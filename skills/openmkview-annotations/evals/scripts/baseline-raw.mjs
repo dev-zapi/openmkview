@@ -3,11 +3,13 @@
  * Baseline "no-skill" agent: raw HTTP only, hand-crafted Anchor JSON.
  *
  * This is what the eval is comparing against. It intentionally does NOT import
- * anything from scripts/omk.mjs. It reads Markdown as lines, so its anchor's
- * blockText is the raw source line rather than the text the renderer shows
- * (hard-wrapped prose concatenates; soft breaks carry no space). For the
- * fixture's wrapped paragraph that makes the anchor Outdated — exactly the
- * failure mode the skill's client-side projection removes.
+ * anything from scripts/omk.mjs. It reads Markdown as lines and emits a
+ * WHOLE-BLOCK segment whose blockText is the raw source line containing the
+ * quote. The resolver's selectWholeBlock requires exact equality with a
+ * rendered block's text, and hard-wrapped prose renders with its soft breaks
+ * concatenated (`fox jumps over` becomes part of `...brownfox jumps overthe...`).
+ * The Anchor validates structurally but genuinely resolves Outdated — exactly
+ * the failure mode the skill's client-side projection removes.
  *
  * Commands:
  *   create --url URL --project-id N --relative-path PATH --quote TEXT \
@@ -95,24 +97,22 @@ async function create(options) {
   const lineIndex = lines.findIndex((line) => line.includes(needle));
   if (lineIndex === -1) throw new Error(`Quote not found in file: "${needle}"`);
 
-  // The naive projection: use the raw line as the block text.
+  // The naive projection: use the raw source line as the block text.
   const blockText = lines[lineIndex].trim();
   const blockType = 'p';
   const blockHash = `blk-${fnv1a(`${blockType}\u0001${blockText}\u0001${0}`)}`;
-  const start = blockText.indexOf(needle);
 
+  // Whole-block segment: selectWholeBlock requires block.text === blockText,
+  // so the raw source line cannot match the rendered block.
   const anchor = {
     version: 1,
     segments: [
       {
-        kind: 'text',
+        kind: 'block',
         blockHash,
         blockText,
         blockType,
         headingPath: headingPathFor(lines, lineIndex),
-        quote: blockText.slice(start, start + needle.length),
-        prefix: blockText.slice(Math.max(0, start - 48), start),
-        suffix: blockText.slice(start + needle.length, start + needle.length + 48),
       },
     ],
   };

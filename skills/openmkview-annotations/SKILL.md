@@ -24,8 +24,10 @@ Vocabulary follows the project `GLOSSARY.md`:
 
 Do not invent or hand-craft Anchor JSON. `create` fetches the file through the
 files API and builds a legal Anchor client-side. A hand-built Anchor is accepted
-by the server (it only validates shape) but commonly resolves **Outdated**,
-because the Anchor must match the *rendered* text, not the raw Markdown.
+by the server (it only validates shape) but often resolves **Outdated** —
+especially whole-block anchors, quotes that span a soft line break, and
+ambiguous quotes — because resolution matches the *rendered* text, not the raw
+Markdown.
 
 ## Init first
 
@@ -61,8 +63,10 @@ The config lives at `~/.config/openmkview/agent.json`, mode `0600`, holding only
 instances). `login` re-runs only the credential exchange when a config already
 exists.
 
-**A `401` means the Tool Session was revoked** (sessions never expire, so this
-is the only cause). The CLI exits non-zero and prints
+**A `401` means the Tool Session was revoked or was never stored** (sessions
+never expire, so there are no other causes): either the config has no token
+because auth was never initialized, or the token's row was deleted. The CLI
+exits non-zero and prints
 `Tool Session revoked — run omk.mjs init`; ask the user to re-init or run
 `login` with fresh credentials. Do not retry a 401.
 
@@ -200,9 +204,9 @@ or `isAgent` as identity; the instance owner controls who can reach the API.
 
 | Symptom | Meaning and action |
 |---|---|
-| `Tool Session revoked — run omk.mjs init` (exit non-zero) | The token was deleted. Run `init`/`login` with credentials. |
+| `Tool Session revoked — run omk.mjs init` (exit non-zero) | The token was revoked or never stored. Run `init`/`login` with credentials. |
 | `Quote not found in file: "..."` | The quote does not match rendered text. Read the file, use the exact rendered span, or use no `--quote` for a whole-file note. |
-| `File is binary` / `File is truncated` | `create` refuses files it cannot anchor faithfully. Annotate a Markdown/text file instead. |
+| `File is binary: <path>` / `File is truncated and cannot be anchored: <path>` | `create` refuses files it cannot anchor faithfully. Annotate a Markdown/text file instead. |
 | `Multiple projects found — pass --project ...` | Two or more projects are registered. Pass id, name, or path. |
 | `No projects registered — add one in the OpenMKView UI` | Register the directory in the app first. |
 | `Cannot reach <url>` | The instance is down or the URL is wrong. Check `OPENMKVIEW_URL`. |

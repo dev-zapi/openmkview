@@ -95,7 +95,7 @@ const benchmark = {
     skill_name: 'openmkview-annotations',
     skill_path: 'skills/openmkview-annotations',
     executor_model: 'not-applicable (deterministic CLI vs raw HTTP harness)',
-    analyzer_model: 'self-review',
+    analyzer_model: 'deterministic harness + Playwright + agent runs',
     timestamp: new Date().toISOString(),
     evals_run: evalDirs,
     runs_per_configuration: 1,

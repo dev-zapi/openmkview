@@ -31,7 +31,8 @@ names, and error strings are copied from the responses, not reconstructed.
 - **Creates return `200 OK`**, not `201`. Mutation counts come back in the body
   (`{"deleted": n}`, `{"updated": n}`, `{"success": true}`).
 - Timestamps are SQLite UTC strings such as `2026-11-18 12:46:41` (note the
-  space, not `T`). `/api/version` is the one RFC-3339 exception.
+  space, not `T`). File `lastModified` values are RFC 3339 with a `+00:00`
+  offset.
 - Casing is not uniform; it matches the wire format:
   - Query parameters: `project_id` (snake), `relativePath` (camel), `author`,
     `open`.
@@ -88,7 +89,7 @@ curl -s -X POST "$BASE/api/auth/tool-sessions/exchange" \
 Response (the plaintext token appears exactly once — store it):
 
 ```json
-{"id":1,"label":"my-agent","token":"geBcC0FpnaGKNamks68-1gz_ipqQBHla-ZzHqtoLup8","createdAt":"2026-11-18 12:47:47"}
+{"id":1,"label":"my-agent","token":"<TOKEN>","createdAt":"2026-11-18 12:47:47"}
 ```
 
 Then send `Authorization: Bearer <token>` on every request. Tool Sessions never
@@ -229,7 +230,7 @@ Returns the annotatable text. `relativePath` is relative to the project root
 and may contain `/`:
 
 ```json
-{"binary":false,"content":"# OpenMKView Fixture\n\n...","fileName":"README.md","path":"README.md","fileSize":594,"lastModified":"2026-11-18T12:40:11.512345678Z","truncated":false,"lossy":false,"size":594}
+{"binary":false,"content":"# OpenMKView Fixture\n\n...","fileName":"README.md","path":"README.md","fileSize":594,"lastModified":"2026-11-18T12:40:11.512345678+00:00","truncated":false,"lossy":false,"size":594}
 ```
 
 - Markdown/HTML are read strictly as UTF-8 and never truncated.
@@ -535,16 +536,37 @@ def project_line(line):
     text = re.sub(r"<[^>]+>", "", text)
     return html.unescape(strip_inline(text))
 
-def push(builder, text, soft_break):
+def create_builder():
+    return {"chars": [], "pending": False}
+
+def push_character(builder, ch):
+    if ch.isspace():
+        if builder["chars"] and builder["chars"][-1] != " ":
+            builder["pending"] = True
+        return
+    if builder["pending"]:
+        builder["chars"].append(" ")
+        builder["pending"] = False
+    builder["chars"].append(ch)
+
+def push_text(builder, text):
     content = re.sub(r"\s+$", "", text)
-    if soft_break and builder["chars"] and builder["chars"][-1] == " ":
-        builder["chars"].pop()
     for ch in content:
-        if ch.isspace():
-            if builder["chars"] and builder["chars"][-1] != " ":
-                builder["chars"].append(" ")
-        else:
-            builder["chars"].append(ch)
+        push_character(builder, ch)
+
+def push_line(builder, line):
+    for ch in line:
+        push_character(builder, ch)
+    push_character(builder, "\n")
+
+def push_separator(builder):
+    push_character(builder, " ")
+
+def strip_indent(line, width):
+    index = 0
+    while index < len(line) and index < width and line[index] == " ":
+        index += 1
+    return line[index:]
 
 FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})(.*)$")
 ATX = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$")
@@ -573,8 +595,8 @@ def parse_blocks(markdown):
                 i = at + 1; break
     def path():
         return [h[1] for h in headings]
-    def finish(chars, kind):
-        blocks.append({"text": "".join(chars), "type": kind, "headingPath": path()})
+    def finish(builder, kind):
+        blocks.append({"text": "".join(builder["chars"]), "type": kind, "headingPath": path()})
     while i < len(lines):
         line = lines[i]
         if not line.strip():
@@ -583,76 +605,81 @@ def parse_blocks(markdown):
         if fence:
             marker = fence.group(1)[0]
             close = re.compile(r"^\s{0,3}" + re.escape(marker) + r"{" + str(len(fence.group(1))) + r",}\s*$")
-            chars, j = [], i + 1
+            builder, j = create_builder(), i + 1
             while j < len(lines) and not close.match(lines[j]):
-                if chars: chars.append(" ")
-                chars.extend(lines[j]); j += 1
-            finish(chars, "code")
+                push_line(builder, lines[j]); j += 1
+            finish(builder, "code")
             i = j + 1 if j < len(lines) else len(lines); continue
         atx = ATX.match(line)
         if atx:
             level = len(atx.group(1))
             while headings and headings[-1][0] >= level: headings.pop()
-            builder = {"chars": []}
-            push(builder, project_line(atx.group(2)), False)
-            finish(builder["chars"], f"h{level}")
+            builder = create_builder()
+            push_text(builder, project_line(atx.group(2)))
+            finish(builder, f"h{level}")
             headings.append((level, normalize("".join(builder["chars"]))))
             i += 1; continue
         if INDENTED.match(line):
-            chars, j = [], i
-            while j < len(lines) and INDENTED.match(lines[j]):
-                if chars: chars.append(" ")
-                chars.extend(INDENTED.sub("", lines[j], count=1)); j += 1
-            finish(chars, "code"); i = j; continue
+            builder, j = create_builder(), i
+            while j < len(lines):
+                if not lines[j].strip():
+                    nxt = lines[j + 1] if j + 1 < len(lines) else None
+                    if nxt is not None and INDENTED.match(nxt):
+                        j += 1; continue
+                    break
+                if not INDENTED.match(lines[j]): break
+                push_line(builder, INDENTED.sub("", lines[j], count=1)); j += 1
+            finish(builder, "code"); i = j; continue
         if BQ.match(line):
-            builder, j = {"chars": []}, i
+            builder, j = create_builder(), i
             while j < len(lines) and BQ.match(lines[j]):
                 content = BQ.match(lines[j]).group(1)
                 if content.strip():
-                    push(builder, project_line(content), bool(builder["chars"]))
-                elif builder["chars"] and builder["chars"][-1] != " ":
-                    builder["chars"].append(" ")
+                    push_text(builder, project_line(content))
+                else:
+                    push_separator(builder)
                 j += 1
-            finish(builder["chars"], "blockquote"); i = j; continue
+            finish(builder, "blockquote"); i = j; continue
         if is_table_start(lines, i):
-            chars, rows, j = [], [lines[i]], i + 2
+            builder, rows, j = create_builder(), [lines[i]], i + 2
             while j < len(lines) and lines[j].strip() and "|" in lines[j]:
                 rows.append(lines[j]); j += 1
             for row in rows:
-                for cell in re.sub(r"^\||\|$", "", row.strip()).split("|"):
-                    if chars and chars[-1] != " ": chars.append(" ")
-                    chars.extend(normalize(project_line(cell)))
-            finish(chars, "table"); i = j; continue
+                # Split only on unescaped pipes, like the CLI's splitTableRow.
+                for cell in re.split(r"(?<!\\)\|", re.sub(r"^\||\|$", "", row.strip())):
+                    push_separator(builder)
+                    push_text(builder, normalize(project_line(cell)))
+            finish(builder, "table"); i = j; continue
         lst = LIST.match(line)
         if lst:
-            chars, ordered, j, count = [], lst.group(2)[0].isdigit(), i, 0
+            builder, ordered, j, count = create_builder(), lst.group(2)[0].isdigit(), i, 0
+            content_indent = len(lst.group(1)) + len(lst.group(2)) + len(lst.group(3))
             while j < len(lines) and lines[j].strip():
                 item = LIST.match(lines[j])
                 if item:
-                    if count and chars and chars[-1] != " ": chars.append(" ")
-                    builder = {"chars": []}
-                    push(builder, project_line(item.group(4)), False)
-                    chars.extend(builder["chars"]); count += 1; j += 1; continue
+                    if count > 0: push_separator(builder)
+                    push_text(builder, project_line(item.group(4)))
+                    count += 1; j += 1; continue
                 if starts_block(lines, j): break
-                builder = {"chars": []}
-                push(builder, project_line(lines[j]), bool(chars))
-                chars.extend(builder["chars"]); j += 1
-            finish(chars, "ol" if ordered else "ul"); i = j; continue
+                # Strip only the list container indent, like stripIndent.
+                push_text(builder, project_line(strip_indent(lines[j], content_indent)))
+                j += 1
+            finish(builder, "ol" if ordered else "ul"); i = j; continue
         if HR.match(line) or SETEXT.match(line):
             i += 1; continue
-        builder, j, setext_level = {"chars": []}, i, None
+        builder, j, setext_level = create_builder(), i, None
         while j < len(lines) and lines[j].strip():
             if j > i and SETEXT.match(lines[j]):
                 setext_level = 1 if lines[j].strip().startswith("=") else 2
                 j += 1; break
             if j > i and starts_block(lines, j): break
-            push(builder, project_line(lines[j]), bool(builder["chars"])); j += 1
+            push_text(builder, project_line(lines[j])); j += 1
         if setext_level:
             while headings and headings[-1][0] >= setext_level: headings.pop()
-            finish(builder["chars"], f"h{setext_level}")
+            finish(builder, f"h{setext_level}")
             headings.append((setext_level, normalize("".join(builder["chars"]))))
         else:
-            finish(builder["chars"], "p")
+            finish(builder, "p")
         i = j
     return blocks
 
@@ -706,8 +733,8 @@ directly) and POST the output as `anchor`:
 BASE=http://127.0.0.1:4567
 PROJECT_ID=1
 curl -s "$BASE/api/files/content?project_id=$PROJECT_ID&relativePath=README.md" \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin)["content"])' > /tmp/README.md
-ANCHOR="$(python3 anchor.py /tmp/README.md 'fox jumps')"
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["content"])' > ./omk-target.md
+ANCHOR="$(python3 anchor.py ./omk-target.md 'fox jumps')"
 curl -s -X POST "$BASE/api/annotations" -H 'Content-Type: application/json' \
   -d "{\"projectId\":$PROJECT_ID,\"relativePath\":\"README.md\",\"anchor\":$ANCHOR,\"body\":\"Please explain the fox.\",\"author\":\"claude\",\"isAgent\":true}"
 ```
