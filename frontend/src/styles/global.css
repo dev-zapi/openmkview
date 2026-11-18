@@ -1615,6 +1615,20 @@
   background: color-mix(in oklab, var(--color-primary) 10%, var(--color-card));
 }
 
+/* Touch: the floating annotate action is a thumb target, and popovers stay
+   inside narrow viewports. */
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
+  .annotation-selection-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 14px;
+  }
+
+  .annotation-popover {
+    width: min(320px, calc(100vw - 16px));
+  }
+}
+
 /* Keep real interactions inside an annotated block feeling unchanged. */
 .annotation-block.annotation-highlighted a,
 .annotation-block.annotation-highlighted button,

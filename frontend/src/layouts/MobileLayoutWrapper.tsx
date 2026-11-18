@@ -3,6 +3,7 @@ import { Portal } from 'solid-js/web';
 import { MobileLayout, mobileLayoutStore } from '../components/mobile';
 import FileTree from '../components/FileTree';
 import OutlinePanel from '../components/OutlinePanel';
+import AnnotationColumn from '../components/AnnotationColumn';
 import MainPane from '../components/MainPane';
 import { MarkdownHeader } from '../components/markdown-header';
 import { MobileViewBar } from '../components/markdown-header/MobileViewBar';
@@ -316,6 +317,17 @@ onClick={() => {
           onProgrammaticScrollLock={lockForProgrammaticScroll}
         />
       }
+      annotationPanelContent={
+        <AnnotationColumn
+          isOpen={mobileLayoutStore.rightDrawerMode === 'annotations'}
+          onClose={() => mobileLayoutStore.closeRightDrawer()}
+          projectId={props.activeProject?.id}
+          currentFilePath={props.currentFile?.path ?? null}
+          onOpenFile={props.onFileOpen}
+          width="100%"
+          onJump={() => mobileLayoutStore.closeRightDrawer()}
+        />
+      }
       headerContent={
         <>
           <Show when={props.currentFile}>
@@ -339,6 +351,14 @@ onClick={() => {
                onOutlineToggle={props.onOutlineToggle}
                annotationsVisible={annotationStore.visible()}
                onAnnotationsToggle={() => annotationStore.toggleVisible()}
+               annotationCount={annotationStore.annotations().length}
+               isAnnotationColumnOpen={
+                 mobileLayoutStore.rightDrawerOpen &&
+                 mobileLayoutStore.rightDrawerMode === 'annotations'
+               }
+               onAnnotationColumnToggle={() =>
+                 mobileLayoutStore.toggleRightDrawer('annotations')
+               }
                onSearchClick={props.onSearchClick}
                onSearchClose={props.onSearchClose}
                onSearchQueryChange={props.onSearchQueryChange}
@@ -367,6 +387,14 @@ onClick={() => {
                onOutlineToggle={props.onOutlineToggle}
                annotationsVisible={annotationStore.visible()}
                onAnnotationsToggle={() => annotationStore.toggleVisible()}
+               annotationCount={annotationStore.annotations().length}
+               isAnnotationColumnOpen={
+                 mobileLayoutStore.rightDrawerOpen &&
+                 mobileLayoutStore.rightDrawerMode === 'annotations'
+               }
+               onAnnotationColumnToggle={() =>
+                 mobileLayoutStore.toggleRightDrawer('annotations')
+               }
                onSearchClick={props.onSearchClick}
                onSearchClose={props.onSearchClose}
                onSearchQueryChange={props.onSearchQueryChange}
@@ -434,6 +462,7 @@ onClick={() => {
            onCloseOutline={() => mobileLayoutStore.closeRightDrawer()}
            showHeader={false}
            showOutline={false}
+           showAnnotationColumn={false}
            onFileOpen={props.onFileOpen}
          />
       </div>

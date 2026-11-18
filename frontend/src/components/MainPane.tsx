@@ -57,6 +57,8 @@ interface MainPaneProps {
   onCloseOutline: () => void;
   showHeader?: boolean;
   showOutline?: boolean;
+  /** The mobile shell hosts the annotation column in its right drawer. */
+  showAnnotationColumn?: boolean;
   outlineWidth: number;
   outlineTransition: string;
   onOutlineStartDragging: () => void;
@@ -183,7 +185,7 @@ export const MainPane: Component<MainPaneProps> = (props) => {
         />
       </Show>
 
-      <Show when={props.currentFile && props.currentFileType === 'markdown'}>
+      <Show when={props.showAnnotationColumn !== false && props.currentFile && props.currentFileType === 'markdown'}>
         <AnnotationColumn
           isOpen={props.isAnnotationColumnOpen ?? false}
           onClose={props.onCloseAnnotationColumn ?? (() => {})}
