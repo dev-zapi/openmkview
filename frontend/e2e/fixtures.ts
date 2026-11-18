@@ -30,6 +30,12 @@ export async function loginIfNeeded(page: Page) {
     await username.fill(e2eUsername);
     await page.getByRole('textbox', { name: 'Password' }).fill(e2ePassword);
     await page.getByRole('button', { name: 'Sign in' }).click();
+
+    // The click only starts the login POST. Wait for the form to be
+    // replaced by the app before returning, so setup fetches made right
+    // after loginIfNeeded (scratch project/file seeding) carry the
+    // session cookie instead of racing the still-pending login.
+    await expect(username).toBeHidden({ timeout: 15000 });
   }
 }
 
