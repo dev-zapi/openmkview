@@ -169,25 +169,27 @@ export interface AnnotationHighlightResult {
 }
 
 /**
- * Groups annotations by the block they anchor to. Multiple annotations may
- * share one block (and overlapping anchors are legal), so this returns lists
- * rather than a single annotation per block.
+ * Resolves every annotation's status independently of the reading-mode
+ * visibility toggle. The column needs Outdated badges even when highlights
+ * and markers are hidden, and status must never silently flip to Active.
  */
-export function annotationsByBlock(annotations: Annotation[]): Map<string, Annotation[]> {
-  const grouped = new Map<string, Annotation[]>();
+export function resolveOutdated(
+  blocks: BlockModel[],
+  annotations: Annotation[]
+): Map<number, string> {
+  const outdated = new Map<number, string>();
 
   for (const annotation of annotations) {
-    for (const segment of annotation.anchor?.segments ?? []) {
-      if (segment.kind !== 'block' && segment.kind !== 'text') continue;
-      const existing = grouped.get(segment.blockHash) ?? [];
-      if (!existing.some((candidate) => candidate.id === annotation.id)) {
-        existing.push(annotation);
-      }
-      grouped.set(segment.blockHash, existing);
+    const resolution = resolveAnchor(blocks, annotation.anchor);
+    if (resolution.status === 'outdated') {
+      outdated.set(
+        annotation.id,
+        annotation.snapshot?.trim() || resolution.snapshot
+      );
     }
   }
 
-  return grouped;
+  return outdated;
 }
 
 /**

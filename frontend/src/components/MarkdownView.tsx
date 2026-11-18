@@ -14,6 +14,7 @@ import {
   ensureBlockMarkers,
   blockAnchorFrom,
   applySearchAndAnnotationHighlights,
+  resolveOutdated,
   type RenderedBlock,
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
@@ -156,6 +157,18 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   /** Completes manual re-anchoring from a fresh Preview text selection. */
   const completeReanchor = async (annotationId: number, anchor: AnnotationAnchor) => {
+    // The armed target must still belong to the file currently on screen;
+    // otherwise a file switch could write this selection onto another file's
+    // annotation (whose relative_path would remain unchanged).
+    const belongs = annotationStore
+      .annotations()
+      .some((annotation) => annotation.id === annotationId);
+    if (!belongs) {
+      annotationStore.cancelReanchor();
+      setSelectionCapture(null);
+      return;
+    }
+
     setSavingAnnotation(true);
     setSelectionCapture(null);
     try {
@@ -354,7 +367,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
     searchMatches = applied.searchMatches;
     blockAttachments = applied.attachments;
-    annotationStore.setOutdatedSnapshots(applied.outdated);
+    // Status is computed over every annotation, not just the ones drawn:
+    // hiding highlights must never make an Outdated annotation look Active
+    // in the independently mounted column.
+    annotationStore.setOutdatedSnapshots(
+      resolveOutdated(
+        renderedBlockList.map((block) => block.model),
+        annotationStore.annotations()
+      )
+    );
     props.onSearchResultsChange?.(searchMatches.length);
     setActiveSearchMatch(
       searchMatches,
@@ -463,6 +484,22 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }, 0);
 
     onCleanup(() => clearTimeout(timer));
+  });
+
+  // The annotation column can ask the viewer to open a thread that has no
+  // highlight to click (Outdated annotations).
+  let handledViewNonce = 0;
+  createEffect(() => {
+    const request = annotationStore.viewRequest();
+    if (!request || request.nonce === handledViewNonce) return;
+    handledViewNonce = request.nonce;
+
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === request.annotationId,
+    );
+    annotationStore.clearView();
+    if (!annotation) return;
+    openViewer(annotation, new DOMRect(request.left, request.top, 0, 0));
   });
 
   createEffect(() => {

@@ -5,6 +5,7 @@ import {
   blockAnchorFrom,
   applyAnnotationHighlights,
   applySearchAndAnnotationHighlights,
+  resolveOutdated,
 } from '../../utils/annotationBlocks';
 import { encodeDiagramCode } from '../../utils/markdown';
 import type { Annotation } from '../../types';
@@ -266,6 +267,37 @@ describe('annotationBlocks', () => {
     expect(applied.searchMatches[0].textContent).toBe('beta');
     expect(root.querySelector('mark[data-annotation-id="11"]')?.textContent).toBe('beta');
     expect(root.textContent).toBe('alpha beta gamma');
+  });
+
+  it('reports Outdated status even when no highlights are drawn', () => {
+    const root = createRoot('<p>current text</p>');
+    const blocks = assignBlockAnchors(root);
+    const gone = annotationFor(13, {
+      version: 1,
+      segments: [
+        {
+          kind: 'text',
+          blockHash: 'gone',
+          blockText: 'current text',
+          blockType: 'p',
+          headingPath: [],
+          quote: 'vanished words',
+          prefix: '',
+          suffix: '',
+        },
+      ],
+    });
+    const active = annotationFor(14, blockAnchorFrom(blocks[0]));
+
+    // Hidden reading mode passes no annotations to the decoration pass, but
+    // status must still be computed over every annotation.
+    const outdated = resolveOutdated(
+      blocks.map((block) => block.model),
+      [gone, active]
+    );
+
+    expect(outdated.get(13)).toBe('vanished words');
+    expect(outdated.has(14)).toBe(false);
   });
 
   it('attaches annotations by block hash and clears stale attachments', () => {

@@ -206,8 +206,26 @@ test.describe('document drift', () => {
     ).toBeVisible();
     await expect(column.getByText('Doomed note')).toBeVisible();
 
+    // Hiding highlights is a reading-mode preference only: the independent
+    // column must keep reporting Outdated status.
+    await page.getByRole('button', { name: 'Hide annotations' }).click();
+    await expect(column.getByText('Outdated', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Show annotations' }).click();
+
+    // An Outdated annotation has no highlight to click; its column entry
+    // opens the viewer with the snapshot and the Re-anchor action.
+    await column.getByRole('button', { name: /Open outdated annotation/ }).click();
+    const viewer = page.getByRole('dialog', { name: 'Annotation' });
+    await expect(viewer).toBeVisible();
+    await expect(viewer.getByText('Outdated', { exact: true }).first()).toBeVisible();
+    await expect(viewer.getByText('Originally anchored text')).toBeVisible();
+    await expect(
+      viewer.getByText(DELETED_PARAGRAPH, { exact: false }).first()
+    ).toBeVisible();
+
     // Re-anchor the Outdated annotation to the fresh destination paragraph.
-    await column.getByRole('button', { name: 'Re-anchor' }).click();
+    await viewer.getByRole('button', { name: 'Re-anchor' }).click();
+    await expect(viewer).not.toBeVisible();
     await selectTextRange(page, DESTINATION_QUOTE, DESTINATION_QUOTE);
 
     const reanchorButton = page.getByRole('button', {

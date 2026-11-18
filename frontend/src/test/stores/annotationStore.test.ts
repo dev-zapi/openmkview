@@ -128,4 +128,47 @@ describe('annotationStore', () => {
     expect(annotationStore.isOutdated(1)).toBe(false);
     expect(annotationStore.reanchorTarget()).toBeNull();
   });
+
+  it('clears an armed re-anchor and viewer request when another file loads', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-a')]))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'a.md');
+    annotationStore.startReanchor(1);
+    annotationStore.requestView(1, 10, 20);
+
+    await annotationStore.load(1, 'b.md');
+
+    expect(annotationStore.reanchorTarget()).toBeNull();
+    expect(annotationStore.viewRequest()).toBeNull();
+  });
+
+  it('refuses to re-anchor an annotation that is not in the current file', async () => {
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse([]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'b.md');
+    const fetchesBefore = (global.fetch as any).mock.calls.length;
+
+    annotationStore.startReanchor(1);
+    await expect(
+      annotationStore.reanchor(1, {
+        version: 1,
+        segments: [
+          {
+            kind: 'block',
+            blockHash: 'blk-a',
+            blockText: 'text',
+            blockType: 'p',
+            headingPath: [],
+          },
+        ],
+      })
+    ).rejects.toThrow('no longer available');
+
+    expect((global.fetch as any).mock.calls.length).toBe(fetchesBefore);
+    expect(annotationStore.reanchorTarget()).toBeNull();
+  });
 });

@@ -169,7 +169,7 @@ impl<'a> AnnotationService<'a> {
     /// Manually re-anchor an Outdated annotation to a freshly selected range.
     ///
     /// The new Anchor payload replaces the old one and the snapshot is
-    /// refreshed from it, so the stale Outdated text no longer surfaces. The
+    /// refreshed from it, so the previous Outdated text no longer surfaces. The
     /// note thread and Resolved flag are untouched.
     pub fn reanchor(&self, id: i64, anchor: Value) -> AppResult<Annotation> {
         if !anchor.is_object() {
