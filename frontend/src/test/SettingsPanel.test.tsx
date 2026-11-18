@@ -67,6 +67,47 @@ describe('SettingsPanel', () => {
     });
   });
 
+  it('lists and revokes tool sessions', async () => {
+    let deleted = false;
+    vi.spyOn(window, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url === '/api/auth/tool-sessions' && (init?.method ?? 'GET') === 'GET') {
+        return {
+          ok: true,
+          json: async () => (
+            deleted
+              ? []
+              : [{ id: 7, label: 'agent-laptop', createdAt: '2026-01-02T03:04:05Z' }]
+          ),
+        } as Response;
+      }
+      if (url === '/api/auth/tool-sessions/7' && init?.method === 'DELETE') {
+        deleted = true;
+        return { ok: true, json: async () => ({ success: true }) } as Response;
+      }
+      return { ok: true, json: async () => ({ themes: [], credentials: [] }) } as Response;
+    });
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+
+    const section = document.querySelector('#settings-tool-sessions') as HTMLElement;
+    expect(section).toBeTruthy();
+    await waitFor(() => {
+      expect(within(section).getByText('agent-laptop')).toBeTruthy();
+    });
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Revoke' }));
+
+    await waitFor(() => {
+      expect(within(section).queryByText('agent-laptop')).toBeNull();
+    });
+  });
+
+  it('hides tool sessions when auth is disabled', () => {
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
+    expect(document.querySelector('#settings-tool-sessions')).toBeNull();
+  });
+
   it('disables passkey registration when current domain is not configured', async () => {
     authStore.setPasskeyConfigured(false);
 
@@ -389,7 +430,7 @@ describe('SettingsPanel', () => {
     it('renders auth-only navigation categories when auth is enabled', () => {
       const { container } = render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
       const navItems = container.querySelectorAll('.settings-nav button');
-      expect(navItems.length).toBe(8);
+      expect(navItems.length).toBe(9);
     });
 
     it('clicking navigation item triggers scrollIntoView', () => {
@@ -449,7 +490,7 @@ describe('SettingsPanel', () => {
         render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
 
         await waitFor(() => {
-          expect(observeMock).toHaveBeenCalledTimes(9);
+          expect(observeMock).toHaveBeenCalledTimes(10);
         });
       });
   });

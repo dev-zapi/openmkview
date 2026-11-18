@@ -1,6 +1,6 @@
 import { Component, createSignal, createEffect, createMemo, Show, onMount, onCleanup, For } from 'solid-js';
 import type { JSX } from 'solid-js';
-import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary, WritingFontFamily } from '../types/app';
+import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary, ToolSessionSummary, WritingFontFamily } from '../types/app';
 import { applyTheme } from '../utils/theme';
 import { editorThemeLightPresets, editorThemeDarkPresets } from '../utils/editorThemes';
 import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize, resolvedWritingFontSize } from '../utils/settings';
@@ -36,6 +36,7 @@ const categories: SettingsCategory[] = [
   { id: 'settings-markdown', label: 'Markdown' },
   { id: 'settings-file-tree', label: 'File Tree' },
   { id: 'settings-session', label: 'Session' },
+  { id: 'settings-tool-sessions', label: 'Tool Sessions' },
   { id: 'settings-passkeys', label: 'Passkeys' },
   { id: 'settings-trash', label: 'Trash' },
   { id: 'settings-fonts', label: 'Fonts' },
@@ -128,6 +129,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   const [passkeyLoading, setPasskeyLoading] = createSignal(false);
   const [passkeyBusyId, setPasskeyBusyId] = createSignal<string | null>(null);
   const [passkeyError, setPasskeyError] = createSignal<string | null>(null);
+  const [toolSessions, setToolSessions] = createSignal<ToolSessionSummary[]>([]);
+  const [toolSessionLoading, setToolSessionLoading] = createSignal(false);
+  const [toolSessionBusyId, setToolSessionBusyId] = createSignal<number | null>(null);
+  const [toolSessionError, setToolSessionError] = createSignal<string | null>(null);
   const [activeCategory, setActiveCategory] = createSignal(categories[0].id);
   const [version, setVersion] = createSignal<string>("");
   const [refreshStatus, setRefreshStatus] = createSignal<ForceRefreshStatus | null>(null);
@@ -137,7 +142,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   let contentRef: HTMLDivElement | undefined;
   const visibleCategories = () => categories.filter((category) => {
     if (!props.authRequired) {
-      return category.id !== 'settings-session' && category.id !== 'settings-passkeys';
+      return category.id !== 'settings-session'
+        && category.id !== 'settings-tool-sessions'
+        && category.id !== 'settings-passkeys';
     }
 
     return true;
@@ -180,6 +187,7 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
   onMount(() => {
     void loadThemes();
     void loadPasskeys();
+    void loadToolSessions();
     void loadVersion();
   });
 
@@ -259,9 +267,45 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     }
   };
 
+  const loadToolSessions = async () => {
+    if (!props.authRequired) {
+      setToolSessions([]);
+      setToolSessionError(null);
+      setToolSessionLoading(false);
+      return;
+    }
+
+    setToolSessionLoading(true);
+    setToolSessionError(null);
+
+    try {
+      const sessions = await authStore.listToolSessions();
+      setToolSessions(sessions);
+    } catch (err) {
+      setToolSessionError(err instanceof Error ? err.message : 'Failed to load Tool Sessions');
+    } finally {
+      setToolSessionLoading(false);
+    }
+  };
+
+  const handleToolSessionDelete = async (id: number) => {
+    setToolSessionBusyId(id);
+    setToolSessionError(null);
+
+    try {
+      await authStore.deleteToolSession(id);
+      setToolSessions((sessions) => sessions.filter((session) => session.id !== id));
+    } catch (err) {
+      setToolSessionError(err instanceof Error ? err.message : 'Failed to revoke Tool Session');
+    } finally {
+      setToolSessionBusyId(null);
+    }
+  };
+
   createEffect(() => {
     if (props.isOpen && props.authRequired) {
       void loadPasskeys();
+      void loadToolSessions();
     }
   });
 
@@ -722,6 +766,57 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     <p style="margin-top: 4px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
                       Controls how long inactive sessions remain valid. Login credentials can only be changed by CLI, env, or config file.
                     </p>
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={props.authRequired}>
+                <div class="settings-section" id="settings-tool-sessions">
+                  <h4>Tool Sessions</h4>
+
+                  <div class="settings-item">
+                    <label>Non-expiring sessions for non-interactive clients</label>
+                    <p style="margin-top: 4px; margin-bottom: 12px; color: var(--color-text); font-size: 11px; opacity: 0.7;">
+                      Exchange credentials once for a long-lived Bearer token. Sessions survive restarts and never expire; revoking one immediately invalidates its token.
+                    </p>
+
+                    <Show when={toolSessionError()}>
+                      <p style="margin-bottom: 12px; color: var(--color-error); font-size: 12px;">{toolSessionError()}</p>
+                    </Show>
+
+                    <div class="tool-session-list">
+                      <Show when={toolSessionLoading()}>
+                        <div class="tool-session-empty">Loading Tool Sessions...</div>
+                      </Show>
+
+                      <Show when={!toolSessionLoading() && toolSessions().length === 0}>
+                        <div class="tool-session-empty">No Tool Sessions registered yet.</div>
+                      </Show>
+
+                      <For each={toolSessions()}>
+                        {(session) => (
+                          <div class="tool-session-card" data-session-id={String(session.id)}>
+                            <div class="passkey-card-meta">
+                              <div class="passkey-card-name">{session.label}</div>
+                              <div class="passkey-card-time">Created {formatTimestamp(session.createdAt)}</div>
+                              <div class="passkey-card-time">Last used {formatTimestamp(session.lastUsedAt)}</div>
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={toolSessionBusyId() === session.id}
+                              onClick={() => void handleToolSessionDelete(session.id)}
+                            >
+                              <Show when={toolSessionBusyId() === session.id}>
+                                <span class="btn-spinner" aria-hidden="true" />
+                              </Show>
+                              {toolSessionBusyId() === session.id ? 'Revoking...' : 'Revoke'}
+                            </Button>
+                          </div>
+                        )}
+                      </For>
+                    </div>
                   </div>
                 </div>
               </Show>
