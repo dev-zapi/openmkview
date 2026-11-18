@@ -61,8 +61,8 @@ let pendingJump: { projectId: number; relativePath: string; annotationId: number
 /** Guards the lazily filled management Outdated map against stale opens. */
 let managedResolveToken = 0;
 /**
- * Project-wide resolution cache keyed by (project, path, content), so opening
- * the manager repeatedly only re-reads files whose content changed.
+ * Project-wide resolution cache keyed by (project, path, content), so
+ * unchanged content is not re-resolved when the manager reopens.
  */
 const managedOutdatedCache = new Map<string, Map<number, string>>();
 
