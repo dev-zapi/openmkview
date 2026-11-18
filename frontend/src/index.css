@@ -1824,6 +1824,19 @@ textarea {
   color: var(--color-text-soft);
 }
 
+.annotation-state.outdated {
+  background: color-mix(in srgb, #d97706 16%, transparent);
+  color: #b45309;
+}
+
+.annotation-column-item.outdated {
+  border-color: color-mix(in srgb, #d97706 45%, var(--color-border));
+}
+
+.annotation-column-item .annotation-outdated {
+  margin: 0 12px 10px;
+}
+
 .annotation-column-time {
   white-space: nowrap;
 }

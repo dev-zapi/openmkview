@@ -1,4 +1,7 @@
 import { test as base, expect, Page } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 export interface ConsoleMessage {
   type: string;
@@ -147,6 +150,63 @@ export async function probeFetch(page: Page, url: string): Promise<string> {
       return 'failed';
     }
   }, url);
+}
+
+/** A throwaway project directory seeded through the real project API. */
+export interface ScratchProject {
+  projectId: number;
+  projectDir: string;
+  path: string;
+}
+
+/**
+ * Seed an isolated project + Markdown file. Serial mutation specs use this
+ * instead of the shared seeded project so parallel agents cannot interfere.
+ * The caller must already be on the app origin (fetch runs in the page).
+ */
+export async function createScratchProject(
+  page: Page,
+  fileName: string,
+  content: string,
+  prefix = 'annotations-e2e'
+): Promise<ScratchProject> {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-`));
+  fs.writeFileSync(path.join(projectDir, fileName), content);
+
+  const project = await page.evaluate(async (dir) => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: dir }),
+    });
+    if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
+    return res.json();
+  }, projectDir);
+
+  return { projectId: project.id, projectDir, path: fileName };
+}
+
+/** Delete the file's annotations and the scratch directory. */
+export async function removeScratchProject(
+  page: Page,
+  target: ScratchProject
+): Promise<void> {
+  await page.evaluate(
+    async ({ projectId, relativePath }) => {
+      const res = await fetch(
+        `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(relativePath)}`
+      );
+      if (res.ok) {
+        const annotations = await res.json();
+        for (const annotation of annotations) {
+          await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
+        }
+      }
+    },
+    { projectId: target.projectId, relativePath: target.path }
+  );
+
+  fs.rmSync(target.projectDir, { recursive: true, force: true });
 }
 
 // 扩展 test fixture，添加控制台日志收集

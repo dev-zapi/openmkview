@@ -272,6 +272,11 @@ function outdated(anchor: AnnotationAnchor | null | undefined): OutdatedAnchor {
 /**
  * Pure Anchor resolution: content references in, resolved block-relative
  * character ranges or Outdated out. No DOM, no storage, no scoring exposed.
+ *
+ * Matching scope is deliberately whitespace/case-normalized verbatim quote
+ * matching (plus context/heading-path tie-breaking). Whole-block and
+ * word-level rewrites of the anchored text itself do not fuzzy-match; they
+ * become Outdated, which manual re-anchoring rescues.
  */
 export function resolveAnchor(
   blocks: BlockModel[],

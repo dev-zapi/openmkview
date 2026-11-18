@@ -651,3 +651,70 @@ fn external_rename_keeps_annotation_rows_queryable() {
     assert_eq!(retained.relative_path, "doc.md");
     assert_eq!(retained.notes[0].body, "external note");
 }
+
+#[test]
+fn create_records_the_original_text_as_its_snapshot() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let created = service
+        .create(create_request(project_id, "doc.md", "first note"))
+        .expect("create annotation");
+    assert_eq!(created.snapshot.as_deref(), Some("paragraph"));
+
+    let mut request = create_request_with_anchor(text_anchor());
+    request.project_id = project_id;
+    let selected = service.create(request).expect("create text annotation");
+    assert_eq!(selected.snapshot.as_deref(), Some("quick brown"));
+}
+
+#[test]
+fn reanchor_replaces_the_anchor_and_refreshes_the_snapshot() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let created = service
+        .create(create_request(project_id, "doc.md", "drifted note"))
+        .expect("create annotation");
+    assert_eq!(created.snapshot.as_deref(), Some("paragraph"));
+
+    let reanchored = service
+        .reanchor(created.id, text_anchor())
+        .expect("re-anchor annotation");
+
+    assert_eq!(reanchored.id, created.id);
+    assert_eq!(reanchored.anchor, text_anchor());
+    assert_eq!(reanchored.snapshot.as_deref(), Some("quick brown"));
+    assert_eq!(reanchored.notes[0].body, "drifted note");
+
+    let listed = service
+        .list_for_file(project_id, "doc.md")
+        .expect("list re-anchored annotation");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].anchor, text_anchor());
+    assert_eq!(listed[0].snapshot.as_deref(), Some("quick brown"));
+}
+
+#[test]
+fn reanchor_rejects_an_unknown_annotation() {
+    let (_temp_dir, conn, _project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let result = service.reanchor(9999, block_anchor());
+
+    assert!(matches!(result, Err(AppError::NotFound(_))));
+}
+
+#[test]
+fn reanchor_rejects_a_malformed_anchor() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let created = service
+        .create(create_request(project_id, "doc.md", "note"))
+        .expect("create annotation");
+
+    let result = service.reanchor(created.id, json!({ "version": 1, "segments": [] }));
+
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}

@@ -10,6 +10,30 @@ fn bad_anchor(message: &str) -> AppError {
     AppError::BadRequest(message.into())
 }
 
+/// The text an Outdated annotation shows as its snapshot: the originally
+/// anchored quote (text segments) or block text (whole-block segments),
+/// joined in document order. Derived from the Anchor payload so it is always
+/// available, including for annotations created before snapshots were stored.
+fn snapshot_from_anchor(anchor: &Value) -> Option<String> {
+    let segments = anchor.get("segments")?.as_array()?;
+    let parts: Vec<&str> = segments
+        .iter()
+        .filter_map(|segment| {
+            segment
+                .get("quote")
+                .and_then(Value::as_str)
+                .or_else(|| segment.get("blockText").and_then(Value::as_str))
+        })
+        .filter(|text| !text.trim().is_empty())
+        .collect();
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("\n\n"))
+    }
+}
+
 fn validate_segment_common(segment: &serde_json::Map<String, Value>) -> AppResult<()> {
     let block_hash = segment
         .get("blockHash")
@@ -132,8 +156,32 @@ impl<'a> AnnotationService<'a> {
         validate_anchor(&req.anchor)?;
 
         let anchor_json = serde_json::to_string(&req.anchor)?;
+        let snapshot = snapshot_from_anchor(&req.anchor);
+        self.annotation_repo.create(
+            req.project_id,
+            &req.relative_path,
+            &anchor_json,
+            snapshot.as_deref(),
+            body,
+        )
+    }
+
+    /// Manually re-anchor an Outdated annotation to a freshly selected range.
+    ///
+    /// The new Anchor payload replaces the old one and the snapshot is
+    /// refreshed from it, so the previous Outdated text no longer surfaces. The
+    /// note thread and Resolved flag are untouched.
+    pub fn reanchor(&self, id: i64, anchor: Value) -> AppResult<Annotation> {
+        if !anchor.is_object() {
+            return Err(AppError::BadRequest("Anchor must be a JSON object".into()));
+        }
+        validate_anchor(&anchor)?;
+
+        let anchor_json = serde_json::to_string(&anchor)?;
+        let snapshot = snapshot_from_anchor(&anchor);
         self.annotation_repo
-            .create(req.project_id, &req.relative_path, &anchor_json, None, body)
+            .update_anchor(id, &anchor_json, snapshot.as_deref())?
+            .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
     }
 
     pub fn delete(&self, id: i64) -> AppResult<()> {
@@ -141,6 +189,17 @@ impl<'a> AnnotationService<'a> {
             true => Ok(()),
             false => Err(AppError::NotFound("Annotation not found".into())),
         }
+    }
+
+    /// Follow a file or directory that was renamed/moved inside the app.
+    ///
+    /// The filesystem stays the source of truth: only annotation rows are
+    /// rewritten, and nothing is ever written into the project directory.
+    pub fn migrate_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
+        self.require_project(project_id)?;
+        FileService::validate_relative_path(from)?;
+        FileService::validate_relative_path(to)?;
+        self.annotation_repo.move_paths(project_id, from, to)
     }
 
     pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Annotation> {
@@ -189,17 +248,6 @@ impl<'a> AnnotationService<'a> {
         self.annotation_repo
             .find_by_id(annotation_id)?
             .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
-    }
-
-    /// Follow a file or directory that was renamed/moved inside the app.
-    ///
-    /// The filesystem stays the source of truth: only annotation rows are
-    /// rewritten, and nothing is ever written into the project directory.
-    pub fn migrate_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
-        self.require_project(project_id)?;
-        FileService::validate_relative_path(from)?;
-        FileService::validate_relative_path(to)?;
-        self.annotation_repo.move_paths(project_id, from, to)
     }
 
     fn require_project(&self, project_id: i64) -> AppResult<Project> {

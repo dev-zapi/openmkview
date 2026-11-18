@@ -14,6 +14,7 @@ import {
   ensureBlockMarkers,
   blockAnchorFrom,
   applySearchAndAnnotationHighlights,
+  resolveOutdated,
   type RenderedBlock,
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
@@ -153,6 +154,34 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       setSavingAnnotation(false);
     }
   };
+
+  /** Completes manual re-anchoring from a fresh Preview text selection. */
+  const completeReanchor = async (annotationId: number, anchor: AnnotationAnchor) => {
+    // The armed target must still belong to the file currently on screen;
+    // otherwise a file switch could write this selection onto another file's
+    // annotation (whose relative_path would remain unchanged).
+    const belongs = annotationStore
+      .annotations()
+      .some((annotation) => annotation.id === annotationId);
+    if (!belongs) {
+      annotationStore.cancelReanchor();
+      setSelectionCapture(null);
+      return;
+    }
+
+    setSavingAnnotation(true);
+    setSelectionCapture(null);
+    try {
+      await annotationStore.reanchor(annotationId, anchor);
+      window.getSelection()?.removeAllRanges();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to re-anchor annotation');
+    } finally {
+      setSavingAnnotation(false);
+    }
+  };
+
+  const isReanchoring = () => annotationStore.reanchorTarget() !== null;
 
   const openAnnotationById = (id: number, rect: DOMRect) => {
     const annotation = annotationStore
@@ -319,10 +348,12 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
    */
   const applyDecorations = () => {
     if (!contentRef) {
+      annotationStore.setOutdatedSnapshots(new Map());
       props.onSearchResultsChange?.(0);
       return;
     }
     if (renderedBlockList.length === 0) {
+      annotationStore.setOutdatedSnapshots(new Map());
       props.onSearchResultsChange?.(0);
       return;
     }
@@ -336,6 +367,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
     searchMatches = applied.searchMatches;
     blockAttachments = applied.attachments;
+    // Status is computed over every annotation, not just the ones drawn:
+    // hiding highlights must never make an Outdated annotation look Active
+    // in the independently mounted column.
+    annotationStore.setOutdatedSnapshots(
+      resolveOutdated(
+        renderedBlockList.map((block) => block.model),
+        annotationStore.annotations()
+      )
+    );
     props.onSearchResultsChange?.(searchMatches.length);
     setActiveSearchMatch(
       searchMatches,
@@ -344,11 +384,19 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     applyOfflineState();
   };
 
+  const onReanchorEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !isReanchoring()) return;
+    annotationStore.cancelReanchor();
+    setSelectionCapture(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
   onMount(() => {
     contentRef?.addEventListener('click', onContentClick);
     document.addEventListener('selectionchange', updateSelectionCapture);
     contentRef?.addEventListener('mouseup', updateSelectionCapture);
     document.addEventListener('keyup', updateSelectionCapture);
+    document.addEventListener('keydown', onReanchorEscape);
   });
 
   createEffect(() => {
@@ -436,6 +484,22 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }, 0);
 
     onCleanup(() => clearTimeout(timer));
+  });
+
+  // The annotation column can ask the viewer to open a thread that has no
+  // highlight to click (Outdated annotations).
+  let handledViewNonce = 0;
+  createEffect(() => {
+    const request = annotationStore.viewRequest();
+    if (!request || request.nonce === handledViewNonce) return;
+    handledViewNonce = request.nonce;
+
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === request.annotationId,
+    );
+    annotationStore.clearView();
+    if (!annotation) return;
+    openViewer(annotation, new DOMRect(request.left, request.top, 0, 0));
   });
 
   createEffect(() => {
@@ -832,6 +896,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     contentRef?.removeEventListener('mouseup', updateSelectionCapture);
     document.removeEventListener('selectionchange', updateSelectionCapture);
     document.removeEventListener('keyup', updateSelectionCapture);
+    document.removeEventListener('keydown', onReanchorEscape);
   });
 
   const renderComposer = (current: AnnotationPanel) => {
@@ -886,10 +951,35 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const renderViewer = (current: AnnotationPanel) => {
     if (current.mode !== 'view') return null;
     const annotation = viewerAnnotation() ?? current.annotation;
+    const offline = !annotationStore.canMutate();
+    const outdated = () => annotationStore.isOutdated(annotation.id);
+    const snapshot = () =>
+      annotationStore.outdatedSnapshot(annotation.id) ?? annotation.snapshot ?? '';
 
     return (
       <div class="annotation-viewer">
         <p class="annotation-anchor-excerpt">{annotationExcerpt(annotation)}</p>
+        <Show when={outdated()}>
+          <div class="annotation-outdated" role="status">
+            <span class="annotation-outdated-badge">Outdated</span>
+            <p class="annotation-outdated-snapshot">
+              <span class="annotation-outdated-label">Originally anchored text</span>
+              <span class="annotation-outdated-text">{snapshot()}</span>
+            </p>
+            <button
+              type="button"
+              class="annotation-action-secondary"
+              disabled={offline}
+              title={offline ? 'Unavailable offline' : undefined}
+              onClick={() => {
+                annotationStore.startReanchor(annotation.id);
+                setPanel(null);
+              }}
+            >
+              Re-anchor
+            </button>
+          </div>
+        </Show>
         <AnnotationThread annotation={annotation} onDelete={() => setPanel(null)} />
       </div>
     );
@@ -954,13 +1044,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             <button
               type="button"
               class="annotation-selection-button"
-              aria-label="Annotate selected text"
+              aria-label={
+                isReanchoring() ? 'Re-anchor annotation to selected text' : 'Annotate selected text'
+              }
               style={{
                 left: `${capture().left}px`,
                 top: `${capture().top}px`,
               }}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
+                const target = annotationStore.reanchorTarget();
+                if (target !== null) {
+                  void completeReanchor(target, capture().anchor);
+                  return;
+                }
                 openComposer(
                   capture().anchor,
                   capture().excerpt,
@@ -969,7 +1066,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
               }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              Annotate
+              {isReanchoring() ? 'Re-anchor' : 'Annotate'}
             </button>
           </Portal>
         )}

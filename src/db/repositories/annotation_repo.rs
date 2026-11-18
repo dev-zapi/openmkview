@@ -106,6 +106,70 @@ impl<'a> AnnotationRepository<'a> {
         Ok(rows > 0)
     }
 
+    /// Replace an annotation's Anchor payload and snapshot in one write.
+    ///
+    /// Returns `None` when the annotation does not exist so the service can
+    /// map it to NotFound instead of silently creating a row.
+    pub fn update_anchor(
+        &self,
+        id: i64,
+        anchor_json: &str,
+        snapshot: Option<&str>,
+    ) -> AppResult<Option<Annotation>> {
+        let rows = self.conn.execute(
+            "UPDATE annotations
+             SET anchor_json = ?, snapshot = ?, updated_at = datetime('now')
+             WHERE id = ?",
+            params![anchor_json, snapshot, id],
+        )?;
+
+        if rows == 0 {
+            return Ok(None);
+        }
+
+        self.find_by_id(id)
+    }
+
+    /// Rewrite stored paths after an in-app rename or move.
+    ///
+    /// A file/directory renamed to `to` moves every row anchored exactly at
+    /// `from` plus every descendant below it. Prefixes are segment-aware:
+    /// moving `docs` must not touch `docs-other`. Rows are selected by project
+    /// and filtered in Rust so paths containing `%` or `_` cannot miscarry.
+    pub fn move_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, relative_path FROM annotations WHERE project_id = ?")?;
+        let rows = stmt.query_map([project_id], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?;
+
+        let descendant_prefix = format!("{}/", from);
+        let mut updates = Vec::new();
+        for row in rows {
+            let (id, relative_path) = row?;
+            let new_path = if relative_path == from {
+                to.to_string()
+            } else if relative_path.starts_with(&descendant_prefix) {
+                format!("{}{}", to, &relative_path[from.len()..])
+            } else {
+                continue;
+            };
+            updates.push((id, new_path));
+        }
+        drop(stmt);
+
+        let mut moved = 0;
+        for (id, new_path) in updates {
+            moved += self.conn.execute(
+                "UPDATE annotations SET relative_path = ?, updated_at = datetime('now')
+                 WHERE id = ?",
+                params![new_path, id],
+            )?;
+        }
+        Ok(moved)
+    }
+
     /// Appends a Reply to an existing thread and returns the hydrated annotation.
     pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Option<Annotation>> {
         if self.find_by_id(annotation_id)?.is_none() {
@@ -153,46 +217,6 @@ impl<'a> AnnotationRepository<'a> {
             [annotation_id],
         )?;
         Ok(())
-    }
-
-    /// Rewrite stored paths after an in-app rename or move.
-    ///
-    /// A file/directory renamed to `to` moves every row anchored exactly at
-    /// `from` plus every descendant below it. Prefixes are segment-aware:
-    /// moving `docs` must not touch `docs-other`. Rows are selected by project
-    /// and filtered in Rust so paths containing `%` or `_` cannot miscarry.
-    pub fn move_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT id, relative_path FROM annotations WHERE project_id = ?")?;
-        let rows = stmt.query_map([project_id], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
-        })?;
-
-        let descendant_prefix = format!("{}/", from);
-        let mut updates = Vec::new();
-        for row in rows {
-            let (id, relative_path) = row?;
-            let new_path = if relative_path == from {
-                to.to_string()
-            } else if relative_path.starts_with(&descendant_prefix) {
-                format!("{}{}", to, &relative_path[from.len()..])
-            } else {
-                continue;
-            };
-            updates.push((id, new_path));
-        }
-        drop(stmt);
-
-        let mut moved = 0;
-        for (id, new_path) in updates {
-            moved += self.conn.execute(
-                "UPDATE annotations SET relative_path = ?, updated_at = datetime('now')
-                 WHERE id = ?",
-                params![new_path, id],
-            )?;
-        }
-        Ok(moved)
     }
 
     fn hydrate(&self, row: AnnotationRow) -> AppResult<Annotation> {
