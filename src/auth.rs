@@ -2,7 +2,9 @@ use crate::config::{
     default_timeout_minutes, ensure_secret_key, load_config, save_config, verify_password,
     AppConfig, PasswordAlgorithm,
 };
+use crate::db::{hash_tool_session_token, ToolSessionRepository};
 use crate::errors::{AppError, AppResult};
+use crate::models::{CreateToolSessionRequest, CreateToolSessionResponse};
 use crate::paths::AppPaths;
 use crate::AppState;
 use actix_web::body::{EitherBody, MessageBody};
@@ -14,6 +16,7 @@ use base64::Engine;
 use chrono::Utc;
 use hmac::{Hmac, Mac};
 use rand::RngCore;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::HashMap;
@@ -192,6 +195,7 @@ fn is_public_path(path: &str) -> bool {
     !path.starts_with("/api/")
         || path == "/api/auth/status"
         || path == "/api/auth/login"
+        || path == "/api/auth/tool-sessions/exchange"
         || path == "/api/auth/passkey/login/start"
         || path == "/api/auth/passkey/login/finish"
         || path == "/api/version"
@@ -451,13 +455,91 @@ pub async fn auth_logout(data: web::Data<AppState>, req: HttpRequest) -> AppResu
     Ok(HttpResponse::Ok().cookie(cookie.finish()).finish())
 }
 
+fn build_tool_session_token() -> String {
+    let mut random = [0_u8; 32];
+    rand::thread_rng().fill_bytes(&mut random);
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random)
+}
+
+fn lock_db(data: &AppState) -> AppResult<std::sync::MutexGuard<'_, Connection>> {
+    data.db
+        .lock()
+        .map_err(|_| AppError::InternalError("数据库状态已损坏".to_string()))
+}
+
+/// Exchanges credentials for a Tool Session token. This is the only place a
+/// plaintext token is returned; only its SHA-256 hash is persisted.
+pub async fn auth_tool_session_exchange(
+    data: web::Data<AppState>,
+    body: web::Json<CreateToolSessionRequest>,
+) -> AppResult<HttpResponse> {
+    let Some(auth) = &data.auth else {
+        return Err(AppError::BadRequest("当前未启用登录认证".to_string()));
+    };
+
+    let body = body.into_inner();
+    if !verify_login(auth, &body.username, &body.password)? {
+        return Err(AppError::Unauthorized("用户名或密码错误".to_string()));
+    }
+
+    let label = body
+        .label
+        .as_deref()
+        .map(str::trim)
+        .filter(|label| !label.is_empty())
+        .unwrap_or("Tool session")
+        .to_string();
+    let token = build_tool_session_token();
+    let token_hash = hash_tool_session_token(&token);
+
+    let conn = lock_db(&data)?;
+    let session = ToolSessionRepository::new(&conn).create(&token_hash, &label)?;
+
+    Ok(HttpResponse::Ok()
+        .insert_header((header::CACHE_CONTROL, "no-store"))
+        .json(CreateToolSessionResponse {
+            id: session.id,
+            label: session.label,
+            token,
+            created_at: session.created_at,
+        }))
+}
+
+pub async fn auth_tool_session_list(data: web::Data<AppState>) -> AppResult<HttpResponse> {
+    if data.auth.is_none() {
+        return Err(AppError::BadRequest("当前未启用登录认证".to_string()));
+    }
+
+    let conn = lock_db(&data)?;
+    let sessions = ToolSessionRepository::new(&conn).list()?;
+    Ok(HttpResponse::Ok().json(sessions))
+}
+
+pub async fn auth_tool_session_delete(
+    data: web::Data<AppState>,
+    id: web::Path<i64>,
+) -> AppResult<HttpResponse> {
+    if data.auth.is_none() {
+        return Err(AppError::BadRequest("当前未启用登录认证".to_string()));
+    }
+
+    let conn = lock_db(&data)?;
+    let deleted = ToolSessionRepository::new(&conn).delete(id.into_inner())?;
+    if !deleted {
+        return Err(AppError::NotFound("Tool Session 不存在".to_string()));
+    }
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
+}
+
 pub struct AuthMiddleware {
     auth: Arc<AuthState>,
+    db: Arc<Mutex<Connection>>,
 }
 
 impl AuthMiddleware {
-    pub fn new(auth: Arc<AuthState>) -> Self {
-        Self { auth }
+    pub fn new(auth: Arc<AuthState>, db: Arc<Mutex<Connection>>) -> Self {
+        Self { auth, db }
     }
 }
 
@@ -476,6 +558,7 @@ where
         ready(Ok(AuthMiddlewareService {
             service,
             auth: self.auth.clone(),
+            db: self.db.clone(),
         }))
     }
 }
@@ -483,6 +566,40 @@ where
 pub struct AuthMiddlewareService<S> {
     service: S,
     auth: Arc<AuthState>,
+    db: Arc<Mutex<Connection>>,
+}
+
+fn bearer_token(req: &ServiceRequest) -> Option<String> {
+    let header_value = req.headers().get(header::AUTHORIZATION)?.to_str().ok()?;
+    let (scheme, token) = header_value.split_once(' ')?;
+    if !scheme.eq_ignore_ascii_case("bearer") {
+        return None;
+    }
+
+    let token = token.trim();
+    if token.is_empty() {
+        None
+    } else {
+        Some(token.to_string())
+    }
+}
+
+/// Validates a Tool Session token against the database. Sessions never expire,
+/// so existence is the only validity condition; revocation deletes the row.
+fn validate_tool_session(db: &Arc<Mutex<Connection>>, token: &str) -> AppResult<bool> {
+    let token_hash = hash_tool_session_token(token);
+    let conn = db
+        .lock()
+        .map_err(|_| AppError::InternalError("数据库状态已损坏".to_string()))?;
+    let repo = ToolSessionRepository::new(&conn);
+
+    match repo.find_by_token_hash(&token_hash)? {
+        Some(session) => {
+            repo.touch_last_used(session.id)?;
+            Ok(true)
+        }
+        None => Ok(false),
+    }
 }
 
 impl<S, B> Service<ServiceRequest> for AuthMiddlewareService<S>
@@ -526,13 +643,137 @@ where
             }
         }
 
+        if let Some(token) = bearer_token(&req) {
+            let db = self.db.clone();
+            match validate_tool_session(&db, &token) {
+                Ok(true) => {
+                    let fut = self.service.call(req);
+                    return Box::pin(
+                        async move { fut.await.map(ServiceResponse::map_into_left_body) },
+                    );
+                }
+                Ok(false) => {}
+                Err(err) => {
+                    return Box::pin(async move {
+                        Err(actix_web::error::ErrorInternalServerError(err))
+                    });
+                }
+            }
+        }
+
         Box::pin(async move { Ok(unauthorized_response::<B>(req)) })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_public_path;
+    use super::*;
+    use crate::db::init_db;
+    use actix_web::body::BoxBody;
+    use actix_web::dev::ServiceResponse;
+    use actix_web::http::header;
+    use actix_web::{test as awtest, web, App, HttpResponse};
+    use serde_json::{json, Value};
+    use tempfile::TempDir;
+
+    type TestResponse = ServiceResponse<EitherBody<BoxBody>>;
+
+    fn default_auth_config() -> AuthConfig {
+        AuthConfig {
+            username: "alice".to_string(),
+            password: "correct horse".to_string(),
+            algorithm: PasswordAlgorithm::Argon2,
+            source: PasswordSource::Plain,
+        }
+    }
+
+    macro_rules! init_test_app {
+        ($temp_dir:expr) => {{
+            let temp_dir: &TempDir = $temp_dir;
+            let paths = AppPaths {
+                config_dir: temp_dir.path().join("config"),
+                data_dir: temp_dir.path().join("data"),
+            };
+            paths.ensure_dirs().expect("create app paths");
+            let db_path = temp_dir.path().join("openmkview.db");
+            let conn = init_db(&db_path).expect("init db");
+            let auth = Arc::new(
+                build_auth_state(default_auth_config(), 60, false, &paths)
+                    .expect("build auth state"),
+            );
+            let db = Arc::new(Mutex::new(conn));
+            let state = AppState {
+                db: db.clone(),
+                auth: Some(auth.clone()),
+                passkey: None,
+                paths: Arc::new(paths),
+            };
+
+            awtest::init_service(
+                App::new()
+                    .wrap(AuthMiddleware::new(auth, db))
+                    .app_data(web::Data::new(state))
+                    .route("/api/auth/login", web::post().to(auth_login))
+                    .route(
+                        "/api/auth/tool-sessions/exchange",
+                        web::post().to(auth_tool_session_exchange),
+                    )
+                    .route(
+                        "/api/auth/tool-sessions",
+                        web::get().to(auth_tool_session_list),
+                    )
+                    .route(
+                        "/api/auth/tool-sessions/{id}",
+                        web::delete().to(auth_tool_session_delete),
+                    )
+                    .route("/api/protected", web::get().to(protected_probe)),
+            )
+            .await
+        }};
+    }
+
+    async fn protected_probe() -> HttpResponse {
+        HttpResponse::Ok().json(json!({ "ok": true }))
+    }
+
+    async fn send<S, R>(app: &S, req: R) -> TestResponse
+    where
+        S: Service<R, Response = TestResponse, Error = actix_web::Error>,
+    {
+        awtest::call_service(app, req).await
+    }
+
+    fn exchange_request(username: &str, password: &str, label: &str) -> awtest::TestRequest {
+        awtest::TestRequest::post()
+            .uri("/api/auth/tool-sessions/exchange")
+            .set_json(json!({
+                "username": username,
+                "password": password,
+                "label": label,
+            }))
+    }
+
+    fn protected_request(bearer: Option<&str>) -> awtest::TestRequest {
+        let mut req = awtest::TestRequest::get().uri("/api/protected");
+        if let Some(token) = bearer {
+            req = req.insert_header((header::AUTHORIZATION, format!("Bearer {token}")));
+        }
+        req
+    }
+
+    async fn body_json(response: TestResponse) -> Value {
+        let bytes = actix_web::body::to_bytes(response.into_body())
+            .await
+            .expect("body bytes");
+        serde_json::from_slice(&bytes).expect("json body")
+    }
+
+    #[test]
+    fn tool_session_endpoints_are_protected_except_exchange() {
+        assert!(is_public_path("/api/auth/tool-sessions/exchange"));
+        assert!(!is_public_path("/api/auth/tool-sessions"));
+        assert!(!is_public_path("/api/auth/tool-sessions/7"));
+    }
 
     #[test]
     fn annotation_api_is_not_public() {
@@ -543,5 +784,198 @@ mod tests {
     #[test]
     fn version_api_is_public_for_login_page() {
         assert!(is_public_path("/api/version"));
+    }
+
+    #[actix_web::test]
+    async fn credential_exchange_issues_a_usable_bearer_token() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        let response = send(
+            &app,
+            exchange_request("alice", "correct horse", "laptop").to_request(),
+        )
+        .await;
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CACHE_CONTROL)
+                .expect("exchange response is not cacheable"),
+            "no-store"
+        );
+        let body = body_json(response).await;
+        let token = body["token"]
+            .as_str()
+            .expect("token in response")
+            .to_string();
+        assert_eq!(body["label"], "laptop");
+
+        let authenticated = send(&app, protected_request(Some(&token)).to_request()).await;
+        assert_eq!(authenticated.status(), actix_web::http::StatusCode::OK);
+
+        let unauthenticated = send(&app, protected_request(None).to_request()).await;
+        assert_eq!(
+            unauthenticated.status(),
+            actix_web::http::StatusCode::UNAUTHORIZED
+        );
+
+        let list_req = awtest::TestRequest::get()
+            .uri("/api/auth/tool-sessions")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
+            .to_request();
+        let list_response = send(&app, list_req).await;
+        assert_eq!(list_response.status(), actix_web::http::StatusCode::OK);
+        let sessions = body_json(list_response).await;
+        assert_eq!(sessions.as_array().expect("session array").len(), 1);
+        assert_eq!(sessions[0]["label"], "laptop");
+
+        // Only the hash is persisted.
+        let conn = init_db(&temp_dir.path().join("openmkview.db")).expect("reopen db");
+        let stored_hash: String = conn
+            .query_row("SELECT token_hash FROM tool_sessions", [], |row| row.get(0))
+            .expect("stored hash");
+        assert_ne!(stored_hash, token);
+        assert_eq!(stored_hash, crate::db::hash_tool_session_token(&token));
+    }
+
+    #[actix_web::test]
+    async fn wrong_credentials_are_rejected_without_creating_a_session() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        let response = send(
+            &app,
+            exchange_request("alice", "wrong password", "laptop").to_request(),
+        )
+        .await;
+        assert_eq!(response.status(), actix_web::http::StatusCode::UNAUTHORIZED);
+
+        let conn = init_db(&temp_dir.path().join("openmkview.db")).expect("reopen db");
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM tool_sessions", [], |row| row.get(0))
+            .expect("count sessions");
+        assert_eq!(count, 0);
+    }
+
+    #[actix_web::test]
+    async fn revoked_token_is_rejected_on_next_use() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        let response = send(
+            &app,
+            exchange_request("alice", "correct horse", "laptop").to_request(),
+        )
+        .await;
+        let body = body_json(response).await;
+        let token = body["token"].as_str().expect("token").to_string();
+        let id = body["id"].as_i64().expect("session id");
+
+        let delete_req = awtest::TestRequest::delete()
+            .uri(&format!("/api/auth/tool-sessions/{id}"))
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
+            .to_request();
+        let delete_response = send(&app, delete_req).await;
+        assert_eq!(delete_response.status(), actix_web::http::StatusCode::OK);
+
+        let revoked = send(&app, protected_request(Some(&token)).to_request()).await;
+        assert_eq!(revoked.status(), actix_web::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[actix_web::test]
+    async fn tool_session_token_survives_a_server_restart() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let token = {
+            let app = init_test_app!(&temp_dir);
+            let response = send(
+                &app,
+                exchange_request("alice", "correct horse", "survivor").to_request(),
+            )
+            .await;
+            let body = body_json(response).await;
+            body["token"].as_str().expect("token").to_string()
+        };
+
+        // A fresh AppState with a freshly opened SQLite connection models a restart.
+        let restarted = init_test_app!(&temp_dir);
+        let response = send(&restarted, protected_request(Some(&token)).to_request()).await;
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[actix_web::test]
+    async fn unknown_bearer_token_is_rejected() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        let response = send(
+            &app,
+            protected_request(Some("never-issued-token")).to_request(),
+        )
+        .await;
+        assert_eq!(response.status(), actix_web::http::StatusCode::UNAUTHORIZED);
+    }
+
+    #[actix_web::test]
+    async fn cookie_login_still_authenticates_api_requests() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        let login_req = awtest::TestRequest::post()
+            .uri("/api/auth/login")
+            .set_json(json!({ "username": "alice", "password": "correct horse" }))
+            .to_request();
+        let login_response = send(&app, login_req).await;
+        assert_eq!(login_response.status(), actix_web::http::StatusCode::OK);
+
+        let cookie_header = login_response
+            .headers()
+            .get(header::SET_COOKIE)
+            .expect("session cookie")
+            .to_str()
+            .expect("cookie header string");
+        let session_token = cookie_header
+            .split(';')
+            .next()
+            .and_then(|pair| pair.split_once('='))
+            .map(|(_, value)| value.to_string())
+            .expect("session token value");
+
+        let req = awtest::TestRequest::get()
+            .uri("/api/protected")
+            .cookie(Cookie::new(SESSION_COOKIE_NAME, session_token))
+            .to_request();
+        let response = send(&app, req).await;
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[actix_web::test]
+    async fn tool_session_management_requires_authentication() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        let list_response = send(
+            &app,
+            awtest::TestRequest::get()
+                .uri("/api/auth/tool-sessions")
+                .to_request(),
+        )
+        .await;
+        assert_eq!(
+            list_response.status(),
+            actix_web::http::StatusCode::UNAUTHORIZED
+        );
+
+        let delete_response = send(
+            &app,
+            awtest::TestRequest::delete()
+                .uri("/api/auth/tool-sessions/42")
+                .to_request(),
+        )
+        .await;
+        assert_eq!(
+            delete_response.status(),
+            actix_web::http::StatusCode::UNAUTHORIZED
+        );
     }
 }

@@ -4,6 +4,7 @@ import type {
   PasskeyCeremonyStart,
   PasskeyCredentialSummary,
   PasskeyListResponse,
+  ToolSessionSummary,
 } from '../types/app';
 import { settingsStore } from './settingsStore';
 import {
@@ -250,6 +251,37 @@ export const authStore = {
     setPasskeyAvailable(data.credentials.length > 0);
     setError(null);
     return data.credentials;
+  },
+
+  async listToolSessions(): Promise<ToolSessionSummary[]> {
+    const res = await fetch('/api/auth/tool-sessions');
+    if (!res.ok) {
+      const message = await readErrorMessage(res);
+      setError(message);
+      throw new Error(message);
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      throw new Error('Unexpected Tool Sessions response');
+    }
+
+    setError(null);
+    return data as ToolSessionSummary[];
+  },
+
+  async deleteToolSession(id: number): Promise<void> {
+    const res = await fetch(`/api/auth/tool-sessions/${encodeURIComponent(String(id))}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const message = await readErrorMessage(res);
+      setError(message);
+      throw new Error(message);
+    }
+
+    setError(null);
   },
 };
 
