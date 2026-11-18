@@ -2,7 +2,7 @@ use super::*;
 use crate::db::init_db;
 use crate::db::ProjectRepository;
 use crate::errors::AppError;
-use crate::models::CreateAnnotationRequest;
+use crate::models::{AddNoteRequest, CreateAnnotationRequest};
 use crate::paths::AppPaths;
 use crate::services::TrashService;
 use serde_json::{json, Value};
@@ -151,6 +151,39 @@ fn create_records_the_note_author_and_agent_flag() {
         Some("openmkview-agent")
     );
     assert!(listed[0].notes[0].is_agent);
+}
+
+#[test]
+fn omitted_authorship_defaults_to_legacy_null_and_human() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    // Older clients and the CLI may omit the authorship fields entirely.
+    let request: CreateAnnotationRequest = serde_json::from_value(json!({
+        "projectId": project_id,
+        "relativePath": "doc.md",
+        "anchor": block_anchor(),
+        "body": "Old client note"
+    }))
+    .expect("deserialize create request without authorship");
+
+    let created = service.create(request).expect("create annotation");
+    assert_eq!(created.notes[0].author, None);
+    assert!(!created.notes[0].is_agent);
+
+    let reply: AddNoteRequest = serde_json::from_value(json!({ "body": "Old client reply" }))
+        .expect("deserialize reply without authorship");
+    let updated = service
+        .append_note(
+            created.id,
+            &reply.body,
+            reply.author.as_deref(),
+            reply.is_agent,
+        )
+        .expect("append reply");
+
+    assert_eq!(updated.notes[1].author, None);
+    assert!(!updated.notes[1].is_agent);
 }
 
 #[test]
