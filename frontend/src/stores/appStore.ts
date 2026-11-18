@@ -14,6 +14,7 @@ export const MOBILE_SHELL_MEDIA =
 const [activeTab, setActiveTab] = createSignal<TabType>('preview');
 const [gitPanelOpen, setGitPanelOpen] = createSignal(false);
 const [outlineOpen, setOutlineOpen] = createSignal(false);
+const [annotationsOpen, setAnnotationsOpen] = createSignal(false);
 const [settingsOpen, setSettingsOpen] = createSignal(false);
 const [isMobile, setIsMobile] = createSignal(false);
 const [sidebarWidth, setSidebarWidth] = createSignal(280);
@@ -36,6 +37,8 @@ export const appStore = {
   setGitPanelOpen,
   outlineOpen,
   setOutlineOpen,
+  annotationsOpen,
+  setAnnotationsOpen,
   settingsOpen,
   setSettingsOpen,
   isMobile,
@@ -69,6 +72,10 @@ export const appStore = {
 
   toggleOutline() {
     setOutlineOpen(!outlineOpen());
+  },
+
+  toggleAnnotations() {
+    setAnnotationsOpen(!annotationsOpen());
   },
 
   toggleSidebar() {

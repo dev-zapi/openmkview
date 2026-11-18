@@ -163,8 +163,30 @@ function findBlock(root: HTMLElement, blockHash: string): HTMLElement | null {
 }
 
 /**
+ * Groups annotations by the block they anchor to. Multiple annotations may
+ * share one block (and overlapping anchors are legal), so this returns lists
+ * rather than a single annotation per block.
+ */
+export function annotationsByBlock(annotations: Annotation[]): Map<string, Annotation[]> {
+  const grouped = new Map<string, Annotation[]>();
+
+  for (const annotation of annotations) {
+    for (const segment of annotation.anchor?.segments ?? []) {
+      if (segment.kind !== 'block') continue;
+      const existing = grouped.get(segment.blockHash) ?? [];
+      existing.push(annotation);
+      grouped.set(segment.blockHash, existing);
+    }
+  }
+
+  return grouped;
+}
+
+/**
  * Re-attaches stored annotations to rendered blocks by content-hash match.
  * Idempotent: safe to call after every render and every annotation change.
+ * Handles multiple annotations per block: a block is dimmed only when every
+ * annotation on it is Resolved.
  */
 export function applyAnnotationHighlights(
   root: HTMLElement,
@@ -173,25 +195,28 @@ export function applyAnnotationHighlights(
   for (const block of Array.from(root.querySelectorAll<HTMLElement>('.annotation-block'))) {
     block.classList.remove('annotation-highlighted', 'annotation-resolved');
     block.removeAttribute('data-annotation-id');
+    block.removeAttribute('data-annotation-ids');
     const marker = block.querySelector<HTMLElement>('.annotation-marker');
     marker?.classList.remove('has-annotation', 'resolved');
   }
 
-  for (const annotation of annotations) {
-    const segment = annotation.anchor?.segments?.find((part) => part.kind === 'block');
-    if (!segment) continue;
-
-    const block = findBlock(root, segment.blockHash);
-    if (!block) continue;
+  for (const [blockHash, blockAnnotations] of annotationsByBlock(annotations)) {
+    const block = findBlock(root, blockHash);
+    if (!block || blockAnnotations.length === 0) continue;
 
     block.classList.add('annotation-highlighted');
-    block.setAttribute('data-annotation-id', String(annotation.id));
-    if (annotation.resolved) block.classList.add('annotation-resolved');
+    block.setAttribute('data-annotation-ids', blockAnnotations.map((a) => a.id).join(','));
+    // Legacy callers still read a single id; point at the first live thread.
+    const primary = blockAnnotations.find((annotation) => !annotation.resolved) ?? blockAnnotations[0];
+    block.setAttribute('data-annotation-id', String(primary.id));
+
+    const allResolved = blockAnnotations.every((annotation) => annotation.resolved);
+    if (allResolved) block.classList.add('annotation-resolved');
 
     const marker = block.querySelector<HTMLElement>('.annotation-marker');
     if (marker) {
       marker.classList.add('has-annotation');
-      if (annotation.resolved) marker.classList.add('resolved');
+      if (allResolved) marker.classList.add('resolved');
     }
   }
 }

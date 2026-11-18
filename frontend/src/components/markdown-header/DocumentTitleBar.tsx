@@ -14,6 +14,8 @@ export interface DocumentTitleBarProps {
   activeTab: TabType;
   outlineCount: number;
   isOutlineOpen: boolean;
+  annotationCount?: number;
+  isAnnotationsOpen?: boolean;
   isFullscreen: boolean;
   fileType?: FileType;
   /** Binary files render a placeholder page; hide all view tabs. */
@@ -24,6 +26,7 @@ export interface DocumentTitleBarProps {
   projectName?: string;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  onAnnotationsToggle?: () => void;
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
   isSearchActive?: boolean;
@@ -110,6 +113,12 @@ const outlineIcon = (
     <line x1="4" y1="6" x2="20" y2="6" />
     <line x1="4" y1="12" x2="20" y2="12" />
     <line x1="4" y1="18" x2="20" y2="18" />
+  </svg>
+);
+
+const annotationsIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
 
@@ -267,6 +276,14 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                   <span class="ui-menu-badge">{props.outlineCount}</span>
                 </Show>
               </MenuItem>
+
+              <MenuItem onClick={() => props.onAnnotationsToggle?.()}>
+                {annotationsIcon}
+                <span>Annotations</span>
+                <Show when={(props.annotationCount ?? 0) > 0}>
+                  <span class="ui-menu-badge">{props.annotationCount}</span>
+                </Show>
+              </MenuItem>
             </MenuContent>
           </Menu>
         </div>
@@ -377,6 +394,20 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           </svg>
           <Show when={props.outlineCount > 0}>
             <span class={styles.badge}>{props.outlineCount}</span>
+          </Show>
+        </button>
+
+        <button
+          class={`${styles.toolbarButtonIcon} ${props.isAnnotationsOpen ? styles.active : ''}`}
+          onClick={() => props.onAnnotationsToggle?.()}
+          title="Annotations"
+          aria-label="Annotations"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <Show when={(props.annotationCount ?? 0) > 0}>
+            <span class={styles.badge}>{props.annotationCount}</span>
           </Show>
         </button>
 

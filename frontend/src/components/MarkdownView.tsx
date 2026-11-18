@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, For, Show } from 'solid-js';
+import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
@@ -16,8 +16,9 @@ import {
   applyAnnotationHighlights,
   type RenderedBlock,
 } from '../utils/annotationBlocks';
-import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
+import { createMarkdownPipeline, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
+import AnnotationThread from './AnnotationThread';
 import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
@@ -72,7 +73,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (left + width > window.innerWidth - 8) {
       left = Math.max(8, rect.left - width - 8);
     }
-    const top = Math.max(8, Math.min(rect.top, window.innerHeight - 180));
+    // The popover can scroll, but it must start high enough that its action
+    // row stays reachable when the anchored block is deep in the viewport.
+    const maxTop = Math.max(8, window.innerHeight - 480);
+    const top = Math.max(8, Math.min(rect.top, maxTop));
     return { left, top };
   };
 
@@ -114,19 +118,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }
   };
 
-  const removeAnnotation = async (annotation: Annotation) => {
-    setSavingAnnotation(true);
-    setAnnotationError(null);
-    try {
-      await annotationStore.remove(annotation.id);
-      setPanel(null);
-    } catch (error) {
-      setAnnotationError(error instanceof Error ? error.message : 'Failed to delete annotation');
-    } finally {
-      setSavingAnnotation(false);
-    }
-  };
-
   const onContentClick = (event: MouseEvent) => {
     if (!contentRef) return;
     const target = event.target as HTMLElement | null;
@@ -141,9 +132,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const block = blockId ? renderedBlocks.get(blockId) : undefined;
       if (!blockElement || !block) return;
 
-      const annotation = annotationStore.byBlockHash(block.blockId);
-      if (annotation) {
-        openViewer(annotation, marker.getBoundingClientRect());
+      // Multiple annotations may share a block; open the first live thread.
+      const blockAnnotations = annotationStore.annotationsForBlock(block.blockId);
+      if (blockAnnotations.length > 0) {
+        openViewer(blockAnnotations[0], marker.getBoundingClientRect());
       } else {
         openComposer(block, marker.getBoundingClientRect());
       }
@@ -156,10 +148,13 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     const blockElement = target.closest('.annotation-block') as HTMLElement | null;
     if (!blockElement || !blockElement.classList.contains('annotation-highlighted')) return;
 
-    const annotationId = Number(blockElement.getAttribute('data-annotation-id'));
+    const ids = (blockElement.getAttribute('data-annotation-ids') || '')
+      .split(',')
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
     const annotation = annotationStore
       .annotations()
-      .find((candidate) => candidate.id === annotationId);
+      .find((candidate) => ids.includes(candidate.id));
     if (!annotation) return;
 
     event.preventDefault();
@@ -197,6 +192,44 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     renderedHtml();
     annotationStore.annotations();
     applyAnnotations();
+  });
+
+  // The annotation column asks the rendered document to reveal an anchor.
+  // Runs after the highlight pass so the target block exists.
+  createEffect(() => {
+    const jump = annotationStore.jumpRequest();
+    if (!jump) return;
+
+    const annotation = annotationStore
+      .annotations()
+      .find((candidate) => candidate.id === jump.annotationId);
+    const segment = annotation?.anchor?.segments?.find((part) => part.kind === 'block');
+    if (!segment) return;
+
+    const escaped = segment.blockHash.replace(/["\\]/g, '\\$&');
+    const timer = setTimeout(() => {
+      const block = contentRef?.querySelector<HTMLElement>(
+        `.annotation-block[data-block-id="${escaped}"]`,
+      );
+      if (!block) return;
+
+      const scroller = block.closest('.content-main') as HTMLElement | null;
+      if (scroller) {
+        const rect = block.getBoundingClientRect();
+        const containerRect = scroller.getBoundingClientRect();
+        const offsetTop = rect.top - containerRect.top + scroller.scrollTop - 60;
+        scroller.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      } else {
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      block.classList.add('annotation-jump-target');
+      block.setAttribute('tabindex', '-1');
+      block.focus({ preventScroll: true });
+      setTimeout(() => block.classList.remove('annotation-jump-target'), 1600);
+    }, 0);
+
+    onCleanup(() => clearTimeout(timer));
   });
 
   createEffect(() => {
@@ -641,34 +674,27 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
+  const viewerAnnotation = (): Annotation | undefined => {
+    const current = panel();
+    if (!current || current.mode !== 'view') return undefined;
+    return (
+      annotationStore.annotations().find((candidate) => candidate.id === current.annotation.id) ??
+      current.annotation
+    );
+  };
+
   const renderViewer = (current: AnnotationPanel) => {
     if (current.mode !== 'view') return null;
-    const annotation = current.annotation;
+    const annotation = viewerAnnotation() ?? current.annotation;
+    const excerpt =
+      annotation.anchor?.segments?.find((segment) => segment.kind === 'block')?.blockText ||
+      annotation.snapshot ||
+      '';
+
     return (
       <div class="annotation-viewer">
-        <div class="annotation-thread">
-          <For each={annotation.notes}>
-            {(note) => (
-              <div class="annotation-note">
-                <div class="annotation-note-meta">{note.createdAt}</div>
-                <div class="annotation-note-body" innerHTML={renderNoteMarkdown(note.body)} />
-              </div>
-            )}
-          </For>
-        </div>
-        <Show when={annotationError()}>
-          <p class="annotation-error" role="alert">{annotationError()}</p>
-        </Show>
-        <div class="annotation-popover-actions">
-          <button
-            type="button"
-            class="annotation-action-danger"
-            disabled={savingAnnotation()}
-            onClick={() => void removeAnnotation(annotation)}
-          >
-            Delete
-          </button>
-        </div>
+        <p class="annotation-anchor-excerpt">{excerpt.slice(0, 160)}</p>
+        <AnnotationThread annotation={annotation} onDelete={() => setPanel(null)} />
       </div>
     );
   };
