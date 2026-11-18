@@ -229,4 +229,38 @@ export const api = {
     const res = await request(`/api/annotations/${id}`, { method: 'DELETE' });
     await checkResponse(res);
   },
+
+  async addAnnotationNote(annotationId: number, body: string): Promise<Annotation> {
+    const res = await request(`/api/annotations/${annotationId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body }),
+    });
+    await checkResponse(res);
+    return res.json();
+  },
+
+  async updateAnnotationNote(
+    annotationId: number,
+    noteId: number,
+    body: string
+  ): Promise<Annotation> {
+    const res = await request(`/api/annotations/${annotationId}/notes/${noteId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body }),
+    });
+    await checkResponse(res);
+    return res.json();
+  },
+
+  async setAnnotationResolved(annotationId: number, resolved: boolean): Promise<Annotation> {
+    const res = await request(`/api/annotations/${annotationId}/resolved`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolved }),
+    });
+    await checkResponse(res);
+    return res.json();
+  },
 };

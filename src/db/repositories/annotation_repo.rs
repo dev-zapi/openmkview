@@ -106,6 +106,55 @@ impl<'a> AnnotationRepository<'a> {
         Ok(rows > 0)
     }
 
+    /// Appends a Reply to an existing thread and returns the hydrated annotation.
+    pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Option<Annotation>> {
+        if self.find_by_id(annotation_id)?.is_none() {
+            return Ok(None);
+        }
+
+        self.conn.execute(
+            "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
+            params![annotation_id, body],
+        )?;
+        self.touch(annotation_id)?;
+
+        self.find_by_id(annotation_id)
+    }
+
+    /// Edits one note in a thread. Returns false when the note does not belong
+    /// to the annotation or does not exist.
+    pub fn update_note(&self, annotation_id: i64, note_id: i64, body: &str) -> AppResult<bool> {
+        let rows = self.conn.execute(
+            "UPDATE annotation_notes SET body = ? WHERE id = ? AND annotation_id = ?",
+            params![body, note_id, annotation_id],
+        )?;
+
+        if rows > 0 {
+            self.touch(annotation_id)?;
+        }
+
+        Ok(rows > 0)
+    }
+
+    /// Sets the thread-level Resolved flag. Returns false for an unknown id.
+    pub fn set_resolved(&self, id: i64, resolved: bool) -> AppResult<bool> {
+        let rows = self.conn.execute(
+            "UPDATE annotations
+             SET is_resolved = ?, updated_at = datetime('now')
+             WHERE id = ?",
+            params![resolved as i64, id],
+        )?;
+        Ok(rows > 0)
+    }
+
+    fn touch(&self, annotation_id: i64) -> AppResult<()> {
+        self.conn.execute(
+            "UPDATE annotations SET updated_at = datetime('now') WHERE id = ?",
+            [annotation_id],
+        )?;
+        Ok(())
+    }
+
     /// Rewrite stored paths after an in-app rename or move.
     ///
     /// A file/directory renamed to `to` moves every row anchored exactly at

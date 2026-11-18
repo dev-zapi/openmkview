@@ -270,6 +270,57 @@ describe('annotationBlocks', () => {
     expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(false);
     expect(blocks[0].element.hasAttribute('data-annotation-id')).toBe(false);
   });
+
+  it('dims a mixed block only when every attached annotation is Resolved', () => {
+    const root = createRoot('<p>alpha beta</p>');
+    const blocks = assignBlockAnchors(root);
+    ensureBlockMarkers(blocks);
+    const blockModel = blocks[0].model;
+
+    const blockAnnotation: Annotation = {
+      ...annotationFor(20, blockAnchorFrom(blocks[0])),
+      resolved: true,
+    };
+    const textAnnotation: Annotation = {
+      ...annotationFor(21, {
+        version: 1,
+        segments: [
+          {
+            kind: 'text',
+            blockHash: blockModel.id,
+            blockText: blockModel.text,
+            blockType: 'p',
+            headingPath: [],
+            quote: 'beta',
+            prefix: 'alpha ',
+            suffix: '',
+          },
+        ],
+      }),
+      resolved: false,
+    };
+
+    applyAnnotationHighlights(root, [blockAnnotation, textAnnotation], blocks);
+
+    // Mixed threads: the block stays live so the Active thread is not dimmed.
+    expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(true);
+    expect(blocks[0].element.classList.contains('annotation-resolved')).toBe(false);
+    expect(
+      blocks[0].element.querySelector('.annotation-marker')?.classList.contains('resolved')
+    ).toBe(false);
+
+    // Resolving the remaining thread dims the block and its marker.
+    applyAnnotationHighlights(
+      root,
+      [blockAnnotation, { ...textAnnotation, resolved: true }],
+      blocks
+    );
+
+    expect(blocks[0].element.classList.contains('annotation-resolved')).toBe(true);
+    expect(
+      blocks[0].element.querySelector('.annotation-marker')?.classList.contains('resolved')
+    ).toBe(true);
+  });
 });
 
 function annotationFor(id: number, anchor: Annotation['anchor']): Annotation {

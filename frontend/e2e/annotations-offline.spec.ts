@@ -169,6 +169,10 @@ test.describe('annotations offline read-only', () => {
       'title',
       'Unavailable offline'
     );
+    await expect(viewer.getByRole('button', { name: 'Edit' }).first()).toBeDisabled();
+    await expect(viewer.getByRole('button', { name: 'Resolve' })).toBeDisabled();
+    await expect(viewer.getByLabel('Reply body')).toBeDisabled();
+    await expect(viewer.getByRole('button', { name: 'Reply' })).toBeDisabled();
     await expect(viewer).toContainText('Read-only while offline');
     await expect(page.locator('.annotation-error')).not.toBeVisible();
 

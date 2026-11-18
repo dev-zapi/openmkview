@@ -19,6 +19,7 @@ interface DesktopLayoutProps {
   imageFileName: string;
   activeTab: TabType;
   outlineOpen: boolean;
+  annotationColumnOpen: boolean;
   headings: Heading[];
   loading: boolean;
   initialContent: string;
@@ -63,6 +64,7 @@ interface DesktopLayoutProps {
   onStartDragging: () => void;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  onAnnotationColumnToggle: () => void;
   onSearchClick: () => void;
   onSearchClose: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -75,6 +77,7 @@ interface DesktopLayoutProps {
   onSave: () => void;
   onCloseDiff: () => void;
   onCloseOutline: () => void;
+  onCloseAnnotationColumn: () => void;
   onCloseGitPanel: () => void;
   onFileOpen?: (path: string) => void;
 }
@@ -128,6 +131,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         activeTab={props.activeTab}
         isOutlineOpen={props.outlineOpen}
         outlineCount={props.headings.length}
+        isAnnotationColumnOpen={props.annotationColumnOpen}
         headings={props.headings}
         loading={props.loading}
         activeProjectId={props.activeProject?.id}
@@ -150,6 +154,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         onOutlineStartDragging={props.onOutlineStartDragging}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
+        onAnnotationColumnToggle={props.onAnnotationColumnToggle}
         onSearchClick={props.onSearchClick}
         onSearchClose={props.onSearchClose}
         onSearchQueryChange={props.onSearchQueryChange}
@@ -162,6 +167,7 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         onSave={props.onSave}
         onCloseDiff={props.onCloseDiff}
         onCloseOutline={props.onCloseOutline}
+        onCloseAnnotationColumn={props.onCloseAnnotationColumn}
         onFileOpen={props.onFileOpen}
       />
 

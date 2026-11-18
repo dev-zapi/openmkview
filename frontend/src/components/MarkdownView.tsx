@@ -17,8 +17,9 @@ import {
   type RenderedBlock,
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
-import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
+import { createMarkdownPipeline, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
+import AnnotationThread from './AnnotationThread';
 import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
@@ -92,7 +93,11 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (left + width > window.innerWidth - 8) {
       left = Math.max(8, rect.left - width - 8);
     }
-    const top = Math.max(8, Math.min(rect.top, window.innerHeight - 180));
+    // Reserve room for the whole popover: long threads must not push their
+    // actions below the viewport. Mirrors the CSS max-height bound.
+    const popoverHeight = Math.min(480, window.innerHeight * 0.6);
+    const maxTop = Math.max(8, window.innerHeight - popoverHeight - 16);
+    const top = Math.max(8, Math.min(rect.top, maxTop));
     return { left, top };
   };
 
@@ -149,19 +154,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }
   };
 
-  const removeAnnotation = async (annotation: Annotation) => {
-    setSavingAnnotation(true);
-    setAnnotationError(null);
-    try {
-      await annotationStore.remove(annotation.id);
-      setPanel(null);
-    } catch (error) {
-      setAnnotationError(error instanceof Error ? error.message : 'Failed to delete annotation');
-    } finally {
-      setSavingAnnotation(false);
-    }
-  };
-
   const openAnnotationById = (id: number, rect: DOMRect) => {
     const annotation = annotationStore
       .annotations()
@@ -200,6 +192,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const block = blockId ? renderedBlocks.get(blockId) : undefined;
       if (!blockElement || !block) return;
 
+      // Multiple annotations may share a block; the render pass lists them so
+      // the chooser can disambiguate instead of opening an arbitrary thread.
       const annotations = blockAttachments.get(block.model.id) ?? [];
       if (annotations.length > 0) {
         openAnnotations(annotations, marker.getBoundingClientRect());
@@ -382,6 +376,66 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   createEffect(() => {
     annotationStore.canMutate();
     applyOfflineState();
+  });
+
+  // The annotation column asks the rendered document to reveal an anchor.
+  // Depend only on jumpRequest: replies/edits/resolves mutate annotations and
+  // must not replay the last jump.
+  let handledJumpNonce = 0;
+  createEffect(() => {
+    const jump = annotationStore.jumpRequest();
+    if (!jump || jump.nonce === handledJumpNonce) return;
+    handledJumpNonce = jump.nonce;
+
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === jump.annotationId,
+    );
+    // Text-range anchors may span several segments; any segment with a block
+    // identity gives us a landing point. Prefer the annotation's first mark so
+    // the exact selected text is focused.
+    const segment = annotation?.anchor?.segments?.find(
+      (part) => part.kind === 'block' || part.kind === 'text',
+    );
+    if (!annotation || !segment) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    const escaped = segment.blockHash.replace(/["\\]/g, '\\$&');
+    const timer = setTimeout(() => {
+      const mark = contentRef?.querySelector<HTMLElement>(
+        `mark[data-annotation-id="${annotation.id}"]`,
+      );
+      const block = contentRef?.querySelector<HTMLElement>(
+        `.annotation-block[data-block-id="${escaped}"]`,
+      );
+      const target = mark ?? block;
+      if (!target) {
+        annotationStore.clearJump();
+        return;
+      }
+
+      const scrollTarget = block ?? (target.closest('.annotation-block') as HTMLElement | null);
+      const scroller = (scrollTarget ?? target).closest('.content-main') as HTMLElement | null;
+      if (scroller) {
+        const rect = target.getBoundingClientRect();
+        const containerRect = scroller.getBoundingClientRect();
+        const offsetTop = rect.top - containerRect.top + scroller.scrollTop - 60;
+        scroller.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      } else {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      target.classList.add('annotation-jump-target');
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+      setTimeout(() => target.classList.remove('annotation-jump-target'), 1600);
+
+      // Consume the request so a remount cannot replay it.
+      annotationStore.clearJump();
+    }, 0);
+
+    onCleanup(() => clearTimeout(timer));
   });
 
   createEffect(() => {
@@ -820,39 +874,23 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
+  const viewerAnnotation = (): Annotation | undefined => {
+    const current = panel();
+    if (!current || current.mode !== 'view') return undefined;
+    return (
+      annotationStore.annotations().find((candidate) => candidate.id === current.annotation.id) ??
+      current.annotation
+    );
+  };
+
   const renderViewer = (current: AnnotationPanel) => {
     if (current.mode !== 'view') return null;
-    const annotation = current.annotation;
-    const offline = !annotationStore.canMutate();
+    const annotation = viewerAnnotation() ?? current.annotation;
+
     return (
       <div class="annotation-viewer">
-        <div class="annotation-thread">
-          <For each={annotation.notes}>
-            {(note) => (
-              <div class="annotation-note">
-                <div class="annotation-note-meta">{note.createdAt}</div>
-                <div class="annotation-note-body" innerHTML={renderNoteMarkdown(note.body)} />
-              </div>
-            )}
-          </For>
-        </div>
-        <Show when={offline}>
-          <p class="annotation-offline-note">Read-only while offline</p>
-        </Show>
-        <Show when={annotationError()}>
-          <p class="annotation-error" role="alert">{annotationError()}</p>
-        </Show>
-        <div class="annotation-popover-actions">
-          <button
-            type="button"
-            class="annotation-action-danger"
-            disabled={offline || savingAnnotation()}
-            title={offline ? 'Unavailable offline' : undefined}
-            onClick={() => void removeAnnotation(annotation)}
-          >
-            Delete
-          </button>
-        </div>
+        <p class="annotation-anchor-excerpt">{annotationExcerpt(annotation)}</p>
+        <AnnotationThread annotation={annotation} onDelete={() => setPanel(null)} />
       </div>
     );
   };
