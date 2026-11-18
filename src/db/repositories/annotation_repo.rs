@@ -236,14 +236,21 @@ impl<'a> AnnotationRepository<'a> {
     }
 
     /// Appends a Reply to an existing thread and returns the hydrated annotation.
-    pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Option<Annotation>> {
+    pub fn append_note(
+        &self,
+        annotation_id: i64,
+        body: &str,
+        author: Option<&str>,
+        is_agent: bool,
+    ) -> AppResult<Option<Annotation>> {
         if self.find_by_id(annotation_id)?.is_none() {
             return Ok(None);
         }
 
         self.conn.execute(
-            "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
-            params![annotation_id, body],
+            "INSERT INTO annotation_notes (annotation_id, body, author, is_agent)
+             VALUES (?, ?, ?, ?)",
+            params![annotation_id, body, author, is_agent as i64],
         )?;
         self.touch(annotation_id)?;
 

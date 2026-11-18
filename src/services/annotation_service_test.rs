@@ -260,7 +260,7 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
     let first_note_id = created.notes[0].id;
 
     let after_first_reply = service
-        .append_note(created.id, "Second note — **Markdown**")
+        .append_note(created.id, "Second note — **Markdown**", None, false)
         .expect("append first reply");
     assert_eq!(after_first_reply.notes.len(), 2);
     assert_eq!(after_first_reply.notes[0].id, first_note_id);
@@ -270,7 +270,7 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
     );
 
     let after_second_reply = service
-        .append_note(created.id, "Third note")
+        .append_note(created.id, "Third note", None, false)
         .expect("append second reply");
     let bodies: Vec<&str> = after_second_reply
         .notes
@@ -293,6 +293,34 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
 }
 
 #[test]
+fn reply_records_the_author_and_agent_flag() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "Human note"))
+        .expect("create annotation");
+
+    let replied = service
+        .append_note(created.id, "Agent reply", Some("openmkview-agent"), true)
+        .expect("append reply");
+
+    assert_eq!(replied.notes.len(), 2);
+    assert_eq!(replied.notes[0].author, None);
+    assert!(!replied.notes[0].is_agent);
+    assert_eq!(replied.notes[1].author.as_deref(), Some("openmkview-agent"));
+    assert!(replied.notes[1].is_agent);
+
+    let listed = service
+        .list_for_file(project_id, "doc.md")
+        .expect("list annotations");
+    assert_eq!(
+        listed[0].notes[1].author.as_deref(),
+        Some("openmkview-agent")
+    );
+    assert!(listed[0].notes[1].is_agent);
+}
+
+#[test]
 fn reply_requires_an_existing_annotation_and_a_non_empty_body() {
     let (_temp_dir, conn, project_id) = setup();
     let service = AnnotationService::new(&conn);
@@ -300,10 +328,10 @@ fn reply_requires_an_existing_annotation_and_a_non_empty_body() {
         .create(create_request(project_id, "doc.md", "only note"))
         .expect("create annotation");
 
-    let unknown = service.append_note(9999, "reply");
+    let unknown = service.append_note(9999, "reply", None, false);
     assert!(matches!(unknown, Err(AppError::NotFound(_))));
 
-    let empty = service.append_note(created.id, "   ");
+    let empty = service.append_note(created.id, "   ", None, false);
     assert!(matches!(empty, Err(AppError::BadRequest(_))));
 }
 
@@ -315,7 +343,7 @@ fn editing_a_note_updates_only_that_note() {
         .create(create_request(project_id, "doc.md", "First note"))
         .expect("create annotation");
     let second = service
-        .append_note(created.id, "Second note")
+        .append_note(created.id, "Second note", None, false)
         .expect("append reply");
     let first_note_id = created.notes[0].id;
     let second_note_id = second.notes[1].id;

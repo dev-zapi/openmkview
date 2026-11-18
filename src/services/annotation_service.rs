@@ -238,14 +238,20 @@ impl<'a> AnnotationService<'a> {
         self.annotation_repo.move_paths(project_id, from, to)
     }
 
-    pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Annotation> {
+    pub fn append_note(
+        &self,
+        annotation_id: i64,
+        body: &str,
+        author: Option<&str>,
+        is_agent: bool,
+    ) -> AppResult<Annotation> {
         let body = body.trim();
         if body.is_empty() {
             return Err(AppError::BadRequest("Note body is required".into()));
         }
 
         self.annotation_repo
-            .append_note(annotation_id, body)?
+            .append_note(annotation_id, body, author, is_agent)?
             .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
     }
 

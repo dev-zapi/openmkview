@@ -101,7 +101,12 @@ pub async fn add_note(
         .map_err(|_| AppError::InternalError("Database lock error".into()))?;
 
     let service = AnnotationService::new(&conn);
-    let annotation = service.append_note(path.into_inner(), &body.body)?;
+    let annotation = service.append_note(
+        path.into_inner(),
+        &body.body,
+        body.author.as_deref(),
+        body.is_agent,
+    )?;
 
     Ok(HttpResponse::Ok().json(annotation))
 }
