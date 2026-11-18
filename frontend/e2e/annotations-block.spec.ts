@@ -1,4 +1,13 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp } from './fixtures';
+import {
+  test,
+  expect,
+  loginIfNeeded,
+  waitForDesktopApp,
+  createScratchFile,
+  removeScratchFile,
+  openScratchFile,
+  type FileTarget,
+} from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 
 // Whole-block annotations are the tracer bullet for spec #15. These specs run
@@ -21,68 +30,6 @@ const SCRATCH_MARKDOWN = [
   '```',
   '',
 ].join('\n');
-
-interface FileTarget {
-  projectId: number;
-  path: string;
-}
-
-async function createScratchFile(page: Page): Promise<FileTarget> {
-  return page.evaluate(async ({ body }) => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) throw new Error('cannot list projects');
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) throw new Error('no open project to annotate');
-
-    const name = `annotations-e2e-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
-    const createRes = await fetch('/api/files', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', project_id: projectId, name }),
-    });
-    if (!createRes.ok) throw new Error(`cannot create scratch file: ${createRes.status}`);
-
-    const saveRes = await fetch('/api/files/content', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, relativePath: name, content: body }),
-    });
-    if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
-
-    return { projectId, path: name };
-  }, { body: SCRATCH_MARKDOWN });
-}
-
-async function removeScratchFile(page: Page, target: FileTarget): Promise<void> {
-  await page.evaluate(async ({ projectId, path }) => {
-    const listRes = await fetch(
-      `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(path)}`
-    );
-    if (listRes.ok) {
-      const annotations = await listRes.json();
-      for (const annotation of annotations) {
-        await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
-      }
-    }
-
-    await fetch('/api/files', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, path }),
-    });
-  }, target);
-}
-
-async function openScratchFile(page: Page, target: FileTarget): Promise<void> {
-  await page.goto(
-    `/project/${target.projectId}/files/${encodeURIComponent(target.path)}`,
-    { waitUntil: 'domcontentloaded' }
-  );
-  await expect(page.getByRole('heading', { name: 'Block Annotation E2E' })).toBeVisible({
-    timeout: 15000,
-  });
-}
 
 async function storedBlockText(page: Page, target: FileTarget): Promise<string | undefined> {
   return page.evaluate(async ({ projectId, path }) => {
@@ -121,8 +68,8 @@ test.describe('whole-block annotations', () => {
     await loginIfNeeded(page);
     await waitForDesktopApp(page);
 
-    target = await createScratchFile(page);
-    await openScratchFile(page, target);
+    target = await createScratchFile(page, SCRATCH_MARKDOWN);
+    await openScratchFile(page, target, 'Block Annotation E2E');
   });
 
   test.afterEach(async ({ page }) => {
@@ -165,7 +112,7 @@ test.describe('whole-block annotations', () => {
 
     // Reloading re-fetches the API list and re-attaches by block content hash.
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await openScratchFile(page, target);
+    await openScratchFile(page, target, 'Block Annotation E2E');
 
     const reloadedParagraph = page.getByText('A paragraph with a stable block for annotation.', {
       exact: true,
@@ -199,7 +146,7 @@ test.describe('whole-block annotations', () => {
     expect(await storedBlockText(page, target)).toBe('const value = 1;');
 
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await openScratchFile(page, target);
+    await openScratchFile(page, target, 'Block Annotation E2E');
 
     const reloadedCode = page.getByText('const value = 1;', { exact: false }).first();
     await openViewerByClicking(page, reloadedCode);

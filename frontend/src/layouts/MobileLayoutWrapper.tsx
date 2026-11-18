@@ -12,6 +12,7 @@ import type { Settings, ThemeMode, ThemeType } from '../types/app';
 import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
 import type { TabType } from '../components/markdown-header';
 import type { RemoteGitAction } from '../utils/gitPanel';
+import { annotationStore } from '../stores/annotationStore';
 import styles from '../components/mobile/MobileLayout.module.css';
 
 interface MobileLayoutWrapperProps {
@@ -336,6 +337,8 @@ onClick={() => {
                currentSearchResult={props.currentSearchResult}
                onTabChange={props.onTabChange}
                onOutlineToggle={props.onOutlineToggle}
+               annotationsVisible={annotationStore.visible()}
+               onAnnotationsToggle={() => annotationStore.toggleVisible()}
                onSearchClick={props.onSearchClick}
                onSearchClose={props.onSearchClose}
                onSearchQueryChange={props.onSearchQueryChange}
@@ -362,6 +365,8 @@ onClick={() => {
                currentSearchResult={props.currentSearchResult}
                onTabChange={props.onTabChange}
                onOutlineToggle={props.onOutlineToggle}
+               annotationsVisible={annotationStore.visible()}
+               onAnnotationsToggle={() => annotationStore.toggleVisible()}
                onSearchClick={props.onSearchClick}
                onSearchClose={props.onSearchClose}
                onSearchQueryChange={props.onSearchQueryChange}

@@ -1,14 +1,22 @@
 import { createSignal } from 'solid-js';
 import type { Annotation, AnnotationAnchor } from '../types';
 import { api } from '../services/api';
+import { offlineStore } from './offlineStore';
+import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
 
 const [annotations, setAnnotations] = createSignal<Annotation[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
 const [error, setError] = createSignal<string | null>(null);
+const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
 
 let loadedKey: string | null = null;
 let currentProjectId: number | null = null;
 let currentRelativePath: string | null = null;
+
+function applyVisibility(nextVisible: boolean): void {
+  setVisible(nextVisible);
+  saveAnnotationsVisible(nextVisible);
+}
 
 function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
@@ -18,6 +26,16 @@ export const annotationStore = {
   annotations,
   loading,
   error,
+  visible,
+
+  /** Whether annotation writes may be attempted (connected only). */
+  canMutate(): boolean {
+    return offlineStore.online();
+  },
+
+  toggleVisible(): void {
+    applyVisibility(!visible());
+  },
 
   /** Load annotations for the given file, deduplicating repeat calls. */
   async load(projectId: number, relativePath: string): Promise<void> {
