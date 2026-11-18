@@ -165,7 +165,7 @@ impl FileService {
     }
 
     /// Validate relative path to prevent path traversal attacks
-    fn validate_relative_path(path: &str) -> AppResult<()> {
+    pub(crate) fn validate_relative_path(path: &str) -> AppResult<()> {
         if path.trim().is_empty() {
             return Err(AppError::ValidationError("Path is required".into()));
         }
