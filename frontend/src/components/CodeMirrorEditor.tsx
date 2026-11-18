@@ -5,12 +5,12 @@ import { html } from '@codemirror/lang-html';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { openSearchPanel, searchKeymap } from '@codemirror/search';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
 import { basicSetup } from 'codemirror';
 import type { FileType } from '../types';
 import { writingModeStore, writingSessionKey } from '../stores/writingModeStore';
+import { resolveEditorThemeExtension } from '../utils/editorThemes';
 import './CodeMirrorEditor.css';
 
 /**
@@ -219,6 +219,8 @@ export interface CodeMirrorEditorProps {
   /** Authoritative file category; only Markdown files offer Writing Mode. */
   fileType?: FileType;
   theme?: 'light' | 'dark';
+  /** Edit-mode theme id (see utils/editorThemes); defaults to app/One Dark. */
+  editorTheme?: string;
   onSave?: () => void | Promise<void>;
   onDirtyChange?: (isDirty: boolean) => void;
   registerContentGetter?: (getter: () => string) => void;
@@ -235,6 +237,46 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   const writingCompartment = new Compartment();
   const typewriterCompartment = new Compartment();
   const focusCompartment = new Compartment();
+  // Theme lives in a compartment so a settings change swaps it live without
+  // rebuilding the editor (caret, scroll, and undo history survive).
+  const themeCompartment = new Compartment();
+
+  /**
+   * Resolve the active theme: a selected preset from utils/editorThemes, or
+   * the app-token theme otherwise. Dark falls back to One Dark when nothing
+   * is selected, preserving the original hardcoded behavior.
+   */
+  const buildThemeExtension = (): Extension => {
+    const preset = resolveEditorThemeExtension(props.theme ?? 'light', props.editorTheme);
+    if (preset) return preset;
+    return EditorView.theme({
+      '&': {
+        backgroundColor: 'var(--color-bg)',
+        color: 'var(--color-text-h)',
+      },
+      '.cm-content': {
+        caretColor: 'var(--color-text-h)',
+        fontFamily: 'var(--code-font, "JetBrains Mono", ui-monospace, Consolas, monospace)',
+      },
+      '.cm-cursor': {
+        borderLeftColor: 'var(--color-text-h)',
+      },
+      '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
+        backgroundColor: 'var(--color-active-bg, rgba(48, 96, 144, 0.2))',
+      },
+      '.cm-gutters': {
+        backgroundColor: 'var(--color-bg-subtle)',
+        color: 'var(--color-text)',
+        border: 'none',
+      },
+      '.cm-activeLineGutter': {
+        backgroundColor: 'var(--color-hover-bg)',
+      },
+      '.cm-activeLine': {
+        backgroundColor: 'var(--color-hover-bg)',
+      },
+    });
+  };
 
   const canWrite = () => props.fileType === 'markdown';
 
@@ -329,39 +371,11 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       },
     });
 
-    const themeExtension = props.theme === 'dark' ? oneDark : EditorView.theme({
-      '&': {
-        backgroundColor: 'var(--color-bg)',
-        color: 'var(--color-text-h)',
-      },
-      '.cm-content': {
-        caretColor: 'var(--color-text-h)',
-        fontFamily: 'var(--code-font, "JetBrains Mono", ui-monospace, Consolas, monospace)',
-      },
-      '.cm-cursor': {
-        borderLeftColor: 'var(--color-text-h)',
-      },
-      '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
-        backgroundColor: 'var(--color-active-bg, rgba(48, 96, 144, 0.2))',
-      },
-      '.cm-gutters': {
-        backgroundColor: 'var(--color-bg-subtle)',
-        color: 'var(--color-text)',
-        border: 'none',
-      },
-      '.cm-activeLineGutter': {
-        backgroundColor: 'var(--color-hover-bg)',
-      },
-      '.cm-activeLine': {
-        backgroundColor: 'var(--color-hover-bg)',
-      },
-    });
-
     editorExtensions = [
       basicSetup,
       history(),
       languageExtension(),
-      themeExtension,
+      themeCompartment.of(buildThemeExtension()),
       fontExtension,
       writingCompartment.of(isWritingActive() ? WRITING_THEME : []),
       typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_CENTER : []),
@@ -462,6 +476,18 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
 
     editorView.dispatch({
       effects: focusCompartment.reconfigure(focusExtension()),
+    });
+  });
+
+  createEffect(() => {
+    if (!editorView) return;
+    // Track the theme id so settings changes re-run this effect; the dispatch
+    // itself stays untracked to avoid rebuilding the editor for store reads.
+    props.editorTheme;
+    untrack(() => {
+      editorView!.dispatch({
+        effects: themeCompartment.reconfigure(buildThemeExtension()),
+      });
     });
   });
 

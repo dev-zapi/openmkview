@@ -199,6 +199,17 @@ describe('settings utils', () => {
       const settings: Settings = { ...DEFAULT_SETTINGS, editorFontSize: '18px' };
       expect(extractServerSettings(settings).editorFontSize).toBe('18px');
     });
+
+    it('includes editor theme selection in the server payload', () => {
+      const settings: Settings = {
+        ...DEFAULT_SETTINGS,
+        editorThemeLight: 'xcode-light',
+        editorThemeDark: 'nord',
+      };
+      const payload = extractServerSettings(settings);
+      expect(payload.editorThemeLight).toBe('xcode-light');
+      expect(payload.editorThemeDark).toBe('nord');
+    });
   });
 
   describe('applyFontSettings', () => {
