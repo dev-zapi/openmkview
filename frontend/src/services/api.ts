@@ -243,11 +243,15 @@ export const api = {
     return res.json();
   },
 
-  async addAnnotationNote(annotationId: number, body: string): Promise<Annotation> {
+  async addAnnotationNote(
+    annotationId: number,
+    body: string,
+    author: string | null
+  ): Promise<Annotation> {
     const res = await request(`/api/annotations/${annotationId}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, author, isAgent: false }),
     });
     await checkResponse(res);
     return res.json();

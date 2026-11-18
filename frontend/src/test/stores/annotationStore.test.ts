@@ -50,6 +50,55 @@ describe('annotationStore', () => {
     annotationStore.reset();
   });
 
+  it('stamps created annotations with the logged-in username', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setUsername('Jonas');
+
+    const created = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(created));
+
+    await annotationStore.create(1, 'a.md', created.anchor, 'note');
+
+    const request = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(request).toEqual({
+      projectId: 1,
+      relativePath: 'a.md',
+      anchor: created.anchor,
+      body: 'note',
+      author: 'Jonas',
+      isAgent: false,
+    });
+  });
+
+  it('stamps replies with the logged-in username and a human voice', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setUsername('Jonas');
+
+    const updated = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(updated));
+
+    await annotationStore.appendNote(1, 'reply');
+
+    const request = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(request).toEqual({ body: 'reply', author: 'Jonas', isAgent: false });
+  });
+
+  it('stamps null authorship when no username is known', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setUsername(null);
+
+    const updated = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(updated));
+
+    await annotationStore.appendNote(1, 'reply');
+
+    const request = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(request.author).toBeNull();
+  });
+
   it('clears the previous file annotations as soon as another file loads', async () => {
     const first = annotationFor(1, 1, 'a.md', 'blk-a');
     (global.fetch as any)
