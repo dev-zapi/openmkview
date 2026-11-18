@@ -1,13 +1,20 @@
 import type { Annotation, AnnotationAnchor, BlockAnchorSegment } from '../types';
 import { decodeDiagramCode } from './markdown';
+import {
+  normalizeBlockText,
+  hashBlockContent,
+  type BlockModel,
+} from './blockModel';
+import { getBlockContentElement, clearRangeHighlights, highlightTextRange } from './rangeHighlight';
+import { resolveAnchor } from './anchorResolver';
 
-/** A top-level rendered block with the content identity used by Anchors. */
+/**
+ * A top-level rendered block and its DOM edge. The annotation identity
+ * (`model`) is serializable; DOM references live only here, at the edge.
+ */
 export interface RenderedBlock {
   element: HTMLElement;
-  blockId: string;
-  blockType: string;
-  text: string;
-  headingPath: string[];
+  model: BlockModel;
 }
 
 const ANNOTATABLE_TAGS = new Set([
@@ -15,19 +22,8 @@ const ANNOTATABLE_TAGS = new Set([
   'p', 'ul', 'ol', 'blockquote', 'pre', 'table',
 ]);
 
-export function normalizeBlockText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
-}
-
-/** FNV-1a hash, kept synchronous so the render pass stays synchronous. */
-export function hashBlockContent(input: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < input.length; i += 1) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-}
+/** Exposes the content root used for selection/highlight offsets. */
+export { getBlockContentElement };
 
 function blockTypeOf(element: HTMLElement): string {
   if (element.tagName === 'DIV' && element.classList.contains('table-wrapper')) {
@@ -117,7 +113,10 @@ export function assignBlockAnchors(root: HTMLElement): RenderedBlock[] {
     child.setAttribute('data-block-id', blockId);
     child.classList.add('annotation-block');
 
-    blocks.push({ element: child, blockId, blockType: type, text, headingPath });
+    blocks.push({
+      element: child,
+      model: { id: blockId, type, text, headingPath },
+    });
 
     if (level > 0) {
       headingStack.push({ level, text });
@@ -135,8 +134,8 @@ export function ensureBlockMarkers(blocks: RenderedBlock[]): void {
     const marker = document.createElement('button');
     marker.type = 'button';
     marker.className = 'annotation-marker';
-    const label = block.text
-      ? `Annotate this block: ${block.text.slice(0, 60)}`
+    const label = block.model.text
+      ? `Annotate this block: ${block.model.text.slice(0, 60)}`
       : 'Annotate this block';
     marker.setAttribute('aria-label', label);
     marker.title = label;
@@ -147,51 +146,99 @@ export function ensureBlockMarkers(blocks: RenderedBlock[]): void {
 }
 
 export function blockAnchorFrom(block: RenderedBlock): AnnotationAnchor {
+  const model = block.model;
   const segment: BlockAnchorSegment = {
     kind: 'block',
-    blockHash: block.blockId,
-    blockText: block.text,
-    blockType: block.blockType,
-    headingPath: block.headingPath,
+    blockHash: model.id,
+    blockText: model.text,
+    blockType: model.type,
+    headingPath: model.headingPath,
   };
   return { version: 1, segments: [segment] };
 }
 
-function findBlock(root: HTMLElement, blockHash: string): HTMLElement | null {
-  const escaped = blockHash.replace(/["\\]/g, '\\$&');
-  return root.querySelector<HTMLElement>(`[data-block-id="${escaped}"]`);
-}
-
 /**
- * Re-attaches stored annotations to rendered blocks by content-hash match.
- * Idempotent: safe to call after every render and every annotation change.
+ * Re-attaches stored annotations to rendered blocks by running the pure
+ * Anchor resolver over the block model. Idempotent: safe to call after every
+ * render, annotation change, and search change.
  */
 export function applyAnnotationHighlights(
   root: HTMLElement,
-  annotations: Annotation[]
-): void {
-  for (const block of Array.from(root.querySelectorAll<HTMLElement>('.annotation-block'))) {
-    block.classList.remove('annotation-highlighted', 'annotation-resolved');
-    block.removeAttribute('data-annotation-id');
-    const marker = block.querySelector<HTMLElement>('.annotation-marker');
+  annotations: Annotation[],
+  blocks: RenderedBlock[]
+): Map<string, Annotation[]> {
+  for (const block of blocks) {
+    block.element.classList.remove('annotation-highlighted', 'annotation-resolved');
+    block.element.removeAttribute('data-annotation-id');
+    block.element.removeAttribute('data-annotation-ids');
+    const marker = block.element.querySelector<HTMLElement>('.annotation-marker');
     marker?.classList.remove('has-annotation', 'resolved');
   }
+  clearRangeHighlights(root);
+
+  const elementsById = new Map(blocks.map((block) => [block.model.id, block.element]));
+  const models = blocks.map((block) => block.model);
+  const attachments = new Map<string, Annotation[]>();
+  const blockIds = new Map<string, number[]>();
+  const blockResolved = new Map<string, boolean>();
+
+  const attach = (blockId: string, annotation: Annotation) => {
+    const current = attachments.get(blockId) ?? [];
+    if (!current.some((candidate) => candidate.id === annotation.id)) {
+      current.push(annotation);
+      attachments.set(blockId, current);
+    }
+  };
 
   for (const annotation of annotations) {
-    const segment = annotation.anchor?.segments?.find((part) => part.kind === 'block');
-    if (!segment) continue;
+    const resolution = resolveAnchor(models, annotation.anchor);
+    if (resolution.status !== 'resolved') continue;
 
-    const block = findBlock(root, segment.blockHash);
-    if (!block) continue;
+    for (const segment of resolution.segments) {
+      const element = elementsById.get(segment.blockId);
+      if (!element) continue;
 
-    block.classList.add('annotation-highlighted');
-    block.setAttribute('data-annotation-id', String(annotation.id));
-    if (annotation.resolved) block.classList.add('annotation-resolved');
+      attach(segment.blockId, annotation);
 
-    const marker = block.querySelector<HTMLElement>('.annotation-marker');
-    if (marker) {
-      marker.classList.add('has-annotation');
-      if (annotation.resolved) marker.classList.add('resolved');
+      if (segment.kind === 'block') {
+        element.classList.add('annotation-highlighted');
+        const ids = blockIds.get(segment.blockId) ?? [];
+        ids.push(annotation.id);
+        blockIds.set(segment.blockId, ids);
+        blockResolved.set(
+          segment.blockId,
+          (blockResolved.get(segment.blockId) ?? true) && annotation.resolved
+        );
+        continue;
+      }
+
+      const content = getBlockContentElement(element, modelType(models, segment.blockId));
+      highlightTextRange(content, segment.start, segment.end, {
+        annotationId: annotation.id,
+        resolved: annotation.resolved,
+      });
     }
   }
+
+  for (const [blockId, element] of elementsById) {
+    const ids = blockIds.get(blockId);
+    if (ids && ids.length > 0) {
+      element.setAttribute('data-annotation-id', String(ids[0]));
+      element.setAttribute('data-annotation-ids', ids.join(','));
+      if (blockResolved.get(blockId)) element.classList.add('annotation-resolved');
+    }
+
+    const annotation = attachments.get(blockId)?.[0];
+    if (annotation) {
+      const marker = element.querySelector<HTMLElement>('.annotation-marker');
+      marker?.classList.add('has-annotation');
+      if (annotation.resolved) marker?.classList.add('resolved');
+    }
+  }
+
+  return attachments;
+}
+
+function modelType(models: BlockModel[], blockId: string): string {
+  return models.find((model) => model.id === blockId)?.type ?? 'p';
 }

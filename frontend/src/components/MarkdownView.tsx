@@ -4,7 +4,7 @@ import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
 import DiagramZoomModal from './DiagramZoomModal';
 import type { ZoomDiagramSource } from '../services/diagramZoomService';
-import type { Annotation, Heading } from '../types';
+import type { Annotation, AnnotationAnchor, Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
 import { generateHeadingId, isDiagramLanguage, encodeDiagramCode, decodeDiagramCode } from '../utils/markdown';
@@ -16,6 +16,7 @@ import {
   applyAnnotationHighlights,
   type RenderedBlock,
 } from '../utils/annotationBlocks';
+import { anchorFromSelection } from '../utils/selectionAnchor';
 import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import FrontmatterPanel from './FrontmatterPanel';
@@ -45,7 +46,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   interface ComposerPanel {
     mode: 'composer';
-    block: RenderedBlock;
+    anchor: AnnotationAnchor;
+    excerpt: string;
     left: number;
     top: number;
   }
@@ -57,14 +59,25 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     top: number;
   }
 
+  interface SelectionCapture {
+    anchor: AnnotationAnchor;
+    excerpt: string;
+    left: number;
+    top: number;
+  }
+
   type AnnotationPanel = ComposerPanel | ViewerPanel;
 
   const [panel, setPanel] = createSignal<AnnotationPanel | null>(null);
+  const [selectionCapture, setSelectionCapture] =
+    createSignal<SelectionCapture | null>(null);
   const [composerBody, setComposerBody] = createSignal('');
   const [savingAnnotation, setSavingAnnotation] = createSignal(false);
   const [annotationError, setAnnotationError] = createSignal<string | null>(null);
   let panelRef: HTMLDivElement | undefined;
   let renderedBlocks = new Map<string, RenderedBlock>();
+  let renderedBlockList: RenderedBlock[] = [];
+  let blockAttachments = new Map<string, Annotation[]>();
 
   const panelPosition = (rect: DOMRect): { left: number; top: number } => {
     const width = 320;
@@ -76,11 +89,12 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     return { left, top };
   };
 
-  const openComposer = (block: RenderedBlock, rect: DOMRect) => {
+  const openComposer = (anchor: AnnotationAnchor, excerpt: string, rect: DOMRect) => {
     const position = panelPosition(rect);
+    setSelectionCapture(null);
     setComposerBody('');
     setAnnotationError(null);
-    setPanel({ mode: 'composer', block, ...position });
+    setPanel({ mode: 'composer', anchor, excerpt, ...position });
   };
 
   const openViewer = (annotation: Annotation, rect: DOMRect) => {
@@ -104,7 +118,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     setSavingAnnotation(true);
     setAnnotationError(null);
     try {
-      await annotationStore.create(projectId, relativePath, blockAnchorFrom(current.block), body);
+      await annotationStore.create(projectId, relativePath, current.anchor, body);
       setPanel(null);
       setComposerBody('');
     } catch (error) {
@@ -127,10 +141,30 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }
   };
 
+  const openAnnotationById = (id: number, rect: DOMRect) => {
+    const annotation = annotationStore
+      .annotations()
+      .find((candidate) => candidate.id === id);
+    if (annotation) openViewer(annotation, rect);
+  };
+
   const onContentClick = (event: MouseEvent) => {
     if (!contentRef) return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
+
+    const textHighlight = target.closest(
+      'mark[data-annotation-id]'
+    ) as HTMLElement | null;
+    if (textHighlight) {
+      event.preventDefault();
+      event.stopPropagation();
+      openAnnotationById(
+        Number(textHighlight.getAttribute('data-annotation-id')),
+        textHighlight.getBoundingClientRect()
+      );
+      return;
+    }
 
     const marker = target.closest('.annotation-marker') as HTMLElement | null;
     if (marker) {
@@ -141,11 +175,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const block = blockId ? renderedBlocks.get(blockId) : undefined;
       if (!blockElement || !block) return;
 
-      const annotation = annotationStore.byBlockHash(block.blockId);
+      const annotation = blockAttachments.get(block.model.id)?.[0];
       if (annotation) {
         openViewer(annotation, marker.getBoundingClientRect());
       } else {
-        openComposer(block, marker.getBoundingClientRect());
+        openComposer(
+          blockAnchorFrom(block),
+          block.model.text,
+          marker.getBoundingClientRect()
+        );
       }
       return;
     }
@@ -157,30 +195,86 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (!blockElement || !blockElement.classList.contains('annotation-highlighted')) return;
 
     const annotationId = Number(blockElement.getAttribute('data-annotation-id'));
-    const annotation = annotationStore
-      .annotations()
-      .find((candidate) => candidate.id === annotationId);
-    if (!annotation) return;
+    if (!annotationId) return;
 
     event.preventDefault();
-    openViewer(annotation, blockElement.getBoundingClientRect());
+    openAnnotationById(annotationId, blockElement.getBoundingClientRect());
+  };
+
+  const updateSelectionCapture = () => {
+    if (!contentRef || !props.projectId || !props.currentFilePath) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const selection = document.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (
+      !contentRef.contains(range.startContainer) ||
+      !contentRef.contains(range.endContainer)
+    ) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const anchor = anchorFromSelection(contentRef, selection, renderedBlockList);
+    if (!anchor) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const rect = range.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const excerpt = anchor.segments
+      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
+      .join(' … ');
+    const buttonWidth = 116;
+    let left = rect.right + 8;
+    if (left + buttonWidth > window.innerWidth - 8) {
+      left = Math.max(8, rect.left - buttonWidth - 8);
+    }
+    const top = Math.max(8, rect.top - 38);
+
+    setSelectionCapture({ anchor, excerpt, left, top });
   };
 
   const prepareAnnotationPass = () => {
     if (!contentRef) return;
     const blocks = assignBlockAnchors(contentRef);
-    renderedBlocks = new Map(blocks.map((block) => [block.blockId, block]));
+    renderedBlocks = new Map(blocks.map((block) => [block.model.id, block]));
+    renderedBlockList = blocks;
     ensureBlockMarkers(blocks);
-    applyAnnotationHighlights(contentRef, annotationStore.annotations());
+    setSelectionCapture(null);
+    blockAttachments = applyAnnotationHighlights(
+      contentRef,
+      annotationStore.annotations(),
+      blocks
+    );
   };
 
   const applyAnnotations = () => {
-    if (!contentRef) return;
-    applyAnnotationHighlights(contentRef, annotationStore.annotations());
+    if (!contentRef || renderedBlockList.length === 0) return;
+    blockAttachments = applyAnnotationHighlights(
+      contentRef,
+      annotationStore.annotations(),
+      renderedBlockList
+    );
   };
 
   onMount(() => {
     contentRef?.addEventListener('click', onContentClick);
+    document.addEventListener('selectionchange', updateSelectionCapture);
+    contentRef?.addEventListener('mouseup', updateSelectionCapture);
+    document.addEventListener('keyup', updateSelectionCapture);
   });
 
   createEffect(() => {
@@ -604,6 +698,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       clearTimeout(renderTimer);
     }
     contentRef?.removeEventListener('click', onContentClick);
+    contentRef?.removeEventListener('mouseup', updateSelectionCapture);
+    document.removeEventListener('selectionchange', updateSelectionCapture);
+    document.removeEventListener('keyup', updateSelectionCapture);
   });
 
   const renderComposer = (current: AnnotationPanel) => {
@@ -611,7 +708,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     return (
       <div class="annotation-composer">
         <label class="annotation-composer-label" for="annotation-note-body">Note</label>
-        <p class="annotation-anchor-excerpt">{current.block.text.slice(0, 160)}</p>
+        <p class="annotation-anchor-excerpt">{current.excerpt.slice(0, 160)}</p>
         <textarea
           id="annotation-note-body"
           class="annotation-composer-input"
@@ -678,8 +775,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       ref={containerRef}
       class={`markdown-view ${props.class || ''} ${isRendering() ? 'rendering' : ''} ${props.theme === 'dark' ? 'dark' : ''}`}
       data-theme={props.theme}
-    >
-      <Show when={isRendering()}>
+    >      <Show when={isRendering()}>
         <div class="markdown-loading-overlay">
           <div class="markdown-loading-spinner"></div>
         </div>
@@ -688,6 +784,32 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         <FrontmatterPanel data={frontmatterData()} />
       )}
       <div ref={contentRef} class="markdown-content" innerHTML={renderedHtml()} />
+      <Show when={selectionCapture()}>
+        {(capture) => (
+          <Portal>
+            <button
+              type="button"
+              class="annotation-selection-button"
+              aria-label="Annotate selected text"
+              style={{
+                left: `${capture().left}px`,
+                top: `${capture().top}px`,
+              }}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                openComposer(
+                  capture().anchor,
+                  capture().excerpt,
+                  new DOMRect(capture().left, capture().top, 0, 0)
+                );
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              Annotate
+            </button>
+          </Portal>
+        )}
+      </Show>
       <Show when={panel()}>
         {(current) => (
           <Portal>
