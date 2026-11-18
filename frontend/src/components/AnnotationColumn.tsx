@@ -2,10 +2,14 @@ import { Component, For, Show, createSignal } from 'solid-js';
 import type { Annotation } from '../types';
 import { annotationStore } from '../stores/annotationStore';
 import AnnotationThread from './AnnotationThread';
+import AnnotationManagerDialog from './AnnotationManagerDialog';
 
 interface AnnotationColumnProps {
   isOpen: boolean;
   onClose: () => void;
+  projectId?: number;
+  currentFilePath?: string | null;
+  onOpenFile?: (path: string) => void;
 }
 
 const COLUMN_WIDTH = 300;
@@ -28,6 +32,7 @@ function timeFor(annotation: Annotation): string {
  */
 const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
   const [showResolved, setShowResolved] = createSignal(true);
+  const [managerOpen, setManagerOpen] = createSignal(false);
 
   const visibleAnnotations = () =>
     annotationStore.annotations().filter((annotation) => showResolved() || !annotation.resolved);
@@ -62,26 +67,37 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
           Annotations
           <span class="annotation-column-count">{annotationStore.annotations().length}</span>
         </h3>
-        <button
-          type="button"
-          class="outline-close-btn"
-          onClick={props.onClose}
-          aria-label="Close annotations"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div class="annotation-column-header-actions">
+          <button
+            type="button"
+            class="annotation-column-manage"
+            aria-label="Manage annotations"
+            onClick={() => setManagerOpen(true)}
+            disabled={props.projectId === undefined}
           >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+            Manage
+          </button>
+          <button
+            type="button"
+            class="outline-close-btn"
+            onClick={props.onClose}
+            aria-label="Close annotations"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <label class="annotation-column-filter">
@@ -144,6 +160,14 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
         </For>
         </div>
       </Show>
+
+      <AnnotationManagerDialog
+        isOpen={managerOpen()}
+        projectId={props.projectId}
+        currentFilePath={props.currentFilePath ?? null}
+        onClose={() => setManagerOpen(false)}
+        onOpenFile={props.onOpenFile}
+      />
     </div>
   );
 };

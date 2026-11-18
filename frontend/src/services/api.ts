@@ -3,6 +3,7 @@ import type {
   CreateAnnotationRequest,
   FileNode,
   FileContent,
+  ManagedAnnotation,
   Project,
   TrashItem,
   TrashStats,
@@ -262,5 +263,41 @@ export const api = {
     });
     await checkResponse(res);
     return res.json();
+  },
+
+  /** Project-wide management list, including path-orphaned and Outdated rows. */
+  async listProjectAnnotations(projectId: number): Promise<ManagedAnnotation[]> {
+    const res = await request(`/api/annotations/manage?project_id=${projectId}`);
+    await checkResponse(res);
+    return res.json();
+  },
+
+  async batchDeleteAnnotations(projectId: number, ids: number[]): Promise<void> {
+    const res = await request('/api/annotations/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, ids }),
+    });
+    await checkResponse(res);
+  },
+
+  async batchResolveAnnotations(
+    projectId: number,
+    ids: number[],
+    resolved: boolean
+  ): Promise<void> {
+    const res = await request('/api/annotations/batch-resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, ids, resolved }),
+    });
+    await checkResponse(res);
+  },
+
+  async clearProjectAnnotations(projectId: number): Promise<void> {
+    const res = await request(`/api/annotations/project/${projectId}`, {
+      method: 'DELETE',
+    });
+    await checkResponse(res);
   },
 };
