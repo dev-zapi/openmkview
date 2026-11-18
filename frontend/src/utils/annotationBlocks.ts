@@ -1,4 +1,5 @@
 import type { Annotation, AnnotationAnchor, BlockAnchorSegment } from '../types';
+import { decodeDiagramCode } from './markdown';
 
 /** A top-level rendered block with the content identity used by Anchors. */
 export interface RenderedBlock {
@@ -35,6 +36,9 @@ function blockTypeOf(element: HTMLElement): string {
   if (element.tagName === 'DIV' && element.classList.contains('code-block-wrapper')) {
     return 'code';
   }
+  if (element.tagName === 'PRE') {
+    return 'code';
+  }
   return element.tagName.toLowerCase();
 }
 
@@ -53,6 +57,35 @@ function headingLevel(type: string): number {
 }
 
 /**
+ * Anchors must reference document content only. Rendered code/diagram blocks
+ * carry injected UI chrome (language label, Copy button, diagram toggles), so
+ * take the code source instead of the block's full textContent.
+ */
+function blockContentText(element: HTMLElement, type: string): string {
+  if (type === 'code') {
+    if (element.classList.contains('code-block-wrapper')) {
+      const encoded = element.getAttribute('data-diagram-code');
+      if (encoded) {
+        try {
+          return normalizeBlockText(decodeDiagramCode(encoded));
+        } catch {
+          // Fall through to the source <pre> below.
+        }
+      }
+      return normalizeBlockText(element.querySelector('pre code')?.textContent || '');
+    }
+    return normalizeBlockText(element.querySelector('code')?.textContent || '');
+  }
+
+  if (type === 'table') {
+    const table = element.querySelector('table');
+    if (table) return normalizeBlockText(table.textContent || '');
+  }
+
+  return normalizeBlockText(element.textContent || '');
+}
+
+/**
  * Post-render pass: assigns a stable content-hash identifier to every
  * top-level block and records the heading path in effect at that point.
  */
@@ -65,7 +98,7 @@ export function assignBlockAnchors(root: HTMLElement): RenderedBlock[] {
     if (!(child instanceof HTMLElement) || !isAnnotatableBlock(child)) continue;
 
     const type = blockTypeOf(child);
-    const text = normalizeBlockText(child.textContent || '');
+    const text = blockContentText(child, type);
     const level = headingLevel(type);
 
     // A heading's own text is the block; its path is the ancestors above it.
@@ -102,8 +135,11 @@ export function ensureBlockMarkers(blocks: RenderedBlock[]): void {
     const marker = document.createElement('button');
     marker.type = 'button';
     marker.className = 'annotation-marker';
-    marker.setAttribute('aria-label', 'Annotate this block');
-    marker.title = 'Annotate this block';
+    const label = block.text
+      ? `Annotate this block: ${block.text.slice(0, 60)}`
+      : 'Annotate this block';
+    marker.setAttribute('aria-label', label);
+    marker.title = label;
     marker.innerHTML =
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     block.element.appendChild(marker);
