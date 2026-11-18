@@ -1,4 +1,13 @@
-import type { FileNode, FileContent, Project, TrashItem, TrashStats, FileSaveResponse } from '../types';
+import type {
+  Annotation,
+  CreateAnnotationRequest,
+  FileNode,
+  FileContent,
+  Project,
+  TrashItem,
+  TrashStats,
+  FileSaveResponse,
+} from '../types';
 import { authStore } from '../stores/authStore';
 
 async function request(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -158,5 +167,28 @@ export const api = {
 
   getFileRawUrl(relativePath: string, projectId: number): string {
     return `/api/files/raw?relativePath=${encodeURIComponent(relativePath)}&project_id=${projectId}`;
+  },
+
+  async listAnnotations(projectId: number, relativePath: string): Promise<Annotation[]> {
+    const res = await request(
+      `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(relativePath)}`
+    );
+    await checkResponse(res);
+    return res.json();
+  },
+
+  async createAnnotation(body: CreateAnnotationRequest): Promise<Annotation> {
+    const res = await request('/api/annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    await checkResponse(res);
+    return res.json();
+  },
+
+  async deleteAnnotation(id: number): Promise<void> {
+    const res = await request(`/api/annotations/${id}`, { method: 'DELETE' });
+    await checkResponse(res);
   },
 };

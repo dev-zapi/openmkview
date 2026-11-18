@@ -52,6 +52,50 @@ export interface FileSaveResponse {
   lastModified: string;
 }
 
+/**
+ * One segment of an Annotation's Anchor. #16 only creates whole-block
+ * segments; text-range segments arrive with ticket #17.
+ */
+export interface BlockAnchorSegment {
+  kind: 'block';
+  /** Stable content-hash identifier assigned by the render pass. */
+  blockHash: string;
+  blockText: string;
+  blockType: string;
+  headingPath: string[];
+}
+
+export interface AnnotationAnchor {
+  version: number;
+  segments: BlockAnchorSegment[];
+}
+
+export interface AnnotationNote {
+  id: number;
+  annotationId: number;
+  body: string;
+  createdAt: string;
+}
+
+export interface Annotation {
+  id: number;
+  projectId: number;
+  relativePath: string;
+  anchor: AnnotationAnchor;
+  snapshot: string | null;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+  notes: AnnotationNote[];
+}
+
+export interface CreateAnnotationRequest {
+  projectId: number;
+  relativePath: string;
+  anchor: AnnotationAnchor;
+  body: string;
+}
+
 export interface GitCommit {
   hash: string;
   shortHash: string;

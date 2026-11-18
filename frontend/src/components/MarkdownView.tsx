@@ -1,15 +1,24 @@
-import { Component, createSignal, createEffect, createMemo, onCleanup, Show } from 'solid-js';
+import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, For, Show } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import { Marked } from 'marked';
-import DOMPurify from 'dompurify';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
 import DiagramZoomModal from './DiagramZoomModal';
 import type { ZoomDiagramSource } from '../services/diagramZoomService';
-import type { Heading } from '../types';
+import type { Annotation, Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
 import { generateHeadingId, resolveImagePath, isDiagramLanguage, encodeDiagramCode, decodeDiagramCode } from '../utils/markdown';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
+import {
+  assignBlockAnchors,
+  ensureBlockMarkers,
+  blockAnchorFrom,
+  applyAnnotationHighlights,
+  type RenderedBlock,
+} from '../utils/annotationBlocks';
+import { renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
+import { annotationStore } from '../stores/annotationStore';
 import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
@@ -34,6 +43,181 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const [zoomSource, setZoomSource] = createSignal<ZoomDiagramSource | null>(null);
   let searchMatches: HTMLElement[] = [];
   let renderTimer: ReturnType<typeof setTimeout> | undefined;
+
+  interface ComposerPanel {
+    mode: 'composer';
+    block: RenderedBlock;
+    left: number;
+    top: number;
+  }
+
+  interface ViewerPanel {
+    mode: 'view';
+    annotation: Annotation;
+    left: number;
+    top: number;
+  }
+
+  type AnnotationPanel = ComposerPanel | ViewerPanel;
+
+  const [panel, setPanel] = createSignal<AnnotationPanel | null>(null);
+  const [composerBody, setComposerBody] = createSignal('');
+  const [savingAnnotation, setSavingAnnotation] = createSignal(false);
+  const [annotationError, setAnnotationError] = createSignal<string | null>(null);
+  let panelRef: HTMLDivElement | undefined;
+  let renderedBlocks = new Map<string, RenderedBlock>();
+
+  const panelPosition = (rect: DOMRect): { left: number; top: number } => {
+    const width = 320;
+    let left = rect.right + 8;
+    if (left + width > window.innerWidth - 8) {
+      left = Math.max(8, rect.left - width - 8);
+    }
+    const top = Math.max(8, Math.min(rect.top, window.innerHeight - 180));
+    return { left, top };
+  };
+
+  const openComposer = (block: RenderedBlock, rect: DOMRect) => {
+    const position = panelPosition(rect);
+    setComposerBody('');
+    setAnnotationError(null);
+    setPanel({ mode: 'composer', block, ...position });
+  };
+
+  const openViewer = (annotation: Annotation, rect: DOMRect) => {
+    const position = panelPosition(rect);
+    setAnnotationError(null);
+    setPanel({ mode: 'view', annotation, ...position });
+  };
+
+  const saveAnnotation = async () => {
+    const current = panel();
+    const projectId = props.projectId;
+    const relativePath = props.currentFilePath;
+    if (!current || current.mode !== 'composer' || !projectId || !relativePath) return;
+
+    const body = composerBody().trim();
+    if (!body) {
+      setAnnotationError('Write a note before saving.');
+      return;
+    }
+
+    setSavingAnnotation(true);
+    setAnnotationError(null);
+    try {
+      await annotationStore.create(projectId, relativePath, blockAnchorFrom(current.block), body);
+      setPanel(null);
+      setComposerBody('');
+    } catch (error) {
+      setAnnotationError(error instanceof Error ? error.message : 'Failed to save annotation');
+    } finally {
+      setSavingAnnotation(false);
+    }
+  };
+
+  const removeAnnotation = async (annotation: Annotation) => {
+    setSavingAnnotation(true);
+    setAnnotationError(null);
+    try {
+      await annotationStore.remove(annotation.id);
+      setPanel(null);
+    } catch (error) {
+      setAnnotationError(error instanceof Error ? error.message : 'Failed to delete annotation');
+    } finally {
+      setSavingAnnotation(false);
+    }
+  };
+
+  const onContentClick = (event: MouseEvent) => {
+    if (!contentRef) return;
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    const marker = target.closest('.annotation-marker') as HTMLElement | null;
+    if (marker) {
+      event.preventDefault();
+      event.stopPropagation();
+      const blockElement = marker.closest('.annotation-block') as HTMLElement | null;
+      const blockId = blockElement?.getAttribute('data-block-id');
+      const block = blockId ? renderedBlocks.get(blockId) : undefined;
+      if (!blockElement || !block) return;
+
+      const annotation = annotationStore.byBlockHash(block.blockId);
+      if (annotation) {
+        openViewer(annotation, marker.getBoundingClientRect());
+      } else {
+        openComposer(block, marker.getBoundingClientRect());
+      }
+      return;
+    }
+
+    // Preserve ordinary in-document interactions inside a highlighted block.
+    if (target.closest('a, button, input, textarea, select, .code-block-header')) return;
+
+    const blockElement = target.closest('.annotation-block') as HTMLElement | null;
+    if (!blockElement || !blockElement.classList.contains('annotation-highlighted')) return;
+
+    const annotationId = Number(blockElement.getAttribute('data-annotation-id'));
+    const annotation = annotationStore
+      .annotations()
+      .find((candidate) => candidate.id === annotationId);
+    if (!annotation) return;
+
+    event.preventDefault();
+    openViewer(annotation, blockElement.getBoundingClientRect());
+  };
+
+  const prepareAnnotationPass = () => {
+    if (!contentRef) return;
+    const blocks = assignBlockAnchors(contentRef);
+    renderedBlocks = new Map(blocks.map((block) => [block.blockId, block]));
+    ensureBlockMarkers(blocks);
+    applyAnnotationHighlights(contentRef, annotationStore.annotations());
+  };
+
+  const applyAnnotations = () => {
+    if (!contentRef) return;
+    applyAnnotationHighlights(contentRef, annotationStore.annotations());
+  };
+
+  onMount(() => {
+    contentRef?.addEventListener('click', onContentClick);
+  });
+
+  createEffect(() => {
+    const projectId = props.projectId;
+    const relativePath = props.currentFilePath;
+    if (projectId && relativePath) {
+      void annotationStore.load(projectId, relativePath);
+    } else {
+      annotationStore.reset();
+    }
+  });
+
+  createEffect(() => {
+    renderedHtml();
+    annotationStore.annotations();
+    applyAnnotations();
+  });
+
+  createEffect(() => {
+    if (!panel()) return;
+    const onDocumentPointerDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && panelRef?.contains(target)) return;
+      setPanel(null);
+    };
+    const onDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPanel(null);
+    };
+    document.addEventListener('mousedown', onDocumentPointerDown);
+    document.addEventListener('keydown', onDocumentKeyDown);
+    onCleanup(() => {
+      document.removeEventListener('mousedown', onDocumentPointerDown);
+      document.removeEventListener('keydown', onDocumentKeyDown);
+    });
+  });
+
 
   const parsed = createMemo(() => parseFrontmatter(props.content));
   const frontmatterData = () => parsed().data;
@@ -380,10 +564,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
       let html = await marked.parse(content) as string;
 
-      html = DOMPurify.sanitize(html, {
-        ADD_ATTR: ['target', 'loading', 'decoding', 'data-type', 'data-code', 'data-theme', 'data-relative-path'],
-        ADD_TAGS: ['mark', 'svg', 'path', 'g', 'rect', 'text', 'circle', 'line', 'polygon', 'polyline'],
-      });
+      html = sanitizeMarkdownHtml(html);
 
       html = html.replace(/<table>/g, '<div class="table-wrapper"><table>')
         .replace(/<\/table>/g, '</table></div>');
@@ -430,7 +611,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
           // Setup internal link click handlers
           setupInternalLinkHandlers(containerRef);
-          
+
+          // Assign stable block identities and annotation markers.
+          prepareAnnotationPass();
+
           // Extract headings (existing logic)
           if (props.onHeadingsExtracted) {
             const headings = extractHeadingsFromHtml();
@@ -475,7 +659,75 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (renderTimer) {
       clearTimeout(renderTimer);
     }
+    contentRef?.removeEventListener('click', onContentClick);
   });
+
+  const renderComposer = (current: AnnotationPanel) => {
+    if (current.mode !== 'composer') return null;
+    return (
+      <div class="annotation-composer">
+        <label class="annotation-composer-label" for="annotation-note-body">Note</label>
+        <p class="annotation-anchor-excerpt">{current.block.text.slice(0, 160)}</p>
+        <textarea
+          id="annotation-note-body"
+          class="annotation-composer-input"
+          rows={4}
+          placeholder="Write a note… Markdown is supported"
+          value={composerBody()}
+          onInput={(event) => setComposerBody(event.currentTarget.value)}
+          ref={(element) => setTimeout(() => element.focus(), 0)}
+        />
+        <Show when={annotationError()}>
+          <p class="annotation-error" role="alert">{annotationError()}</p>
+        </Show>
+        <div class="annotation-popover-actions">
+          <button type="button" class="annotation-action-secondary" onClick={() => setPanel(null)}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="annotation-action-primary"
+            disabled={savingAnnotation() || composerBody().trim().length === 0}
+            onClick={() => void saveAnnotation()}
+          >
+            {savingAnnotation() ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderViewer = (current: AnnotationPanel) => {
+    if (current.mode !== 'view') return null;
+    const annotation = current.annotation;
+    return (
+      <div class="annotation-viewer">
+        <div class="annotation-thread">
+          <For each={annotation.notes}>
+            {(note) => (
+              <div class="annotation-note">
+                <div class="annotation-note-meta">{note.createdAt}</div>
+                <div class="annotation-note-body" innerHTML={renderNoteMarkdown(note.body)} />
+              </div>
+            )}
+          </For>
+        </div>
+        <Show when={annotationError()}>
+          <p class="annotation-error" role="alert">{annotationError()}</p>
+        </Show>
+        <div class="annotation-popover-actions">
+          <button
+            type="button"
+            class="annotation-action-danger"
+            disabled={savingAnnotation()}
+            onClick={() => void removeAnnotation(annotation)}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -492,6 +744,22 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         <FrontmatterPanel data={frontmatterData()} />
       )}
       <div ref={contentRef} class="markdown-content" innerHTML={renderedHtml()} />
+      <Show when={panel()}>
+        {(current) => (
+          <Portal>
+            <div
+              ref={panelRef}
+              class="annotation-popover"
+              role="dialog"
+              aria-label={current().mode === 'composer' ? 'New annotation' : 'Annotation'}
+              style={{ left: `${current().left}px`, top: `${current().top}px` }}
+            >
+              {renderComposer(current())}
+              {renderViewer(current())}
+            </div>
+          </Portal>
+        )}
+      </Show>
       <DiagramZoomModal
         isOpen={zoomModalOpen()}
         onClose={() => setZoomModalOpen(false)}
