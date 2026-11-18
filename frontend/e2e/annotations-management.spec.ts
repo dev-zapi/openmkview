@@ -4,6 +4,7 @@ import {
   loginIfNeeded,
   waitForDesktopApp,
   createScratchFile,
+  getHarnessProject,
 } from './fixtures';
 import type { FileTarget } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
@@ -137,18 +138,36 @@ async function cleanup(page: Page, targets: FileTarget[]): Promise<void> {
 
 /**
  * Create a project whose directory and content this test owns, so project-wide
- * operations (clear-all) can never touch the shared seeded project.
+ * operations (clear-all) can never touch the shared seeded project. The
+ * harness project is re-opened so it keeps heading the activity bar while the
+ * temporary project exists (standalone-frame clicks the first project).
  */
-async function createOwnedProject(page: Page, path: string): Promise<number> {
-  return page.evaluate(async (projectPath) => {
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: projectPath }),
-    });
-    if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
-    return (await res.json()).id as number;
-  }, path);
+async function createOwnedProject(
+  page: Page,
+  path: string,
+  previousProjectPath?: string
+): Promise<number> {
+  return page.evaluate(
+    async ({ projectPath, restorePath }) => {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: projectPath }),
+      });
+      if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
+      const created = await res.json();
+
+      if (restorePath) {
+        await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: restorePath }),
+        });
+      }
+      return created.id as number;
+    },
+    { projectPath: path, restorePath: previousProjectPath }
+  );
 }
 
 test.describe('annotation management panel', () => {
@@ -303,8 +322,11 @@ test.describe('annotation management panel', () => {
     writeFileSync(join(projectDir, filePath), markdown('Management Clear', TARGET_A));
 
     let projectId: number | undefined;
+    let previousProjectPath: string | undefined;
     try {
-      projectId = await createOwnedProject(page, projectDir);
+      const previous = await getHarnessProject(page);
+      previousProjectPath = previous.path;
+      projectId = await createOwnedProject(page, projectDir, previousProjectPath);
       const target = { projectId, path: filePath };
       await createAnnotationViaApi(page, target, 'clear note one');
       await createAnnotationViaApi(page, target, 'clear note two');
@@ -332,12 +354,37 @@ test.describe('annotation management panel', () => {
       await expect(manager.getByRole('row').filter({ hasText: 'clear note' })).toHaveCount(0);
     } finally {
       if (projectId !== undefined) {
-        await page.evaluate(async (id) => {
-          await fetch(`/api/annotations/project/${id}`, { method: 'DELETE' });
-          await fetch(`/api/projects/${id}/close`, { method: 'POST' });
-        }, projectId);
+        await page.evaluate(
+          async ({ id, restorePath }) => {
+            await fetch(`/api/annotations/project/${id}`, { method: 'DELETE' });
+            await fetch(`/api/projects/${id}/close`, { method: 'POST' });
+            // Restore the harness project at the head of the activity bar.
+            if (restorePath) {
+              await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: restorePath }),
+              });
+            }
+          },
+          { id: projectId, restorePath: previousProjectPath }
+        );
       }
       rmSync(projectDir, { recursive: true, force: true });
     }
+
+    // The harness project must head the activity bar again immediately after
+    // the temporary project closes (standalone-frame clicks the first one).
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const res = await fetch('/api/projects?open=true');
+            const projects = await res.json();
+            return projects[0]?.path as string | undefined;
+          }),
+        { timeout: 10000 }
+      )
+      .toBe(previousProjectPath);
   });
 });

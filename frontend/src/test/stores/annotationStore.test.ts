@@ -334,4 +334,22 @@ describe('annotationStore cross-file jump', () => {
 
     expect(annotationStore.jumpRequest()).toBeNull();
   });
+
+  it('drops the pending jump when the target load fails', async () => {
+    (global.fetch as any)
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([annotationFor(7, 1, 'b.md', 'blk-b')]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.requestJumpInFile(1, 'b.md', 7);
+
+    await annotationStore.load(1, 'b.md');
+    expect(annotationStore.jumpRequest()).toBeNull();
+
+    // A later, unrelated open of the same path must not replay the jump.
+    await annotationStore.load(1, 'c.md');
+    await annotationStore.load(1, 'b.md');
+    expect(annotationStore.jumpRequest()).toBeNull();
+  });
 });

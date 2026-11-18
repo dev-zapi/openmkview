@@ -80,11 +80,13 @@ export interface OpenProjectSummary {
   name: string;
 }
 
+/** Project-name prefixes used by throwaway per-test projects. */
+const SCRATCH_PROJECT_PREFIX = /^(?:annotations-e2e-|ann19-drift-|openmkview-manage-clear-)/;
+
 /**
- * The harness's seeded open project, ignoring scratch projects that serial
- * specs create under the OS temp directory. Selecting this deterministically
- * keeps parallel specs from adopting (and then losing) another spec's
- * throwaway project when it sorts first by `last_opened_at`.
+ * The harness's seeded open project, ignoring scratch projects created by
+ * serial specs. Selecting this deterministically keeps parallel specs from
+ * adopting (and then losing) another spec's throwaway project.
  */
 export async function getHarnessProject(page: Page): Promise<OpenProjectSummary> {
   const projects: OpenProjectSummary[] = await page.evaluate(async () => {
@@ -93,11 +95,12 @@ export async function getHarnessProject(page: Page): Promise<OpenProjectSummary>
     return res.json();
   });
   const tempRoot = os.tmpdir();
-  // Prefer a real (non-temp) project. When the harness itself lives under the
-  // temp dir, fall back to the oldest open project: per-test scratch projects
-  // are created later and sort first by `last_opened_at`.
   const harness =
-    projects.find((project) => !project.path.startsWith(tempRoot)) ??
+    projects.find(
+      (project) =>
+        !SCRATCH_PROJECT_PREFIX.test(project.name) && !project.path.startsWith(tempRoot)
+    ) ??
+    projects.find((project) => !SCRATCH_PROJECT_PREFIX.test(project.name)) ??
     projects[projects.length - 1];
   if (!harness) throw new Error('no open project to annotate');
   return harness;
@@ -181,6 +184,8 @@ export interface ScratchProject {
   projectId: number;
   projectDir: string;
   path: string;
+  /** Harness project re-opened around the scratch project's lifetime. */
+  previousProjectPath?: string;
 }
 
 /**
@@ -196,27 +201,47 @@ export async function createScratchProject(
 ): Promise<ScratchProject> {
   const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-`));
   fs.writeFileSync(path.join(projectDir, fileName), content);
+  const previous = await getHarnessProject(page);
 
-  const project = await page.evaluate(async (dir) => {
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: dir }),
-    });
-    if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
-    return res.json();
-  }, projectDir);
+  const project = await page.evaluate(
+    async ({ dir, previousProjectPath }) => {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: dir }),
+      });
+      if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
+      const created = await res.json();
 
-  return { projectId: project.id, projectDir, path: fileName };
+      // Keep the harness project at the head of the activity bar while the
+      // scratch project exists (standalone-frame clicks the first project).
+      if (previousProjectPath) {
+        await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: previousProjectPath }),
+        });
+      }
+      return created;
+    },
+    { dir: projectDir, previousProjectPath: previous.path }
+  );
+
+  return {
+    projectId: project.id,
+    projectDir,
+    path: fileName,
+    previousProjectPath: previous.path,
+  };
 }
 
-/** Delete the file's annotations, close the scratch project, and remove its dir. */
+/** Delete the file's annotations, close the scratch project, restore the harness. */
 export async function removeScratchProject(
   page: Page,
   target: ScratchProject
 ): Promise<void> {
   await page.evaluate(
-    async ({ projectId, relativePath }) => {
+    async ({ projectId, relativePath, previousProjectPath }) => {
       const res = await fetch(
         `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(relativePath)}`
       );
@@ -227,8 +252,19 @@ export async function removeScratchProject(
         }
       }
       await fetch(`/api/projects/${projectId}/close`, { method: 'POST' });
+      if (previousProjectPath) {
+        await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: previousProjectPath }),
+        });
+      }
     },
-    { projectId: target.projectId, relativePath: target.path }
+    {
+      projectId: target.projectId,
+      relativePath: target.path,
+      previousProjectPath: target.previousProjectPath,
+    }
   );
 
   fs.rmSync(target.projectDir, { recursive: true, force: true });

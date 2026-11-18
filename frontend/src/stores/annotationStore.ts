@@ -185,6 +185,9 @@ export const annotationStore = {
       }
     } catch (err) {
       if (loadedKey === key) {
+        // A failed target load must not leave a jump armed for some later,
+        // unrelated open of the same path.
+        pendingJump = null;
         setAnnotations([]);
         setError(err instanceof Error ? err.message : 'Failed to load annotations');
       }
