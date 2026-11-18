@@ -1,14 +1,33 @@
 import { createSignal } from 'solid-js';
 import type { Annotation, AnnotationAnchor } from '../types';
 import { api } from '../services/api';
+import { offlineStore } from './offlineStore';
+import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
 
 const [annotations, setAnnotations] = createSignal<Annotation[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
 const [error, setError] = createSignal<string | null>(null);
+const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
 
 let loadedKey: string | null = null;
 let currentProjectId: number | null = null;
 let currentRelativePath: string | null = null;
+
+function applyVisibility(nextVisible: boolean): void {
+  setVisible(nextVisible);
+  saveAnnotationsVisible(nextVisible);
+}
+
+/**
+ * Offline Mode is read-only (ADR-0002): never attempt an annotation write
+ * while offline. UI surfaces disable their controls via canMutate(); this
+ * guard keeps any unguarded caller from firing a doomed request.
+ */
+function requireOnline(): void {
+  if (!offlineStore.online()) {
+    throw new Error('Annotations are read-only while offline');
+  }
+}
 
 function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
@@ -18,6 +37,20 @@ export const annotationStore = {
   annotations,
   loading,
   error,
+  visible,
+
+  /** Whether annotation writes may be attempted (Online Mode only). */
+  canMutate(): boolean {
+    return offlineStore.online();
+  },
+
+  setVisible(nextVisible: boolean): void {
+    applyVisibility(nextVisible);
+  },
+
+  toggleVisible(): void {
+    applyVisibility(!visible());
+  },
 
   /** Load annotations for the given file, deduplicating repeat calls. */
   async load(projectId: number, relativePath: string): Promise<void> {
@@ -62,6 +95,7 @@ export const annotationStore = {
     anchor: AnnotationAnchor,
     body: string
   ): Promise<Annotation> {
+    requireOnline();
     const created = await api.createAnnotation({ projectId, relativePath, anchor, body });
     if (loadedKey === fileKey(projectId, relativePath)) {
       setAnnotations((current) => [...current, created]);
@@ -70,6 +104,7 @@ export const annotationStore = {
   },
 
   async remove(id: number): Promise<void> {
+    requireOnline();
     await api.deleteAnnotation(id);
     setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
   },

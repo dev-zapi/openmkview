@@ -6,6 +6,7 @@ const SIDEBAR_WIDTH_KEY = 'filetree-sidebar-width';
 const OUTLINE_WIDTH_KEY = 'outline-panel-width';
 const OUTLINE_OPEN_BY_FILETYPE_KEY = 'outline-open-by-filetype';
 export const SHOW_HIDDEN_KEY = 'openmkview-show-hidden';
+const ANNOTATIONS_VISIBLE_KEY = 'openmkview-annotations-visible';
 
 export interface OutlineOpenByFileType {
   markdown: boolean;
@@ -336,5 +337,24 @@ export const saveShowHidden = (visible: boolean): void => {
     localStorage.setItem(SHOW_HIDDEN_KEY, visible ? 'true' : 'false');
   } catch (e) {
     console.error('Failed to save show-hidden preference:', e);
+  }
+};
+
+/** Per-browser preference: show Annotation highlights and markers. Default true. */
+export const loadAnnotationsVisible = (): boolean => {
+  try {
+    // Only an explicit 'false' hides annotations; a missing key means visible.
+    return localStorage.getItem(ANNOTATIONS_VISIBLE_KEY) !== 'false';
+  } catch (e) {
+    console.error('Failed to load annotations-visible preference:', e);
+    return true;
+  }
+};
+
+export const saveAnnotationsVisible = (visible: boolean): void => {
+  try {
+    localStorage.setItem(ANNOTATIONS_VISIBLE_KEY, visible ? 'true' : 'false');
+  } catch (e) {
+    console.error('Failed to save annotations-visible preference:', e);
   }
 };
