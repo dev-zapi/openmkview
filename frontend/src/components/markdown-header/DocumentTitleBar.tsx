@@ -295,13 +295,15 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                 </MenuItem>
               </Show>
 
-              <MenuItem onClick={() => props.onAnnotationColumnToggle?.()}>
-                {annotationColumnIcon}
-                <span>Annotation column</span>
-                <Show when={(props.annotationCount ?? 0) > 0}>
-                  <span class="ui-menu-badge">{props.annotationCount}</span>
-                </Show>
-              </MenuItem>
+              <Show when={props.fileType === 'markdown' && props.onAnnotationColumnToggle}>
+                <MenuItem onClick={() => props.onAnnotationColumnToggle?.()}>
+                  {annotationColumnIcon}
+                  <span>Annotation column</span>
+                  <Show when={(props.annotationCount ?? 0) > 0}>
+                    <span class="ui-menu-badge">{props.annotationCount}</span>
+                  </Show>
+                </MenuItem>
+              </Show>
             </MenuContent>
           </Menu>
         </div>

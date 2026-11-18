@@ -3,26 +3,21 @@ import {
   expect,
   loginIfNeeded,
   selectTextRange,
+  createScratchProject,
+  removeScratchProject,
+  saveComposer,
+  type ScratchProject,
 } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 
 // Ticket #24: touch equivalents of the two annotation entry points and a
 // mobile presentation for the annotation column. Runs against the real
-// backend on the mobile shell, one isolated scratch project per test.
+// backend on the mobile shell with one isolated scratch project per test.
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 test.describe.configure({ mode: 'serial' });
 
 const LONG_PRESS_MS = 650;
-
-interface ScratchFile {
-  projectId: number;
-  projectDir: string;
-  path: string;
-}
 
 function scratchMarkdown(): string {
   const filler = Array.from({ length: 24 }, (_, index) => [
@@ -43,26 +38,18 @@ function scratchMarkdown(): string {
 }
 
 /**
- * Seeds an isolated open project with one Markdown file through the real API.
+ * Seeds an isolated open project with one Markdown file, then opens it by URL.
  * The mobile shell has no file tree in view, so navigating straight to the
- * file URL keeps the journey focused on annotations.
+ * file keeps the journey focused on annotations.
  */
-async function seedScratchFile(page: Page): Promise<ScratchFile> {
-  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'annotations-mobile-'));
-  const fileName = 'mobile-annotations.md';
-  fs.writeFileSync(path.join(projectDir, fileName), scratchMarkdown());
+async function openScratchFile(page: Page): Promise<ScratchProject> {
+  const target = await createScratchProject(
+    page,
+    'mobile-annotations.md',
+    scratchMarkdown(),
+    'annotations-mobile',
+  );
 
-  const project = await page.evaluate(async ({ dir }) => {
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: dir }),
-    });
-    if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
-    return res.json();
-  }, { dir: projectDir });
-
-  const target: ScratchFile = { projectId: project.id, projectDir, path: fileName };
   await page.goto(
     `/project/${target.projectId}/files/${encodeURIComponent(target.path)}`,
     { waitUntil: 'domcontentloaded' },
@@ -79,23 +66,6 @@ async function seedScratchFile(page: Page): Promise<ScratchFile> {
     await expect(drawer).not.toBeVisible();
   }
   return target;
-}
-
-async function cleanupScratchFile(page: Page, target: ScratchFile | undefined): Promise<void> {
-  if (!target) return;
-  await page.evaluate(async ({ projectId, relativePath }) => {
-    const res = await fetch(
-      `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(relativePath)}`,
-    );
-    if (res.ok) {
-      const annotations = await res.json();
-      for (const annotation of annotations) {
-        await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
-      }
-    }
-    await fetch(`/api/projects/${projectId}/close`, { method: 'POST' });
-  }, { projectId: target.projectId, relativePath: target.path });
-  fs.rmSync(target.projectDir, { recursive: true, force: true });
 }
 
 function paragraphWith(page: Page, text: string): Locator {
@@ -139,18 +109,14 @@ async function longPressBlock(page: Page, text: string): Promise<void> {
     };
   }, { x, y });
 
+  // The pending hold advertises its callout-suppression hook to the platform.
+  await expect(paragraph.first()).toHaveAttribute('data-annotation-touch-hold', 'true');
+
   await page.waitForTimeout(LONG_PRESS_MS);
   await page.evaluate(() => {
     (window as unknown as { __releaseLongPress?: () => void }).__releaseLongPress?.();
   });
-}
-
-async function saveComposer(page: Page, body: string): Promise<void> {
-  const composer = page.getByRole('dialog', { name: 'New annotation' });
-  await expect(composer).toBeVisible();
-  await composer.getByRole('textbox').fill(body);
-  await composer.getByRole('button', { name: 'Save' }).click();
-  await expect(composer).not.toBeVisible();
+  await expect(paragraph.first()).not.toHaveAttribute('data-annotation-touch-hold', 'true');
 }
 
 async function openAnnotationDrawer(page: Page): Promise<Locator> {
@@ -162,17 +128,17 @@ async function openAnnotationDrawer(page: Page): Promise<Locator> {
 }
 
 test.describe('mobile annotations', () => {
-  let target: ScratchFile;
+  let target: ScratchProject;
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await loginIfNeeded(page);
     await expect(page.locator('.mobile-main-content')).toBeVisible({ timeout: 15000 });
-    target = await seedScratchFile(page);
+    target = await openScratchFile(page);
   });
 
   test.afterEach(async ({ page }) => {
-    await cleanupScratchFile(page, target);
+    await removeScratchProject(page, target);
   });
 
   test('long-press opens the whole-block composer and the saved note highlights', async ({
@@ -211,6 +177,19 @@ test.describe('mobile annotations', () => {
     await page.mouse.up();
 
     await expect(page.getByRole('dialog', { name: 'New annotation' })).not.toBeVisible();
+  });
+
+  test('the composer stays inside a 320px viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await longPressBlock(page, 'A paragraph with a stable block for long-press annotation.');
+
+    const composer = page.getByRole('dialog', { name: 'New annotation' });
+    await expect(composer).toBeVisible();
+    const box = await composer.boundingBox();
+    expect(box).not.toBeNull();
+    // The narrow-screen cap must beat the base 320px width rule.
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
   });
 
   test('touch text selection exposes a touch-sized annotate button that creates a highlight', async ({

@@ -95,6 +95,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let longPressTimer: ReturnType<typeof setTimeout> | undefined;
   let longPressStartX = 0;
   let longPressStartY = 0;
+  let longPressElement: HTMLElement | undefined;
   // The browser still emits a synthetic click after a touch long-press; it
   // must not immediately reopen the popover over the composer.
   let suppressClickAfterLongPress = false;
@@ -306,6 +307,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       clearTimeout(longPressTimer);
       longPressTimer = undefined;
     }
+    if (longPressElement) {
+      longPressElement.removeAttribute('data-annotation-touch-hold');
+      longPressElement = undefined;
+    }
   };
 
   /** Resolves a touch target to its top-level rendered block. */
@@ -320,6 +325,14 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   /**
    * Touch equivalent of the hover marker: holding a rendered block opens its
    * annotation surface. Mouse pointers never start this timer.
+   *
+   * Real-device note: Android/iOS may begin native text selection before the
+   * hold completes. That selection is deliberately treated as the text-range
+   * affordance (its floating Annotate button), not as block intent, because
+   * disabling text selection on touch would remove that entry point. While the
+   * hold is pending, `data-annotation-touch-hold` suppresses the platform
+   * callout menu (see global.css) so it cannot cover the composer; if native
+   * selection wins the race, prose still annotates through the selection path.
    */
   const onContentPointerDown = (event: PointerEvent) => {
     // Any new press supersedes a touch long-press that never emitted its
@@ -345,6 +358,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
     longPressStartX = event.clientX;
     longPressStartY = event.clientY;
+    // Suppress the platform callout while the hold is live; text selection
+    // itself stays enabled so the selection entry point keeps working.
+    candidate.element.setAttribute('data-annotation-touch-hold', 'true');
+    longPressElement = candidate.element;
     longPressTimer = setTimeout(() => {
       longPressTimer = undefined;
       // A text selection is the other annotation affordance; never turn its
@@ -1049,6 +1066,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (renderTimer) {
       clearTimeout(renderTimer);
     }
+    // A pending hold must not call openComposer/openAnnotations after unmount.
+    cancelLongPress();
+    suppressClickAfterLongPress = false;
     contentRef?.removeEventListener('click', onContentClick);
     contentRef?.removeEventListener('pointerdown', onContentPointerDown);
     contentRef?.removeEventListener('pointermove', onContentPointerMove);
@@ -1209,9 +1229,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                 top: `${capture().top}px`,
               }}
               onMouseDown={(event) => event.preventDefault()}
-              onTouchStart={(event) => {
-                // Tapping the floating button must not collapse the live
-                // selection before the composer reads it.
+              on:touchstart={(event) => {
+                // Direct (non-delegated) listener: preventDefault must run
+                // before the browser collapses the live selection.
                 event.preventDefault();
                 activateSelectionCapture();
               }}
