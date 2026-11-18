@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, For, Show } from 'solid-js';
+import { Component, createSignal, createEffect, untrack, For, Show } from 'solid-js';
 import { highlightCode } from '../services/shikiService';
 import { escapeHtml } from '../utils/html';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
@@ -178,20 +178,14 @@ const SourceView: Component<SourceViewProps> = (props) => {
 
     const annotationsByLine = new Map<number, Annotation[]>();
     const outdated: OutdatedSourceAnnotation[] = [];
-    const snapshots = new Map<number, string>();
+    // Canonical status is owned by the Preview; read it untracked so
+    // publishing the Source-only fallback cannot loop back into this effect.
+    const previewResolved = untrack(() => annotationStore.previewOutdatedResolved());
+    const canonicalOutdated = untrack(() => annotationStore.outdatedSnapshots());
+    const sourceSnapshots = new Map<number, string>();
 
-    for (const annotation of annotations) {
-      const location = locateAnchorInSource(props.content, annotation.anchor);
-      if (location.status === 'outdated') {
-        const snapshot = annotation.snapshot?.trim() || location.snapshot;
-        snapshots.set(annotation.id, snapshot);
-        outdated.push({
-          excerpt: snapshot || annotationExcerpt(annotation),
-        });
-        continue;
-      }
-
-      for (const range of location.ranges) {
+    const addRanges = (annotation: Annotation, ranges: { start: number; end: number }[]) => {
+      for (const range of ranges) {
         for (let line = range.start; line <= range.end; line += 1) {
           const entries = annotationsByLine.get(line) ?? [];
           if (!entries.some((entry) => entry.id === annotation.id)) {
@@ -200,9 +194,40 @@ const SourceView: Component<SourceViewProps> = (props) => {
           annotationsByLine.set(line, entries);
         }
       }
+    };
+
+    for (const annotation of annotations) {
+      // The rendered Preview is the canonical status surface. Mirror its
+      // Outdated set exactly and never invent a different state from the
+      // coarser raw-Markdown projection.
+      if (previewResolved) {
+        const canonicalSnapshot = canonicalOutdated.get(annotation.id);
+        if (canonicalSnapshot !== undefined) {
+          outdated.push({ excerpt: canonicalSnapshot || annotationExcerpt(annotation) });
+          continue;
+        }
+
+        const location = locateAnchorInSource(props.content, annotation.anchor);
+        // An Active annotation the Source projection cannot find is simply
+        // not echoed; it must not gain a false Outdated badge here.
+        if (location.status === 'located') addRanges(annotation, location.ranges);
+        continue;
+      }
+
+      const location = locateAnchorInSource(props.content, annotation.anchor);
+      if (location.status === 'outdated') {
+        const snapshot = annotation.snapshot?.trim() || location.snapshot;
+        sourceSnapshots.set(annotation.id, snapshot);
+        outdated.push({ excerpt: snapshot || annotationExcerpt(annotation) });
+        continue;
+      }
+
+      addRanges(annotation, location.ranges);
     }
 
-    annotationStore.setOutdatedSnapshots(snapshots);
+    // Source-only load (no Preview visit): fill the status the Preview could
+    // not provide. Once Preview has resolved, its map stays untouched.
+    annotationStore.publishSourceOutdatedSnapshots(sourceSnapshots);
     setOutdatedAnnotations(outdated);
 
     if (!visible) return;
