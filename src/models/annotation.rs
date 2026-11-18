@@ -51,6 +51,15 @@ pub struct CreateAnnotationRequest {
     pub body: String,
 }
 
+/// Manual re-anchoring of an Outdated annotation: replaces the Anchor payload
+/// with a freshly selected one. The server refreshes the stored snapshot from
+/// the new payload, which clears the previous Outdated text.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReanchorAnnotationRequest {
+    pub anchor: Value,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddNoteRequest {

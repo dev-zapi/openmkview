@@ -1,4 +1,7 @@
 import { test as base, expect, Page } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 export interface ConsoleMessage {
   type: string;
@@ -71,19 +74,43 @@ export interface FileTarget {
   path: string;
 }
 
-/** Create a uniquely named Markdown file in the first open project. */
+export interface OpenProjectSummary {
+  id: number;
+  path: string;
+  name: string;
+}
+
+/**
+ * The harness's seeded open project, ignoring scratch projects that serial
+ * specs create under the OS temp directory. Selecting this deterministically
+ * keeps parallel specs from adopting (and then losing) another spec's
+ * throwaway project when it sorts first by `last_opened_at`.
+ */
+export async function getHarnessProject(page: Page): Promise<OpenProjectSummary> {
+  const projects: OpenProjectSummary[] = await page.evaluate(async () => {
+    const res = await fetch('/api/projects?open=true');
+    if (!res.ok) throw new Error('cannot list projects');
+    return res.json();
+  });
+  const tempRoot = os.tmpdir();
+  // Prefer a real (non-temp) project. When the harness itself lives under the
+  // temp dir, fall back to the oldest open project: per-test scratch projects
+  // are created later and sort first by `last_opened_at`.
+  const harness =
+    projects.find((project) => !project.path.startsWith(tempRoot)) ??
+    projects[projects.length - 1];
+  if (!harness) throw new Error('no open project to annotate');
+  return harness;
+}
+
+/** Create a uniquely named Markdown file in the harness's seeded project. */
 export async function createScratchFile(
   page: Page,
   body: string,
   prefix = 'annotations-e2e'
 ): Promise<FileTarget> {
-  return page.evaluate(async ({ body, prefix }) => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) throw new Error('cannot list projects');
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) throw new Error('no open project to annotate');
-
+  const project = await getHarnessProject(page);
+  return page.evaluate(async ({ body, prefix, projectId }) => {
     const name = `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
     const createRes = await fetch('/api/files', {
       method: 'POST',
@@ -100,7 +127,7 @@ export async function createScratchFile(
     if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
 
     return { projectId, path: name };
-  }, { body, prefix });
+  }, { body, prefix, projectId: project.id });
 }
 
 /** Delete the scratch file's annotations first, then the file itself. */
@@ -147,6 +174,64 @@ export async function probeFetch(page: Page, url: string): Promise<string> {
       return 'failed';
     }
   }, url);
+}
+
+/** A throwaway project directory seeded through the real project API. */
+export interface ScratchProject {
+  projectId: number;
+  projectDir: string;
+  path: string;
+}
+
+/**
+ * Seed an isolated project + Markdown file. Serial mutation specs use this
+ * instead of the shared seeded project so parallel agents cannot interfere.
+ * The caller must already be on the app origin (fetch runs in the page).
+ */
+export async function createScratchProject(
+  page: Page,
+  fileName: string,
+  content: string,
+  prefix = 'annotations-e2e'
+): Promise<ScratchProject> {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-`));
+  fs.writeFileSync(path.join(projectDir, fileName), content);
+
+  const project = await page.evaluate(async (dir) => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: dir }),
+    });
+    if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
+    return res.json();
+  }, projectDir);
+
+  return { projectId: project.id, projectDir, path: fileName };
+}
+
+/** Delete the file's annotations, close the scratch project, and remove its dir. */
+export async function removeScratchProject(
+  page: Page,
+  target: ScratchProject
+): Promise<void> {
+  await page.evaluate(
+    async ({ projectId, relativePath }) => {
+      const res = await fetch(
+        `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(relativePath)}`
+      );
+      if (res.ok) {
+        const annotations = await res.json();
+        for (const annotation of annotations) {
+          await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
+        }
+      }
+      await fetch(`/api/projects/${projectId}/close`, { method: 'POST' });
+    },
+    { projectId: target.projectId, relativePath: target.path }
+  );
+
+  fs.rmSync(target.projectDir, { recursive: true, force: true });
 }
 
 // 扩展 test fixture，添加控制台日志收集

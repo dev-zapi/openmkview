@@ -1,7 +1,15 @@
 import type { Annotation } from '../types';
 
-/** The text an annotation is anchored to, for compact list surfaces. */
-export function annotationExcerpt(annotation: Annotation): string {
+/**
+ * The text an annotation is anchored to, for compact list surfaces. When the
+ * anchor is Outdated, its originally anchored snapshot is shown instead.
+ */
+export function annotationExcerpt(
+  annotation: Annotation,
+  outdatedSnapshot?: string | null
+): string {
+  const snapshot = outdatedSnapshot?.trim();
+  if (snapshot) return snapshot;
   const parts = (annotation.anchor?.segments ?? [])
     .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
     .map((part) => part?.trim())

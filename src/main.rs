@@ -16,9 +16,9 @@ use openmkview::handlers::{
     install_custom_theme, list_annotations, list_project_annotations, list_projects, list_themes,
     list_trash, move_file, move_to_trash, open_project, passkey_delete, passkey_list,
     passkey_login_finish, passkey_login_start, passkey_register_finish, passkey_register_start,
-    rename_file, resolve_path, restore_from_trash, save_file_content, search_favicons,
-    serve_project_file, set_resolved, update_note, update_project, update_project_color,
-    update_settings, validate_project,
+    reanchor_annotation, rename_file, resolve_path, restore_from_trash, save_file_content,
+    search_favicons, serve_project_file, set_resolved, update_note, update_project,
+    update_project_color, update_settings, validate_project,
 };
 use openmkview::passkey::{build_passkey_sites, build_passkey_state};
 use openmkview::paths::AppPaths;
@@ -214,6 +214,10 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
         .route(
             "/api/annotations/project/{project_id}",
             web::delete().to(clear_project_annotations),
+        )
+        .route(
+            "/api/annotations/{id}/anchor",
+            web::put().to(reanchor_annotation),
         )
         .route("/api/annotations/{id}", web::delete().to(delete_annotation))
         .route("/api/annotations/{id}/notes", web::post().to(add_note))

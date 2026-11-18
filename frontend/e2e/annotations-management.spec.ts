@@ -1,4 +1,10 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp, createScratchFile } from './fixtures';
+import {
+  test,
+  expect,
+  loginIfNeeded,
+  waitForDesktopApp,
+  createScratchFile,
+} from './fixtures';
 import type { FileTarget } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -131,45 +137,18 @@ async function cleanup(page: Page, targets: FileTarget[]): Promise<void> {
 
 /**
  * Create a project whose directory and content this test owns, so project-wide
- * operations (clear-all) can never touch the shared seeded project. The shared
- * project is immediately re-opened so concurrently running specs that pick
- * `projects[0]` keep targeting the seeded project rather than this one.
+ * operations (clear-all) can never touch the shared seeded project.
  */
-async function createOwnedProject(
-  page: Page,
-  path: string,
-  restoreProjectPath?: string
-): Promise<number> {
-  return page.evaluate(
-    async ({ projectPath, restorePath }) => {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: projectPath }),
-      });
-      if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
-      const project = await res.json();
-
-      if (restorePath) {
-        await fetch('/api/projects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: restorePath }),
-        });
-      }
-      return project.id as number;
-    },
-    { projectPath: path, restorePath: restoreProjectPath }
-  );
-}
-
-async function firstOpenProjectPath(page: Page): Promise<string | undefined> {
-  return page.evaluate(async () => {
-    const res = await fetch('/api/projects?open=true');
-    if (!res.ok) return undefined;
-    const projects = await res.json();
-    return (projects[0]?.path as string | undefined) ?? undefined;
-  });
+async function createOwnedProject(page: Page, path: string): Promise<number> {
+  return page.evaluate(async (projectPath) => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectPath }),
+    });
+    if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
+    return (await res.json()).id as number;
+  }, path);
 }
 
 test.describe('annotation management panel', () => {
@@ -231,7 +210,6 @@ test.describe('annotation management panel', () => {
     );
     targets = [healthy, orphan];
 
-    await createAnnotationViaApi(page, healthy, 'healthy note');
     await createAnnotationViaApi(page, orphan, 'orphan note');
     await page.evaluate(async ({ projectId, path }) => {
       await fetch('/api/files', {
@@ -242,6 +220,8 @@ test.describe('annotation management panel', () => {
     }, orphan);
 
     await openScratch(page, healthy, 'Management Healthy');
+    // A real UI anchor so the row stays locatable (not Outdated).
+    await createBlockAnnotation(page, TARGET_A, 'healthy note');
     const manager = await openManager(page);
 
     const orphanRow = rowFor(manager, 'orphan note');
@@ -324,8 +304,7 @@ test.describe('annotation management panel', () => {
 
     let projectId: number | undefined;
     try {
-      const harnessProjectPath = await firstOpenProjectPath(page);
-      projectId = await createOwnedProject(page, projectDir, harnessProjectPath);
+      projectId = await createOwnedProject(page, projectDir);
       const target = { projectId, path: filePath };
       await createAnnotationViaApi(page, target, 'clear note one');
       await createAnnotationViaApi(page, target, 'clear note two');

@@ -125,31 +125,71 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
           </div>
         </Show>
         <For each={visibleAnnotations()}>
-          {(annotation) => (
-            <div
-              class={`annotation-column-item ${annotation.resolved ? 'resolved' : ''}`}
-              data-annotation-id={String(annotation.id)}
-            >
-              <button
-                type="button"
-                class="annotation-column-entry"
-                onClick={() => jumpTo(annotation)}
-                aria-label={`Jump to annotation: ${annotationExcerpt(annotation).slice(0, 80)}`}
+          {(annotation) => {
+            const outdated = () => annotationStore.isOutdated(annotation.id);
+            const snapshot = () => annotationStore.outdatedSnapshot(annotation.id) ?? '';
+            const excerpt = () =>
+              annotationExcerpt(annotation, annotationStore.outdatedSnapshot(annotation.id));
+            const openAnnotation = (event: MouseEvent) => {
+              // An Outdated annotation has no highlight to click; its column
+              // entry opens the viewer so the snapshot stays reachable.
+              if (!outdated()) {
+                jumpTo(annotation);
+                return;
+              }
+              const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+              annotationStore.requestView(annotation.id, rect.left, rect.top);
+            };
+            return (
+              <div
+                class={`annotation-column-item ${annotation.resolved ? 'resolved' : ''} ${outdated() ? 'outdated' : ''}`}
+                data-annotation-id={String(annotation.id)}
+                data-outdated={outdated() ? 'true' : undefined}
               >
-                <span class="annotation-column-excerpt">{annotationExcerpt(annotation)}</span>
-                <span class="annotation-column-meta">
-                  <span class={`annotation-state ${annotation.resolved ? 'resolved' : ''}`}>
-                    {annotation.resolved ? 'Resolved' : 'Active'}
+                <button
+                  type="button"
+                  class="annotation-column-entry"
+                  onClick={openAnnotation}
+                  aria-label={`${outdated() ? 'Open outdated annotation' : 'Jump to annotation'}: ${excerpt().slice(0, 80)}`}
+                >
+                  <span class="annotation-column-excerpt">{excerpt()}</span>
+                  <span class="annotation-column-meta">
+                    <span
+                      class={`annotation-state ${outdated() ? 'outdated' : annotation.resolved ? 'resolved' : ''}`}
+                    >
+                      {outdated() ? 'Outdated' : annotation.resolved ? 'Resolved' : 'Active'}
+                    </span>
+                    <span class="annotation-column-time">{timeFor(annotation)}</span>
                   </span>
-                  <span class="annotation-column-time">{timeFor(annotation)}</span>
-                </span>
-              </button>
+                </button>
 
-              <div class="annotation-column-thread">
-                <AnnotationThread annotation={annotation} />
+                <Show when={outdated()}>
+                  <div class="annotation-outdated" role="status">
+                    <span class="annotation-outdated-badge">Outdated</span>
+                    <p class="annotation-outdated-snapshot">
+                      <span class="annotation-outdated-label">Originally anchored text</span>
+                      <span class="annotation-outdated-text">{snapshot()}</span>
+                    </p>
+                    <button
+                      type="button"
+                      class="annotation-action-secondary"
+                      disabled={!annotationStore.canMutate()}
+                      title={
+                        annotationStore.canMutate() ? undefined : 'Unavailable offline'
+                      }
+                      onClick={() => annotationStore.startReanchor(annotation.id)}
+                    >
+                      Re-anchor
+                    </button>
+                  </div>
+                </Show>
+
+                <div class="annotation-column-thread">
+                  <AnnotationThread annotation={annotation} />
+                </div>
               </div>
-            </div>
-          )}
+            );
+          }}
         </For>
         </div>
       </Show>

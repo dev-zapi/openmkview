@@ -11,8 +11,8 @@ mod version_handler;
 
 pub use annotation_handler::{
     add_note, batch_delete_annotations, batch_resolve_annotations, clear_project_annotations,
-    create_annotation, delete_annotation, list_annotations, list_project_annotations, set_resolved,
-    update_note,
+    create_annotation, delete_annotation, list_annotations, list_project_annotations,
+    reanchor_annotation, set_resolved, update_note,
 };
 pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{

@@ -203,7 +203,9 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                           />
                         </td>
                         <td class="annotation-manager-file">{row.relativePath}</td>
-                        <td class="annotation-manager-excerpt">{annotationExcerpt(row)}</td>
+                        <td class="annotation-manager-excerpt">
+                          {annotationExcerpt(row, annotationStore.outdatedSnapshot(row.id))}
+                        </td>
                         <td class="annotation-manager-note">{annotationNotePreview(row)}</td>
                         <td>
                           <span
