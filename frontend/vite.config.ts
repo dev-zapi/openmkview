@@ -144,10 +144,10 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 3001,
       proxy: {
-        // 当 mock 禁用时，代理到后端服务
+        // 当 mock 禁用时，代理到后端服务（OPENMKVIEW_BACKEND 可指向隔离实例）
         ...(!mockEnabled && {
           '/api': {
-            target: 'http://localhost:4567',
+            target: process.env.OPENMKVIEW_BACKEND || 'http://localhost:4567',
             changeOrigin: true,
           },
         }),

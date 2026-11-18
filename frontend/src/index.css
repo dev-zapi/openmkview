@@ -1510,7 +1510,8 @@ textarea {
 /* Markdown Wrapper */
 .markdown-wrapper {
   max-width: 100%;
-  padding: 16px;
+  /* 左侧是批注栏：marker 图标 + 高亮竖条都落在这里，与正文保持间距 */
+  padding: 16px 16px 16px 32px;
 }
 
 .html-preview-wrapper {
@@ -2662,9 +2663,10 @@ textarea {
     font-size: 14px;
   }
 
-  /* Markdown wrapper on mobile */
+  /* Markdown wrapper on mobile: 收窄右侧，保留批注栏（粗指针设备会在
+     global.css 里收回批注栏给正文） */
   .markdown-wrapper {
-    padding: 16px;
+    padding: 16px 12px 16px 32px;
   }
 
   /* Source view on mobile */

@@ -1495,8 +1495,11 @@
 
 .annotation-marker {
   position: absolute;
-  top: 4px;
-  left: -15px;
+  /* 27px 行高下 16px 图标的光学居中 */
+  top: 5px;
+  /* 批注栏：16px 图标 + 4px 间隙 + 3px 竖条 + 8px 内距 = 31px，
+     wrapper 左内边距 32px 刚好容纳，不与正文贴边 */
+  left: -32px;
   z-index: 1;
   display: inline-flex;
   align-items: center;
@@ -1511,7 +1514,8 @@
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .annotation-block:hover > .annotation-marker,
@@ -1526,12 +1530,15 @@
   border-color: var(--color-primary);
 }
 
+/* 已有批注的块：实心图标块在栏内一眼可辨（“这里有批注”） */
 .annotation-marker.has-annotation {
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
   border-color: var(--color-primary);
 }
 
 .annotation-marker.has-annotation.resolved {
+  background: var(--color-card);
   color: var(--color-muted-foreground);
   border-color: var(--color-border);
 }
@@ -1554,12 +1561,39 @@
 }
 
 .annotation-block.annotation-highlighted {
-  border-radius: 4px;
+  /* 高亮向左侵入批注栏：竖条与正文之间留出内边距，不再贴着字；
+     负外边距抵消新增内边距，正文位置与相邻段落间距都保持不变 */
+  margin-left: -11px;
+  margin-right: -6px;
+  padding-left: 11px;
+  padding-right: 6px;
+  border-radius: 6px;
   background-image: linear-gradient(
     color-mix(in oklab, var(--color-primary) 12%, transparent),
     color-mix(in oklab, var(--color-primary) 12%, transparent)
   );
   box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* 高亮块已左移 11px，marker 回拉同样的距离，所有 marker 固定在同一栏位 */
+.annotation-block.annotation-highlighted > .annotation-marker {
+  left: -21px;
+}
+
+/* 触屏没有悬停 marker 的概念：长按与划选承担入口，收回批注栏给正文 */
+@media (pointer: coarse) {
+  .annotation-marker {
+    display: none;
+  }
+
+  .markdown-wrapper {
+    padding-left: 16px;
+  }
+
+  .annotation-block.annotation-highlighted {
+    margin-left: -16px;
+    padding-left: 16px;
+  }
 }
 
 .annotation-block.annotation-highlighted.annotation-resolved {

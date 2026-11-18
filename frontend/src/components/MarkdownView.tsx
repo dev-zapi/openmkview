@@ -299,7 +299,14 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (annotations.length === 0) return;
 
     event.preventDefault();
-    openAnnotations(annotations, blockElement.getBoundingClientRect());
+    // Anchor to the rail marker when it is positioned: a full-width block
+    // rect would swing the popover across the sidebar. On coarse pointers
+    // the marker is hidden (zero rect), so fall back to the block rect.
+    const markerAnchor = blockElement.querySelector<HTMLElement>('.annotation-marker');
+    const anchorRect = markerAnchor && markerAnchor.getBoundingClientRect().width > 0
+      ? markerAnchor.getBoundingClientRect()
+      : blockElement.getBoundingClientRect();
+    openAnnotations(annotations, anchorRect);
   };
 
   const cancelLongPress = () => {
