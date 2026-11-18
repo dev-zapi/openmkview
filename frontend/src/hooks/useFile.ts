@@ -147,6 +147,16 @@ export const useFile = () => {
     const newName = prompt('Enter new name:', node.name);
     if (!newName || newName === node.name) return;
 
+    // If the rename touches the open file, discard-or-cancel must happen before
+    // the filesystem change. Otherwise a cancelled discard would leave the
+    // editor pointing at a path that no longer exists and the next save would
+    // fail. Preview mode has no dirty state and proceeds straight through.
+    const currentPath = fileStore.currentFile()?.path;
+    const nextPath = currentPath
+      ? mapPathAfterRename(currentPath, node.path, newName)
+      : null;
+    if (nextPath && !confirmDiscardIfDirty()) return;
+
     try {
       await api.renameFile(node.path, newName, project.id);
 
@@ -155,10 +165,6 @@ export const useFile = () => {
 
       // Annotations follow the file because the backend migrated their
       // stored relative paths; reopen the current file under its new path.
-      const currentPath = fileStore.currentFile()?.path;
-      const nextPath = currentPath
-        ? mapPathAfterRename(currentPath, node.path, newName)
-        : null;
       if (nextPath) {
         await openFile(nextPath, true);
       }

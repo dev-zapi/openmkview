@@ -188,6 +188,28 @@ describe('useFile', () => {
     expect(alertMock).toHaveBeenCalledWith('Failed to rename: Target file already exists');
   });
 
+  it('does not rename when the user cancels discarding the affected dirty file', async () => {
+    const { renameFile } = useFile();
+    projectStore.setActiveProject({ id: 1, name: 'alpha', path: '/workspace/alpha' });
+    fileStore.openDocumentFile(
+      { content: '# Readme', fileName: 'README.md', path: 'docs/README.md' },
+      'markdown'
+    );
+    editorStore.initialize('# Readme');
+    editorStore.setDirty(true);
+    appStore.setActiveTab('edit');
+
+    vi.spyOn(window, 'prompt').mockReturnValue('GUIDE.md');
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const rename = vi.spyOn(api, 'renameFile').mockResolvedValue(undefined);
+
+    await renameFile(node);
+
+    expect(rename).not.toHaveBeenCalled();
+    expect(fileStore.currentFile()?.path).toBe('docs/README.md');
+    expect(editorStore.isDirty()).toBe(true);
+  });
+
   it('closes the left drawer before opening a file on mobile', async () => {
     const { mobileFileClick } = useFile();
     const closeLeftDrawerSpy = vi.spyOn(mobileLayoutStore, 'closeLeftDrawer');
