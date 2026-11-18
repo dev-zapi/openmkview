@@ -1,5 +1,40 @@
 import type { AnnotationAnchor, AnchorSegment } from '../types';
 import { normalizeBlockText } from './blockModel';
+import {
+  blockMatchScore,
+  contextScore,
+  findQuoteOccurrences,
+  isObject,
+  outdatedFromAnchor,
+  segmentAnchorText,
+  segmentStringField,
+  selectBestOccurrence,
+  type OutdatedResult,
+  type ScoredOccurrence,
+  type ScorableBlock,
+} from './anchorScoring';
+
+/**
+ * Source-view echo of Anchors: raw Markdown in, source line ranges out.
+ *
+ * Best-effort by design (ADR-0005). The raw document is projected into a
+ * block-aware searchable text:
+ * - blocks mirror the rendered top-level block model as closely as a
+ *   lightweight parser can (headings incl. setext, paragraphs, lists,
+ *   blockquotes, fenced/indented code, tables);
+ * - blocks are joined with a boundary sentinel, so a quote can never match
+ *   across a block boundary;
+ * - sentence markers/decoration are stripped while block structure is kept.
+ *
+ * Known approximations (safe: they can only degrade to Outdated/outdated,
+ * never echo a wrong line): lazy blockquote/list continuation, deeply nested
+ * lists, HTML blocks, emphasis runs that are ambiguous with literal markers,
+ * and characters after the first adjacent inline-code span on a line.
+ *
+ * Scoring is shared with the Preview resolver via `anchorScoring` so both
+ * views agree wherever both can decide; when they cannot, the anchor is
+ * Outdated rather than guessed.
+ */
 
 /** Inclusive, 1-based line range in the raw Markdown source. */
 export interface SourceLineRange {
@@ -9,48 +44,99 @@ export interface SourceLineRange {
 
 export type SourceAnchorLocation =
   | { status: 'located'; ranges: SourceLineRange[] }
-  | { status: 'outdated'; snapshot: string };
+  | OutdatedResult;
+
+interface SourceBlock extends ScorableBlock {
+  /** Per-character source line for `text`. */
+  lineOf: number[];
+  startLine: number;
+  endLine: number;
+}
 
 interface SourceProjection {
-  /** Whitespace-normalized raw Markdown text. */
+  /** Blocks joined by `BOUNDARY`; sentinel characters never match quotes. */
   text: string;
-  /** 1-based source line for every character in `text`. */
+  /** Per-character source line for `text` (sentinel included). */
   lineOf: number[];
-  /** Heading text ancestors active at each 1-based source line. */
-  headingPaths: string[][];
+  /** Per-character owning block index, or -1 for a boundary. */
+  blockOf: number[];
+  blocks: SourceBlock[];
+  /** Half-open offsets of each block into `text`. */
+  blockOffsets: { start: number; end: number }[];
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function segmentText(segment: AnchorSegment): string | null {
-  if (!isObject(segment)) return null;
-  if (typeof segment.quote === 'string') return segment.quote;
-  if (typeof segment.blockText === 'string') return segment.blockText;
-  return null;
-}
-
-function snapshotFromAnchor(anchor: AnnotationAnchor): string {
-  return anchor.segments
-    .map((segment) => segmentText(segment) ?? '')
-    .filter((text) => text.length > 0)
-    .join('\n\n');
-}
-
-function outdated(anchor: AnnotationAnchor | null | undefined): SourceAnchorLocation {
-  return {
-    status: 'outdated',
-    snapshot: anchor && Array.isArray(anchor.segments) ? snapshotFromAnchor(anchor) : '',
-  };
-}
-
+const BOUNDARY = '\u0001';
 const ESCAPABLE = /[\\`*_{}[\]()#+\-.!>~|]/;
+
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  copy: '©',
+  reg: '®',
+  trade: '™',
+  mdash: '—',
+  ndash: '–',
+  hellip: '…',
+  lsquo: '‘',
+  rsquo: '’',
+  ldquo: '“',
+  rdquo: '”',
+  laquo: '«',
+  raquo: '»',
+  bull: '•',
+  middot: '·',
+  deg: '°',
+  times: '×',
+  divide: '÷',
+  plusmn: '±',
+  frac12: '½',
+  frac14: '¼',
+  frac34: '¾',
+  sect: '§',
+  para: '¶',
+  dagger: '†',
+  Dagger: '‡',
+  permil: '‰',
+  euro: '€',
+  pound: '£',
+  yen: '¥',
+  cent: '¢',
+  iexcl: '¡',
+  iquest: '¿',
+  shy: '­',
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]+);/g, (entity, body: string) => {
+    if (body.startsWith('#')) {
+      const hexadecimal = body[1] === 'x' || body[1] === 'X';
+      const value = Number.parseInt(body.slice(hexadecimal ? 2 : 1), hexadecimal ? 16 : 10);
+      if (Number.isFinite(value) && value > 0 && value <= 0x10ffff) {
+        try {
+          return String.fromCodePoint(value);
+        } catch {
+          return entity;
+        }
+      }
+      return entity;
+    }
+    return NAMED_ENTITIES[body] ?? entity;
+  });
+}
+
+function isWhitespace(character: string): boolean {
+  return /\s/.test(character);
+}
 
 /**
  * Removes inline Markdown decoration so rendered quote text can be found in
- * the raw source. Inline-code spans keep their content verbatim; emphasis
- * markers are dropped; escaped characters are unescaped.
+ * the raw source. Inline-code spans keep their content verbatim; escaped
+ * characters are unescaped. A marker run is stripped only when it reads as an
+ * emphasis opener/closer, so literals such as `2 * 3` survive.
  */
 function stripInlineMarkers(line: string): string {
   let result = '';
@@ -70,18 +156,27 @@ function stripInlineMarkers(line: string): string {
       continue;
     }
 
-    if (!inInlineCode && (character === '*' || character === '_')) {
-      const previous = line[index - 1] ?? ' ';
-      const next = line[index + 1] ?? ' ';
-      // Intra-word markers are literal; paired emphasis markers are dropped.
-      if (/[A-Za-z0-9]/.test(previous) && /[A-Za-z0-9]/.test(next)) {
-        result += character;
-      }
-      continue;
-    }
+    if (!inInlineCode && (character === '*' || character === '_' || character === '~')) {
+      let runEnd = index;
+      while (line[runEnd + 1] === character) runEnd += 1;
+      const runLength = runEnd - index + 1;
 
-    if (!inInlineCode && character === '~' && line[index + 1] === '~') {
-      index += 1;
+      if (character !== '~' || runLength >= 2) {
+        const previous = line[index - 1] ?? ' ';
+        const next = line[runEnd + 1] ?? ' ';
+        const hangingLeft = index === 0 || isWhitespace(previous);
+        const hangingRight = runEnd === line.length - 1 || isWhitespace(next);
+        const opener = hangingLeft && !hangingRight;
+        const closer = !hangingLeft && (hangingRight || /[.,;:!?)\]}]/.test(next));
+
+        if (opener || closer) {
+          index = runEnd;
+          continue;
+        }
+      }
+
+      result += line.slice(index, runEnd + 1);
+      index = runEnd;
       continue;
     }
 
@@ -89,19 +184,6 @@ function stripInlineMarkers(line: string): string {
   }
 
   return result;
-}
-
-const ENTITIES: Record<string, string> = {
-  '&amp;': '&',
-  '&lt;': '<',
-  '&gt;': '>',
-  '&quot;': '"',
-  '&#39;': "'",
-  '&nbsp;': ' ',
-};
-
-function decodeEntities(text: string): string {
-  return text.replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, (entity) => ENTITIES[entity] ?? entity);
 }
 
 /** Strips block-level markers and inline decoration from one Markdown line. */
@@ -128,264 +210,394 @@ function projectMarkdownLine(line: string): string {
     .replace(/<((?:https?|mailto):[^>]+)>/g, '$1')
     .replace(/<[^>]+>/g, '');
 
-  return decodeEntities(stripInlineMarkers(text)).replace(/\|/g, '');
+  return decodeEntities(stripInlineMarkers(text));
 }
 
-function frontmatterEnd(lines: string[]): number {
-  if (lines.length === 0 || lines[0].trim() !== '---') return 0;
-  for (let index = 1; index < lines.length; index += 1) {
-    if (lines[index].trim() === '---' || lines[index].trim() === '...') return index;
+interface BlockBuilder {
+  text: string[];
+  lineOf: number[];
+  pendingSpaceLine: number | null;
+}
+
+function createBuilder(): BlockBuilder {
+  return { text: [], lineOf: [], pendingSpaceLine: null };
+}
+
+function pushCharacter(builder: BlockBuilder, character: string, line: number): void {
+  if (isWhitespace(character)) {
+    if (builder.text.length > 0 && builder.text[builder.text.length - 1] !== ' ') {
+      builder.pendingSpaceLine = line;
+    }
+    return;
   }
-  return 0;
+  if (builder.pendingSpaceLine !== null) {
+    builder.text.push(' ');
+    builder.lineOf.push(builder.pendingSpaceLine);
+    builder.pendingSpaceLine = null;
+  }
+  builder.text.push(character);
+  builder.lineOf.push(line);
 }
 
-/** Builds a searchable projection of the raw Markdown above its line map. */
-function buildSourceProjection(markdown: string): SourceProjection {
-  const text: string[] = [];
-  const lineOf: number[] = [];
-  let pendingSpaceLine: number | null = null;
+/** Appends a projected line, collapsing whitespace within the block. */
+function pushLine(builder: BlockBuilder, projected: string, line: number): void {
+  for (const character of projected) pushCharacter(builder, character, line);
+  pushCharacter(builder, '\n', line);
+}
 
-  const pushCharacter = (character: string, line: number): void => {
-    if (/\s/.test(character)) {
-      if (text.length > 0 && text[text.length - 1] !== ' ') pendingSpaceLine = line;
-      return;
+function finishBlock(
+  builder: BlockBuilder,
+  type: string,
+  startLine: number,
+  endLine: number,
+  headingPath: string[]
+): SourceBlock {
+  return {
+    text: builder.text.join(''),
+    lineOf: builder.lineOf,
+    type,
+    headingPath,
+    startLine,
+    endLine,
+  };
+}
+
+const FENCE_RE = /^\s{0,3}(`{3,}|~{3,})(.*)$/;
+const ATX_RE = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
+const SETEXT_RE = /^\s{0,3}(=+|-+)\s*$/;
+const HR_RE = /^\s{0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/;
+const LIST_RE = /^(\s{0,3})([-+*]|\d{1,9}[.)])(\s+)(.*)$/;
+const BLOCKQUOTE_RE = /^\s{0,3}>\s?(.*)$/;
+const INDENTED_CODE_RE = /^(\t| {4})/;
+const TABLE_DELIMITER_RE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/;
+
+function isSetextUnderline(line: string): boolean {
+  return SETEXT_RE.test(line);
+}
+
+function isTableStart(lines: string[], index: number): boolean {
+  const line = lines[index];
+  const next = lines[index + 1];
+  return Boolean(line && next && line.includes('|') && TABLE_DELIMITER_RE.test(next));
+}
+
+function startsNewBlock(lines: string[], index: number): boolean {
+  const line = lines[index];
+  if (!line || !line.trim()) return true;
+  if (FENCE_RE.test(line)) return true;
+  if (ATX_RE.test(line)) return true;
+  if (LIST_RE.test(line)) return true;
+  if (BLOCKQUOTE_RE.test(line)) return true;
+  if (HR_RE.test(line)) return true;
+  if (isTableStart(lines, index)) return true;
+  return false;
+}
+
+function splitTableRow(line: string): string[] {
+  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  return trimmed.split(/(?<!\\)\|/);
+}
+
+/** Parses the raw Markdown into the top-level block model the echo needs. */
+function parseSourceBlocks(lines: string[]): SourceBlock[] {
+  const blocks: SourceBlock[] = [];
+  const headingStack: { level: number; text: string }[] = [];
+  const currentPath = (): string[] => headingStack.map((heading) => heading.text);
+  const updateHeading = (level: number, text: string): void => {
+    while (headingStack.length > 0 && headingStack[headingStack.length - 1].level >= level) {
+      headingStack.pop();
     }
-    if (pendingSpaceLine !== null) {
-      text.push(' ');
-      lineOf.push(pendingSpaceLine);
-      pendingSpaceLine = null;
-    }
-    text.push(character);
-    lineOf.push(line);
+    headingStack.push({ level, text });
   };
 
-  const lines = markdown.split('\n');
-  const frontmatterStop = frontmatterEnd(lines);
-  const headingPaths: string[][] = [[]];
-  const headingStack: { level: number; text: string }[] = [];
-  let inFence = false;
+  let index = 0;
 
-  for (let index = 0; index < lines.length; index += 1) {
+  // Frontmatter renders outside the Markdown block model.
+  if (lines[0]?.trim() === '---') {
+    const close = lines.findIndex((line, at) => at > 0 && (line.trim() === '---' || line.trim() === '...'));
+    if (close !== -1) {
+      blocks.push(finishBlock(createBuilder(), 'frontmatter', 1, close + 1, []));
+      index = close + 1;
+    }
+  }
+
+  while (index < lines.length) {
     const line = lines[index];
-    const lineNumber = index + 1;
-    headingPaths[lineNumber] = headingStack.map((heading) => heading.text);
 
-    if (frontmatterStop > 0 && index <= frontmatterStop) {
-      pushCharacter('\n', lineNumber);
+    if (!line.trim()) {
+      index += 1;
       continue;
     }
 
-    const fence = /^\s{0,3}(```+|~~~+)/.exec(line);
+    const fence = FENCE_RE.exec(line);
     if (fence) {
-      inFence = !inFence;
-      pushCharacter('\n', lineNumber);
+      const marker = fence[1][0];
+      const minimumLength = fence[1].length;
+      const closePattern = new RegExp(`^\\s{0,3}${marker === '`' ? '`' : '~'}{${minimumLength},}\\s*$`);
+      const builder = createBuilder();
+      let cursor = index + 1;
+
+      while (cursor < lines.length && !closePattern.test(lines[cursor])) {
+        pushLine(builder, lines[cursor], cursor + 1);
+        cursor += 1;
+      }
+
+      const closeLine = cursor < lines.length ? cursor : lines.length - 1;
+      const hasContent = cursor > index + 1;
+      // Whole-block echo covers the code content, not the fence markers.
+      const startLine = hasContent ? index + 2 : index + 1;
+      const endLine = hasContent ? cursor : closeLine + 1;
+      blocks.push(finishBlock(builder, 'code', startLine, endLine, currentPath()));
+      index = cursor < lines.length ? cursor + 1 : lines.length;
       continue;
     }
 
-    if (!inFence) {
-      const heading = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
-      if (heading) {
-        const level = heading[1].length;
-        while (
-          headingStack.length > 0 &&
-          headingStack[headingStack.length - 1].level >= level
-        ) {
-          headingStack.pop();
+    const atx = ATX_RE.exec(line);
+    if (atx) {
+      const level = atx[1].length;
+      const builder = createBuilder();
+      pushLine(builder, projectMarkdownLine(atx[2]), index + 1);
+      blocks.push(finishBlock(builder, `h${level}`, index + 1, index + 1, currentPath()));
+      updateHeading(level, normalizeBlockText(builder.text.join('')));
+      index += 1;
+      continue;
+    }
+
+    if (INDENTED_CODE_RE.test(line)) {
+      const builder = createBuilder();
+      let cursor = index;
+
+      while (cursor < lines.length) {
+        if (!lines[cursor].trim()) {
+          const nextLine = lines[cursor + 1];
+          if (nextLine !== undefined && INDENTED_CODE_RE.test(nextLine)) {
+            cursor += 1;
+            continue;
+          }
+          break;
         }
-        headingStack.push({
-          level,
-          text: normalizeBlockText(projectMarkdownLine(heading[2])),
-        });
+        if (!INDENTED_CODE_RE.test(lines[cursor])) break;
+        pushLine(builder, lines[cursor].replace(INDENTED_CODE_RE, ''), cursor + 1);
+        cursor += 1;
       }
+
+      blocks.push(finishBlock(builder, 'code', index + 1, cursor, currentPath()));
+      index = cursor;
+      continue;
     }
 
-    const projected = inFence ? line : projectMarkdownLine(line);
-    for (const character of projected) pushCharacter(character, lineNumber);
-    pushCharacter('\n', lineNumber);
-  }
-
-  return { text: text.join(''), lineOf, headingPaths };
-}
-
-function findOccurrences(projection: SourceProjection, quote: string): number[] {
-  const normalizedQuote = normalizeBlockText(quote);
-  if (!normalizedQuote) return [];
-
-  const exact = projection.text.indexOf(normalizedQuote);
-  if (exact !== -1) {
-    const starts: number[] = [];
-    let index = exact;
-    while (index !== -1) {
-      starts.push(index);
-      index = projection.text.indexOf(normalizedQuote, index + 1);
+    if (BLOCKQUOTE_RE.test(line)) {
+      const builder = createBuilder();
+      let cursor = index;
+      while (cursor < lines.length && BLOCKQUOTE_RE.test(lines[cursor])) {
+        pushLine(builder, projectMarkdownLine(BLOCKQUOTE_RE.exec(lines[cursor])![1]), cursor + 1);
+        cursor += 1;
+      }
+      blocks.push(finishBlock(builder, 'blockquote', index + 1, cursor, currentPath()));
+      index = cursor;
+      continue;
     }
-    return starts;
+
+    if (isTableStart(lines, index)) {
+      const builder = createBuilder();
+      let cursor = index;
+
+      const addRow = (rowLine: string, lineNumber: number): void => {
+        for (const cell of splitTableRow(rowLine)) {
+          const projected = normalizeBlockText(projectMarkdownLine(cell));
+          for (const character of projected) {
+            builder.text.push(character);
+            builder.lineOf.push(lineNumber);
+          }
+        }
+      };
+
+      addRow(lines[cursor], cursor + 1);
+      cursor += 2; // header + delimiter
+      while (cursor < lines.length && lines[cursor].trim() && lines[cursor].includes('|')) {
+        addRow(lines[cursor], cursor + 1);
+        cursor += 1;
+      }
+
+      blocks.push(finishBlock(builder, 'table', index + 1, cursor, currentPath()));
+      index = cursor;
+      continue;
+    }
+
+    const list = LIST_RE.exec(line);
+    if (list) {
+      const builder = createBuilder();
+      const ordered = /^\d/.test(list[2]);
+      let cursor = index;
+
+      while (cursor < lines.length) {
+        const itemLine = lines[cursor];
+        if (!itemLine.trim()) break;
+
+        const item = LIST_RE.exec(itemLine);
+        if (item) {
+          pushLine(builder, projectMarkdownLine(item[4]), cursor + 1);
+          cursor += 1;
+          continue;
+        }
+
+        if (startsNewBlock(lines, cursor)) break;
+        pushLine(builder, projectMarkdownLine(itemLine), cursor + 1);
+        cursor += 1;
+      }
+
+      blocks.push(finishBlock(builder, ordered ? 'ol' : 'ul', index + 1, cursor, currentPath()));
+      index = cursor;
+      continue;
+    }
+
+    if (HR_RE.test(line) || isSetextUnderline(line)) {
+      // Standalone rules and orphan underlines render no annotatable text.
+      index += 1;
+      continue;
+    }
+
+    // Paragraph, possibly a multi-line setext heading.
+    const builder = createBuilder();
+    const startLine = index + 1;
+    let cursor = index;
+    let setextLevel: number | null = null;
+
+    while (cursor < lines.length) {
+      const paragraphLine = lines[cursor];
+      if (!paragraphLine.trim()) break;
+
+      if (cursor > index && isSetextUnderline(paragraphLine)) {
+        setextLevel = paragraphLine.trim().startsWith('=') ? 1 : 2;
+        cursor += 1;
+        break;
+      }
+
+      if (cursor > index && startsNewBlock(lines, cursor)) break;
+
+      pushLine(builder, projectMarkdownLine(paragraphLine), cursor + 1);
+      cursor += 1;
+    }
+
+    if (setextLevel !== null) {
+      const text = normalizeBlockText(builder.text.join(''));
+      blocks.push(
+        finishBlock(builder, `h${setextLevel}`, startLine, cursor, currentPath())
+      );
+      updateHeading(setextLevel, text);
+    } else {
+      blocks.push(finishBlock(builder, 'p', startLine, cursor, currentPath()));
+    }
+
+    index = cursor;
   }
 
-  const lowerText = projection.text.toLocaleLowerCase();
-  const lowerQuote = normalizedQuote.toLocaleLowerCase();
-  const starts: number[] = [];
-  let index = lowerText.indexOf(lowerQuote);
-  while (index !== -1) {
-    starts.push(index);
-    index = lowerText.indexOf(lowerQuote, index + 1);
-  }
-  return starts;
+  return blocks;
 }
 
-const CONTEXT_WEIGHT = 12;
-const HEADING_PREFIX_WEIGHT = 60;
+/** Builds the block-aware projection of the raw Markdown above a line map. */
+function buildSourceProjection(markdown: string): SourceProjection {
+  const blocks = parseSourceBlocks(markdown.split('\n'));
+  const characters: string[] = [];
+  const lineOf: number[] = [];
+  const blockOf: number[] = [];
+  const blockOffsets: { start: number; end: number }[] = [];
 
-function commonPrefixLength(left: string, right: string): number {
-  const limit = Math.min(left.length, right.length);
-  let index = 0;
-  while (index < limit && left[index] === right[index]) index += 1;
-  return index;
+  blocks.forEach((block, blockIndex) => {
+    if (characters.length > 0) {
+      characters.push(BOUNDARY);
+      lineOf.push(block.startLine);
+      blockOf.push(-1);
+    }
+
+    const start = characters.length;
+    for (let offset = 0; offset < block.text.length; offset += 1) {
+      characters.push(block.text[offset]);
+      lineOf.push(block.lineOf[offset]);
+      blockOf.push(blockIndex);
+    }
+    blockOffsets.push({ start, end: characters.length });
+  });
+
+  return { text: characters.join(''), lineOf, blockOf, blocks, blockOffsets };
 }
 
-function headingPrefixLength(left: string[], right: string[]): number {
-  const limit = Math.min(left.length, right.length);
-  let index = 0;
-  while (index < limit && left[index] === right[index]) index += 1;
-  return index;
-}
-
-function commonSuffixLength(left: string, right: string): number {
-  const limit = Math.min(left.length, right.length);
-  let index = 0;
-  while (index < limit && left[left.length - 1 - index] === right[right.length - 1 - index]) {
-    index += 1;
-  }
-  return index;
-}
-
-function segmentString(segment: unknown, field: string): string {
-  if (!isObject(segment)) return '';
-  const value = segment[field];
-  return typeof value === 'string' ? value : '';
-}
-
-function segmentHeadingPath(segment: unknown): string[] {
-  if (!isObject(segment)) return [];
-  const value = segment.headingPath;
-  return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];
-}
-
-function collapseWhitespace(text: string): string {
-  return text.replace(/\s+/g, ' ');
-}
-
-function contextScore(
+function rangeForOccurrence(
   projection: SourceProjection,
-  start: number,
-  end: number,
-  prefix: string,
-  suffix: string
-): number {
-  // Boundary whitespace is meaningful here, so collapse without trimming:
-  // the excerpt touching the quote must align with the projection's spacing.
-  const normalizedPrefix = collapseWhitespace(prefix);
-  const normalizedSuffix = collapseWhitespace(suffix);
-  if (!normalizedPrefix.trim() && !normalizedSuffix.trim()) return 0;
-
-  const actualPrefix = projection.text.slice(0, start);
-  const actualSuffix = projection.text.slice(end);
-  return (
-    (commonSuffixLength(actualPrefix, normalizedPrefix) +
-      commonPrefixLength(actualSuffix, normalizedSuffix)) *
-    CONTEXT_WEIGHT
-  );
+  occurrence: ScoredOccurrence<number>
+): SourceLineRange {
+  return {
+    start: projection.lineOf[occurrence.start],
+    end: projection.lineOf[occurrence.end - 1],
+  };
 }
 
-function headingScore(projection: SourceProjection, line: number, headingPath: string[]): number {
-  if (headingPath.length === 0) return 0;
-  return (
-    headingPrefixLength(projection.headingPaths[line] ?? [], headingPath) *
-    HEADING_PREFIX_WEIGHT
-  );
-}
+function locateTextSegment(
+  projection: SourceProjection,
+  segment: AnchorSegment
+): SourceLineRange | null {
+  const quote = normalizeBlockText(segmentStringField(segment, 'quote'));
+  if (!quote) return null;
 
-interface QuoteCandidate {
-  range: SourceLineRange;
-  score: number;
-}
+  const prefix = segmentStringField(segment, 'prefix');
+  const suffix = segmentStringField(segment, 'suffix');
+  const occurrences: ScoredOccurrence<number>[] = [];
 
-function locateQuote(projection: SourceProjection, segment: unknown): SourceLineRange | null {
-  const quote = segmentString(segment, 'quote');
-  if (!quote && segmentString(segment, 'blockText')) {
-    return locateBlockText(projection, segment);
-  }
+  for (const start of findQuoteOccurrences(projection.text, quote)) {
+    const end = start + quote.length; // exclusive
+    const blockIndex = projection.blockOf[start];
+    // A match must stay inside one block; sentinels already prevent `indexOf`
+    // from crossing them, and this guards any future projection change.
+    if (blockIndex < 0 || projection.blockOf[end - 1] !== blockIndex) continue;
 
-  const normalizedQuote = normalizeBlockText(quote);
-  if (!normalizedQuote) return null;
-
-  const prefix = segmentString(segment, 'prefix');
-  const suffix = segmentString(segment, 'suffix');
-  const headingPath = segmentHeadingPath(segment);
-
-  let bestScore = Number.NEGATIVE_INFINITY;
-  let top: QuoteCandidate[] = [];
-
-  for (const start of findOccurrences(projection, normalizedQuote)) {
-    const end = start + normalizedQuote.length - 1;
-    const line = projection.lineOf[start];
-    const candidate: QuoteCandidate = {
-      range: { start: line, end: projection.lineOf[end] },
+    occurrences.push({
+      candidate: blockIndex,
+      start,
+      end,
       score:
-        contextScore(projection, start, end, prefix, suffix) +
-        headingScore(projection, line, headingPath),
-    };
-
-    if (candidate.score > bestScore) {
-      bestScore = candidate.score;
-      top = [candidate];
-    } else if (candidate.score === bestScore) {
-      top.push(candidate);
-    }
+        blockMatchScore(projection.blocks[blockIndex], segment) +
+        contextScore(projection.text, start, end, prefix, suffix),
+    });
   }
 
-  return decideCandidate(top);
+  const best = selectBestOccurrence(
+    occurrences,
+    (occurrence) => `${rangeForOccurrence(projection, occurrence).start}:${rangeForOccurrence(projection, occurrence).end}`
+  );
+
+  return best ? rangeForOccurrence(projection, best) : null;
 }
 
-function locateBlockText(projection: SourceProjection, segment: unknown): SourceLineRange | null {
-  const blockText = normalizeBlockText(segmentString(segment, 'blockText'));
+function locateBlockSegment(
+  projection: SourceProjection,
+  segment: AnchorSegment
+): SourceLineRange | null {
+  const blockText = normalizeBlockText(segmentStringField(segment, 'blockText'));
   if (!blockText) return null;
 
-  const headingPath = segmentHeadingPath(segment);
-  let bestScore = Number.NEGATIVE_INFINITY;
-  let top: QuoteCandidate[] = [];
+  // A whole-block Anchor must equal an entire block, never a substring.
+  const occurrences: ScoredOccurrence<number>[] = [];
+  projection.blocks.forEach((block, blockIndex) => {
+    if (block.text !== blockText) return;
+    occurrences.push({
+      candidate: blockIndex,
+      start: projection.blockOffsets[blockIndex].start,
+      end: projection.blockOffsets[blockIndex].end,
+      score: blockMatchScore(block, segment),
+    });
+  });
 
-  for (const start of findOccurrences(projection, blockText)) {
-    const end = start + blockText.length - 1;
-    const line = projection.lineOf[start];
-    const candidate: QuoteCandidate = {
-      range: { start: line, end: projection.lineOf[end] },
-      score: headingScore(projection, line, headingPath),
-    };
-
-    if (candidate.score > bestScore) {
-      bestScore = candidate.score;
-      top = [candidate];
-    } else if (candidate.score === bestScore) {
-      top.push(candidate);
+  const best = selectBestOccurrence(
+    occurrences,
+    (occurrence) => {
+      const block = projection.blocks[occurrence.candidate];
+      return `${block.startLine}:${block.endLine}`;
     }
-  }
+  );
+  if (!best) return null;
 
-  return decideCandidate(top);
-}
-
-/**
- * Equal best scores on different source lines cannot be told apart by
- * content, context, or heading path. Guessing would echo a wrong line, so the
- * Anchor degrades to Outdated instead (ADR-0005).
- */
-function decideCandidate(candidates: QuoteCandidate[]): SourceLineRange | null {
-  if (candidates.length === 0) return null;
-
-  const distinct = new Set(candidates.map((candidate) => `${candidate.range.start}:${candidate.range.end}`));
-  if (distinct.size > 1) return null;
-
-  return { ...candidates[0].range };
+  const block = projection.blocks[best.candidate];
+  return { start: block.startLine, end: block.endLine };
 }
 
 function mergeRanges(ranges: SourceLineRange[]): SourceLineRange[] {
@@ -415,17 +627,21 @@ export function locateAnchorInSource(
   anchor: AnnotationAnchor | null | undefined
 ): SourceAnchorLocation {
   if (!anchor || !Array.isArray(anchor.segments) || anchor.segments.length === 0) {
-    return outdated(anchor);
+    return outdatedFromAnchor(anchor);
   }
 
   const projection = buildSourceProjection(rawMarkdown);
   const ranges: SourceLineRange[] = [];
 
   for (const segment of anchor.segments) {
-    const quote = segmentText(segment);
-    if (!quote) return outdated(anchor);
-    const range = locateQuote(projection, segment);
-    if (!range) return outdated(anchor);
+    if (!segmentAnchorText(segment) || !isObject(segment)) return outdatedFromAnchor(anchor);
+    const range =
+      segment.kind === 'block'
+        ? locateBlockSegment(projection, segment)
+        : segment.kind === 'text'
+          ? locateTextSegment(projection, segment)
+          : null;
+    if (!range) return outdatedFromAnchor(anchor);
     ranges.push(range);
   }
 

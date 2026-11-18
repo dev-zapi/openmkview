@@ -329,4 +329,200 @@ describe('sourceAnchorLocator utils', () => {
       })
     ).toEqual({ status: 'outdated', snapshot: '' });
   });
+
+  // Reviewer repro: exact-case matching must not discard a better
+  // case-drifted occurrence on another line.
+  it('scores exact and case-insensitive occurrences together', () => {
+    const markdown = [
+      '# Source Echo',
+      '',
+      'Alpha context repeated target sentence.',
+      '',
+      'Beta context Repeated target sentence.',
+      '',
+    ].join('\n');
+
+    const location = locateAnchorInSource(
+      markdown,
+      anchor(
+        textSegment('repeated target sentence', {
+          prefix: 'Beta context ',
+          suffix: '.',
+          blockText: 'Beta context Repeated target sentence.',
+        })
+      )
+    );
+
+    expect(location).toEqual({
+      status: 'located',
+      ranges: [{ start: 5, end: 5 }],
+    });
+  });
+
+  it('still prefers an exact occurrence when its context is better', () => {
+    const markdown = [
+      '# Source Echo',
+      '',
+      'Beta context repeated target sentence.',
+      '',
+      'Alpha context Repeated target sentence.',
+      '',
+    ].join('\n');
+
+    const location = locateAnchorInSource(
+      markdown,
+      anchor(
+        textSegment('repeated target sentence', {
+          prefix: 'Beta context ',
+          suffix: '.',
+          blockText: 'Beta context repeated target sentence.',
+        })
+      )
+    );
+
+    expect(location).toEqual({
+      status: 'located',
+      ranges: [{ start: 3, end: 3 }],
+    });
+  });
+
+  it('never matches text across a block boundary', () => {
+    const markdown = [
+      '# Paragraphs',
+      '',
+      'Alpha ends here.',
+      '',
+      'Beta starts now.',
+      '',
+    ].join('\n');
+
+    expect(
+      locateAnchorInSource(markdown, anchor(textSegment('here. Beta starts')))
+    ).toEqual({ status: 'outdated', snapshot: 'here. Beta starts' });
+
+    expect(
+      locateAnchorInSource(
+        markdown,
+        anchor(textSegment('Alpha ends here. Beta starts now.'))
+      )
+    ).toEqual({
+      status: 'outdated',
+      snapshot: 'Alpha ends here. Beta starts now.',
+    });
+  });
+
+  it('requires a whole-block match to equal the full block', () => {
+    const markdown = [
+      '# Paragraphs',
+      '',
+      'Alpha ends here.',
+      '',
+      'Beta starts now.',
+      '',
+    ].join('\n');
+
+    expect(
+      locateAnchorInSource(markdown, anchor(blockSegment('Beta starts')))
+    ).toEqual({ status: 'outdated', snapshot: 'Beta starts' });
+
+    expect(
+      locateAnchorInSource(markdown, anchor(blockSegment('Beta starts now.')))
+    ).toEqual({
+      status: 'located',
+      ranges: [{ start: 5, end: 5 }],
+    });
+  });
+
+  it('keeps a literal asterisk in text', () => {
+    const markdown = ['# Math', '', 'The 2 * 3 table.', ''].join('\n');
+
+    expect(
+      locateAnchorInSource(markdown, anchor(blockSegment('The 2 * 3 table.')))
+    ).toEqual({
+      status: 'located',
+      ranges: [{ start: 3, end: 3 }],
+    });
+  });
+
+  it('treats four-space-indented code verbatim', () => {
+    const markdown = [
+      '# Indented Code',
+      '',
+      '    const value = **1**;',
+      '',
+    ].join('\n');
+
+    expect(
+      locateAnchorInSource(
+        markdown,
+        anchor(blockSegment('const value = **1**;'))
+      )
+    ).toEqual({
+      status: 'located',
+      ranges: [{ start: 3, end: 3 }],
+    });
+  });
+
+  it('decodes named and numeric HTML entities', () => {
+    const named = ['# Entities', '', 'AT&amp;T &amp; 5 &lt; 6 &mdash; done.', ''].join('\n');
+    expect(
+      locateAnchorInSource(named, anchor(blockSegment('AT&T & 5 < 6 — done.')))
+    ).toEqual({ status: 'located', ranges: [{ start: 3, end: 3 }] });
+
+    const numeric = ['# Entities', '', 'Copyright &#169; 2026', ''].join('\n');
+    expect(
+      locateAnchorInSource(numeric, anchor(blockSegment('Copyright © 2026')))
+    ).toEqual({ status: 'located', ranges: [{ start: 3, end: 3 }] });
+  });
+
+  it('resolves setext headings and their heading paths', () => {
+    const markdown = [
+      'Alpha Title',
+      '===========',
+      '',
+      'Identical words in both sections.',
+      '',
+      'Beta Title',
+      '==========',
+      '',
+      'Identical words in both sections.',
+      '',
+    ].join('\n');
+
+    expect(
+      locateAnchorInSource(markdown, anchor(blockSegment('Alpha Title')))
+    ).toEqual({ status: 'located', ranges: [{ start: 1, end: 2 }] });
+
+    expect(
+      locateAnchorInSource(
+        markdown,
+        anchor(textSegment('Identical words', { headingPath: ['Beta Title'] }))
+      )
+    ).toEqual({ status: 'located', ranges: [{ start: 9, end: 9 }] });
+  });
+
+  it('uses block text to disambiguate text segments like the Preview resolver', () => {
+    const markdown = [
+      '# Document',
+      '',
+      'Target phrase in first block.',
+      '',
+      'Target phrase in second block with extra words.',
+      '',
+    ].join('\n');
+
+    const location = locateAnchorInSource(
+      markdown,
+      anchor(
+        textSegment('Target phrase', {
+          blockText: 'Target phrase in second block with extra words.',
+        })
+      )
+    );
+
+    expect(location).toEqual({
+      status: 'located',
+      ranges: [{ start: 5, end: 5 }],
+    });
+  });
 });
