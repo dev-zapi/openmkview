@@ -169,6 +169,28 @@ export interface AnnotationHighlightResult {
 }
 
 /**
+ * Groups annotations by the block they anchor to. Multiple annotations may
+ * share one block (and overlapping anchors are legal), so this returns lists
+ * rather than a single annotation per block.
+ */
+export function annotationsByBlock(annotations: Annotation[]): Map<string, Annotation[]> {
+  const grouped = new Map<string, Annotation[]>();
+
+  for (const annotation of annotations) {
+    for (const segment of annotation.anchor?.segments ?? []) {
+      if (segment.kind !== 'block' && segment.kind !== 'text') continue;
+      const existing = grouped.get(segment.blockHash) ?? [];
+      if (!existing.some((candidate) => candidate.id === annotation.id)) {
+        existing.push(annotation);
+      }
+      grouped.set(segment.blockHash, existing);
+    }
+  }
+
+  return grouped;
+}
+
+/**
  * Re-attaches stored annotations to rendered blocks by running the pure
  * Anchor resolver over the block model. Idempotent: safe to call after every
  * render, annotation change, and search change.
@@ -187,6 +209,7 @@ export function applyAnnotationHighlights(
     block.element.removeAttribute('data-annotation-ids');
     const marker = block.element.querySelector<HTMLElement>('.annotation-marker');
     marker?.classList.remove('has-annotation', 'resolved');
+    marker?.setAttribute('aria-pressed', 'false');
   }
   clearRangeHighlights(root);
 
@@ -251,6 +274,7 @@ export function applyAnnotationHighlights(
     if (annotation) {
       const marker = element.querySelector<HTMLElement>('.annotation-marker');
       marker?.classList.add('has-annotation');
+      marker?.setAttribute('aria-pressed', 'true');
       if (annotation.resolved) marker?.classList.add('resolved');
     }
   }

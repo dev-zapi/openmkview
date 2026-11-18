@@ -19,6 +19,7 @@ import {
 import { anchorFromSelection } from '../utils/selectionAnchor';
 import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
+import AnnotationThread from './AnnotationThread';
 import FrontmatterPanel from './FrontmatterPanel';
 
 interface MarkdownViewProps {
@@ -92,7 +93,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (left + width > window.innerWidth - 8) {
       left = Math.max(8, rect.left - width - 8);
     }
-    const top = Math.max(8, Math.min(rect.top, window.innerHeight - 180));
+    // The popover can scroll, but it must start high enough that its action
+    // row stays reachable when the anchored block is deep in the viewport.
+    const maxTop = Math.max(8, window.innerHeight - 480);
+    const top = Math.max(8, Math.min(rect.top, maxTop));
     return { left, top };
   };
 
@@ -409,6 +413,49 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   createEffect(() => {
     annotationStore.canMutate();
     applyOfflineState();
+  });
+
+  // The annotation column asks the rendered document to reveal an anchor.
+  // Depend only on jumpRequest: replies/edits/resolves mutate annotations and
+  // must not replay the last jump.
+  let handledJumpNonce = 0;
+  createEffect(() => {
+    const jump = annotationStore.jumpRequest();
+    if (!jump || jump.nonce === handledJumpNonce) return;
+    handledJumpNonce = jump.nonce;
+
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === jump.annotationId,
+    );
+    const segment = annotation?.anchor?.segments?.find(
+      (part) => part.kind === 'block' || part.kind === 'text',
+    );
+    if (!segment) return;
+
+    const escaped = segment.blockHash.replace(/["\\]/g, '\\$&');
+    const timer = setTimeout(() => {
+      const block = contentRef?.querySelector<HTMLElement>(
+        `.annotation-block[data-block-id="${escaped}"]`,
+      );
+      if (!block) return;
+
+      const scroller = block.closest('.content-main') as HTMLElement | null;
+      if (scroller) {
+        const rect = block.getBoundingClientRect();
+        const containerRect = scroller.getBoundingClientRect();
+        const offsetTop = rect.top - containerRect.top + scroller.scrollTop - 60;
+        scroller.scrollTo({ top: offsetTop, behavior: 'smooth' });
+      } else {
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      block.classList.add('annotation-jump-target');
+      block.setAttribute('tabindex', '-1');
+      block.focus({ preventScroll: true });
+      setTimeout(() => block.classList.remove('annotation-jump-target'), 1600);
+    }, 0);
+
+    onCleanup(() => clearTimeout(timer));
   });
 
   createEffect(() => {
@@ -848,15 +895,30 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
+  const viewerAnnotation = (): Annotation | undefined => {
+    const current = panel();
+    if (!current || current.mode !== 'view') return undefined;
+    return (
+      annotationStore.annotations().find((candidate) => candidate.id === current.annotation.id) ??
+      current.annotation
+    );
+  };
+
   const renderViewer = (current: AnnotationPanel) => {
     if (current.mode !== 'view') return null;
-    const annotation = current.annotation;
+    const annotation = viewerAnnotation() ?? current.annotation;
     const offline = !annotationStore.canMutate();
     const outdated = () => annotationStore.isOutdated(annotation.id);
     const snapshot = () =>
       annotationStore.outdatedSnapshot(annotation.id) ?? annotation.snapshot ?? '';
+    const excerpt =
+      annotation.anchor?.segments?.find((segment) => segment.kind === 'block')?.blockText ||
+      annotation.snapshot ||
+      '';
+
     return (
       <div class="annotation-viewer">
+        <p class="annotation-anchor-excerpt">{excerpt.slice(0, 160)}</p>
         <Show when={outdated()}>
           <div class="annotation-outdated" role="status">
             <span class="annotation-outdated-badge">Outdated</span>
@@ -878,33 +940,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             </button>
           </div>
         </Show>
-        <div class="annotation-thread">
-          <For each={annotation.notes}>
-            {(note) => (
-              <div class="annotation-note">
-                <div class="annotation-note-meta">{note.createdAt}</div>
-                <div class="annotation-note-body" innerHTML={renderNoteMarkdown(note.body)} />
-              </div>
-            )}
-          </For>
-        </div>
-        <Show when={offline}>
-          <p class="annotation-offline-note">Read-only while offline</p>
-        </Show>
-        <Show when={annotationError()}>
-          <p class="annotation-error" role="alert">{annotationError()}</p>
-        </Show>
-        <div class="annotation-popover-actions">
-          <button
-            type="button"
-            class="annotation-action-danger"
-            disabled={offline || savingAnnotation()}
-            title={offline ? 'Unavailable offline' : undefined}
-            onClick={() => void removeAnnotation(annotation)}
-          >
-            Delete
-          </button>
-        </div>
+        <AnnotationThread annotation={annotation} onDelete={() => setPanel(null)} />
       </div>
     );
   };

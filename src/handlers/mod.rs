@@ -10,7 +10,8 @@ mod trash_handler;
 mod version_handler;
 
 pub use annotation_handler::{
-    create_annotation, delete_annotation, list_annotations, reanchor_annotation,
+    add_note, create_annotation, delete_annotation, list_annotations, reanchor_annotation,
+    set_resolved, update_note,
 };
 pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{

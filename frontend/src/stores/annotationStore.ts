@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import type { Annotation, AnnotationAnchor } from '../types';
+import type { Annotation, AnnotationAnchor, AnnotationNote } from '../types';
 import { api } from '../services/api';
 import { offlineStore } from './offlineStore';
 import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
@@ -18,10 +18,15 @@ const [outdatedSnapshots, setOutdatedSnapshotsSignal] = createSignal<Map<number,
 );
 /** Annotation awaiting a fresh text selection for manual re-anchoring. */
 const [reanchorTarget, setReanchorTarget] = createSignal<number | null>(null);
+/** Includes a monotonic nonce so repeated jumps to the same entry register. */
+const [jumpRequest, setJumpRequest] = createSignal<{ annotationId: number; nonce: number } | null>(
+  null,
+);
 
 let loadedKey: string | null = null;
 let currentProjectId: number | null = null;
 let currentRelativePath: string | null = null;
+let jumpNonce = 0;
 
 function applyVisibility(nextVisible: boolean): void {
   setVisible(nextVisible);
@@ -32,6 +37,12 @@ function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
 }
 
+function replaceAnnotation(updated: Annotation): void {
+  setAnnotations((current) =>
+    current.map((annotation) => (annotation.id === updated.id ? updated : annotation)),
+  );
+}
+
 export const annotationStore = {
   annotations,
   loading,
@@ -39,6 +50,7 @@ export const annotationStore = {
   visible,
   outdatedSnapshots,
   reanchorTarget,
+  jumpRequest,
 
   /** Whether annotation writes may be attempted (connected only). */
   canMutate(): boolean {
@@ -82,6 +94,7 @@ export const annotationStore = {
     // Never let the previous file's annotations survive into the new file,
     // even for the few milliseconds before the fetch resolves.
     setAnnotations([]);
+    setJumpRequest(null);
     setLoading(true);
     setError(null);
 
@@ -106,6 +119,7 @@ export const annotationStore = {
     setAnnotations([]);
     setOutdatedSnapshotsSignal(new Map());
     setReanchorTarget(null);
+    setJumpRequest(null);
     setLoading(false);
     setError(null);
   },
@@ -152,8 +166,38 @@ export const annotationStore = {
     return updated;
   },
 
+  /** Appends a Reply to the thread and keeps the list in sync. */
+  async appendNote(annotationId: number, body: string): Promise<Annotation> {
+    const updated = await api.addAnnotationNote(annotationId, body);
+    replaceAnnotation(updated);
+    return updated;
+  },
+
+  /** Rewrites one note body in the thread. */
+  async updateNote(annotationId: number, noteId: number, body: string): Promise<Annotation> {
+    const updated = await api.updateAnnotationNote(annotationId, noteId, body);
+    replaceAnnotation(updated);
+    return updated;
+  },
+
+  /** Sets the thread-level Resolved flag. */
+  async setResolved(annotationId: number, resolved: boolean): Promise<Annotation> {
+    const updated = await api.setAnnotationResolved(annotationId, resolved);
+    replaceAnnotation(updated);
+    return updated;
+  },
+
+  /**
+   * Asks the rendered document to scroll to and focus an annotation's anchor.
+   * Multiple annotations may share a block, so lookup is list-based.
+   */
+  requestJump(annotationId: number): void {
+    jumpNonce += 1;
+    setJumpRequest({ annotationId, nonce: jumpNonce });
+  },
+
   /** All annotations whose Anchor references the given block, in list order. */
-  byBlockHash(blockHash: string): Annotation[] {
+  annotationsForBlock(blockHash: string): Annotation[] {
     return annotations().filter(
       (annotation) =>
         annotation.projectId === currentProjectId &&
@@ -164,6 +208,16 @@ export const annotationStore = {
             segment.blockHash === blockHash
         )
     );
+  },
+
+  /** Array form retained for callers that need every match. */
+  byBlockHash(blockHash: string): Annotation[] {
+    return annotationStore.annotationsForBlock(blockHash);
+  },
+
+  /** All note bodies for a thread, in time order (the API already orders them). */
+  notesFor(annotationId: number): AnnotationNote[] {
+    return annotations().find((annotation) => annotation.id === annotationId)?.notes ?? [];
   },
 };
 

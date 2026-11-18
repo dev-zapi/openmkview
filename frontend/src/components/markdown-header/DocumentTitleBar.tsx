@@ -14,6 +14,8 @@ export interface DocumentTitleBarProps {
   activeTab: TabType;
   outlineCount: number;
   isOutlineOpen: boolean;
+  annotationCount?: number;
+  isAnnotationsOpen?: boolean;
   isFullscreen: boolean;
   fileType?: FileType;
   /** Binary files render a placeholder page; hide all view tabs. */
@@ -26,6 +28,7 @@ export interface DocumentTitleBarProps {
   onOutlineToggle: () => void;
   /** Reading-mode toggle: hide/show all Annotation highlights and markers. */
   annotationsVisible?: boolean;
+  onAnnotationsVisibilityToggle?: () => void;
   onAnnotationsToggle?: () => void;
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
@@ -278,12 +281,20 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                 </Show>
               </MenuItem>
 
-              <Show when={props.fileType === 'markdown' && props.onAnnotationsToggle}>
-                <MenuItem onClick={() => props.onAnnotationsToggle?.()}>
+              <Show when={props.fileType === 'markdown' && props.onAnnotationsVisibilityToggle}>
+                <MenuItem onClick={() => props.onAnnotationsVisibilityToggle?.()}>
                   {annotationsIcon}
                   <span>{props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}</span>
                 </MenuItem>
               </Show>
+
+              <MenuItem onClick={() => props.onAnnotationsToggle?.()}>
+                {annotationsIcon}
+                <span>Annotations</span>
+                <Show when={(props.annotationCount ?? 0) > 0}>
+                  <span class="ui-menu-badge">{props.annotationCount}</span>
+                </Show>
+              </MenuItem>
             </MenuContent>
           </Menu>
         </div>
@@ -397,11 +408,11 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           </Show>
         </button>
 
-        <Show when={props.fileType === 'markdown' && props.onAnnotationsToggle}>
+        <Show when={props.fileType === 'markdown' && props.onAnnotationsVisibilityToggle}>
           <button
             type="button"
             class={`${styles.toolbarButtonIcon} ${props.annotationsVisible !== false ? styles.active : ''}`}
-            onClick={() => props.onAnnotationsToggle?.()}
+            onClick={() => props.onAnnotationsVisibilityToggle?.()}
             title={props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}
             aria-label={props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}
             aria-pressed={props.annotationsVisible !== false}
@@ -409,6 +420,20 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
             {annotationsIcon}
           </button>
         </Show>
+
+        <button
+          class={`${styles.toolbarButtonIcon} ${props.isAnnotationsOpen ? styles.active : ''}`}
+          onClick={() => props.onAnnotationsToggle?.()}
+          title="Annotations"
+          aria-label="Annotations"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <Show when={(props.annotationCount ?? 0) > 0}>
+            <span class={styles.badge}>{props.annotationCount}</span>
+          </Show>
+        </button>
 
         <button
           class={`${styles.toolbarButtonIcon} ${styles.fullscreenButton}`}

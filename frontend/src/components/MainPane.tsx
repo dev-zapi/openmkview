@@ -2,8 +2,9 @@ import { Component, Show } from 'solid-js';
 import { MarkdownHeader } from './markdown-header';
 import { FileContentView } from './FileContentView';
 import OutlinePanel from './OutlinePanel';
-import { useScrollSpy } from '../hooks/useScrollSpy';
+import AnnotationColumn from './AnnotationColumn';
 import { annotationStore } from '../stores/annotationStore';
+import { useScrollSpy } from '../hooks/useScrollSpy';
 import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header';
 import type { Settings, ThemeType } from '../types/app';
@@ -16,6 +17,9 @@ interface MainPaneProps {
   activeTab: TabType;
   isOutlineOpen: boolean;
   outlineCount: number;
+  isAnnotationsOpen?: boolean;
+  onAnnotationsToggle?: () => void;
+  onCloseAnnotations?: () => void;
   headings: Heading[];
   loading: boolean;
   activeProjectId?: number;
@@ -76,6 +80,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             activeTab={props.activeTab}
             isOutlineOpen={props.isOutlineOpen}
             outlineCount={props.outlineCount}
+            annotationCount={annotationStore.annotations().length}
+            isAnnotationsOpen={props.isAnnotationsOpen ?? false}
             content={props.currentFile!.content}
             fileType={props.currentFileType}
             binary={props.currentFile!.binary}
@@ -86,7 +92,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
             annotationsVisible={annotationStore.visible()}
-            onAnnotationsToggle={() => annotationStore.toggleVisible()}
+            onAnnotationsVisibilityToggle={() => annotationStore.toggleVisible()}
+            onAnnotationsToggle={props.onAnnotationsToggle}
             onSearchClick={props.onSearchClick}
             onSearchClose={props.onSearchClose}
             onSearchQueryChange={props.onSearchQueryChange}
@@ -113,7 +120,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
             annotationsVisible={annotationStore.visible()}
-            onAnnotationsToggle={() => annotationStore.toggleVisible()}
+            onAnnotationsVisibilityToggle={() => annotationStore.toggleVisible()}
+            onAnnotationsToggle={props.onAnnotationsToggle}
             onSearchClick={props.onSearchClick}
             onSearchClose={props.onSearchClose}
             onSearchQueryChange={props.onSearchQueryChange}
@@ -173,6 +181,13 @@ export const MainPane: Component<MainPaneProps> = (props) => {
           onStartDragging={props.onOutlineStartDragging}
           activeHeadingId={activeHeadingId()}
           onProgrammaticScrollLock={lockForProgrammaticScroll}
+        />
+      </Show>
+
+      <Show when={props.currentFile && props.currentFileType === 'markdown'}>
+        <AnnotationColumn
+          isOpen={props.isAnnotationsOpen ?? false}
+          onClose={props.onCloseAnnotations ?? (() => {})}
         />
       </Show>
     </main>

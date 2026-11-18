@@ -251,6 +251,7 @@ const App: Component = () => {
           imageFileName={fileStore.imageFileName()}
           activeTab={appStore.activeTab()}
           outlineOpen={appStore.outlineOpen()}
+          annotationsOpen={appStore.annotationsOpen()}
           headings={fileStore.extractedHeadings()}
           loading={fileStore.loading()}
           initialContent={editorStore.originalContent()}
@@ -297,6 +298,7 @@ const App: Component = () => {
           onStartDragging={layoutHook.startDragging}
           onTabChange={editorHook.changeTab}
           onOutlineToggle={layoutHook.handleMobileOutlineToggle}
+          onAnnotationsToggle={appStore.toggleAnnotations}
           onSearchClick={handleSearchClick}
           onSearchClose={handleSearchClose}
           onSearchQueryChange={handleSearchQueryChange}
@@ -309,6 +311,7 @@ const App: Component = () => {
           onSave={() => void editorHook.saveFile()}
           onCloseDiff={fileHook.closeDiff}
           onCloseOutline={() => appStore.setOutlineOpen(false)}
+          onCloseAnnotations={() => appStore.setAnnotationsOpen(false)}
           onCloseGitPanel={() => appStore.setGitPanelOpen(false)}
           onFileOpen={(path) => void fileHook.openFile(path)}
         />

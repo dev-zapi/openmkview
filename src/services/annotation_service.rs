@@ -202,6 +202,54 @@ impl<'a> AnnotationService<'a> {
         self.annotation_repo.move_paths(project_id, from, to)
     }
 
+    pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Annotation> {
+        let body = body.trim();
+        if body.is_empty() {
+            return Err(AppError::BadRequest("Note body is required".into()));
+        }
+
+        self.annotation_repo
+            .append_note(annotation_id, body)?
+            .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
+    }
+
+    pub fn update_note(
+        &self,
+        annotation_id: i64,
+        note_id: i64,
+        body: &str,
+    ) -> AppResult<Annotation> {
+        let body = body.trim();
+        if body.is_empty() {
+            return Err(AppError::BadRequest("Note body is required".into()));
+        }
+
+        if self.annotation_repo.find_by_id(annotation_id)?.is_none() {
+            return Err(AppError::NotFound("Annotation not found".into()));
+        }
+
+        if !self
+            .annotation_repo
+            .update_note(annotation_id, note_id, body)?
+        {
+            return Err(AppError::NotFound("Note not found".into()));
+        }
+
+        self.annotation_repo
+            .find_by_id(annotation_id)?
+            .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
+    }
+
+    pub fn set_resolved(&self, annotation_id: i64, resolved: bool) -> AppResult<Annotation> {
+        if !self.annotation_repo.set_resolved(annotation_id, resolved)? {
+            return Err(AppError::NotFound("Annotation not found".into()));
+        }
+
+        self.annotation_repo
+            .find_by_id(annotation_id)?
+            .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
+    }
+
     fn require_project(&self, project_id: i64) -> AppResult<Project> {
         self.project_repo
             .find_by_id(project_id)?

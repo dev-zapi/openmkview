@@ -49,6 +49,24 @@ pub struct ReanchorAnnotationRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddNoteRequest {
+    pub body: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateNoteRequest {
+    pub body: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetResolvedRequest {
+    pub resolved: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct AnnotationListParams {
     pub project_id: i64,
     #[serde(rename = "relativePath")]
