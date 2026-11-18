@@ -8,6 +8,7 @@ import { normalizeBlockText, type BlockModel } from './blockModel';
 import {
   blockMatchScore,
   contextScore,
+  exactMatchScore,
   findQuoteOccurrences,
   isBlockSegment,
   isTextSegment,
@@ -73,7 +74,8 @@ function bestOccurrence(
         end,
         score:
           baseScore +
-          contextScore(candidate.text, start, end, segment.prefix, segment.suffix),
+          contextScore(candidate.text, start, end, segment.prefix, segment.suffix) +
+          exactMatchScore(candidate.text, start, end, quote),
       });
     }
   }

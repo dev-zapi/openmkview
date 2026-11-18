@@ -20,6 +20,12 @@ export const CONTEXT_WEIGHT = 12;
 export const SAME_BLOCK_TEXT_WEIGHT = 400;
 export const SAME_TYPE_WEIGHT = 30;
 export const HEADING_PREFIX_WEIGHT = 60;
+/**
+ * Tiny tiebreaker: when the quote and a case-insensitive occurrence score
+ * identically (same block, same context), an exact-case occurrence wins.
+ * One point cannot outrank any real context/heading signal.
+ */
+export const EXACT_MATCH_BONUS = 1;
 
 export interface OutdatedResult {
   status: 'outdated';
@@ -183,6 +189,16 @@ export function blockMatchScore(
   score += headingPrefixLength(candidate.headingPath, segmentHeadingPath(segment)) *
     HEADING_PREFIX_WEIGHT;
   return score;
+}
+
+/** +1 only when the occurrence's text matches the quote's case exactly. */
+export function exactMatchScore(
+  text: string,
+  quoteStart: number,
+  quoteEnd: number,
+  quote: string
+): number {
+  return text.slice(quoteStart, quoteEnd) === quote ? EXACT_MATCH_BONUS : 0;
 }
 
 /**

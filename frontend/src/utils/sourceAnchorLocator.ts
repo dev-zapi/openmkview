@@ -3,6 +3,7 @@ import { normalizeBlockText } from './blockModel';
 import {
   blockMatchScore,
   contextScore,
+  exactMatchScore,
   findQuoteOccurrences,
   isObject,
   outdatedFromAnchor,
@@ -69,7 +70,8 @@ function locateTextSegment(
       end,
       score:
         blockMatchScore(projection.blocks[blockIndex], segment) +
-        contextScore(projection.text, start, end, prefix, suffix),
+        contextScore(projection.text, start, end, prefix, suffix) +
+        exactMatchScore(projection.text, start, end, quote),
     });
   }
 
