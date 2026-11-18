@@ -10,6 +10,13 @@ fn bad_anchor(message: &str) -> AppError {
     AppError::BadRequest(message.into())
 }
 
+/// Authors are free text but whitespace-only names carry no meaning: treat
+/// them as absent so they read back as legacy/unknown and a blank `?author=`
+/// filter behaves like no filter.
+fn normalize_author(author: Option<&str>) -> Option<&str> {
+    author.map(str::trim).filter(|author| !author.is_empty())
+}
+
 /// The text an Outdated annotation shows as its snapshot: the originally
 /// anchored quote (text segments) or block text (whole-block segments),
 /// joined in document order. Derived from the Anchor payload so it is always
@@ -139,7 +146,7 @@ impl<'a> AnnotationService<'a> {
         }
 
         self.annotation_repo
-            .list_for_file(project_id, relative_path, author)
+            .list_for_file(project_id, relative_path, normalize_author(author))
     }
 
     /// Every annotation in the project for the management panel, including
@@ -152,7 +159,9 @@ impl<'a> AnnotationService<'a> {
         author: Option<&str>,
     ) -> AppResult<Vec<ManagedAnnotation>> {
         let project = self.require_project(project_id)?;
-        let annotations = self.annotation_repo.list_for_project(project_id, author)?;
+        let annotations = self
+            .annotation_repo
+            .list_for_project(project_id, normalize_author(author))?;
 
         Ok(annotations
             .into_iter()
@@ -190,7 +199,7 @@ impl<'a> AnnotationService<'a> {
             &anchor_json,
             snapshot.as_deref(),
             body,
-            req.author.as_deref(),
+            normalize_author(req.author.as_deref()),
             req.is_agent,
         )
     }
@@ -257,7 +266,7 @@ impl<'a> AnnotationService<'a> {
         }
 
         self.annotation_repo
-            .append_note(annotation_id, body, author, is_agent)?
+            .append_note(annotation_id, body, normalize_author(author), is_agent)?
             .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
     }
 

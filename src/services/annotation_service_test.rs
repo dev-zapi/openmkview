@@ -302,6 +302,79 @@ fn legacy_notes_without_authorship_read_back_as_null_and_false() {
 }
 
 #[test]
+fn authorship_names_are_trimmed_and_blank_names_are_legacy() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let trimmed = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Named note",
+            "  Jonas  ",
+            false,
+        ))
+        .expect("create named annotation");
+    assert_eq!(trimmed.notes[0].author.as_deref(), Some("Jonas"));
+
+    let blank = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Blank author note",
+            "   ",
+            true,
+        ))
+        .expect("create blank-author annotation");
+    assert_eq!(blank.notes[0].author, None);
+    assert!(blank.notes[0].is_agent);
+
+    let replied = service
+        .append_note(trimmed.id, "Named reply", Some("  Agent  "), true)
+        .expect("append named reply");
+    assert_eq!(replied.notes[1].author.as_deref(), Some("Agent"));
+
+    let blank_reply = service
+        .append_note(trimmed.id, "Blank reply", Some("   "), false)
+        .expect("append blank reply");
+    assert_eq!(blank_reply.notes[2].author, None);
+}
+
+#[test]
+fn blank_author_filter_means_no_filter() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Named note",
+            "Jonas",
+            false,
+        ))
+        .expect("create annotation");
+    service
+        .create(create_request(project_id, "other.md", "Legacy note"))
+        .expect("create legacy annotation");
+
+    let all_for_file = service
+        .list_for_file(project_id, "doc.md", Some(""))
+        .expect("list with empty filter");
+    assert_eq!(all_for_file.len(), 1);
+
+    let all_for_file_blank = service
+        .list_for_file(project_id, "doc.md", Some("   "))
+        .expect("list with blank filter");
+    assert_eq!(all_for_file_blank.len(), 1);
+
+    let all_for_project = service
+        .list_for_project(project_id, Some(""))
+        .expect("manage with empty filter");
+    assert_eq!(all_for_project.len(), 2);
+}
+
+#[test]
 fn listing_is_scoped_to_the_requested_file() {
     let (_temp_dir, conn, project_id) = setup();
     let service = AnnotationService::new(&conn);
