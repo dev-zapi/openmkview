@@ -81,7 +81,7 @@ export interface OpenProjectSummary {
 }
 
 /** Project-name prefixes used by throwaway per-test projects. */
-const SCRATCH_PROJECT_PREFIX = /^(?:annotations-e2e-|ann19-drift-|openmkview-manage-clear-)/;
+const SCRATCH_PROJECT_PREFIX = /^(?:annotations-e2e-|ann19-drift-|openmkview-manage-clear-|annotations-mobile-)/;
 
 /**
  * The harness's seeded open project, ignoring scratch projects created by

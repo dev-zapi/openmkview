@@ -1574,6 +1574,13 @@
   cursor: pointer;
 }
 
+/* While a touch hold is pending, hide the platform callout menu so it cannot
+   cover the block composer. Native text selection itself stays enabled, so the
+   separate text-selection annotation path keeps working. */
+.markdown-content > .annotation-block[data-annotation-touch-hold='true'] {
+  -webkit-touch-callout: none;
+}
+
 .markdown-content mark.annotation-text-highlight {
   padding: 0;
   border-radius: 2px;
@@ -1615,6 +1622,15 @@
   background: color-mix(in oklab, var(--color-primary) 10%, var(--color-card));
 }
 
+/* Touch: the floating annotate action is a thumb target. */
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
+  .annotation-selection-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 14px;
+  }
+}
+
 /* Keep real interactions inside an annotated block feeling unchanged. */
 .annotation-block.annotation-highlighted a,
 .annotation-block.annotation-highlighted button,
@@ -1636,6 +1652,13 @@
   background: var(--color-popover, var(--color-card));
   color: var(--color-popover-foreground, var(--color-foreground));
   box-shadow: 0 12px 32px color-mix(in oklab, black 22%, transparent);
+}
+
+/* Must follow the base width rule: narrow screens cap the popover. */
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
+  .annotation-popover {
+    width: min(320px, calc(100vw - 16px));
+  }
 }
 
 .annotation-composer-label {

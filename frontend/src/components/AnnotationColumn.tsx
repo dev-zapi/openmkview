@@ -11,6 +11,10 @@ interface AnnotationColumnProps {
   projectId?: number;
   currentFilePath?: string | null;
   onOpenFile?: (path: string) => void;
+  /** Open width. The mobile drawer passes 100% instead of the desktop 300px. */
+  width?: number | string;
+  /** Called after a jump request, e.g. to close the mobile drawer. */
+  onJump?: () => void;
 }
 
 const COLUMN_WIDTH = 300;
@@ -28,12 +32,18 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
 
   const jumpTo = (annotation: Annotation) => {
     annotationStore.requestJump(annotation.id);
+    props.onJump?.();
+  };
+
+  const openWidth = () => {
+    if (props.width === undefined) return `${COLUMN_WIDTH}px`;
+    return typeof props.width === 'number' ? `${props.width}px` : props.width;
   };
 
   return (
     <div
       class={`annotation-column ${props.isOpen ? '' : 'annotation-column-hidden'}`}
-      style={{ width: props.isOpen ? `${COLUMN_WIDTH}px` : '0px' }}
+      style={{ width: props.isOpen ? openWidth() : '0px' }}
       role="region"
       aria-label="Annotations"
     >

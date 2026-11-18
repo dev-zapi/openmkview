@@ -38,6 +38,9 @@ interface MarkdownViewProps {
   onFileOpen?: (path: string) => void;
 }
 
+const TOUCH_LONG_PRESS_MS = 500;
+const TOUCH_LONG_PRESS_MOVE_TOLERANCE = 10;
+
 const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
   let contentRef: HTMLDivElement | undefined;
@@ -89,6 +92,13 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   let renderedBlocks = new Map<string, RenderedBlock>();
   let renderedBlockList: RenderedBlock[] = [];
   let blockAttachments = new Map<string, Annotation[]>();
+  let longPressTimer: ReturnType<typeof setTimeout> | undefined;
+  let longPressStartX = 0;
+  let longPressStartY = 0;
+  let longPressElement: HTMLElement | undefined;
+  // The browser still emits a synthetic click after a touch long-press; it
+  // must not immediately reopen the popover over the composer.
+  let suppressClickAfterLongPress = false;
 
   const panelPosition = (rect: DOMRect): { left: number; top: number } => {
     const width = 320;
@@ -192,7 +202,34 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (annotation) openViewer(annotation, rect);
   };
 
+  /**
+   * The desktop shell scrolls `.content-main`, the mobile shell scrolls its
+   * wrapper. Pick the nearest ancestor that can actually scroll so column
+   * jumps land in view on both layouts.
+   */
+  const findScrollableAncestor = (node: HTMLElement): HTMLElement | null => {
+    let current: HTMLElement | null = node;
+    while (current) {
+      if (
+        current.scrollHeight > current.clientHeight + 1 &&
+        /(auto|scroll|overlay)/.test(getComputedStyle(current).overflowY)
+      ) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
+  };
+
   const onContentClick = (event: MouseEvent) => {
+    // A click synthesized right after a touch long-press belongs to that
+    // gesture; the composer it opened must stay the active surface.
+    if (suppressClickAfterLongPress) {
+      suppressClickAfterLongPress = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (!contentRef) return;
     // Pure-reading mode: no markers or highlights exist, so annotation
     // interactions are off while ordinary links/copy/etc keep working.
@@ -265,6 +302,126 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     openAnnotations(annotations, blockElement.getBoundingClientRect());
   };
 
+  const cancelLongPress = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = undefined;
+    }
+    if (longPressElement) {
+      longPressElement.removeAttribute('data-annotation-touch-hold');
+      longPressElement = undefined;
+    }
+  };
+
+  /** Resolves a touch target to its top-level rendered block. */
+  const annotationBlockAt = (target: HTMLElement) => {
+    if (!contentRef) return undefined;
+    const blockElement = target.closest('.annotation-block') as HTMLElement | null;
+    if (!blockElement || !contentRef.contains(blockElement)) return undefined;
+    const block = renderedBlocks.get(blockElement.getAttribute('data-block-id') ?? '');
+    return block ? { block, element: blockElement } : undefined;
+  };
+
+  /**
+   * Touch equivalent of the hover marker: holding a rendered block opens its
+   * annotation surface. Mouse pointers never start this timer.
+   *
+   * Real-device note: Android/iOS may begin native text selection before the
+   * hold completes. That selection is deliberately treated as the text-range
+   * affordance (its floating Annotate button), not as block intent, because
+   * disabling text selection on touch would remove that entry point. While the
+   * hold is pending, `data-annotation-touch-hold` suppresses the platform
+   * callout menu (see global.css) so it cannot cover the composer; if native
+   * selection wins the race, prose still annotates through the selection path.
+   */
+  const onContentPointerDown = (event: PointerEvent) => {
+    // Any new press supersedes a touch long-press that never emitted its
+    // synthetic click.
+    suppressClickAfterLongPress = false;
+    if (event.pointerType !== 'touch') return;
+    cancelLongPress();
+    if (
+      !props.projectId ||
+      !props.currentFilePath ||
+      !annotationStore.visible()
+    ) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    // Native controls keep their own touch behavior.
+    if (!target || target.closest('a, button, input, textarea, select, .code-block-header')) {
+      return;
+    }
+    const candidate = annotationBlockAt(target);
+    if (!candidate) return;
+
+    longPressStartX = event.clientX;
+    longPressStartY = event.clientY;
+    // Suppress the platform callout while the hold is live; text selection
+    // itself stays enabled so the selection entry point keeps working.
+    candidate.element.setAttribute('data-annotation-touch-hold', 'true');
+    longPressElement = candidate.element;
+    longPressTimer = setTimeout(() => {
+      longPressTimer = undefined;
+      // A text selection is the other annotation affordance; never turn its
+      // gesture into a whole-block composer.
+      const selection = document.getSelection();
+      if (
+        selection &&
+        !selection.isCollapsed &&
+        selection.rangeCount > 0 &&
+        contentRef?.contains(selection.getRangeAt(0).startContainer)
+      ) {
+        return;
+      }
+      if (!annotationStore.canMutate()) return;
+
+      suppressClickAfterLongPress = true;
+      const rect = candidate.element.getBoundingClientRect();
+      const annotations = blockAttachments.get(candidate.block.model.id) ?? [];
+      // Same semantics as the marker: an annotated block shows its threads,
+      // an empty block opens the composer.
+      if (annotations.length > 0) openAnnotations(annotations, rect);
+      else openComposer(blockAnchorFrom(candidate.block), candidate.block.model.text, rect);
+    }, TOUCH_LONG_PRESS_MS);
+  };
+
+  const onContentPointerMove = (event: PointerEvent) => {
+    if (event.pointerType !== 'touch' || !longPressTimer) return;
+    if (
+      Math.abs(event.clientX - longPressStartX) > TOUCH_LONG_PRESS_MOVE_TOLERANCE ||
+      Math.abs(event.clientY - longPressStartY) > TOUCH_LONG_PRESS_MOVE_TOLERANCE
+    ) {
+      cancelLongPress();
+    }
+  };
+
+  const onContentPointerEnd = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') cancelLongPress();
+  };
+
+  const onContentContextMenu = (event: Event) => {
+    // Long-press on touch devices also raises the native text menu; the
+    // composer already owns this gesture.
+    if (suppressClickAfterLongPress) event.preventDefault();
+  };
+
+  const activateSelectionCapture = () => {
+    const capture = selectionCapture();
+    if (!capture) return;
+    const target = annotationStore.reanchorTarget();
+    if (target !== null) {
+      void completeReanchor(target, capture.anchor);
+      return;
+    }
+    openComposer(
+      capture.anchor,
+      capture.excerpt,
+      new DOMRect(capture.left, capture.top, 0, 0)
+    );
+  };
+
   const updateSelectionCapture = () => {
     if (
       !contentRef ||
@@ -305,12 +462,14 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }
 
     const excerpt = anchorExcerpt(anchor);
-    const buttonWidth = 116;
+    // Touch UIs use the larger floating target sized in global.css.
+    const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const buttonWidth = coarsePointer ? 132 : 116;
     let left = rect.right + 8;
     if (left + buttonWidth > window.innerWidth - 8) {
       left = Math.max(8, rect.left - buttonWidth - 8);
     }
-    const top = Math.max(8, rect.top - 38);
+    const top = Math.max(8, rect.top - (coarsePointer ? 48 : 38));
 
     setSelectionCapture({ anchor, excerpt, left, top });
   };
@@ -393,6 +552,12 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   onMount(() => {
     contentRef?.addEventListener('click', onContentClick);
+    contentRef?.addEventListener('pointerdown', onContentPointerDown);
+    contentRef?.addEventListener('pointermove', onContentPointerMove);
+    contentRef?.addEventListener('pointerup', onContentPointerEnd);
+    contentRef?.addEventListener('pointercancel', onContentPointerEnd);
+    contentRef?.addEventListener('contextmenu', onContentContextMenu);
+    contentRef?.addEventListener('touchend', updateSelectionCapture);
     document.addEventListener('selectionchange', updateSelectionCapture);
     contentRef?.addEventListener('mouseup', updateSelectionCapture);
     document.addEventListener('keyup', updateSelectionCapture);
@@ -470,11 +635,14 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       }
 
       const scrollTarget = block ?? (target.closest('.annotation-block') as HTMLElement | null);
-      const scroller = (scrollTarget ?? target).closest('.content-main') as HTMLElement | null;
+      const scroller = findScrollableAncestor(scrollTarget ?? target);
       if (scroller) {
         const rect = target.getBoundingClientRect();
         const containerRect = scroller.getBoundingClientRect();
-        const offsetTop = rect.top - containerRect.top + scroller.scrollTop - 60;
+        const offsetTop = Math.max(
+          0,
+          rect.top - containerRect.top + scroller.scrollTop - 60,
+        );
         scroller.scrollTo({ top: offsetTop, behavior: 'smooth' });
       } else {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -898,7 +1066,16 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (renderTimer) {
       clearTimeout(renderTimer);
     }
+    // A pending hold must not call openComposer/openAnnotations after unmount.
+    cancelLongPress();
+    suppressClickAfterLongPress = false;
     contentRef?.removeEventListener('click', onContentClick);
+    contentRef?.removeEventListener('pointerdown', onContentPointerDown);
+    contentRef?.removeEventListener('pointermove', onContentPointerMove);
+    contentRef?.removeEventListener('pointerup', onContentPointerEnd);
+    contentRef?.removeEventListener('pointercancel', onContentPointerEnd);
+    contentRef?.removeEventListener('contextmenu', onContentContextMenu);
+    contentRef?.removeEventListener('touchend', updateSelectionCapture);
     contentRef?.removeEventListener('mouseup', updateSelectionCapture);
     document.removeEventListener('selectionchange', updateSelectionCapture);
     document.removeEventListener('keyup', updateSelectionCapture);
@@ -1052,18 +1229,13 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                 top: `${capture().top}px`,
               }}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => {
-                const target = annotationStore.reanchorTarget();
-                if (target !== null) {
-                  void completeReanchor(target, capture().anchor);
-                  return;
-                }
-                openComposer(
-                  capture().anchor,
-                  capture().excerpt,
-                  new DOMRect(capture().left, capture().top, 0, 0)
-                );
+              on:touchstart={(event) => {
+                // Direct (non-delegated) listener: preventDefault must run
+                // before the browser collapses the live selection.
+                event.preventDefault();
+                activateSelectionCapture();
               }}
+              onClick={activateSelectionCapture}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               {isReanchoring() ? 'Re-anchor' : 'Annotate'}
