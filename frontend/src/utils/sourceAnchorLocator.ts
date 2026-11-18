@@ -243,6 +243,13 @@ function commonPrefixLength(left: string, right: string): number {
   return index;
 }
 
+function headingPrefixLength(left: string[], right: string[]): number {
+  const limit = Math.min(left.length, right.length);
+  let index = 0;
+  while (index < limit && left[index] === right[index]) index += 1;
+  return index;
+}
+
 function commonSuffixLength(left: string, right: string): number {
   const limit = Math.min(left.length, right.length);
   let index = 0;
@@ -293,7 +300,7 @@ function contextScore(
 function headingScore(projection: SourceProjection, line: number, headingPath: string[]): number {
   if (headingPath.length === 0) return 0;
   return (
-    commonPrefixLength(projection.headingPaths[line] ?? [], headingPath) *
+    headingPrefixLength(projection.headingPaths[line] ?? [], headingPath) *
     HEADING_PREFIX_WEIGHT
   );
 }

@@ -1,16 +1,28 @@
-import { Component, createSignal, createEffect, Show } from 'solid-js';
+import { Component, createSignal, createEffect, For, Show } from 'solid-js';
 import { highlightCode } from '../services/shikiService';
 import { escapeHtml } from '../utils/html';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
+import { annotationStore } from '../stores/annotationStore';
+import {
+  locateAnchorInSource,
+} from '../utils/sourceAnchorLocator';
+import type { Annotation } from '../types';
 
 interface SourceViewProps {
   content: string;
   fileName?: string;
   theme?: 'light' | 'dark';
+  projectId?: number;
+  currentFilePath?: string;
   showLineNumbers?: boolean;
   searchQuery?: string;
   currentSearchResult?: number;
   onSearchResultsChange?: (count: number) => void;
+}
+
+interface OutdatedSourceAnnotation {
+  id: number;
+  excerpt: string;
 }
 
 const getLanguageFromFileName = (fileName: string): string => {
@@ -72,6 +84,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
   const [highlightedHtml, setHighlightedHtml] = createSignal<string>('');
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [outdatedAnnotations, setOutdatedAnnotations] = createSignal<OutdatedSourceAnnotation[]>([]);
   let searchMatches: HTMLElement[] = [];
 
   const highlightSource = async () => {
@@ -132,6 +145,103 @@ const SourceView: Component<SourceViewProps> = (props) => {
     setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
   });
 
+  // Source view is another entry point to the same per-file annotations; the
+  // store deduplicates when the Preview already loaded them.
+  createEffect(() => {
+    const projectId = props.projectId;
+    const relativePath = props.currentFilePath;
+    if (projectId && relativePath) {
+      void annotationStore.load(projectId, relativePath);
+    }
+  });
+
+  const annotationExcerpt = (annotation: Annotation): string =>
+    (annotation.anchor?.segments ?? [])
+      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
+      .filter((text) => Boolean(text))
+      .join(' … ');
+
+  /**
+   * Read-only Source echo. Line highlights are best-effort; an unlocatable
+   * Anchor degrades to the Outdated badge instead of a wrong line. Status is
+   * published even when highlights are hidden so the annotation column keeps
+   * agreeing with the document (ADR-0005).
+   */
+  const applySourceHighlights = (annotations: Annotation[], visible: boolean): void => {
+    const lineElements = highlightedRef
+      ? Array.from(highlightedRef.querySelectorAll<HTMLElement>('pre code > .line'))
+      : [];
+
+    for (const line of lineElements) {
+      line.classList.remove('source-annotation-highlight', 'source-annotation-resolved');
+      line.removeAttribute('role');
+      line.removeAttribute('aria-label');
+      line.removeAttribute('title');
+    }
+
+    const annotationsByLine = new Map<number, Annotation[]>();
+    const outdated: OutdatedSourceAnnotation[] = [];
+    const snapshots = new Map<number, string>();
+
+    for (const annotation of annotations) {
+      const location = locateAnchorInSource(props.content, annotation.anchor);
+      if (location.status === 'outdated') {
+        const snapshot = annotation.snapshot?.trim() || location.snapshot;
+        snapshots.set(annotation.id, snapshot);
+        outdated.push({
+          id: annotation.id,
+          excerpt: snapshot || annotationExcerpt(annotation),
+        });
+        continue;
+      }
+
+      for (const range of location.ranges) {
+        for (let line = range.start; line <= range.end; line += 1) {
+          const entries = annotationsByLine.get(line) ?? [];
+          if (!entries.some((entry) => entry.id === annotation.id)) {
+            entries.push(annotation);
+          }
+          annotationsByLine.set(line, entries);
+        }
+      }
+    }
+
+    annotationStore.setOutdatedSnapshots(snapshots);
+    setOutdatedAnnotations(outdated);
+
+    if (!visible) return;
+
+    for (const [lineNumber, entries] of annotationsByLine) {
+      const element = lineElements[lineNumber - 1];
+      if (!element) continue;
+
+      element.classList.add('source-annotation-highlight');
+      if (entries.every((entry) => entry.resolved)) {
+        element.classList.add('source-annotation-resolved');
+      }
+
+      const label = entries
+        .map((entry) => annotationExcerpt(entry))
+        .filter((text) => text.length > 0)
+        .join(' … ');
+      element.setAttribute('role', 'mark');
+      element.setAttribute(
+        'aria-label',
+        label ? `Annotated source line: ${label}` : 'Annotated source line',
+      );
+      if (label) element.title = `Annotated: ${label}`;
+    }
+  };
+
+  createEffect(() => {
+    props.content;
+    highlightedHtml();
+    // The rendered source div only mounts after loading finishes, so the
+    // highlight pass must also observe that transition.
+    isLoading();
+    applySourceHighlights(annotationStore.annotations(), annotationStore.visible());
+  });
+
   return (
     <div class="source-view-wrapper">
       <Show when={isLoading()}>
@@ -144,6 +254,23 @@ const SourceView: Component<SourceViewProps> = (props) => {
       <Show when={error() !== null}>
         <div class="source-error">
           <span>Warning: {error()}</span>
+        </div>
+      </Show>
+
+      <Show when={outdatedAnnotations().length > 0 && annotationStore.visible()}>
+        <div
+          class="source-outdated-panel"
+          role="status"
+          aria-label="Outdated annotations"
+        >
+          <For each={outdatedAnnotations()}>
+            {(item) => (
+              <div class="source-outdated-item">
+                <span class="annotation-outdated-badge">Outdated</span>
+                <span class="source-outdated-text">{item.excerpt}</span>
+              </div>
+            )}
+          </For>
         </div>
       </Show>
 
