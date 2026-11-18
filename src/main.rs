@@ -8,14 +8,15 @@ use openmkview::config::{
 use openmkview::db::{init_db, ProjectRepository, SettingsRepository};
 use openmkview::handlers::{
     auth_login, auth_logout, auth_status, auth_update_session_timeout, clear_trash, close_project,
-    create_file, create_project, delete_custom_theme, delete_file, delete_from_trash, execute_git,
-    get_branches, get_commits, get_file_at_ref, get_file_content, get_file_diff, get_file_tree,
-    get_recent_projects, get_settings, get_tags, get_theme_css_content, get_trash_stats,
-    get_version, install_custom_theme, list_projects, list_themes, list_trash, move_file,
-    move_to_trash, open_project, passkey_delete, passkey_list, passkey_login_finish,
-    passkey_login_start, passkey_register_finish, passkey_register_start, rename_file,
-    resolve_path, restore_from_trash, save_file_content, search_favicons, serve_project_file,
-    update_project, update_project_color, update_settings, validate_project,
+    create_annotation, create_file, create_project, delete_annotation, delete_custom_theme,
+    delete_file, delete_from_trash, execute_git, get_branches, get_commits, get_file_at_ref,
+    get_file_content, get_file_diff, get_file_tree, get_recent_projects, get_settings, get_tags,
+    get_theme_css_content, get_trash_stats, get_version, install_custom_theme, list_annotations,
+    list_projects, list_themes, list_trash, move_file, move_to_trash, open_project, passkey_delete,
+    passkey_list, passkey_login_finish, passkey_login_start, passkey_register_finish,
+    passkey_register_start, rename_file, resolve_path, restore_from_trash, save_file_content,
+    search_favicons, serve_project_file, update_project, update_project_color, update_settings,
+    validate_project,
 };
 use openmkview::passkey::{build_passkey_sites, build_passkey_state};
 use openmkview::paths::AppPaths;
@@ -194,6 +195,9 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
         .route("/api/trash/clear", web::delete().to(clear_trash))
         .route("/api/trash/list", web::get().to(list_trash))
         .route("/api/trash/stats", web::get().to(get_trash_stats))
+        .route("/api/annotations", web::get().to(list_annotations))
+        .route("/api/annotations", web::post().to(create_annotation))
+        .route("/api/annotations/{id}", web::delete().to(delete_annotation))
         .route("/", web::get().to(static_files::serve_index))
         .route("/{path:.*}", web::get().to(static_files::serve_static));
 }

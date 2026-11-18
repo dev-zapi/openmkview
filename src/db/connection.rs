@@ -20,7 +20,27 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             key TEXT PRIMARY KEY NOT NULL,
             value TEXT NOT NULL,
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );",
+        );
+        CREATE TABLE IF NOT EXISTS annotations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id INTEGER NOT NULL,
+            relative_path TEXT NOT NULL,
+            anchor_json TEXT NOT NULL,
+            snapshot TEXT NULL DEFAULT NULL,
+            is_resolved INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS annotation_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            annotation_id INTEGER NOT NULL REFERENCES annotations(id) ON DELETE CASCADE,
+            body TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_annotations_project_path
+            ON annotations(project_id, relative_path);
+        CREATE INDEX IF NOT EXISTS idx_annotation_notes_annotation
+            ON annotation_notes(annotation_id, created_at, id);",
     )?;
 
     // Migration: Add color column if it doesn't exist

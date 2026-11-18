@@ -422,4 +422,76 @@ describe('api service', () => {
       });
     });
   });
+
+  describe('annotations', () => {
+    const annotation = {
+      id: 7,
+      projectId: 1,
+      relativePath: 'docs/notes.md',
+      anchor: { version: 1, segments: [] },
+      snapshot: null,
+      resolved: false,
+      createdAt: '2026-01-01 00:00:00',
+      updatedAt: '2026-01-01 00:00:00',
+      notes: [{ id: 1, annotationId: 7, body: 'note', createdAt: '2026-01-01 00:00:00' }],
+    };
+
+    it('lists annotations for a file', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [annotation],
+      });
+
+      const { api } = await import('../services/api');
+      const result = await api.listAnnotations(1, 'docs/my notes.md');
+
+      expect(result).toEqual([annotation]);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/annotations?project_id=1&relativePath=docs%2Fmy%20notes.md'
+      );
+    });
+
+    it('creates an annotation with a camelCase payload', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => annotation,
+      });
+
+      const { api } = await import('../services/api');
+      const request = {
+        projectId: 1,
+        relativePath: 'docs/notes.md',
+        anchor: annotation.anchor,
+        body: 'note',
+      };
+      const result = await api.createAnnotation(request);
+
+      expect(result).toEqual(annotation);
+      expect(global.fetch).toHaveBeenCalledWith('/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+    });
+
+    it('deletes an annotation by id', async () => {
+      (global.fetch as any).mockResolvedValueOnce({ ok: true });
+
+      const { api } = await import('../services/api');
+      await api.deleteAnnotation(7);
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/annotations/7', { method: 'DELETE' });
+    });
+
+    it('surfaces deletion errors', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'Annotation not found' }),
+      });
+
+      const { api } = await import('../services/api');
+      await expect(api.deleteAnnotation(7)).rejects.toThrow('Annotation not found');
+    });
+  });
 });
