@@ -103,3 +103,7 @@ _Avoid_: response, follow-up comment, message
 **Resolved**:
 The state of an Annotation thread marked as dealt with. Applies to the whole thread, never to individual Replies. Resolved annotations keep their highlights in a dimmed style and can be filtered out in the annotation column.
 _Avoid_: done, closed, finished, 已完成
+
+**Tool Session**:
+A non-expiring credential for non-interactive clients, such as the annotation CLI. Created by exchanging the instance username and password exactly once; the plaintext token is returned once and only its SHA-256 hash is stored in SQLite. Clients authenticate with `Authorization: Bearer <token>` across `/api/*` alongside the browser cookie. Tool Sessions survive server restarts and are invalidated only by manual deletion in the settings panel. See `docs/adr/0008-tool-sessions.md`.
+_Avoid_: API key, permanent token, 永久令牌, bearer session
