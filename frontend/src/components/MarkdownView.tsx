@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, Show } from 'solid-js';
+import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, Show, untrack } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
@@ -195,14 +195,17 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   });
 
   // The annotation column asks the rendered document to reveal an anchor.
-  // Runs after the highlight pass so the target block exists.
+  // Depend only on jumpRequest: replies/edits/resolves mutate annotations and
+  // must not replay the last jump.
+  let handledJumpNonce = 0;
   createEffect(() => {
     const jump = annotationStore.jumpRequest();
-    if (!jump) return;
+    if (!jump || jump.nonce === handledJumpNonce) return;
+    handledJumpNonce = jump.nonce;
 
-    const annotation = annotationStore
-      .annotations()
-      .find((candidate) => candidate.id === jump.annotationId);
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === jump.annotationId,
+    );
     const segment = annotation?.anchor?.segments?.find((part) => part.kind === 'block');
     if (!segment) return;
 

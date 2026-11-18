@@ -198,6 +198,7 @@ export function applyAnnotationHighlights(
     block.removeAttribute('data-annotation-ids');
     const marker = block.querySelector<HTMLElement>('.annotation-marker');
     marker?.classList.remove('has-annotation', 'resolved');
+    marker?.setAttribute('aria-pressed', 'false');
   }
 
   for (const [blockHash, blockAnnotations] of annotationsByBlock(annotations)) {
@@ -216,6 +217,7 @@ export function applyAnnotationHighlights(
     const marker = block.querySelector<HTMLElement>('.annotation-marker');
     if (marker) {
       marker.classList.add('has-annotation');
+      marker.setAttribute('aria-pressed', 'true');
       if (allResolved) marker.classList.add('resolved');
     }
   }
