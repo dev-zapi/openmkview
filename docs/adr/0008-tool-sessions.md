@@ -17,7 +17,8 @@ Interactive browser logins use an in-memory session cookie that expires after in
 - Storing the plaintext token — rejected: a leaked database would become a set of usable credentials.
 
 **Consequences:**
-- Every bearer-authenticated request performs one indexed SQLite lookup and a last-used update. Acceptable for a single-user, self-hosted server; the write is throttled only by request volume.
+- Every bearer-authenticated request performs one indexed SQLite lookup and a last-used update synchronously on the worker thread, with no throttling or batching. Accepted tradeoff for a single-user, self-hosted server; the write is throttled only by request volume.
+- The public credential-exchange endpoint has no rate limiting and no failed-attempt delay, matching the existing `/api/auth/login` posture. Accepted risk: the instance is intended for a single trusted owner on a private address, and adding brute-force protection is deliberately deferred.
 - A Tool Session cannot be scoped to a subset of the API or labelled by permission; it is full access until deleted. The label exists only so the owner can recognize the client.
 - Losing the plaintext token means deleting the session and exchanging credentials again; the database cannot recover it.
 - The frontend settings panel must list sessions and offer revocation to keep the credential lifecycle in the owner's hands.
