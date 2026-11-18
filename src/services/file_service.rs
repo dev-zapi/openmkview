@@ -165,7 +165,7 @@ impl FileService {
     }
 
     /// Validate relative path to prevent path traversal attacks
-    fn validate_relative_path(path: &str) -> AppResult<()> {
+    pub(crate) fn validate_relative_path(path: &str) -> AppResult<()> {
         if path.trim().is_empty() {
             return Err(AppError::ValidationError("Path is required".into()));
         }
@@ -660,7 +660,9 @@ impl FileService {
     ///
     /// `from` is the relative source path (file or directory).
     /// `to` is the relative target directory path (empty string for project root).
-    pub fn move_file(project_path: &Path, from: &str, to: &str) -> AppResult<()> {
+    ///
+    /// Returns the moved item's new project-relative path with forward slashes.
+    pub fn move_file(project_path: &Path, from: &str, to: &str) -> AppResult<String> {
         // Validate and resolve the source (must exist)
         let from_path = Self::resolve_existing_project_path(project_path, from)?;
 
@@ -701,10 +703,13 @@ impl FileService {
         // Perform the move
         std::fs::rename(&from_path, &dest_path)?;
 
-        Ok(())
+        Self::relative_path_from_project(project_path, &dest_path)
     }
 
-    pub fn rename_file(project_path: &Path, old_path: &str, new_name: &str) -> AppResult<()> {
+    /// Rename a file or directory in place.
+    ///
+    /// Returns the renamed item's new project-relative path with forward slashes.
+    pub fn rename_file(project_path: &Path, old_path: &str, new_name: &str) -> AppResult<String> {
         Self::validate_file_name(new_name)?;
         let old_path = Self::resolve_existing_project_path(project_path, old_path)?;
         let new_path = old_path
@@ -721,7 +726,19 @@ impl FileService {
         }
 
         std::fs::rename(&old_path, &new_path)?;
-        Ok(())
+
+        Self::relative_path_from_project(project_path, &new_path)
+    }
+
+    /// Express an absolute path inside the project as the forward-slash string
+    /// used by file-tree nodes and annotation rows.
+    fn relative_path_from_project(project_path: &Path, path: &Path) -> AppResult<String> {
+        let project_resolved = Self::canonical_project_path(project_path)?;
+        let relative = path
+            .strip_prefix(&project_resolved)
+            .map_err(|_| AppError::InternalError("Path escaped the project root".into()))?;
+        Self::relative_path_to_string(relative)
+            .ok_or_else(|| AppError::InternalError("Path is not valid UTF-8".into()))
     }
 
     pub fn delete_file(project_path: &Path, file_path: &str) -> AppResult<()> {

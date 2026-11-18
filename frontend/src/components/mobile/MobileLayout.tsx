@@ -8,6 +8,8 @@ interface MobileLayoutProps {
   activityBarContent?: JSX.Element;
   sidebarContent?: JSX.Element;
   outlinePanelContent?: JSX.Element;
+  /** Content of the same right drawer when its mode is the annotation column. */
+  annotationPanelContent?: JSX.Element;
   headerContent?: JSX.Element;
   /** Docked below the scroll area: the mobile bottom view bar. */
   bottomBarContent?: JSX.Element;
@@ -119,16 +121,23 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         </div>
       </MobileDrawer>
 
-      {/* Right drawer - OutlinePanel */}
+      {/* Right drawer - outline or annotation column */}
       <MobileDrawer
         isOpen={mobileLayoutStore.rightDrawerOpen}
         onClose={mobileLayoutStore.closeRightDrawer}
         position="right"
         width="80%"
+        ariaLabel={mobileLayoutStore.rightDrawerMode === 'annotations' ? 'Annotations' : undefined}
       >
         <div class={styles.rightDrawerContent}>
-          <Show when={props.outlinePanelContent}>
-            {(content) => content()}
+          <Show when={mobileLayoutStore.rightDrawerMode === 'annotations'} fallback={
+            <Show when={props.outlinePanelContent}>
+              {(content) => content()}
+            </Show>
+          }>
+            <Show when={props.annotationPanelContent}>
+              {(content) => content()}
+            </Show>
           </Show>
         </div>
       </MobileDrawer>

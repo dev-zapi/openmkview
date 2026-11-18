@@ -264,6 +264,11 @@
   padding: 10px 16px;
 }
 
+/* The annotation column fills the right drawer instead of the desktop gutter. */
+.rightDrawerContent :global(.annotation-column) {
+  border-left: none;
+}
+
 .projectActionOverlay {
   position: fixed;
   inset: 0;

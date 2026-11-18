@@ -101,4 +101,49 @@ describe('LoginPage', () => {
       expect(screen.getByText('Sign in with Passkey')).toBeTruthy();
     });
   });
+
+  it('shows version info below the form when the API responds', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ version: 'v0.2.0-abc1234', build_time: '2026-11-18T05:04:05Z' }),
+      }),
+    );
+
+    render(() => <LoginPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/^v0\.2\.0-abc1234 - \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/)).toBeTruthy();
+    });
+  });
+
+  it('shows version alone when build time is missing or invalid', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ version: 'v0.2.0-abc1234', build_time: 'not-a-date' }),
+      }),
+    );
+
+    render(() => <LoginPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('v0.2.0-abc1234')).toBeTruthy();
+    });
+  });
+
+  it('renders no version info when the API fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error('offline')),
+    );
+
+    render(() => <LoginPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/v\d/)).toBeNull();
+    });
+  });
 });

@@ -13,6 +13,8 @@ export interface MarkdownHeaderProps {
   activeTab: TabType;
   isOutlineOpen: boolean;
   outlineCount: number;
+  annotationCount?: number;
+  isAnnotationsOpen?: boolean;
   content: string;
   fileType?: FileType;
   /** Binary files render a placeholder page; hide all view tabs. */
@@ -23,6 +25,11 @@ export interface MarkdownHeaderProps {
   currentSearchResult: number;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  /** Reading-mode toggle: hide/show all Annotation highlights and markers. */
+  annotationsVisible?: boolean;
+  isAnnotationColumnOpen?: boolean;
+  onAnnotationsToggle?: () => void;
+  onAnnotationColumnToggle?: () => void;
   onSearchClick: () => void;
   onSearchClose: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -150,11 +157,16 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         activeTab={props.activeTab}
         outlineCount={props.outlineCount}
         isOutlineOpen={props.isOutlineOpen}
+        annotationCount={props.annotationCount}
+        isAnnotationColumnOpen={props.isAnnotationColumnOpen}
         isFullscreen={isFullscreen()}
         fileType={props.fileType}
         binary={props.binary}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
+        annotationsVisible={props.annotationsVisible}
+        onAnnotationsToggle={props.onAnnotationsToggle}
+        onAnnotationColumnToggle={props.onAnnotationColumnToggle}
         onFullscreenToggle={handleFullscreenToggle}
         onSearchClick={props.onSearchClick}
         isSearchActive={usesInlineSearch() && props.isSearchOpen}

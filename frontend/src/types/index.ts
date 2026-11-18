@@ -52,6 +52,73 @@ export interface FileSaveResponse {
   lastModified: string;
 }
 
+/**
+ * One segment of an Annotation's Anchor. A whole-block annotation has a
+ * single `block` segment; a text selection has one `text` segment per block
+ * it covers (ADR-0005).
+ */
+export interface BlockAnchorSegment {
+  kind: 'block';
+  /** Stable content-hash identifier assigned by the render pass. */
+  blockHash: string;
+  blockText: string;
+  blockType: string;
+  headingPath: string[];
+}
+
+export interface TextAnchorSegment {
+  kind: 'text';
+  blockHash: string;
+  blockText: string;
+  blockType: string;
+  headingPath: string[];
+  /** Selected text, whitespace-normalized. */
+  quote: string;
+  /** Short whitespace-normalized excerpt before the selection in the block. */
+  prefix: string;
+  /** Short whitespace-normalized excerpt after the selection in the block. */
+  suffix: string;
+}
+
+export type AnchorSegment = BlockAnchorSegment | TextAnchorSegment;
+
+export interface AnnotationAnchor {
+  version: number;
+  segments: AnchorSegment[];
+}
+
+export interface AnnotationNote {
+  id: number;
+  annotationId: number;
+  body: string;
+  createdAt: string;
+}
+
+export interface Annotation {
+  id: number;
+  projectId: number;
+  relativePath: string;
+  anchor: AnnotationAnchor;
+  snapshot: string | null;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+  notes: AnnotationNote[];
+}
+
+/** A management-panel row: the annotation plus whether its file is missing. */
+export interface ManagedAnnotation extends Annotation {
+  /** Missing File: the stored path no longer exists on disk. */
+  missingFile: boolean;
+}
+
+export interface CreateAnnotationRequest {
+  projectId: number;
+  relativePath: string;
+  anchor: AnnotationAnchor;
+  body: string;
+}
+
 export interface GitCommit {
   hash: string;
   shortHash: string;

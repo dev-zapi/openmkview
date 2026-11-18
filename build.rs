@@ -1,5 +1,4 @@
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 fn main() {
     let git_hash = Command::new("git")
@@ -21,24 +20,7 @@ fn main() {
         &git_hash
     };
 
-    let build_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| {
-            let secs = d.as_secs();
-            let days = secs / 86400;
-            let years = 1970 + days / 365;
-            let remaining_days = days % 365;
-            let months = remaining_days / 30 + 1;
-            let day = remaining_days % 30 + 1;
-            let hours = (secs % 86400) / 3600;
-            let minutes = (secs % 3600) / 60;
-            let seconds = secs % 60;
-            format!(
-                "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-                years, months, day, hours, minutes, seconds
-            )
-        })
-        .unwrap_or_else(|_| "unknown".to_string());
+    let build_time = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
     println!("cargo:rustc-env=GIT_HASH={}", git_hash);
     println!("cargo:rustc-env=GIT_SHORT_HASH={}", short_hash);

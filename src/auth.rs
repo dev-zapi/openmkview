@@ -190,6 +190,7 @@ fn is_public_path(path: &str) -> bool {
         || path == "/api/auth/login"
         || path == "/api/auth/passkey/login/start"
         || path == "/api/auth/passkey/login/finish"
+        || path == "/api/version"
 }
 
 fn build_session_token(secret_key: &[u8]) -> AppResult<String> {
@@ -520,4 +521,17 @@ where
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::is_public_path;
+
+    #[test]
+    fn annotation_api_is_not_public() {
+        assert!(!is_public_path("/api/annotations"));
+        assert!(!is_public_path("/api/annotations/42"));
+    }
+
+    #[test]
+    fn version_api_is_public_for_login_page() {
+        assert!(is_public_path("/api/version"));
+    }
+}

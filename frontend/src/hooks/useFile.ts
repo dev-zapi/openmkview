@@ -5,10 +5,29 @@ import { projectStore } from '../stores/projectStore';
 import { appStore } from '../stores/appStore';
 import { diffStore } from '../stores/diffStore';
 import { offlineStore } from '../stores/offlineStore';
+import { annotationStore } from '../stores/annotationStore';
 import { navigateToFile } from '../utils/router';
 import { settingsStore } from '../stores/settingsStore';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
 import type { FileNode } from '../types';
+
+/** Map the open file's path when its own path or an ancestor directory is renamed. */
+function mapPathAfterRename(
+  currentPath: string,
+  renamedPath: string,
+  newName: string
+): string | null {
+  const parent = renamedPath.includes('/')
+    ? renamedPath.slice(0, renamedPath.lastIndexOf('/') + 1)
+    : '';
+  const replacement = `${parent}${newName}`;
+
+  if (currentPath === renamedPath) return replacement;
+  if (currentPath.startsWith(`${renamedPath}/`)) {
+    return `${replacement}${currentPath.slice(renamedPath.length)}`;
+  }
+  return null;
+}
 
 export const useFile = () => {
   const confirmDiscardIfDirty = (): boolean => {
@@ -24,9 +43,16 @@ export const useFile = () => {
 
   const openFile = async (path: string, updateUrl: boolean = true) => {
     const project = projectStore.state.activeProject;
-    if (!project) return;
+    if (!project) {
+      annotationStore.cancelPendingJump(path);
+      return;
+    }
 
-    if (!confirmDiscardIfDirty()) return;
+    if (!confirmDiscardIfDirty()) {
+      // The management panel may have armed a cross-file jump for this path.
+      annotationStore.cancelPendingJump(path);
+      return;
+    }
 
     const node = fileStore.findNodeByPath(path);
     const fileType = node?.fileType;
@@ -52,11 +78,14 @@ export const useFile = () => {
         fileStore.openOtherFile(content);
         editorStore.reset();
         diffStore.reset();
+        annotationStore.invalidateOutdatedStatus();
         appStore.setActiveTab(content.binary ? 'preview' : 'source');
       } else {
         fileStore.openDocumentFile(content, fileType === 'html' ? 'html' : 'markdown');
         editorStore.initialize(content.content);
         diffStore.reset();
+        // Fresh content invalidates any prior render's Outdated decisions.
+        annotationStore.invalidateOutdatedStatus();
         appStore.setActiveTab('preview');
       }
 
@@ -64,6 +93,7 @@ export const useFile = () => {
         navigateToFile(project.id, path);
       }
     } catch (error) {
+      annotationStore.cancelPendingJump(path);
       console.error('Failed to load file:', error);
       fileStore.setLoadError(
         offlineStore.online()
@@ -122,11 +152,38 @@ export const useFile = () => {
     }
   };
 
-  const renameFile = (node: FileNode) => {
+  const renameFile = async (node: FileNode) => {
+    const project = projectStore.state.activeProject;
+    if (!project) return;
+
     const newName = prompt('Enter new name:', node.name);
     if (!newName || newName === node.name) return;
-    
-    alert('Rename functionality will be implemented in future version');
+
+    // If the rename touches the open file, discard-or-cancel must happen before
+    // the filesystem change. Otherwise a cancelled discard would leave the
+    // editor pointing at a path that no longer exists and the next save would
+    // fail. Preview mode has no dirty state and proceeds straight through.
+    const currentPath = fileStore.currentFile()?.path;
+    const nextPath = currentPath
+      ? mapPathAfterRename(currentPath, node.path, newName)
+      : null;
+    if (nextPath && !confirmDiscardIfDirty()) return;
+
+    try {
+      await api.renameFile(node.path, newName, project.id);
+
+      const tree = await api.getFileTree(project.id);
+      fileStore.setFileTree(tree);
+
+      // Annotations follow the file because the backend migrated their
+      // stored relative paths; reopen the current file under its new path.
+      if (nextPath) {
+        await openFile(nextPath, true);
+      }
+    } catch (error) {
+      console.error('Failed to rename:', error);
+      alert(`Failed to rename: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const mobileFileClick = async (path: string, updateUrl?: boolean) => {

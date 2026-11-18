@@ -1,16 +1,26 @@
-import { Component, createSignal, createEffect, Show } from 'solid-js';
+import { Component, createSignal, createEffect, untrack, For, Show } from 'solid-js';
 import { highlightCode } from '../services/shikiService';
 import { escapeHtml } from '../utils/html';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
+import { annotationStore } from '../stores/annotationStore';
+import { locateAnchorInSource } from '../utils/sourceAnchorLocator';
+import { anchorExcerpt } from '../utils/anchorScoring';
+import type { Annotation } from '../types';
 
 interface SourceViewProps {
   content: string;
   fileName?: string;
   theme?: 'light' | 'dark';
+  projectId?: number;
+  currentFilePath?: string;
   showLineNumbers?: boolean;
   searchQuery?: string;
   currentSearchResult?: number;
   onSearchResultsChange?: (count: number) => void;
+}
+
+interface OutdatedSourceAnnotation {
+  excerpt: string;
 }
 
 const getLanguageFromFileName = (fileName: string): string => {
@@ -72,6 +82,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
   const [highlightedHtml, setHighlightedHtml] = createSignal<string>('');
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [outdatedAnnotations, setOutdatedAnnotations] = createSignal<OutdatedSourceAnnotation[]>([]);
   let searchMatches: HTMLElement[] = [];
 
   const highlightSource = async () => {
@@ -132,6 +143,165 @@ const SourceView: Component<SourceViewProps> = (props) => {
     setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
   });
 
+  // Source view is another entry point to the same per-file annotations; the
+  // store deduplicates when the Preview already loaded them.
+  createEffect(() => {
+    const projectId = props.projectId;
+    const relativePath = props.currentFilePath;
+    if (projectId && relativePath) {
+      void annotationStore.load(projectId, relativePath);
+    }
+  });
+
+  /**
+   * Read-only Source echo. Line highlights are best-effort; an unlocatable
+   * Anchor degrades to the Outdated badge instead of a wrong line. Status is
+   * published even when highlights are hidden so the annotation column keeps
+   * agreeing with the document (ADR-0005).
+   */
+  const applySourceHighlights = (annotations: Annotation[], visible: boolean): void => {
+    const lineElements = highlightedRef
+      ? Array.from(highlightedRef.querySelectorAll<HTMLElement>('pre code > .line'))
+      : [];
+
+    for (const line of lineElements) {
+      line.classList.remove('source-annotation-highlight', 'source-annotation-resolved');
+      line.removeAttribute('role');
+      line.removeAttribute('aria-label');
+      line.removeAttribute('title');
+    }
+
+    const annotationsByLine = new Map<number, Annotation[]>();
+    const outdated: OutdatedSourceAnnotation[] = [];
+    // Canonical status is owned by the Preview; read it untracked so
+    // publishing the Source-only fallback cannot loop back into this effect.
+    const previewResolved = untrack(() => annotationStore.previewOutdatedResolved());
+    const canonicalOutdated = untrack(() => annotationStore.outdatedSnapshots());
+    const sourceSnapshots = new Map<number, string>();
+
+    const addRanges = (annotation: Annotation, ranges: { start: number; end: number }[]) => {
+      for (const range of ranges) {
+        for (let line = range.start; line <= range.end; line += 1) {
+          const entries = annotationsByLine.get(line) ?? [];
+          if (!entries.some((entry) => entry.id === annotation.id)) {
+            entries.push(annotation);
+          }
+          annotationsByLine.set(line, entries);
+        }
+      }
+    };
+
+    for (const annotation of annotations) {
+      // The rendered Preview is the canonical status surface. Mirror its
+      // Outdated set exactly and never invent a different state from the
+      // coarser raw-Markdown projection.
+      if (previewResolved) {
+        const canonicalSnapshot = canonicalOutdated.get(annotation.id);
+        if (canonicalSnapshot !== undefined) {
+          outdated.push({ excerpt: canonicalSnapshot || anchorExcerpt(annotation.anchor) });
+          continue;
+        }
+
+        const location = locateAnchorInSource(props.content, annotation.anchor);
+        // An Active annotation the Source projection cannot find is simply
+        // not echoed; it must not gain a false Outdated badge here.
+        if (location.status === 'located') addRanges(annotation, location.ranges);
+        continue;
+      }
+
+      const location = locateAnchorInSource(props.content, annotation.anchor);
+      if (location.status === 'outdated') {
+        const snapshot = annotation.snapshot?.trim() || location.snapshot;
+        sourceSnapshots.set(annotation.id, snapshot);
+        outdated.push({ excerpt: snapshot || anchorExcerpt(annotation.anchor) });
+        continue;
+      }
+
+      addRanges(annotation, location.ranges);
+    }
+
+    // Source-only load (no Preview visit): fill the status the Preview could
+    // not provide. Once Preview has resolved, its map stays untouched.
+    annotationStore.publishSourceOutdatedSnapshots(sourceSnapshots);
+    setOutdatedAnnotations(outdated);
+
+    if (!visible) return;
+
+    for (const [lineNumber, entries] of annotationsByLine) {
+      const element = lineElements[lineNumber - 1];
+      if (!element) continue;
+
+      element.classList.add('source-annotation-highlight');
+      if (entries.every((entry) => entry.resolved)) {
+        element.classList.add('source-annotation-resolved');
+      }
+
+      const label = entries
+        .map((entry) => anchorExcerpt(entry.anchor))
+        .filter((text) => text.length > 0)
+        .join(' … ');
+      element.setAttribute('role', 'mark');
+      element.setAttribute(
+        'aria-label',
+        label ? `Annotated source line: ${label}` : 'Annotated source line',
+      );
+      if (label) element.title = `Annotated: ${label}`;
+    }
+  };
+
+  createEffect(() => {
+    props.content;
+    highlightedHtml();
+    // The rendered source div only mounts after loading finishes, so the
+    // highlight pass must also observe that transition.
+    isLoading();
+    applySourceHighlights(annotationStore.annotations(), annotationStore.visible());
+  });
+
+  /**
+   * Honor a column jump while the Source tab is active. The Preview is not
+   * mounted to consume the request, and leaving it armed would replay the
+   * jump on a later Preview mount. The source locator already computes the
+   * anchored lines, so scroll to the first one and consume the request.
+   */
+  let handledJumpNonce = 0;
+  createEffect(() => {
+    const jump = annotationStore.jumpRequest();
+    if (!jump || jump.nonce === handledJumpNonce) return;
+    // Wait until the highlighted source exists; this effect reruns as it does.
+    if (isLoading() || !highlightedRef) return;
+
+    handledJumpNonce = jump.nonce;
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === jump.annotationId
+    );
+    if (!annotation) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    const location = locateAnchorInSource(props.content, annotation.anchor);
+    const line =
+      location.status === 'located'
+        ? Array.from(
+            highlightedRef.querySelectorAll<HTMLElement>('pre code > .line')
+          )[location.ranges[0]?.start - 1]
+        : undefined;
+    if (!line) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    line.classList.add('annotation-jump-target');
+    line.setAttribute('tabindex', '-1');
+    line.focus({ preventScroll: true });
+    setTimeout(() => line.classList.remove('annotation-jump-target'), 1600);
+
+    // Consume it here so a later Preview mount cannot replay the jump.
+    annotationStore.clearJump();
+  });
+
   return (
     <div class="source-view-wrapper">
       <Show when={isLoading()}>
@@ -144,6 +314,23 @@ const SourceView: Component<SourceViewProps> = (props) => {
       <Show when={error() !== null}>
         <div class="source-error">
           <span>Warning: {error()}</span>
+        </div>
+      </Show>
+
+      <Show when={outdatedAnnotations().length > 0 && annotationStore.visible()}>
+        <div
+          class="source-outdated-panel"
+          role="status"
+          aria-label="Outdated annotations"
+        >
+          <For each={outdatedAnnotations()}>
+            {(item) => (
+              <div class="source-outdated-item">
+                <span class="annotation-outdated-badge">Outdated</span>
+                <span class="source-outdated-text">{item.excerpt}</span>
+              </div>
+            )}
+          </For>
         </div>
       </Show>
 

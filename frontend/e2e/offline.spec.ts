@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, probeFetch, getHarnessProject } from './fixtures';
 import { loginIfNeeded, waitForDesktopApp } from './fixtures';
 
 interface MarkdownFileTarget {
@@ -8,13 +8,8 @@ interface MarkdownFileTarget {
 
 // 通过 API 直接在页面上下文里找项目中的 markdown 文件，避免依赖文件树的 DOM 结构
 async function findMarkdownFiles(page: import('@playwright/test').Page): Promise<MarkdownFileTarget[]> {
-  return page.evaluate(async () => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) return [];
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) return [];
-
+  const project = await getHarnessProject(page);
+  return page.evaluate(async ({ projectId }) => {
     const treeRes = await fetch(`/api/files/tree?project_id=${projectId}`);
     if (!treeRes.ok) return [];
     const tree = await treeRes.json();
@@ -30,7 +25,7 @@ async function findMarkdownFiles(page: import('@playwright/test').Page): Promise
     };
     walk(tree);
     return results;
-  });
+  }, { projectId: project.id });
 }
 
 const contentUrl = (f: MarkdownFileTarget) =>
@@ -38,16 +33,6 @@ const contentUrl = (f: MarkdownFileTarget) =>
 
 // 页面内 fetch 探测：断网后不做整页导航时请求是真被阻断的
 // （Chromium 的离线模拟在整页导航后会失效，因此离线断言必须在同一页面内完成）
-async function probeFetch(page: import('@playwright/test').Page, url: string): Promise<string> {
-  return page.evaluate(async (u) => {
-    try {
-      const res = await fetch(u);
-      return `status:${res.status}`;
-    } catch {
-      return 'failed';
-    }
-  }, url);
-}
 
 test.describe('PWA offline mode', () => {
   test('app shell and cached content work offline; uncached content shows empty state', async ({

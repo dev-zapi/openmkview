@@ -1,4 +1,7 @@
-import { test as base, expect, Page } from '@playwright/test';
+import { test as base, expect, Page, type Locator } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 export interface ConsoleMessage {
   type: string;
@@ -63,6 +66,352 @@ export async function openReadmeInEdit(page: Page) {
   await openReadme(page);
   await page.locator('[class*="viewTabs"]').getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.locator('.editor-status-bar')).toBeVisible();
+}
+
+/** A scratch Markdown file inside the first open project. */
+export interface FileTarget {
+  projectId: number;
+  path: string;
+}
+
+export interface OpenProjectSummary {
+  id: number;
+  path: string;
+  name: string;
+}
+
+/** Project-name prefixes used by throwaway per-test projects. */
+const SCRATCH_PROJECT_PREFIX = /^(?:annotations-e2e-|ann19-drift-|openmkview-manage-clear-|annotations-mobile-)/;
+
+/**
+ * The harness's seeded open project, ignoring scratch projects created by
+ * serial specs. Selecting this deterministically keeps parallel specs from
+ * adopting (and then losing) another spec's throwaway project.
+ */
+export async function getHarnessProject(page: Page): Promise<OpenProjectSummary> {
+  const projects: OpenProjectSummary[] = await page.evaluate(async () => {
+    const res = await fetch('/api/projects?open=true');
+    if (!res.ok) throw new Error('cannot list projects');
+    return res.json();
+  });
+  const tempRoot = os.tmpdir();
+  const harness =
+    projects.find(
+      (project) =>
+        !SCRATCH_PROJECT_PREFIX.test(project.name) && !project.path.startsWith(tempRoot)
+    ) ??
+    projects.find((project) => !SCRATCH_PROJECT_PREFIX.test(project.name)) ??
+    projects[projects.length - 1];
+  if (!harness) throw new Error('no open project to annotate');
+  return harness;
+}
+
+/** Create a uniquely named Markdown file in the harness's seeded project. */
+export async function createScratchFile(
+  page: Page,
+  body: string,
+  prefix = 'annotations-e2e'
+): Promise<FileTarget> {
+  const project = await getHarnessProject(page);
+  return page.evaluate(async ({ body, prefix, projectId }) => {
+    const name = `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
+    const createRes = await fetch('/api/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', project_id: projectId, name }),
+    });
+    if (!createRes.ok) throw new Error(`cannot create scratch file: ${createRes.status}`);
+
+    const saveRes = await fetch('/api/files/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, relativePath: name, content: body }),
+    });
+    if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
+
+    return { projectId, path: name };
+  }, { body, prefix, projectId: project.id });
+}
+
+/** Delete the scratch file's annotations first, then the file itself. */
+export async function removeScratchFile(page: Page, target: FileTarget): Promise<void> {
+  await page.evaluate(async ({ projectId, path }) => {
+    const listRes = await fetch(
+      `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(path)}`
+    );
+    if (listRes.ok) {
+      const annotations = await listRes.json();
+      for (const annotation of annotations) {
+        await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
+      }
+    }
+
+    await fetch('/api/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, path }),
+    });
+  }, target);
+}
+
+/** Open a scratch file by URL and wait for its top-level heading. */
+export async function openScratchFile(
+  page: Page,
+  target: FileTarget,
+  heading: string
+): Promise<void> {
+  await page.goto(
+    `/project/${target.projectId}/files/${encodeURIComponent(target.path)}`,
+    { waitUntil: 'domcontentloaded' }
+  );
+  await expect(page.getByRole('heading', { name: heading })).toBeVisible({ timeout: 15000 });
+}
+
+/** In-page fetch probe: offline assertions must stay in the same page. */
+export async function probeFetch(page: Page, url: string): Promise<string> {
+  return page.evaluate(async (u) => {
+    try {
+      const res = await fetch(u);
+      return `status:${res.status}`;
+    } catch {
+      return 'failed';
+    }
+  }, url);
+}
+
+/** Fill and save the annotation composer dialog. */
+export async function saveComposer(page: Page, body: string): Promise<void> {
+  const composer = page.getByRole('dialog', { name: 'New annotation' });
+  await expect(composer).toBeVisible();
+  await composer.getByRole('textbox').fill(body);
+  await composer.getByRole('button', { name: 'Save' }).click();
+  await expect(composer).not.toBeVisible();
+}
+
+/** Annotate the whole block containing `paragraphText`. */
+export async function createBlockAnnotation(
+  page: Page,
+  paragraphText: string,
+  body: string
+): Promise<void> {
+  const paragraph = page.getByRole('paragraph').filter({ hasText: paragraphText });
+  await expect(paragraph).toBeVisible();
+  await paragraph.hover();
+  await paragraph.getByRole('button', { name: /Annotate this block/ }).click();
+  await saveComposer(page, body);
+}
+
+/**
+ * Selects from `startPhrase` through the end of `endPhrase` in Preview.
+ * Boundaries are mapped by absolute offset, so phrases may span blocks and
+ * may end exactly at a text node boundary.
+ */
+export async function selectTextRange(
+  page: Page,
+  startPhrase: string,
+  endPhrase: string
+): Promise<void> {
+  await page.evaluate(
+    ({ startPhrase, endPhrase }) => {
+      const content = document.querySelector('.markdown-content');
+      if (!content) throw new Error('markdown content not found');
+
+      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      let combined = '';
+      let node = walker.nextNode() as Text | null;
+      while (node) {
+        nodes.push(node);
+        combined += node.nodeValue || '';
+        node = walker.nextNode() as Text | null;
+      }
+
+      const locateBoundary = (offset: number) => {
+        let remaining = offset;
+        for (const text of nodes) {
+          const length = text.nodeValue?.length || 0;
+          if (remaining <= length) return { node: text, offset: remaining };
+          remaining -= length;
+        }
+        const last = nodes[nodes.length - 1];
+        return { node: last, offset: last.nodeValue?.length || 0 };
+      };
+
+      /** Keeps the start inside real content, never a whitespace-only node. */
+      const locatePhraseStart = (offset: number) => {
+        let remaining = offset;
+        for (let index = 0; index < nodes.length; index += 1) {
+          const text = nodes[index];
+          const length = text.nodeValue?.length || 0;
+          if (remaining < length) return { node: text, offset: remaining };
+          if (remaining === length) {
+            const next = nodes[index + 1];
+            if (next && !(text.nodeValue || '').trim()) {
+              return { node: next, offset: 0 };
+            }
+            return { node: text, offset: length };
+          }
+          remaining -= length;
+        }
+        const last = nodes[nodes.length - 1];
+        return { node: last, offset: last.nodeValue?.length || 0 };
+      };
+
+      const startOffset = combined.indexOf(startPhrase);
+      if (startOffset === -1) throw new Error(`cannot find phrase: ${startPhrase}`);
+      const endSearchFrom =
+        endPhrase === startPhrase ? startOffset : startOffset + startPhrase.length;
+      const endOffset = combined.indexOf(endPhrase, endSearchFrom);
+      if (endOffset === -1) throw new Error(`cannot find phrase: ${endPhrase}`);
+
+      const start = locatePhraseStart(startOffset);
+      const end = locateBoundary(endOffset + endPhrase.length);
+      const range = document.createRange();
+      range.setStart(start.node, start.offset);
+      range.setEnd(end.node, end.offset);
+
+      const selection = window.getSelection();
+      if (!selection) throw new Error('no selection');
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+    },
+    { startPhrase, endPhrase }
+  );
+}
+
+/** Replace the whole document through Edit Mode and return to Preview. */
+export async function replaceDocumentInEditMode(
+  page: Page,
+  content: string,
+  heading: string,
+  returnToPreview = true
+): Promise<void> {
+  const header = page.locator('header');
+  await header.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.locator('.editor-status-bar')).toBeVisible();
+
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.insertText(content);
+
+  const saveButton = page.locator('button[title="Save (Ctrl+S)"]').first();
+  await expect(saveButton).toBeEnabled({ timeout: 10000 });
+
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/files/content') &&
+      response.request().method() === 'PUT'
+  );
+  await saveButton.click();
+  await saved;
+
+  if (!returnToPreview) return;
+
+  await header.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+}
+
+/** Open the independent annotation column and return its region. */
+export async function openAnnotationColumn(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'Annotation column', exact: true }).first().click();
+  const column = page.getByRole('region', { name: 'Annotations' });
+  await expect(column).toBeVisible();
+  return column;
+}
+
+/** A throwaway project directory seeded through the real project API. */
+export interface ScratchProject {
+  projectId: number;
+  projectDir: string;
+  path: string;
+  /** Harness project re-opened around the scratch project's lifetime. */
+  previousProjectPath?: string;
+}
+
+/**
+ * Seed an isolated project + Markdown file. Serial mutation specs use this
+ * instead of the shared seeded project so parallel agents cannot interfere.
+ * The caller must already be on the app origin (fetch runs in the page).
+ */
+export async function createScratchProject(
+  page: Page,
+  fileName: string,
+  content: string,
+  prefix = 'annotations-e2e'
+): Promise<ScratchProject> {
+  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}-`));
+  fs.writeFileSync(path.join(projectDir, fileName), content);
+  const previous = await getHarnessProject(page);
+
+  const project = await page.evaluate(
+    async ({ dir, previousProjectPath }) => {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: dir }),
+      });
+      if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
+      const created = await res.json();
+
+      // Keep the harness project at the head of the activity bar while the
+      // scratch project exists (standalone-frame clicks the first project).
+      if (previousProjectPath) {
+        await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: previousProjectPath }),
+        });
+      }
+      return created;
+    },
+    { dir: projectDir, previousProjectPath: previous.path }
+  );
+
+  return {
+    projectId: project.id,
+    projectDir,
+    path: fileName,
+    previousProjectPath: previous.path,
+  };
+}
+
+/** Delete the file's annotations, close the scratch project, restore the harness. */
+export async function removeScratchProject(
+  page: Page,
+  target: ScratchProject
+): Promise<void> {
+  await page.evaluate(
+    async ({ projectId, relativePath, previousProjectPath }) => {
+      const res = await fetch(
+        `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(relativePath)}`
+      );
+      if (res.ok) {
+        const annotations = await res.json();
+        for (const annotation of annotations) {
+          await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
+        }
+      }
+      // Close the scratch project so later specs never pick this deleted
+      // directory, then reopen the harness project that was active before.
+      await fetch(`/api/projects/${projectId}/close`, { method: 'POST' });
+      if (previousProjectPath) {
+        await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: previousProjectPath }),
+        });
+      }
+    },
+    {
+      projectId: target.projectId,
+      relativePath: target.path,
+      previousProjectPath: target.previousProjectPath,
+    }
+  );
+
+  fs.rmSync(target.projectDir, { recursive: true, force: true });
 }
 
 // 扩展 test fixture，添加控制台日志收集

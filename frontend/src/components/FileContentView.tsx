@@ -174,6 +174,8 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             content={props.currentFile!.content}
             fileName={props.currentFile!.fileName}
             theme={props.theme}
+            projectId={props.activeProjectId}
+            currentFilePath={props.currentFile!.path}
             searchQuery={props.searchQuery}
             currentSearchResult={props.currentSearchResult}
             onSearchResultsChange={props.onSearchResultsChange}

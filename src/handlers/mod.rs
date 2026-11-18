@@ -1,3 +1,4 @@
+mod annotation_handler;
 mod auth_handler;
 mod file_handler;
 mod git_handler;
@@ -8,6 +9,11 @@ mod theme_handler;
 mod trash_handler;
 mod version_handler;
 
+pub use annotation_handler::{
+    add_note, batch_delete_annotations, batch_resolve_annotations, clear_project_annotations,
+    create_annotation, delete_annotation, list_annotations, list_project_annotations,
+    reanchor_annotation, set_resolved, update_note,
+};
 pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{
     create_file, delete_file, get_file_content, get_file_tree, move_file, rename_file,

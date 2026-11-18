@@ -1,8 +1,11 @@
 import { createSignal } from 'solid-js';
 
+export type RightDrawerMode = 'outline' | 'annotations';
+
 // Mobile drawer state management
 const [leftDrawerOpen, setLeftDrawerOpen] = createSignal(false);
 const [rightDrawerOpen, setRightDrawerOpen] = createSignal(false);
+const [rightDrawerMode, setRightDrawerMode] = createSignal<RightDrawerMode>('outline');
 
 export const mobileLayoutStore = {
   // Left drawer (ActivityBar + FileTree)
@@ -26,25 +29,29 @@ export const mobileLayoutStore = {
     });
   },
 
-  // Right drawer (OutlinePanel)
+  // Right drawer (outline or the annotation column)
   get rightDrawerOpen() {
     return rightDrawerOpen();
   },
-  openRightDrawer: () => {
+  get rightDrawerMode() {
+    return rightDrawerMode();
+  },
+  openRightDrawer: (mode: RightDrawerMode = 'outline') => {
+    setRightDrawerMode(mode);
     setRightDrawerOpen(true);
     // Close left drawer when opening right
     setLeftDrawerOpen(false);
   },
   closeRightDrawer: () => setRightDrawerOpen(false),
-  toggleRightDrawer: () => {
-    setRightDrawerOpen(prev => {
-      const newState = !prev;
-      // Close left drawer when opening right
-      if (newState) {
-        setLeftDrawerOpen(false);
-      }
-      return newState;
-    });
+  toggleRightDrawer: (mode: RightDrawerMode = 'outline') => {
+    if (rightDrawerOpen() && rightDrawerMode() === mode) {
+      setRightDrawerOpen(false);
+      return;
+    }
+    setRightDrawerMode(mode);
+    setRightDrawerOpen(true);
+    // Close left drawer when opening right
+    setLeftDrawerOpen(false);
   },
 
   // Close all drawers

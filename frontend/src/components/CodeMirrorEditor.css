@@ -255,6 +255,36 @@
   border-radius: var(--radius-md, 8px);
 }
 
+/* Read-only Annotation echo in Edit Mode. It is a line decoration, exactly
+   like Paragraph Focus, so the classes stack: a dimmed block keeps its
+   receding opacity while the anchored line stays visibly marked. */
+.codemirror-editor-container .cm-line.cm-annotation-line {
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--color-primary) 14%, transparent),
+    color-mix(in oklab, var(--color-primary) 14%, transparent)
+  );
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.codemirror-editor-container .cm-line.cm-annotation-resolved {
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--color-muted-foreground) 10%, transparent),
+    color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)
+  );
+  box-shadow: inset 3px 0 0 var(--color-border-strong);
+}
+
+/* Paragraph Focus must not swallow the echo: the block still dims relative to
+   the caret block, but less than an unmarked block, so the mark stays legible. */
+.codemirror-editor-container .cm-line.cm-annotation-line.cm-focus-dim {
+  opacity: 0.55;
+}
+
+/* The caret block's wash and the echo share one line; keep both readable. */
+.codemirror-editor-container .cm-line.cm-annotation-line.cm-focus-active {
+  background-color: var(--color-hover-bg);
+}
+
 .dirty-badge {
   background: var(--color-warning, #f59e0b);
   color: white;

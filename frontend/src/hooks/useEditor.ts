@@ -4,6 +4,7 @@ import { fileStore } from '../stores/fileStore';
 import { projectStore } from '../stores/projectStore';
 import { appStore } from '../stores/appStore';
 import { offlineStore } from '../stores/offlineStore';
+import { annotationStore } from '../stores/annotationStore';
 import type { TabType } from '../components/markdown-header/ViewTabs';
 
 let getEditorContent: (() => string) | null = null;
@@ -46,6 +47,9 @@ export const useEditor = () => {
         editorStore.markSaved(content);
         const updatedFile = await api.getFileContent(file.path, project.id);
         fileStore.setCurrentFile(updatedFile);
+        // Anchors must re-resolve against the saved content; a Source visit
+        // before Preview must not trust the pre-save status map.
+        annotationStore.invalidateOutdatedStatus();
       }
     } catch (error) {
       console.error('Failed to save file:', error);

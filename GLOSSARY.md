@@ -79,3 +79,27 @@ _Avoid_: caret centering, center scrolling, auto-scroll
 **Paragraph Focus**:
 An optional Writing Mode enhancement that dims every paragraph except the one holding the caret; a paragraph is a blank-line-separated block. Toggleable per file, session-scoped like Writing Mode itself.
 _Avoid_: focus dimming, sentence focus, highlight paragraph, dim mode
+
+**Annotation**:
+A single-user note attached to rendered Markdown content — either to a selected text range or to a whole block. Scoped to a file within a project and stored in SQLite, never written into the document itself. Supports editing, deletion, a reply thread of time-ordered notes, and a Resolved state.
+_Avoid_: comment, 评论, review note, margin note, footnote
+
+**Anchor**:
+The reference from an Annotation to document content: the selected text plus surrounding context excerpts, or a block's text plus heading path for whole-block annotations. Re-located by fuzzy matching when the document loads; never a bare line number.
+_Avoid_: position, offset, 行号引用, location reference
+
+**Outdated**:
+The visible state of an Annotation whose Anchor no longer matches the document after edits. Kept and displayed with a badge rather than silently dropped or mispositioned.
+_Avoid_: stale, orphan, broken, 失效批注
+
+**Missing File**:
+The state of an Annotation whose stored path no longer exists in the Active Project, typically after the file was deleted or moved outside the app. The Annotation is retained in SQLite and stays reachable from the management panel; it is not Outdated because its Anchor cannot be evaluated without the file.
+_Avoid_: orphan, orphaned row, path-orphaned, orphaned annotation
+
+**Reply**:
+A note appended to an Annotation's thread after its first note, ordered by time. Single-user by design: a reply extends the annotation, it is not a conversation turn.
+_Avoid_: response, follow-up comment, message
+
+**Resolved**:
+The state of an Annotation thread marked as dealt with. Applies to the whole thread, never to individual Replies. Resolved annotations keep their highlights in a dimmed style and can be filtered out in the annotation column.
+_Avoid_: done, closed, finished, 已完成
