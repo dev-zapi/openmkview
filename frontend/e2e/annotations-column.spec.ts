@@ -1,4 +1,4 @@
-import { test, expect, loginIfNeeded } from './fixtures';
+import { test, expect, loginIfNeeded, getHarnessProject } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 
 // Annotation column + thread lifecycle (ticket #18). Uses a uniquely named
@@ -34,13 +34,8 @@ interface FileTarget {
 }
 
 async function seedProject(page: Page): Promise<FileTarget> {
-  return page.evaluate(async ({ body }) => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) throw new Error('cannot list projects');
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) throw new Error('no open project to annotate');
-
+  const project = await getHarnessProject(page);
+  return page.evaluate(async ({ body, projectId }) => {
     const name = `annotations-column-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
     const createRes = await fetch('/api/files', {
       method: 'POST',
@@ -57,7 +52,7 @@ async function seedProject(page: Page): Promise<FileTarget> {
     if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
 
     return { projectId, path: name };
-  }, { body: scratchMarkdown() }).then(async (target) => {
+  }, { body: scratchMarkdown(), projectId: project.id }).then(async (target) => {
     await page.goto(
       `/project/${target.projectId}/files/${encodeURIComponent(target.path)}`,
       { waitUntil: 'domcontentloaded' },

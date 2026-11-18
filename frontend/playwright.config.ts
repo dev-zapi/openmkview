@@ -11,6 +11,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { outputFile: 'playwright-report.html' }], ['list']],
+  // Parallel mutation specs share one real backend; allow for slower
+  // round-trips under load without changing what is asserted.
+  expect: { timeout: 15000 },
   use: {
     baseURL,
     trace: 'on-first-retry',

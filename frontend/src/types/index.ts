@@ -101,9 +101,16 @@ export interface Annotation {
   anchor: AnnotationAnchor;
   snapshot: string | null;
   resolved: boolean;
+  /** True when the Anchor no longer matches the rendered document (#19). */
+  outdated?: boolean;
   createdAt: string;
   updatedAt: string;
   notes: AnnotationNote[];
+}
+
+/** A management-panel row: the annotation plus whether its file still exists. */
+export interface ManagedAnnotation extends Annotation {
+  orphaned: boolean;
 }
 
 export interface CreateAnnotationRequest {

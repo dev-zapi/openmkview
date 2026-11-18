@@ -212,3 +212,184 @@ describe('annotationStore', () => {
     ]);
   });
 });
+
+describe('annotationStore management panel', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.reset();
+  });
+
+  function managedFor(id: number, relativePath = 'a.md') {
+    return { ...annotationFor(id, 1, relativePath, `blk-${id}`), orphaned: false };
+  }
+
+  it('loads the project-wide management list', async () => {
+    const rows = [managedFor(1), managedFor(2, 'b.md')];
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(rows));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.loadForProject(1);
+
+    expect(annotationStore.managed().map((row) => row.id)).toEqual([1, 2]);
+    expect(annotationStore.managedLoading()).toBe(false);
+    expect(annotationStore.managedError()).toBeNull();
+  });
+
+  it('surfaces a management-list load failure', async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Server Error',
+      json: async () => ({ error: 'boom' }),
+    } as unknown as Response);
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.loadForProject(1);
+
+    expect(annotationStore.managed()).toEqual([]);
+    expect(annotationStore.managedError()).toBe('boom');
+  });
+
+  it('toggles individual rows and the whole selection', async () => {
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse([managedFor(1), managedFor(2)]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.loadForProject(1);
+
+    annotationStore.toggleManagedSelection(1);
+    expect([...annotationStore.managedSelection()]).toEqual([1]);
+
+    annotationStore.toggleManagedSelection(1);
+    expect([...annotationStore.managedSelection()]).toEqual([]);
+
+    annotationStore.toggleManagedSelectionAll();
+    expect([...annotationStore.managedSelection()].sort()).toEqual([1, 2]);
+
+    annotationStore.toggleManagedSelectionAll();
+    expect([...annotationStore.managedSelection()]).toEqual([]);
+  });
+
+  it('batch delete updates both surfaces and prunes the selection', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-1'), annotationFor(2, 1, 'a.md', 'blk-2')]))
+      .mockResolvedValueOnce(jsonResponse([managedFor(1), managedFor(2)]))
+      .mockResolvedValueOnce(jsonResponse({ deleted: 1 }));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'a.md');
+    await annotationStore.loadForProject(1);
+    annotationStore.toggleManagedSelection(1);
+    annotationStore.toggleManagedSelection(2);
+
+    await annotationStore.batchDelete(1, [1]);
+
+    expect(annotationStore.managed().map((row) => row.id)).toEqual([2]);
+    expect(annotationStore.annotations().map((row) => row.id)).toEqual([2]);
+    expect([...annotationStore.managedSelection()]).toEqual([2]);
+  });
+
+  it('batch resolve flips the resolved flag on both surfaces', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-1'), annotationFor(2, 1, 'a.md', 'blk-2')]))
+      .mockResolvedValueOnce(jsonResponse([managedFor(1), managedFor(2)]))
+      .mockResolvedValueOnce(jsonResponse({ updated: 1 }));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'a.md');
+    await annotationStore.loadForProject(1);
+
+    await annotationStore.batchResolve(1, [1], true);
+
+    expect(annotationStore.managed().find((row) => row.id === 1)?.resolved).toBe(true);
+    expect(annotationStore.managed().find((row) => row.id === 2)?.resolved).toBe(false);
+    expect(annotationStore.annotations().find((row) => row.id === 1)?.resolved).toBe(true);
+    expect(annotationStore.annotations().find((row) => row.id === 2)?.resolved).toBe(false);
+  });
+
+  it('clear project empties both surfaces and the selection', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse([annotationFor(1, 1, 'a.md', 'blk-1')]))
+      .mockResolvedValueOnce(jsonResponse([managedFor(1)]))
+      .mockResolvedValueOnce(jsonResponse({ deleted: 1 }));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'a.md');
+    await annotationStore.loadForProject(1);
+    annotationStore.toggleManagedSelection(1);
+
+    await annotationStore.clearProject(1);
+
+    expect(annotationStore.managed()).toEqual([]);
+    expect(annotationStore.annotations()).toEqual([]);
+    expect([...annotationStore.managedSelection()]).toEqual([]);
+  });
+});
+
+describe('annotationStore cross-file jump', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.reset();
+  });
+
+  it('reveals the annotation once its target file finishes loading', async () => {
+    (global.fetch as any).mockResolvedValueOnce(
+      jsonResponse([annotationFor(7, 1, 'b.md', 'blk-b')])
+    );
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.requestJumpInFile(1, 'b.md', 7);
+    expect(annotationStore.jumpRequest()).toBeNull();
+
+    await annotationStore.load(1, 'b.md');
+
+    expect(annotationStore.jumpRequest()?.annotationId).toBe(7);
+  });
+
+  it('drops the pending jump when its open is cancelled', async () => {
+    (global.fetch as any).mockResolvedValueOnce(
+      jsonResponse([annotationFor(7, 1, 'b.md', 'blk-b')])
+    );
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.requestJumpInFile(1, 'b.md', 7);
+    annotationStore.cancelPendingJump('b.md');
+
+    await annotationStore.load(1, 'b.md');
+
+    expect(annotationStore.jumpRequest()).toBeNull();
+  });
+
+  it('drops the pending jump when another file loads first', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([annotationFor(7, 1, 'b.md', 'blk-b')]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.requestJumpInFile(1, 'b.md', 7);
+
+    await annotationStore.load(1, 'c.md');
+    await annotationStore.load(1, 'b.md');
+
+    expect(annotationStore.jumpRequest()).toBeNull();
+  });
+
+  it('drops the pending jump when the target load fails', async () => {
+    (global.fetch as any)
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([annotationFor(7, 1, 'b.md', 'blk-b')]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.requestJumpInFile(1, 'b.md', 7);
+
+    await annotationStore.load(1, 'b.md');
+    expect(annotationStore.jumpRequest()).toBeNull();
+
+    // A later, unrelated open of the same path must not replay the jump.
+    await annotationStore.load(1, 'c.md');
+    await annotationStore.load(1, 'b.md');
+    expect(annotationStore.jumpRequest()).toBeNull();
+  });
+});

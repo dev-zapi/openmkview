@@ -1,4 +1,4 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp } from './fixtures';
+import { test, expect, loginIfNeeded, waitForDesktopApp, getHarnessProject } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // Text-selection annotations (#17). Runs against the real backend, serial
@@ -32,13 +32,8 @@ interface StoredSegment {
 }
 
 async function createScratchFile(page: Page): Promise<FileTarget> {
-  return page.evaluate(async ({ body }) => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) throw new Error('cannot list projects');
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) throw new Error('no open project to annotate');
-
+  const project = await getHarnessProject(page);
+  return page.evaluate(async ({ body, projectId }) => {
     const name = `annotations-selection-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
     const createRes = await fetch('/api/files', {
       method: 'POST',
@@ -55,7 +50,7 @@ async function createScratchFile(page: Page): Promise<FileTarget> {
     if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
 
     return { projectId, path: name };
-  }, { body: SCRATCH_MARKDOWN });
+  }, { body: SCRATCH_MARKDOWN, projectId: project.id });
 }
 
 async function removeScratchFile(page: Page, target: FileTarget): Promise<void> {

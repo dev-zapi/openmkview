@@ -1,4 +1,4 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp } from './fixtures';
+import { test, expect, loginIfNeeded, waitForDesktopApp, getHarnessProject } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 
 // Ticket #21: annotations follow a file renamed in the app. This spec mutates
@@ -25,14 +25,8 @@ interface RenameTarget {
 }
 
 async function createScratchFile(page: Page): Promise<RenameTarget> {
-  return page.evaluate(async ({ body }) => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) throw new Error('cannot list projects');
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) throw new Error('no open project to annotate');
-    const projectName = projects[0].name as string;
-
+  const project = await getHarnessProject(page);
+  return page.evaluate(async ({ body, projectId, projectName }) => {
     const name = `annotations-rename-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
     const renamed = name.replace(/\.md$/, '-renamed.md');
 
@@ -58,7 +52,7 @@ async function createScratchFile(page: Page): Promise<RenameTarget> {
       renamedName: renamed,
       renamedPath: `${parent}${renamed}`,
     };
-  }, { body: SCRATCH_MARKDOWN });
+  }, { body: SCRATCH_MARKDOWN, projectId: project.id, projectName: project.name });
 }
 
 async function removeScratchFile(page: Page, target: RenameTarget): Promise<void> {

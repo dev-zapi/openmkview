@@ -187,6 +187,9 @@ export const MainPane: Component<MainPaneProps> = (props) => {
         <AnnotationColumn
           isOpen={props.isAnnotationColumnOpen ?? false}
           onClose={props.onCloseAnnotationColumn ?? (() => {})}
+          projectId={props.activeProjectId}
+          currentFilePath={props.currentFile?.path ?? null}
+          onOpenFile={props.onFileOpen}
         />
       </Show>
     </main>

@@ -1,6 +1,6 @@
 use crate::db::{AnnotationRepository, ProjectRepository};
 use crate::errors::{AppError, AppResult};
-use crate::models::{Annotation, CreateAnnotationRequest, Project};
+use crate::models::{Annotation, CreateAnnotationRequest, ManagedAnnotation, Project};
 use crate::services::FileService;
 use rusqlite::Connection;
 use serde_json::Value;
@@ -141,6 +141,27 @@ impl<'a> AnnotationService<'a> {
             .list_for_file(project_id, relative_path)
     }
 
+    /// Every annotation in the project for the management panel, including
+    /// rows whose stored path no longer exists on disk. `orphaned` explains
+    /// why such a row cannot jump back into a document.
+    pub fn list_for_project(&self, project_id: i64) -> AppResult<Vec<ManagedAnnotation>> {
+        let project = self.require_project(project_id)?;
+        let annotations = self.annotation_repo.list_for_project(project_id)?;
+
+        Ok(annotations
+            .into_iter()
+            .map(|annotation| {
+                let orphaned = !Path::new(&project.path)
+                    .join(&annotation.relative_path)
+                    .is_file();
+                ManagedAnnotation {
+                    annotation,
+                    orphaned,
+                }
+            })
+            .collect())
+    }
+
     pub fn create(&self, req: CreateAnnotationRequest) -> AppResult<Annotation> {
         self.require_project(req.project_id)?;
         FileService::validate_relative_path(&req.relative_path)?;
@@ -189,6 +210,19 @@ impl<'a> AnnotationService<'a> {
             true => Ok(()),
             false => Err(AppError::NotFound("Annotation not found".into())),
         }
+    }
+
+    /// Deletes multiple annotations in one project. Ids that belong to another
+    /// project (or no longer exist) are ignored.
+    pub fn batch_delete(&self, project_id: i64, ids: &[i64]) -> AppResult<usize> {
+        self.require_project(project_id)?;
+        self.annotation_repo.delete_many(project_id, ids)
+    }
+
+    /// Deletes every annotation in one project, returning the count.
+    pub fn clear_project(&self, project_id: i64) -> AppResult<usize> {
+        self.require_project(project_id)?;
+        self.annotation_repo.delete_for_project(project_id)
     }
 
     /// Follow a file or directory that was renamed/moved inside the app.
@@ -248,6 +282,14 @@ impl<'a> AnnotationService<'a> {
         self.annotation_repo
             .find_by_id(annotation_id)?
             .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
+    }
+
+    /// Sets or clears the Resolved flag on multiple annotations in one project,
+    /// returning the number updated. Ids from other projects are ignored.
+    pub fn batch_resolve(&self, project_id: i64, ids: &[i64], resolved: bool) -> AppResult<usize> {
+        self.require_project(project_id)?;
+        self.annotation_repo
+            .set_resolved_many(project_id, ids, resolved)
     }
 
     fn require_project(&self, project_id: i64) -> AppResult<Project> {
