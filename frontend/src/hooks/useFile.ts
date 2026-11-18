@@ -78,11 +78,14 @@ export const useFile = () => {
         fileStore.openOtherFile(content);
         editorStore.reset();
         diffStore.reset();
+        annotationStore.invalidateOutdatedStatus();
         appStore.setActiveTab(content.binary ? 'preview' : 'source');
       } else {
         fileStore.openDocumentFile(content, fileType === 'html' ? 'html' : 'markdown');
         editorStore.initialize(content.content);
         diffStore.reset();
+        // Fresh content invalidates any prior render's Outdated decisions.
+        annotationStore.invalidateOutdatedStatus();
         appStore.setActiveTab('preview');
       }
 

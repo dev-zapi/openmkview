@@ -21,6 +21,12 @@ const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
 const [outdatedSnapshots, setOutdatedSnapshotsSignal] = createSignal<Map<number, string>>(
   new Map()
 );
+/**
+ * True once the rendered Preview model has resolved status for the current
+ * file. The Preview is the canonical decision surface; the Source echo must
+ * never overwrite its map (see `publishSourceOutdatedSnapshots`).
+ */
+const [previewOutdatedResolved, setPreviewOutdatedResolved] = createSignal(false);
 /** Annotation awaiting a fresh text selection for manual re-anchoring. */
 const [reanchorTarget, setReanchorTarget] = createSignal<number | null>(null);
 /**
@@ -105,6 +111,7 @@ export const annotationStore = {
   managedError,
   visible,
   outdatedSnapshots,
+  previewOutdatedResolved,
   reanchorTarget,
   viewRequest,
   jumpRequest,
@@ -114,9 +121,32 @@ export const annotationStore = {
     return offlineStore.online();
   },
 
-  /** Publish the render pass's resolution results (called after every render). */
+  /** Publish the rendered Preview's canonical resolution results. */
   setOutdatedSnapshots(snapshots: Map<number, string>): void {
     setOutdatedSnapshotsSignal(snapshots);
+    setPreviewOutdatedResolved(true);
+  },
+
+  /**
+   * Publish Source-locator status only when no Preview model has decided the
+   * current file. On a tab switch the Preview map stays canonical, so the
+   * independent column can never flip state because the Source projection is
+   * coarser than the rendered block model.
+   */
+  publishSourceOutdatedSnapshots(snapshots: Map<number, string>): void {
+    if (previewOutdatedResolved()) return;
+    setOutdatedSnapshotsSignal(snapshots);
+  },
+
+  /**
+   * The file content changed (in-app save, reload, or external load): the
+   * rendered Preview's status map describes the old content. Drop it so the
+   * next view to resolve (Preview or Source) becomes authoritative instead of
+   * carrying pre-edit Active/Outdated decisions into the new content.
+   */
+  invalidateOutdatedStatus(): void {
+    setOutdatedSnapshotsSignal(new Map());
+    setPreviewOutdatedResolved(false);
   },
 
   isOutdated(id: number): boolean {
@@ -173,6 +203,8 @@ export const annotationStore = {
     setJumpRequest(null);
     setReanchorTarget(null);
     setViewRequest(null);
+    setOutdatedSnapshotsSignal(new Map());
+    setPreviewOutdatedResolved(false);
     setLoading(true);
     setError(null);
 
@@ -203,6 +235,7 @@ export const annotationStore = {
     pendingJump = null;
     setAnnotations([]);
     setOutdatedSnapshotsSignal(new Map());
+    setPreviewOutdatedResolved(false);
     setReanchorTarget(null);
     setJumpRequest(null);
     setViewRequest(null);

@@ -656,6 +656,52 @@
   font-size: 12px;
 }
 
+/* Source echo for Annotations: highlight-only, no line-number gutter. */
+.source-highlighted .line.source-annotation-highlight {
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--color-primary) 16%, transparent),
+    color-mix(in oklab, var(--color-primary) 16%, transparent)
+  );
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.source-highlighted .line.source-annotation-highlight.source-annotation-resolved {
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--color-muted-foreground) 10%, transparent),
+    color-mix(in oklab, var(--color-muted-foreground) 10%, transparent)
+  );
+  box-shadow: inset 3px 0 0 var(--color-border-strong);
+}
+
+.source-outdated-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, #d97706 8%, transparent);
+}
+
+.source-outdated-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.source-outdated-item .annotation-outdated-badge {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.source-outdated-text {
+  font-style: italic;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Edit View Styles */
 .edit-view {
   height: 100%;

@@ -171,6 +171,66 @@ describe('annotationStore', () => {
     expect((global.fetch as any).mock.calls.length).toBe(fetchesBefore);
     expect(annotationStore.reanchorTarget()).toBeNull();
   });
+
+  it('keeps the Preview Outdated map canonical over the Source fallback', async () => {
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.setOutdatedSnapshots(new Map([[1, 'preview snapshot']]));
+
+    annotationStore.publishSourceOutdatedSnapshots(new Map([[2, 'source snapshot']]));
+
+    expect([...annotationStore.outdatedSnapshots().entries()]).toEqual([
+      [1, 'preview snapshot'],
+    ]);
+    expect(annotationStore.previewOutdatedResolved()).toBe(true);
+  });
+
+  it('fills Outdated status from Source when no Preview model resolved', async () => {
+    const { annotationStore } = await import('../../stores/annotationStore');
+
+    annotationStore.publishSourceOutdatedSnapshots(new Map([[2, 'source snapshot']]));
+
+    expect([...annotationStore.outdatedSnapshots().entries()]).toEqual([
+      [2, 'source snapshot'],
+    ]);
+    expect(annotationStore.previewOutdatedResolved()).toBe(false);
+  });
+
+  it('restores Source authority when another file loads', async () => {
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse([]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.setOutdatedSnapshots(new Map([[1, 'preview snapshot']]));
+
+    await annotationStore.load(1, 'c.md');
+
+    expect(annotationStore.previewOutdatedResolved()).toBe(false);
+    expect(annotationStore.outdatedSnapshots().size).toBe(0);
+
+    annotationStore.publishSourceOutdatedSnapshots(new Map([[3, 'source snapshot']]));
+    expect([...annotationStore.outdatedSnapshots().entries()]).toEqual([
+      [3, 'source snapshot'],
+    ]);
+  });
+
+  it('lets Source re-resolve after a save invalidates the Preview map', async () => {
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.setOutdatedSnapshots(new Map([[1, 'pre-edit snapshot']]));
+    expect(annotationStore.previewOutdatedResolved()).toBe(true);
+
+    // Preview → Edit/save → Source: the saved content invalidates the
+    // pre-edit decisions, so the next resolver (Source) is authoritative.
+    annotationStore.invalidateOutdatedStatus();
+
+    expect(annotationStore.previewOutdatedResolved()).toBe(false);
+    expect(annotationStore.outdatedSnapshots().size).toBe(0);
+
+    annotationStore.publishSourceOutdatedSnapshots(
+      new Map([[2, 'post-edit source snapshot']])
+    );
+    expect([...annotationStore.outdatedSnapshots().entries()]).toEqual([
+      [2, 'post-edit source snapshot'],
+    ]);
+  });
 });
 
 describe('annotationStore management panel', () => {

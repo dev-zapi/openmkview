@@ -383,4 +383,22 @@ describe('anchorResolver utils', () => {
       segments: [{ kind: 'block', blockId: 'blk-current' }],
     });
   });
+
+  it('prefers the exact-case occurrence when case-insensitive scores tie', () => {
+    const target = block('blk-a', 'HELLO hello');
+    const resolution = resolveAnchor([target], textAnchor(textSegment(target, 'hello')));
+
+    expect(resolution).toEqual({
+      status: 'resolved',
+      segments: [
+        {
+          kind: 'text',
+          blockId: 'blk-a',
+          start: 6,
+          end: 11,
+          quote: 'hello',
+        },
+      ],
+    });
+  });
 });
