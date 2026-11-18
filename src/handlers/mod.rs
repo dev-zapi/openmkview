@@ -14,7 +14,10 @@ pub use annotation_handler::{
     create_annotation, delete_annotation, list_annotations, list_project_annotations,
     reanchor_annotation, set_resolved, update_note,
 };
-pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
+pub use auth_handler::{
+    auth_login, auth_logout, auth_status, auth_tool_session_delete, auth_tool_session_exchange,
+    auth_tool_session_list, auth_update_session_timeout,
+};
 pub use file_handler::{
     create_file, delete_file, get_file_content, get_file_tree, move_file, rename_file,
     save_file_content, search_favicons, serve_project_file,
