@@ -1,6 +1,7 @@
 import { Component, For, Show, createSignal } from 'solid-js';
 import type { Annotation } from '../types';
 import { annotationStore } from '../stores/annotationStore';
+import { annotationExcerpt } from '../utils/annotationDisplay';
 import AnnotationThread from './AnnotationThread';
 import AnnotationManagerDialog from './AnnotationManagerDialog';
 
@@ -13,14 +14,6 @@ interface AnnotationColumnProps {
 }
 
 const COLUMN_WIDTH = 300;
-
-function excerptFor(annotation: Annotation): string {
-  const parts = (annotation.anchor?.segments ?? [])
-    .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part));
-  return parts.join(' … ') || annotation.snapshot?.trim() || 'Anchored content';
-}
 
 function timeFor(annotation: Annotation): string {
   return annotation.updatedAt || annotation.createdAt;
@@ -141,9 +134,9 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
                 type="button"
                 class="annotation-column-entry"
                 onClick={() => jumpTo(annotation)}
-                aria-label={`Jump to annotation: ${excerptFor(annotation).slice(0, 80)}`}
+                aria-label={`Jump to annotation: ${annotationExcerpt(annotation).slice(0, 80)}`}
               >
-                <span class="annotation-column-excerpt">{excerptFor(annotation)}</span>
+                <span class="annotation-column-excerpt">{annotationExcerpt(annotation)}</span>
                 <span class="annotation-column-meta">
                   <span class={`annotation-state ${annotation.resolved ? 'resolved' : ''}`}>
                     {annotation.resolved ? 'Resolved' : 'Active'}

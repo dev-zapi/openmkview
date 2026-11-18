@@ -1,6 +1,9 @@
 import { test, expect, loginIfNeeded, waitForDesktopApp, createScratchFile } from './fixtures';
 import type { FileTarget } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Annotation management panel (ticket #22). Every test works inside uniquely
 // named scratch files of the seeded open project and cleans up by API, so
@@ -124,6 +127,22 @@ async function cleanup(page: Page, targets: FileTarget[]): Promise<void> {
       });
     }
   }, { projectId: targets[0].projectId, prefix: MANAGED_PREFIX, paths: targets.map((t) => t.path) });
+}
+
+/**
+ * Create a project whose directory and content this test owns, so project-wide
+ * operations (clear-all) can never touch the shared seeded project.
+ */
+async function createOwnedProject(page: Page, path: string): Promise<number> {
+  return page.evaluate(async (projectPath) => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: projectPath }),
+    });
+    if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
+    return (await res.json()).id as number;
+  }, path);
 }
 
 test.describe('annotation management panel', () => {
@@ -263,36 +282,49 @@ test.describe('annotation management panel', () => {
   test('clear-all requires explicit confirmation and removes the project annotations', async ({
     page,
   }) => {
-    const file = await createScratchFile(
-      page,
-      markdown('Management Clear', TARGET_A),
-      MANAGED_PREFIX
-    );
-    targets = [file];
+    // Clear-all is project-wide, so it runs against a project this test owns:
+    // parallel annotation specs share the seeded project and must never be
+    // wiped by this journey.
+    const projectDir = mkdtempSync(join(tmpdir(), 'openmkview-manage-clear-'));
+    const filePath = 'clear-target.md';
+    writeFileSync(join(projectDir, filePath), markdown('Management Clear', TARGET_A));
 
-    await createAnnotationViaApi(page, file, 'clear note one');
-    await createAnnotationViaApi(page, file, 'clear note two');
+    let projectId: number | undefined;
+    try {
+      projectId = await createOwnedProject(page, projectDir);
+      const target = { projectId, path: filePath };
+      await createAnnotationViaApi(page, target, 'clear note one');
+      await createAnnotationViaApi(page, target, 'clear note two');
 
-    await openScratch(page, file, 'Management Clear');
-    const manager = await openManager(page);
+      await openScratch(page, target, 'Management Clear');
+      const manager = await openManager(page);
 
-    await manager.getByRole('button', { name: /^Clear all annotations/ }).click();
-    const confirm = manager.getByRole('group', { name: 'Confirm clear all annotations' });
-    await expect(confirm).toBeVisible();
-    await expect(confirm).toContainText('Delete all 2 annotations in this project?');
+      await manager.getByRole('button', { name: /^Clear all annotations/ }).click();
+      const confirm = manager.getByRole('group', { name: 'Confirm clear all annotations' });
+      await expect(confirm).toBeVisible();
+      await expect(confirm).toContainText('Delete all 2 annotations in this project?');
 
-    // Cancelling leaves every row in place.
-    await confirm.getByRole('button', { name: 'Cancel' }).click();
-    await expect(confirm).not.toBeVisible();
-    await expect(rowFor(manager, 'clear note one')).toBeVisible();
+      // Cancelling leaves every row in place.
+      await confirm.getByRole('button', { name: 'Cancel' }).click();
+      await expect(confirm).not.toBeVisible();
+      await expect(rowFor(manager, 'clear note one')).toBeVisible();
 
-    await manager.getByRole('button', { name: /^Clear all annotations/ }).click();
-    await manager
-      .getByRole('group', { name: 'Confirm clear all annotations' })
-      .getByRole('button', { name: 'Clear all', exact: true })
-      .click();
+      await manager.getByRole('button', { name: /^Clear all annotations/ }).click();
+      await manager
+        .getByRole('group', { name: 'Confirm clear all annotations' })
+        .getByRole('button', { name: 'Clear all', exact: true })
+        .click();
 
-    await expect(manager.getByText('No annotations in this project')).toBeVisible();
-    await expect(manager.getByRole('row').filter({ hasText: 'clear note' })).toHaveCount(0);
+      await expect(manager.getByText('No annotations in this project')).toBeVisible();
+      await expect(manager.getByRole('row').filter({ hasText: 'clear note' })).toHaveCount(0);
+    } finally {
+      if (projectId !== undefined) {
+        await page.evaluate(async (id) => {
+          await fetch(`/api/annotations/project/${id}`, { method: 'DELETE' });
+          await fetch(`/api/projects/${id}/close`, { method: 'POST' });
+        }, projectId);
+      }
+      rmSync(projectDir, { recursive: true, force: true });
+    }
   });
 });

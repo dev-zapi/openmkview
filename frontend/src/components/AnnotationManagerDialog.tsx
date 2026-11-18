@@ -17,7 +17,10 @@ interface AnnotationManagerDialogProps {
   onOpenFile?: (path: string) => void;
 }
 
-const emptySelection = () => new Set<number>();
+/** The annotation store grows `isOutdated` when #19 lands; probe it optionally. */
+type AnnotationStoreWithOutdated = typeof annotationStore & {
+  isOutdated?: (annotationId: number) => boolean;
+};
 
 /**
  * Outdated state is resolved per rendered document (#19) and exposed by the
@@ -26,8 +29,7 @@ const emptySelection = () => new Set<number>();
  */
 function isRowOutdated(row: ManagedAnnotation): boolean {
   if (row.outdated === true) return true;
-  const probe = annotationStore as unknown as { isOutdated?: (id: number) => boolean };
-  return probe.isOutdated?.(row.id) === true;
+  return (annotationStore as AnnotationStoreWithOutdated).isOutdated?.(row.id) === true;
 }
 
 /**
@@ -36,12 +38,12 @@ function isRowOutdated(row: ManagedAnnotation): boolean {
  * batch Resolved changes, batch delete, and a confirmed clear-all.
  */
 const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props) => {
-  const [selected, setSelected] = createSignal<Set<number>>(emptySelection());
   const [pending, setPending] = createSignal(false);
   const [actionError, setActionError] = createSignal<string | null>(null);
   const [confirmClear, setConfirmClear] = createSignal(false);
 
   const rows = () => annotationStore.managed();
+  const selected = () => annotationStore.managedSelection();
   const canMutate = () => annotationStore.canMutate();
 
   const selectedRows = () => rows().filter((row) => selected().has(row.id));
@@ -56,28 +58,14 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
     }
   });
 
-  // Drop selections that no longer exist after a refresh or mutation.
-  createEffect(() => {
-    const live = new Set(rows().map((row) => row.id));
-    setSelected((current) => {
-      const next = new Set([...current].filter((id) => live.has(id)));
-      return next.size === current.size ? current : next;
-    });
-  });
-
   const toggleRow = (id: number) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    annotationStore.toggleManagedSelection(id);
   };
 
   const allSelected = () => rows().length > 0 && selected().size === rows().length;
 
   const toggleAll = () => {
-    setSelected(allSelected() ? emptySelection() : new Set(rows().map((row) => row.id)));
+    annotationStore.toggleManagedSelectionAll();
   };
 
   const run = async (action: () => Promise<void>) => {
@@ -99,7 +87,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
     const resolved = !allSelectedResolved();
     void run(async () => {
       await annotationStore.batchResolve(projectId, ids, resolved);
-      setSelected(emptySelection());
+      annotationStore.clearManagedSelection();
     });
   };
 
@@ -109,7 +97,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
     if (projectId === undefined || ids.length === 0) return;
     void run(async () => {
       await annotationStore.batchDelete(projectId, ids);
-      setSelected(emptySelection());
+      annotationStore.clearManagedSelection();
     });
   };
 
@@ -118,15 +106,16 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
     if (projectId === undefined) return;
     void run(async () => {
       await annotationStore.clearProject(projectId);
-      setSelected(emptySelection());
+      annotationStore.clearManagedSelection();
       setConfirmClear(false);
     });
   };
 
   const jump = (row: ManagedAnnotation) => {
-    if (row.orphaned) return;
+    if (row.orphaned || isRowOutdated(row)) return;
     annotationStore.requestJumpInFile(row.projectId, row.relativePath, row.id);
     if (row.relativePath !== props.currentFilePath) {
+      // A cancelled/failed open cancels this pending jump inside useFile.
       props.onOpenFile?.(row.relativePath);
     }
     props.onClose();
@@ -236,13 +225,22 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                               </span>
                             }
                           >
-                            <button
-                              type="button"
-                              class="annotation-manager-link"
-                              onClick={() => jump(row)}
+                            <Show
+                              when={!state.outdated}
+                              fallback={
+                                <span class="annotation-manager-orphan">
+                                  Outdated — cannot locate text
+                                </span>
+                              }
                             >
-                              Jump
-                            </button>
+                              <button
+                                type="button"
+                                class="annotation-manager-link"
+                                onClick={() => jump(row)}
+                              >
+                                Jump
+                              </button>
+                            </Show>
                           </Show>
                         </td>
                       </tr>

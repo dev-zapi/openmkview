@@ -1852,8 +1852,8 @@ textarea {
   margin-left: 6px;
   padding: 1px 6px;
   border-radius: 9px;
-  background: var(--color-warning-bg, rgba(245, 158, 11, 0.16));
-  color: var(--color-warning, #b45309);
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  color: var(--color-warning);
   font-size: 11px;
   font-weight: 600;
 }
@@ -1908,7 +1908,8 @@ textarea {
   color: var(--color-text);
 }
 
-.annotation-column-header h3 {  display: flex;
+.annotation-column-header h3 {
+  display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;

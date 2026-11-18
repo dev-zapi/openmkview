@@ -9,6 +9,7 @@ const [loading, setLoading] = createSignal<boolean>(false);
 const [error, setError] = createSignal<string | null>(null);
 /** Project-wide rows for the annotation management panel. */
 const [managed, setManaged] = createSignal<ManagedAnnotation[]>([]);
+const [managedSelection, setManagedSelection] = createSignal<Set<number>>(new Set());
 const [managedLoading, setManagedLoading] = createSignal<boolean>(false);
 const [managedError, setManagedError] = createSignal<string | null>(null);
 /** Includes a monotonic nonce so repeated jumps to the same entry register. */
@@ -63,11 +64,22 @@ function replaceAnnotation(updated: Annotation): void {
   );
 }
 
+/** Replace the management rows and drop selections for rows that vanished. */
+function applyManaged(next: ManagedAnnotation[]): void {
+  setManaged(next);
+  const live = new Set(next.map((annotation) => annotation.id));
+  setManagedSelection((current) => {
+    const pruned = new Set([...current].filter((id) => live.has(id)));
+    return pruned.size === current.size ? current : pruned;
+  });
+}
+
 export const annotationStore = {
   annotations,
   loading,
   error,
   managed,
+  managedSelection,
   managedLoading,
   managedError,
   jumpRequest,
@@ -86,6 +98,14 @@ export const annotationStore = {
   async load(projectId: number, relativePath: string): Promise<void> {
     const key = fileKey(projectId, relativePath);
     if (key === loadedKey) return;
+
+    // A pending cross-file jump only survives if this load is its target.
+    if (
+      pendingJump &&
+      (pendingJump.projectId !== projectId || pendingJump.relativePath !== relativePath)
+    ) {
+      pendingJump = null;
+    }
 
     loadedKey = key;
     currentProjectId = projectId;
@@ -123,6 +143,9 @@ export const annotationStore = {
     setJumpRequest(null);
     setLoading(false);
     setError(null);
+    applyManaged([]);
+    setManagedLoading(false);
+    setManagedError(null);
   },
 
   async create(
@@ -184,20 +207,43 @@ export const annotationStore = {
     setManagedError(null);
     try {
       const loaded = await api.listProjectAnnotations(projectId);
-      setManaged(loaded);
+      applyManaged(loaded);
     } catch (err) {
-      setManaged([]);
+      applyManaged([]);
       setManagedError(err instanceof Error ? err.message : 'Failed to load annotations');
     } finally {
       setManagedLoading(false);
     }
   },
 
+  /** Adds or removes one management row from the current selection. */
+  toggleManagedSelection(id: number): void {
+    setManagedSelection((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  },
+
+  /** Selects every management row, or clears the selection when all are selected. */
+  toggleManagedSelectionAll(): void {
+    setManagedSelection((current) =>
+      current.size === managed().length
+        ? new Set<number>()
+        : new Set(managed().map((annotation) => annotation.id)),
+    );
+  },
+
+  clearManagedSelection(): void {
+    setManagedSelection(new Set<number>());
+  },
+
   /** Multi-select delete in one project. Updates both list surfaces in place. */
   async batchDelete(projectId: number, ids: number[]): Promise<void> {
     await api.batchDeleteAnnotations(projectId, ids);
     const removed = new Set(ids);
-    setManaged((current) => current.filter((annotation) => !removed.has(annotation.id)));
+    applyManaged(managed().filter((annotation) => !removed.has(annotation.id)));
     setAnnotations((current) => current.filter((annotation) => !removed.has(annotation.id)));
   },
 
@@ -209,14 +255,14 @@ export const annotationStore = {
       list.map((annotation) =>
         updated.has(annotation.id) ? { ...annotation, resolved } : annotation
       );
-    setManaged(apply);
+    applyManaged(apply(managed()));
     setAnnotations(apply);
   },
 
   /** Deletes every annotation in the project after explicit confirmation. */
   async clearProject(projectId: number): Promise<void> {
     await api.clearProjectAnnotations(projectId);
-    setManaged([]);
+    applyManaged([]);
     setAnnotations([]);
   },
 
@@ -240,6 +286,17 @@ export const annotationStore = {
       return;
     }
     pendingJump = { projectId, relativePath, annotationId };
+  },
+
+  /**
+   * Drops an armed cross-file jump when the requested open never happened
+   * (dirty-document cancel or load failure). Passing a path only cancels the
+   * pending jump aimed at that path.
+   */
+  cancelPendingJump(relativePath?: string): void {
+    if (!pendingJump) return;
+    if (relativePath !== undefined && pendingJump.relativePath !== relativePath) return;
+    pendingJump = null;
   },
 
   /** Clears a handled jump so a remount cannot replay it. */
