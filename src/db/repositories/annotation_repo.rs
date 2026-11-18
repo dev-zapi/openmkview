@@ -37,6 +37,7 @@ impl<'a> AnnotationRepository<'a> {
         Self { conn }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create(
         &self,
         project_id: i64,
@@ -44,6 +45,8 @@ impl<'a> AnnotationRepository<'a> {
         anchor_json: &str,
         snapshot: Option<&str>,
         body: &str,
+        author: Option<&str>,
+        is_agent: bool,
     ) -> AppResult<Annotation> {
         self.conn.execute(
             "INSERT INTO annotations (project_id, relative_path, anchor_json, snapshot)
@@ -54,8 +57,9 @@ impl<'a> AnnotationRepository<'a> {
         let annotation_id = self.conn.last_insert_rowid();
 
         self.conn.execute(
-            "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
-            params![annotation_id, body],
+            "INSERT INTO annotation_notes (annotation_id, body, author, is_agent)
+             VALUES (?, ?, ?, ?)",
+            params![annotation_id, body, author, is_agent as i64],
         )?;
 
         self.find_by_id(annotation_id)?
@@ -298,7 +302,7 @@ impl<'a> AnnotationRepository<'a> {
 
     fn load_notes(&self, annotation_id: i64) -> AppResult<Vec<AnnotationNote>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, annotation_id, body, created_at
+            "SELECT id, annotation_id, body, author, is_agent, created_at
              FROM annotation_notes
              WHERE annotation_id = ?
              ORDER BY created_at ASC, id ASC",
@@ -309,7 +313,9 @@ impl<'a> AnnotationRepository<'a> {
                 id: row.get(0)?,
                 annotation_id: row.get(1)?,
                 body: row.get(2)?,
-                created_at: row.get(3)?,
+                author: row.get(3)?,
+                is_agent: row.get::<_, i64>(4)? != 0,
+                created_at: row.get(5)?,
             })
         })?;
 

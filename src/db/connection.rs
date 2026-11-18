@@ -35,6 +35,8 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             annotation_id INTEGER NOT NULL REFERENCES annotations(id) ON DELETE CASCADE,
             body TEXT NOT NULL,
+            author TEXT NULL DEFAULT NULL,
+            is_agent INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
         CREATE INDEX IF NOT EXISTS idx_annotations_project_path
@@ -73,6 +75,41 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
     if !icon_column_exists {
         conn.execute(
             "ALTER TABLE projects ADD COLUMN icon TEXT NULL DEFAULT NULL",
+            [],
+        )?;
+    }
+
+    // Migration: Add author column if it doesn't exist
+    let author_column_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('annotation_notes') WHERE name='author'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .unwrap_or(0)
+        > 0;
+
+    if !author_column_exists {
+        conn.execute(
+            "ALTER TABLE annotation_notes ADD COLUMN author TEXT NULL DEFAULT NULL",
+            [],
+        )?;
+    }
+
+    // Migration: Add is_agent flag if it doesn't exist. Existing notes predate
+    // authorship and backfill to 0 (human/no author).
+    let is_agent_column_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('annotation_notes') WHERE name='is_agent'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .unwrap_or(0)
+        > 0;
+
+    if !is_agent_column_exists {
+        conn.execute(
+            "ALTER TABLE annotation_notes ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0",
             [],
         )?;
     }

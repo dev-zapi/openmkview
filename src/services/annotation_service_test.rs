@@ -97,6 +97,8 @@ fn create_request(project_id: i64, relative_path: &str, body: &str) -> CreateAnn
         relative_path: relative_path.to_string(),
         anchor: block_anchor(),
         body: body.to_string(),
+        author: None,
+        is_agent: false,
     }
 }
 
@@ -125,6 +127,30 @@ fn creates_and_lists_annotation_with_first_note() {
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].id, created.id);
     assert_eq!(listed[0].notes.len(), 1);
+}
+
+#[test]
+fn create_records_the_note_author_and_agent_flag() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let mut request = create_request(project_id, "doc.md", "Agent note");
+    request.author = Some("openmkview-agent".to_string());
+    request.is_agent = true;
+
+    let created = service.create(request).expect("create annotation");
+    assert_eq!(created.notes[0].author.as_deref(), Some("openmkview-agent"));
+    assert!(created.notes[0].is_agent);
+
+    let listed = service
+        .list_for_file(project_id, "doc.md")
+        .expect("list annotations");
+
+    assert_eq!(
+        listed[0].notes[0].author.as_deref(),
+        Some("openmkview-agent")
+    );
+    assert!(listed[0].notes[0].is_agent);
 }
 
 #[test]
@@ -378,6 +404,8 @@ fn create_request_with_anchor(anchor: Value) -> CreateAnnotationRequest {
         relative_path: "doc.md".to_string(),
         anchor,
         body: "Selection note".to_string(),
+        author: None,
+        is_agent: false,
     }
 }
 

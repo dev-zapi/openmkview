@@ -184,6 +184,8 @@ impl<'a> AnnotationService<'a> {
             &anchor_json,
             snapshot.as_deref(),
             body,
+            req.author.as_deref(),
+            req.is_agent,
         )
     }
 
