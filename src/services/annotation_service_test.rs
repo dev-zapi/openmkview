@@ -168,3 +168,136 @@ fn create_rejects_path_traversal() {
 
     assert!(matches!(result, Err(AppError::ValidationError(_))));
 }
+
+#[test]
+fn reply_appends_notes_to_the_thread_in_time_order() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let created = service
+        .create(create_request(project_id, "doc.md", "First note"))
+        .expect("create annotation");
+    let first_note_id = created.notes[0].id;
+
+    let after_first_reply = service
+        .append_note(created.id, "Second note — **Markdown**")
+        .expect("append first reply");
+    assert_eq!(after_first_reply.notes.len(), 2);
+    assert_eq!(after_first_reply.notes[0].id, first_note_id);
+    assert_eq!(
+        after_first_reply.notes[1].body,
+        "Second note — **Markdown**"
+    );
+
+    let after_second_reply = service
+        .append_note(created.id, "Third note")
+        .expect("append second reply");
+    let bodies: Vec<&str> = after_second_reply
+        .notes
+        .iter()
+        .map(|note| note.body.as_str())
+        .collect();
+    assert_eq!(
+        bodies,
+        vec!["First note", "Second note — **Markdown**", "Third note"]
+    );
+    assert!(after_second_reply
+        .notes
+        .windows(2)
+        .all(|pair| pair[0].id < pair[1].id));
+
+    let listed = service
+        .list_for_file(project_id, "doc.md")
+        .expect("list annotations");
+    assert_eq!(listed[0].notes.len(), 3);
+}
+
+#[test]
+fn reply_requires_an_existing_annotation_and_a_non_empty_body() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "only note"))
+        .expect("create annotation");
+
+    let unknown = service.append_note(9999, "reply");
+    assert!(matches!(unknown, Err(AppError::NotFound(_))));
+
+    let empty = service.append_note(created.id, "   ");
+    assert!(matches!(empty, Err(AppError::BadRequest(_))));
+}
+
+#[test]
+fn editing_a_note_updates_only_that_note() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "First note"))
+        .expect("create annotation");
+    let second = service
+        .append_note(created.id, "Second note")
+        .expect("append reply");
+    let first_note_id = created.notes[0].id;
+    let second_note_id = second.notes[1].id;
+
+    let updated = service
+        .update_note(created.id, first_note_id, "Edited **first** note")
+        .expect("edit note");
+
+    assert_eq!(updated.notes[0].id, first_note_id);
+    assert_eq!(updated.notes[0].body, "Edited **first** note");
+    assert_eq!(updated.notes[1].id, second_note_id);
+    assert_eq!(updated.notes[1].body, "Second note");
+}
+
+#[test]
+fn editing_a_note_rejects_unknown_targets_and_empty_bodies() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "note"))
+        .expect("create annotation");
+    let note_id = created.notes[0].id;
+
+    let unknown_annotation = service.update_note(9999, note_id, "edited");
+    assert!(matches!(unknown_annotation, Err(AppError::NotFound(_))));
+
+    let unknown_note = service.update_note(created.id, 9999, "edited");
+    assert!(matches!(unknown_note, Err(AppError::NotFound(_))));
+
+    let empty = service.update_note(created.id, note_id, "  ");
+    assert!(matches!(empty, Err(AppError::BadRequest(_))));
+}
+
+#[test]
+fn resolving_and_unresolving_a_thread_persists() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "note"))
+        .expect("create annotation");
+    assert!(!created.resolved);
+
+    let resolved = service
+        .set_resolved(created.id, true)
+        .expect("resolve annotation");
+    assert!(resolved.resolved);
+
+    let listed = service
+        .list_for_file(project_id, "doc.md")
+        .expect("list annotations");
+    assert!(listed[0].resolved);
+
+    let unresolved = service
+        .set_resolved(created.id, false)
+        .expect("unresolve annotation");
+    assert!(!unresolved.resolved);
+
+    let listed = service
+        .list_for_file(project_id, "doc.md")
+        .expect("list annotations");
+    assert!(!listed[0].resolved);
+
+    let unknown = service.set_resolved(9999, true);
+    assert!(matches!(unknown, Err(AppError::NotFound(_))));
+}
