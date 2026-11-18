@@ -101,11 +101,17 @@ pub struct AnnotationListParams {
     pub project_id: i64,
     #[serde(rename = "relativePath")]
     pub relative_path: String,
+    /// Optional author filter: keep threads with a note by this author.
+    #[serde(default)]
+    pub author: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnnotationProjectParams {
     pub project_id: i64,
+    /// Optional author filter: keep threads with a note by this author.
+    #[serde(default)]
+    pub author: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

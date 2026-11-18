@@ -70,15 +70,23 @@ impl<'a> AnnotationRepository<'a> {
         &self,
         project_id: i64,
         relative_path: &str,
+        author: Option<&str>,
     ) -> AppResult<Vec<Annotation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, project_id, relative_path, anchor_json, snapshot, is_resolved, created_at, updated_at
              FROM annotations
              WHERE project_id = ? AND relative_path = ?
+               AND (?3 IS NULL OR EXISTS (
+                   SELECT 1 FROM annotation_notes note
+                   WHERE note.annotation_id = annotations.id AND note.author = ?3
+               ))
              ORDER BY created_at ASC, id ASC",
         )?;
 
-        let rows = stmt.query_map(params![project_id, relative_path], AnnotationRow::from_row)?;
+        let rows = stmt.query_map(
+            params![project_id, relative_path, author],
+            AnnotationRow::from_row,
+        )?;
 
         let mut annotations = Vec::new();
         for row in rows {
@@ -90,15 +98,23 @@ impl<'a> AnnotationRepository<'a> {
 
     /// Every annotation in a project, ordered by file then creation time.
     /// Includes rows whose stored path no longer exists on disk.
-    pub fn list_for_project(&self, project_id: i64) -> AppResult<Vec<Annotation>> {
+    pub fn list_for_project(
+        &self,
+        project_id: i64,
+        author: Option<&str>,
+    ) -> AppResult<Vec<Annotation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, project_id, relative_path, anchor_json, snapshot, is_resolved, created_at, updated_at
              FROM annotations
              WHERE project_id = ?
+               AND (?2 IS NULL OR EXISTS (
+                   SELECT 1 FROM annotation_notes note
+                   WHERE note.annotation_id = annotations.id AND note.author = ?2
+               ))
              ORDER BY relative_path ASC, created_at ASC, id ASC",
         )?;
 
-        let rows = stmt.query_map([project_id], AnnotationRow::from_row)?;
+        let rows = stmt.query_map(params![project_id, author], AnnotationRow::from_row)?;
 
         let mut annotations = Vec::new();
         for row in rows {

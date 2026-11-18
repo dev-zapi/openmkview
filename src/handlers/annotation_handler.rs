@@ -19,7 +19,11 @@ pub async fn list_annotations(
         .map_err(|_| AppError::InternalError("Database lock error".into()))?;
 
     let service = AnnotationService::new(&conn);
-    let annotations = service.list_for_file(query.project_id, &query.relative_path)?;
+    let annotations = service.list_for_file(
+        query.project_id,
+        &query.relative_path,
+        query.author.as_deref(),
+    )?;
 
     Ok(HttpResponse::Ok().json(annotations))
 }
@@ -35,7 +39,7 @@ pub async fn list_project_annotations(
         .map_err(|_| AppError::InternalError("Database lock error".into()))?;
 
     let service = AnnotationService::new(&conn);
-    let annotations = service.list_for_project(query.project_id)?;
+    let annotations = service.list_for_project(query.project_id, query.author.as_deref())?;
 
     Ok(HttpResponse::Ok().json(annotations))
 }

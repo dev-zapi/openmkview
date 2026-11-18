@@ -126,6 +126,7 @@ impl<'a> AnnotationService<'a> {
         &self,
         project_id: i64,
         relative_path: &str,
+        author: Option<&str>,
     ) -> AppResult<Vec<Annotation>> {
         let project = self.require_project(project_id)?;
         FileService::validate_relative_path(relative_path)?;
@@ -138,15 +139,20 @@ impl<'a> AnnotationService<'a> {
         }
 
         self.annotation_repo
-            .list_for_file(project_id, relative_path)
+            .list_for_file(project_id, relative_path, author)
     }
 
     /// Every annotation in the project for the management panel, including
     /// rows whose stored path no longer exists on disk. `orphaned` explains
-    /// why such a row cannot jump back into a document.
-    pub fn list_for_project(&self, project_id: i64) -> AppResult<Vec<ManagedAnnotation>> {
+    /// why such a row cannot jump back into a document. `author` keeps only
+    /// threads with at least one note written by that author.
+    pub fn list_for_project(
+        &self,
+        project_id: i64,
+        author: Option<&str>,
+    ) -> AppResult<Vec<ManagedAnnotation>> {
         let project = self.require_project(project_id)?;
-        let annotations = self.annotation_repo.list_for_project(project_id)?;
+        let annotations = self.annotation_repo.list_for_project(project_id, author)?;
 
         Ok(annotations
             .into_iter()
