@@ -1,6 +1,5 @@
 import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, For, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
-import { Marked } from 'marked';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
 import DiagramZoomModal from './DiagramZoomModal';
@@ -8,7 +7,7 @@ import type { ZoomDiagramSource } from '../services/diagramZoomService';
 import type { Annotation, Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
-import { generateHeadingId, resolveImagePath, isDiagramLanguage, encodeDiagramCode, decodeDiagramCode } from '../utils/markdown';
+import { generateHeadingId, isDiagramLanguage, encodeDiagramCode, decodeDiagramCode } from '../utils/markdown';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 import {
   assignBlockAnchors,
@@ -17,7 +16,7 @@ import {
   applyAnnotationHighlights,
   type RenderedBlock,
 } from '../utils/annotationBlocks';
-import { renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
+import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import FrontmatterPanel from './FrontmatterPanel';
 
@@ -502,64 +501,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     try {
       await getHighlighter();
 
-      const marked = new Marked({
-        gfm: true,
-        breaks: true,
-      });
-
-      marked.use({
-        async: true,
-        renderer: {
-          heading({ tokens, depth }) {
-            const text = this.parser.parseInline(tokens);
-            const id = generateHeadingId(text);
-            return `<h${depth} id="${id}">${text}</h${depth}>\n`;
-          },
-          code({ text, lang }) {
-            const language = lang || 'text';
-            return `<pre class="shiki-code-block" data-lang="${language}"><code class="language-${language}">${escapeHtml(text)}</code></pre>`;
-          },
-          image({ href, title, text }) {
-            let imageUrl = href || '';
-
-            if (href && !href.startsWith('http') && !href.startsWith('data:') && !href.startsWith('//')) {
-              if (props.currentFilePath && props.projectId) {
-                const absolutePath = resolveImagePath(props.currentFilePath, href);
-                imageUrl = `/api/files/raw?path=${encodeURIComponent(absolutePath)}&project_id=${props.projectId}`;
-              }
-            }
-
-            const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
-            const altText = text || '';
-            return `<img src="${imageUrl}" alt="${escapeHtml(altText)}"${titleAttr} loading="lazy" decoding="async" />`;
-          },
-          link({ href, title, text }) {
-            const linkHref = href || '';
-            const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
-            const linkText = text || '';
-
-            // External links, anchors, mailto, tel, etc. - open in new tab
-            if (
-              linkHref.startsWith('http') ||
-              linkHref.startsWith('//') ||
-              linkHref.startsWith('mailto:') ||
-              linkHref.startsWith('tel:') ||
-              linkHref.startsWith('#') ||
-              linkHref.startsWith('data:')
-            ) {
-              const targetAttr = linkHref.startsWith('#') ? '' : ' target="_blank" rel="noopener noreferrer"';
-              return `<a href="${escapeHtml(linkHref)}"${targetAttr}${titleAttr}>${linkText}</a>`;
-            }
-
-            // Relative path link - resolve and mark for internal navigation
-            if (props.currentFilePath) {
-              const resolvedPath = resolveImagePath(props.currentFilePath, linkHref);
-              return `<a href="#" data-relative-path="${escapeHtml(resolvedPath)}" class="internal-link" style="cursor:pointer"${titleAttr}>${linkText}</a>`;
-            }
-
-            return `<a href="${escapeHtml(linkHref)}"${titleAttr}>${linkText}</a>`;
-          },
-        },
+      const marked = createMarkdownPipeline({
+        currentFilePath: props.currentFilePath,
+        projectId: props.projectId,
       });
 
       let html = await marked.parse(content) as string;
