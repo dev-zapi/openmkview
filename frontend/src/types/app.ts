@@ -95,6 +95,13 @@ export interface PasskeyListResponse {
   credentials: PasskeyCredentialSummary[];
 }
 
+export interface ToolSessionSummary {
+  id: number;
+  label: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
 export interface PasskeyCeremonyStart<T = unknown> {
   requestId: string;
   options: T;

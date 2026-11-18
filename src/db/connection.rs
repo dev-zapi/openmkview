@@ -37,6 +37,13 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             body TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS tool_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_hash TEXT NOT NULL UNIQUE,
+            label TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            last_used_at TEXT NULL DEFAULT NULL
+        );
         CREATE INDEX IF NOT EXISTS idx_annotations_project_path
             ON annotations(project_id, relative_path);
         CREATE INDEX IF NOT EXISTS idx_annotation_notes_annotation

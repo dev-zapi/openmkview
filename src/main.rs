@@ -7,7 +7,8 @@ use openmkview::config::{
 };
 use openmkview::db::{init_db, ProjectRepository, SettingsRepository};
 use openmkview::handlers::{
-    add_note, auth_login, auth_logout, auth_status, auth_update_session_timeout,
+    add_note, auth_login, auth_logout, auth_status, auth_tool_session_delete,
+    auth_tool_session_exchange, auth_tool_session_list, auth_update_session_timeout,
     batch_delete_annotations, batch_resolve_annotations, clear_project_annotations, clear_trash,
     close_project, create_annotation, create_file, create_project, delete_annotation,
     delete_custom_theme, delete_file, delete_from_trash, execute_git, get_branches, get_commits,
@@ -156,6 +157,18 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
         .route(
             "/api/auth/session-timeout",
             web::put().to(auth_update_session_timeout),
+        )
+        .route(
+            "/api/auth/tool-sessions/exchange",
+            web::post().to(auth_tool_session_exchange),
+        )
+        .route(
+            "/api/auth/tool-sessions",
+            web::get().to(auth_tool_session_list),
+        )
+        .route(
+            "/api/auth/tool-sessions/{id}",
+            web::delete().to(auth_tool_session_delete),
         )
         .route("/api/projects", web::get().to(list_projects))
         .route("/api/projects", web::post().to(create_project))
@@ -509,7 +522,10 @@ async fn run_server(args: ServeArgs) -> std::io::Result<()> {
         let mut server = HttpServer::new(move || {
             App::new()
                 .wrap(Logger::new(DEBUG_LOG_FORMAT).log_target("openmkview::http"))
-                .wrap(AuthMiddleware::new(auth_state.clone()))
+                .wrap(AuthMiddleware::new(
+                    auth_state.clone(),
+                    app_state.db.clone(),
+                ))
                 .app_data(app_state.clone())
                 .configure(configure_routes)
         })
