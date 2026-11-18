@@ -62,6 +62,20 @@ describe('authStore.checkStatus', () => {
     expect(authStore.username()).toBeNull();
   });
 
+  it('uses the username as the note author when auth is enabled', () => {
+    authStore.setAuthRequired(true);
+    authStore.setUsername('Jonas');
+
+    expect(authStore.noteAuthor()).toBe('Jonas');
+  });
+
+  it('falls back to a local author on auth-disabled instances', () => {
+    authStore.setAuthRequired(false);
+    authStore.setUsername(null);
+
+    expect(authStore.noteAuthor()).toBe('You');
+  });
+
   it('marks the session unauthenticated on an explicit 401', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 }),

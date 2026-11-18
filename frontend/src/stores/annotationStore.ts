@@ -380,7 +380,7 @@ export const annotationStore = {
       relativePath,
       anchor,
       body,
-      author: authStore.username(),
+      author: authStore.noteAuthor(),
       isAgent: false,
     });
     if (loadedKey === fileKey(projectId, relativePath)) {
@@ -431,7 +431,7 @@ export const annotationStore = {
     const updated = await api.addAnnotationNote(
       annotationId,
       body,
-      authStore.username()
+      authStore.noteAuthor()
     );
     replaceAnnotation(updated);
     return updated;

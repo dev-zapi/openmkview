@@ -60,6 +60,16 @@ export const authStore = {
   setLoading,
   setError,
 
+  /**
+   * The author stamped on web writes. With auth enabled this is the logged-in
+   * username (null when unknown, e.g. before status loads). Auth-disabled
+   * instances have no username, so writes use a local fallback instead of
+   * making every note look like a legacy row.
+   */
+  noteAuthor(): string | null {
+    return authRequired() ? username() : 'You';
+  },
+
   async checkStatus(): Promise<AuthStatus | null> {
     setLoading(true);
     try {
