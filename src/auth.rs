@@ -485,12 +485,14 @@ pub async fn auth_tool_session_exchange(
     let conn = lock_db(&data)?;
     let session = ToolSessionRepository::new(&conn).create(&token_hash, &label)?;
 
-    Ok(HttpResponse::Ok().json(CreateToolSessionResponse {
-        id: session.id,
-        label: session.label,
-        token,
-        created_at: session.created_at,
-    }))
+    Ok(HttpResponse::Ok()
+        .insert_header((header::CACHE_CONTROL, "no-store"))
+        .json(CreateToolSessionResponse {
+            id: session.id,
+            label: session.label,
+            token,
+            created_at: session.created_at,
+        }))
 }
 
 pub async fn auth_tool_session_list(data: web::Data<AppState>) -> AppResult<HttpResponse> {
@@ -785,6 +787,13 @@ mod tests {
         )
         .await;
         assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CACHE_CONTROL)
+                .expect("exchange response is not cacheable"),
+            "no-store"
+        );
         let body = body_json(response).await;
         let token = body["token"]
             .as_str()

@@ -44,8 +44,12 @@ impl<'a> ToolSessionRepository<'a> {
             "SELECT id, label, created_at, last_used_at
              FROM tool_sessions ORDER BY created_at DESC, id DESC",
         )?;
-        let sessions = stmt.query_map([], Self::hydrate)?;
-        Ok(sessions.filter_map(|row| row.ok()).collect())
+        let rows = stmt.query_map([], Self::hydrate)?;
+        let mut sessions = Vec::new();
+        for row in rows {
+            sessions.push(row?);
+        }
+        Ok(sessions)
     }
 
     pub fn find_by_id(&self, id: i64) -> AppResult<Option<ToolSession>> {
