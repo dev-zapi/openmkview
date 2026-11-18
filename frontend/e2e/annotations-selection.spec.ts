@@ -20,6 +20,17 @@ interface FileTarget {
   path: string;
 }
 
+interface StoredSegment {
+  kind: 'block' | 'text';
+  blockHash: string;
+  blockText: string;
+  blockType: string;
+  headingPath: string[];
+  quote?: string;
+  prefix?: string;
+  suffix?: string;
+}
+
 async function createScratchFile(page: Page): Promise<FileTarget> {
   return page.evaluate(async ({ body }) => {
     const projectsRes = await fetch('/api/projects?open=true');
@@ -146,7 +157,10 @@ async function saveSelectionAnnotation(page: Page, body: string): Promise<void> 
   await expect(composer).not.toBeVisible();
 }
 
-async function storedSegments(page: Page, target: FileTarget): Promise<any[]> {
+async function storedSegments(
+  page: Page,
+  target: FileTarget
+): Promise<StoredSegment[]> {
   return page.evaluate(async ({ projectId, path }) => {
     const res = await fetch(
       `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(path)}`
@@ -208,10 +222,7 @@ test.describe('text-selection annotations', () => {
     await selectTextRange(page, 'quick brown fox', 'next step');
     await saveSelectionAnnotation(page, 'Cross-block note');
 
-    const segments = await storedSegments(page, target) as Array<{
-      kind: string;
-      quote: string;
-    }>;
+    const segments = await storedSegments(page, target);
     expect(segments.length).toBeGreaterThanOrEqual(2);
     expect(segments.every((segment) => segment.kind === 'text')).toBe(true);
     expect(segments[0].quote).toBe('quick brown fox jumps over the lazy dog.');

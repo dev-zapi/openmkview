@@ -7,6 +7,7 @@ import {
 } from './blockModel';
 import { getBlockContentElement, clearRangeHighlights, highlightTextRange } from './rangeHighlight';
 import { resolveAnchor } from './anchorResolver';
+import { highlightSearchMatches } from './searchHighlight';
 
 /**
  * A top-level rendered block and its DOM edge. The annotation identity
@@ -244,4 +245,27 @@ export function applyAnnotationHighlights(
 
 function modelType(models: BlockModel[], blockId: string): string {
   return models.find((model) => model.id === blockId)?.type ?? 'p';
+}
+
+export interface AppliedHighlights {
+  searchMatches: HTMLElement[];
+  attachments: Map<string, Annotation[]>;
+}
+
+/**
+ * The one ordering that keeps both highlight layers findable:
+ * remove annotation marks, run search over the unwrapped text, then apply
+ * annotation segments. Search skips annotation marks, so reversing this
+ * order would make annotated passages invisible to search.
+ */
+export function applySearchAndAnnotationHighlights(
+  root: HTMLElement,
+  query: string,
+  annotations: Annotation[],
+  blocks: RenderedBlock[]
+): AppliedHighlights {
+  clearRangeHighlights(root);
+  const searchMatches = highlightSearchMatches(root, query);
+  const attachments = applyAnnotationHighlights(root, annotations, blocks);
+  return { searchMatches, attachments };
 }

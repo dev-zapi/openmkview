@@ -41,10 +41,9 @@ export interface OutdatedAnchor {
 export type AnchorResolution = ResolvedAnchor | OutdatedAnchor;
 
 const CONTEXT_WEIGHT = 12;
-const SAME_HASH_WEIGHT = 1000;
 const SAME_BLOCK_TEXT_WEIGHT = 400;
 const SAME_TYPE_WEIGHT = 30;
-const HEADING_PREFIX_WEIGHT = 20;
+const HEADING_PREFIX_WEIGHT = 60;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -119,12 +118,18 @@ function contextScore(
   return (prefixMatch + suffixMatch) * CONTEXT_WEIGHT;
 }
 
+/**
+ * Content signals only. The stored block hash is deliberately not scored:
+ * after an identical block is inserted above, the old hash belongs to the
+ * new block, so letting it dominate would silently resolve to the wrong
+ * content. Context and heading path outrank it; when they cannot separate
+ * two candidates the anchor is ambiguous and becomes Outdated.
+ */
 function blockScore(
   candidate: BlockModel,
   segment: BlockAnchorSegment | TextAnchorSegment
 ): number {
   let score = 0;
-  if (candidate.id === segment.blockHash) score += SAME_HASH_WEIGHT;
   if (candidate.text === normalizeBlockText(segment.blockText)) {
     score += SAME_BLOCK_TEXT_WEIGHT;
   }
@@ -171,7 +176,8 @@ function bestOccurrence(
   const quote = normalizeBlockText(segment.quote);
   if (!quote) return null;
 
-  let best: QuoteOccurrence | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let top: QuoteOccurrence[] = [];
 
   for (const candidate of blocks) {
     const baseScore = blockScore(candidate, segment);
@@ -180,17 +186,27 @@ function bestOccurrence(
       const score =
         baseScore +
         contextScore(candidate.text, start, end, segment.prefix, segment.suffix);
-      if (
-        !best ||
-        score > best.score ||
-        (score === best.score && start < best.start)
-      ) {
-        best = { block: candidate, start, end, score };
+      const occurrence = { block: candidate, start, end, score };
+
+      if (score > bestScore) {
+        bestScore = score;
+        top = [occurrence];
+      } else if (score === bestScore) {
+        top.push(occurrence);
       }
     }
   }
 
-  return best;
+  if (top.length === 0) return null;
+
+  // Equal best scores in different blocks cannot be told apart by content,
+  // context, or heading path: never guess (ADR-0005 / story 18).
+  const topBlockIds = new Set(top.map((occurrence) => occurrence.block.id));
+  if (topBlockIds.size > 1) return null;
+
+  // Within one block, document order breaks the remaining tie.
+  top.sort((left, right) => left.start - right.start);
+  return top[0];
 }
 
 function resolveBlockSegment(
@@ -198,19 +214,24 @@ function resolveBlockSegment(
   segment: BlockAnchorSegment
 ): ResolvedBlockSegment | null {
   const normalizedText = normalizeBlockText(segment.blockText);
-  let best: { block: BlockModel; score: number } | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let top: BlockModel[] = [];
 
   for (const candidate of blocks) {
-    if (candidate.id !== segment.blockHash && candidate.text !== normalizedText) {
-      continue;
-    }
+    // A whole-block anchor resolves by its text reference. The hash alone is
+    // not sufficient: it may now identify an identical inserted block.
+    if (candidate.text !== normalizedText) continue;
     const score = blockScore(candidate, segment);
-    if (!best || score > best.score) {
-      best = { block: candidate, score };
+    if (score > bestScore) {
+      bestScore = score;
+      top = [candidate];
+    } else if (score === bestScore) {
+      top.push(candidate);
     }
   }
 
-  return best ? { kind: 'block', blockId: best.block.id } : null;
+  if (top.length === 0 || top.length > 1) return null;
+  return { kind: 'block', blockId: top[0].id };
 }
 
 function resolveTextSegment(

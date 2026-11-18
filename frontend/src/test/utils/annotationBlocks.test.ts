@@ -4,6 +4,7 @@ import {
   ensureBlockMarkers,
   blockAnchorFrom,
   applyAnnotationHighlights,
+  applySearchAndAnnotationHighlights,
 } from '../../utils/annotationBlocks';
 import { encodeDiagramCode } from '../../utils/markdown';
 import type { Annotation } from '../../types';
@@ -208,6 +209,49 @@ describe('annotationBlocks', () => {
     expect(root.querySelector('mark[data-annotation-id="10"]')).toBeNull();
     expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(false);
     expect(attached.size).toBe(0);
+  });
+
+  it('finds search matches inside text that is also annotated', () => {
+    const root = createRoot('<p>alpha beta gamma</p>');
+    const blocks = assignBlockAnchors(root);
+    ensureBlockMarkers(blocks);
+    const annotation: Annotation = {
+      id: 11,
+      projectId: 1,
+      relativePath: 'doc.md',
+      anchor: {
+        version: 1,
+        segments: [
+          {
+            kind: 'text',
+            blockHash: blocks[0].model.id,
+            blockText: blocks[0].model.text,
+            blockType: 'p',
+            headingPath: [],
+            quote: 'beta',
+            prefix: 'alpha ',
+            suffix: ' gamma',
+          },
+        ],
+      },
+      snapshot: null,
+      resolved: false,
+      createdAt: '2026-01-01 00:00:00',
+      updatedAt: '2026-01-01 00:00:00',
+      notes: [],
+    };
+
+    const applied = applySearchAndAnnotationHighlights(
+      root,
+      'beta',
+      [annotation],
+      blocks
+    );
+
+    expect(applied.searchMatches).toHaveLength(1);
+    expect(applied.searchMatches[0].textContent).toBe('beta');
+    expect(root.querySelector('mark[data-annotation-id="11"]')?.textContent).toBe('beta');
+    expect(root.textContent).toBe('alpha beta gamma');
   });
 
   it('attaches annotations by block hash and clears stale attachments', () => {

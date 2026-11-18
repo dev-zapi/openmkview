@@ -129,6 +129,61 @@ test.describe('whole-block annotations', () => {
     await expect(page.getByRole('dialog', { name: 'Annotation' })).not.toBeVisible();
   });
 
+  test('offers a chooser when a block carries multiple annotations', async ({ page }) => {
+    const paragraph = page.getByText('A paragraph with a stable block for annotation.', {
+      exact: true,
+    });
+    await paragraph.hover();
+    await paragraph.getByRole('button', { name: /Annotate this block/ }).click();
+
+    const composer = page.getByRole('dialog', { name: 'New annotation' });
+    await expect(composer).toBeVisible();
+    await composer.getByRole('textbox').fill('First block note');
+    await composer.getByRole('button', { name: 'Save' }).click();
+    await expect(composer).not.toBeVisible();
+
+    // Second annotation shares the exact same whole-block Anchor.
+    await page.evaluate(async ({ projectId, path }) => {
+      const listRes = await fetch(
+        `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(path)}`
+      );
+      const annotations = await listRes.json();
+      const createRes = await fetch('/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          relativePath: path,
+          anchor: annotations[0].anchor,
+          body: 'Second block note',
+        }),
+      });
+      if (!createRes.ok) throw new Error(`cannot create second annotation: ${createRes.status}`);
+    }, target);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await openScratchFile(page, target);
+
+    const reloaded = page.getByText('A paragraph with a stable block for annotation.', {
+      exact: true,
+    });
+    await expect(reloaded).toHaveClass(/annotation-highlighted/, { timeout: 15000 });
+    const ids = (await reloaded.getAttribute('data-annotation-ids'))?.split(',') ?? [];
+    expect(ids).toHaveLength(2);
+
+    await reloaded.click();
+    const chooser = page.getByRole('dialog', { name: 'Annotations here' });
+    await expect(chooser).toBeVisible();
+    const items = chooser.locator('.annotation-chooser-item');
+    await expect(items).toHaveCount(2);
+
+    await items.first().click();
+    const viewer = page.getByRole('dialog', { name: 'Annotation' });
+    await expect(viewer).toBeVisible();
+    await expect(viewer).toContainText(/First block note|Second block note/);
+    await page.keyboard.press('Escape');
+  });
+
   test('code block anchors use source text and survive reload', async ({ page }) => {
     const codeText = page.getByText('const value = 1;', { exact: false }).first();
     await codeText.hover();
