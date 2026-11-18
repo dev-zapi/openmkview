@@ -210,6 +210,17 @@ run_mode() {
   [[ "$(jsonq "$list_json" 'd.length')" == "0" ]] || fail "expected an empty annotation list"
   pass "$mode list starts empty"
 
+  # OPENMKVIEW_URL overrides a configured URL (open mode only: no token needed).
+  if [[ "$mode" == "open" ]]; then
+    local override_config="$mode_root/override-agent.json"
+    node -e 'const fs=require("node:fs");fs.writeFileSync(process.argv[1], JSON.stringify({url:"http://127.0.0.1:1", token:null}));' "$override_config"
+    OPENMKVIEW_URL="$url" OPENMKVIEW_AGENT_CONFIG="$override_config" \
+      node "$OMK" list --file "$docs/guide.md" >"$mode_root/override-list.json"
+    [[ "$(jsonq "$mode_root/override-list.json" 'd.length')" == "0" ]] \
+      || fail "OPENMKVIEW_URL did not override the configured URL"
+    pass "OPENMKVIEW_URL overrides the configured URL"
+  fi
+
   # Create (agent voice, client-built text anchor).
   local created_json="$mode_root/created.json"
   cli create --file "$docs/guide.md" --quote "development server" \
@@ -252,8 +263,19 @@ run_mode() {
   local duplicate_json="$mode_root/duplicate.json"
   cli create --file "$docs/guide.md" --quote "Alpha beta gamma" \
     --body "Duplicate-context note." --author "claude" >"$duplicate_json"
+  DUPLICATE_ID=$(jsonq "$duplicate_json" 'd.id')
+  PROJECT_ID=$(jsonq "$duplicate_json" 'd.projectId')
   [[ "$(jsonq "$duplicate_json" 'd.anchor.segments[0].kind')" == "text" ]] || fail "duplicate quote anchor kind"
   pass "$mode duplicate-block quote anchors"
+
+  # Batch variants.
+  local batch_resolve_json="$mode_root/batch-resolve.json"
+  cli batch-resolve "$ANNOTATION_ID" "$DUPLICATE_ID" --project "$PROJECT_ID" >"$batch_resolve_json"
+  [[ "$(jsonq "$batch_resolve_json" 'd.updated')" == "2" ]] || fail "batch-resolve updated count"
+  local batch_delete_json="$mode_root/batch-delete.json"
+  cli batch-delete "$DUPLICATE_ID" --project "$PROJECT_ID" >"$batch_delete_json"
+  [[ "$(jsonq "$batch_delete_json" 'd.deleted')" == "1" ]] || fail "batch-delete count"
+  pass "$mode batch-resolve / batch-delete"
 
   # Resolve / filter / undo.
   local resolved_json="$mode_root/resolved.json"
@@ -281,6 +303,17 @@ run_mode() {
   cli show "$ANNOTATION_ID" >"$show_json"
   [[ "$(jsonq "$show_json" "d.id === $ANNOTATION_ID")" == "true" ]] || fail "show returned the wrong row"
   pass "$mode show"
+
+  # Orphan view: a file renamed outside the app surfaces as Missing File.
+  mv "$docs/guide.md" "$docs/guide-renamed.md"
+  cli list >"$mode_root/manage.json"
+  [[ "$(jsonq "$mode_root/manage.json" "d.some(a => a.orphaned && a.id === $ANNOTATION_ID)")" == "true" ]] \
+    || fail "project-wide list did not mark the renamed file orphaned"
+  cli list --orphans >"$mode_root/orphans.json"
+  [[ "$(jsonq "$mode_root/orphans.json" 'd.length >= 1 && d.every(a => a.orphaned)')" == "true" ]] \
+    || fail "--orphans did not return only orphaned rows"
+  mv "$docs/guide-renamed.md" "$docs/guide.md"
+  pass "$mode orphan view"
 
   if [[ "$mode" == "auth" ]]; then
     # Revoke the Tool Session and require the actionable 401 message.
