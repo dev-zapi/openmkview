@@ -60,6 +60,24 @@ fn setup() -> (TempDir, rusqlite::Connection, i64) {
     (fixture.temp_dir, fixture.conn, fixture.project_id)
 }
 
+/// Creates a second, independent project inside the fixture's temp root.
+fn add_second_project(fixture: &Fixture, files: &[(&str, &str)]) -> i64 {
+    let project_dir = fixture.temp_dir.path().join("project-two");
+    fs::create_dir_all(&project_dir).unwrap();
+    for (relative_path, content) in files {
+        let path = project_dir.join(relative_path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, content).unwrap();
+    }
+
+    ProjectRepository::new(&fixture.conn)
+        .create(project_dir.to_str().unwrap(), "project-two")
+        .unwrap()
+        .id
+}
+
 fn block_anchor() -> Value {
     json!({
         "version": 1,
@@ -650,6 +668,300 @@ fn external_rename_keeps_annotation_rows_queryable() {
         .expect("annotation row remains");
     assert_eq!(retained.relative_path, "doc.md");
     assert_eq!(retained.notes[0].body, "external note");
+}
+
+#[test]
+fn managed_list_covers_every_project_file_and_marks_missing_paths_as_orphaned() {
+    let fixture = fixture_with_files(&[
+        ("doc.md", "# Title\n"),
+        ("other.md", "# Other\n"),
+        ("gone.md", "# Gone\n"),
+    ]);
+    let service = AnnotationService::new(&fixture.conn);
+
+    let doc = service
+        .create(create_request(fixture.project_id, "doc.md", "doc note"))
+        .expect("create doc annotation");
+    let other = service
+        .create(create_request(fixture.project_id, "other.md", "other note"))
+        .expect("create other annotation");
+    let gone = service
+        .create(create_request(fixture.project_id, "gone.md", "orphan note"))
+        .expect("create orphan annotation");
+
+    fs::remove_file(fixture.project_dir.join("gone.md")).expect("remove file externally");
+
+    let managed = service
+        .list_for_project(fixture.project_id)
+        .expect("list management annotations");
+
+    assert_eq!(managed.len(), 3);
+    let by_id = |id: i64| {
+        managed
+            .iter()
+            .find(|entry| entry.annotation.id == id)
+            .expect("managed row present")
+    };
+
+    assert!(!by_id(doc.id).orphaned);
+    assert!(!by_id(other.id).orphaned);
+    assert!(by_id(gone.id).orphaned);
+    assert_eq!(by_id(gone.id).annotation.relative_path, "gone.md");
+    assert_eq!(by_id(gone.id).annotation.notes[0].body, "orphan note");
+}
+
+#[test]
+fn managed_list_does_not_leak_annotations_from_other_projects() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+    let second_project_id = add_second_project(&fixture, &[("second.md", "# Second\n")]);
+
+    let first = service
+        .create(create_request(
+            fixture.project_id,
+            "doc.md",
+            "first project",
+        ))
+        .expect("create first annotation");
+    let second = service
+        .create(create_request(
+            second_project_id,
+            "second.md",
+            "second project",
+        ))
+        .expect("create second annotation");
+
+    let managed = service
+        .list_for_project(fixture.project_id)
+        .expect("list first project");
+
+    assert_eq!(managed.len(), 1);
+    assert_eq!(managed[0].annotation.id, first.id);
+    assert!(managed
+        .iter()
+        .all(|entry| entry.annotation.project_id == fixture.project_id));
+
+    let second_managed = service
+        .list_for_project(second_project_id)
+        .expect("list second project");
+    assert_eq!(second_managed.len(), 1);
+    assert_eq!(second_managed[0].annotation.id, second.id);
+}
+
+#[test]
+fn batch_delete_removes_only_selected_ids_from_the_given_project() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n"), ("other.md", "# Other\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+    let second_project_id = add_second_project(&fixture, &[("second.md", "# Second\n")]);
+
+    let keep = service
+        .create(create_request(fixture.project_id, "doc.md", "keep me"))
+        .expect("create kept annotation");
+    let first_to_delete = service
+        .create(create_request(fixture.project_id, "doc.md", "delete one"))
+        .expect("create first delete target");
+    let cross_file_to_delete = service
+        .create(create_request(fixture.project_id, "other.md", "delete two"))
+        .expect("create cross-file delete target");
+    let foreign = service
+        .create(create_request(
+            second_project_id,
+            "second.md",
+            "other project",
+        ))
+        .expect("create foreign annotation");
+
+    let deleted = service
+        .batch_delete(
+            fixture.project_id,
+            &[first_to_delete.id, cross_file_to_delete.id, foreign.id],
+        )
+        .expect("batch delete");
+
+    assert_eq!(deleted, 2);
+
+    let remaining = service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list remaining annotations");
+    assert_eq!(remaining.len(), 1);
+    assert_eq!(remaining[0].id, keep.id);
+    assert!(service
+        .list_for_file(fixture.project_id, "other.md")
+        .expect("list other file")
+        .is_empty());
+
+    let foreign_rows = service
+        .list_for_file(second_project_id, "second.md")
+        .expect("list foreign project annotations");
+    assert_eq!(foreign_rows.len(), 1);
+    assert_eq!(foreign_rows[0].id, foreign.id);
+}
+
+#[test]
+fn batch_delete_with_no_ids_is_a_no_op() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    service
+        .create(create_request(project_id, "doc.md", "still here"))
+        .expect("create annotation");
+
+    let deleted = service.batch_delete(project_id, &[]).expect("batch delete");
+
+    assert_eq!(deleted, 0);
+    assert_eq!(
+        service
+            .list_for_file(project_id, "doc.md")
+            .expect("list annotations")
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n"), ("other.md", "# Other\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+    let second_project_id = add_second_project(&fixture, &[("second.md", "# Second\n")]);
+
+    let first = service
+        .create(create_request(fixture.project_id, "doc.md", "first"))
+        .expect("create first annotation");
+    let cross_file = service
+        .create(create_request(fixture.project_id, "other.md", "cross file"))
+        .expect("create cross-file annotation");
+    let untouched = service
+        .create(create_request(fixture.project_id, "doc.md", "untouched"))
+        .expect("create untouched annotation");
+    let foreign = service
+        .create(create_request(second_project_id, "second.md", "foreign"))
+        .expect("create foreign annotation");
+
+    let resolved = service
+        .batch_resolve(
+            fixture.project_id,
+            &[first.id, cross_file.id, foreign.id],
+            true,
+        )
+        .expect("batch resolve");
+
+    assert_eq!(resolved, 2);
+    let listed = service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list annotations");
+    assert!(
+        listed
+            .iter()
+            .find(|entry| entry.id == first.id)
+            .expect("first present")
+            .resolved
+    );
+    assert!(
+        !listed
+            .iter()
+            .find(|entry| entry.id == untouched.id)
+            .expect("untouched present")
+            .resolved
+    );
+
+    let other_rows = service
+        .list_for_file(fixture.project_id, "other.md")
+        .expect("list other file");
+    assert!(other_rows[0].resolved);
+
+    let foreign_rows = service
+        .list_for_file(second_project_id, "second.md")
+        .expect("list foreign annotations");
+    assert!(!foreign_rows[0].resolved);
+
+    let unresolved = service
+        .batch_resolve(fixture.project_id, &[first.id], false)
+        .expect("batch unresolve");
+    assert_eq!(unresolved, 1);
+    let listed = service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list after unresolve");
+    assert!(
+        !listed
+            .iter()
+            .find(|entry| entry.id == first.id)
+            .expect("first present")
+            .resolved
+    );
+    assert!(
+        service
+            .list_for_file(fixture.project_id, "other.md")
+            .expect("list other file after unresolve")[0]
+            .resolved
+    );
+}
+
+#[test]
+fn batch_resolve_with_no_ids_is_a_no_op() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let updated = service
+        .batch_resolve(project_id, &[], true)
+        .expect("batch resolve");
+
+    assert_eq!(updated, 0);
+}
+
+#[test]
+fn clear_project_removes_every_annotation_in_only_that_project() {
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n"), ("other.md", "# Other\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+    let second_project_id = add_second_project(&fixture, &[("second.md", "# Second\n")]);
+
+    let first = service
+        .create(create_request(fixture.project_id, "doc.md", "first"))
+        .expect("create first annotation");
+    service
+        .create(create_request(fixture.project_id, "other.md", "second"))
+        .expect("create second annotation");
+    let foreign = service
+        .create(create_request(second_project_id, "second.md", "foreign"))
+        .expect("create foreign annotation");
+
+    let deleted = service
+        .clear_project(fixture.project_id)
+        .expect("clear project annotations");
+
+    assert_eq!(deleted, 2);
+    assert!(service
+        .list_for_file(fixture.project_id, "doc.md")
+        .expect("list doc")
+        .is_empty());
+    assert!(service
+        .list_for_file(fixture.project_id, "other.md")
+        .expect("list other")
+        .is_empty());
+
+    let foreign_rows = service
+        .list_for_file(second_project_id, "second.md")
+        .expect("list foreign project");
+    assert_eq!(foreign_rows.len(), 1);
+    assert_eq!(foreign_rows[0].id, foreign.id);
+
+    let note_count: i64 = fixture
+        .conn
+        .query_row(
+            "SELECT COUNT(*) FROM annotation_notes WHERE annotation_id = ?",
+            [first.id],
+            |row| row.get(0),
+        )
+        .expect("count cleared notes");
+    assert_eq!(note_count, 0);
+}
+
+#[test]
+fn clear_project_with_no_annotations_returns_zero() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let deleted = service.clear_project(project_id).expect("clear project");
+
+    assert_eq!(deleted, 0);
 }
 
 #[test]

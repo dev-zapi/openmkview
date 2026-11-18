@@ -84,6 +84,67 @@ impl<'a> AnnotationRepository<'a> {
         Ok(annotations)
     }
 
+    /// Every annotation in a project, ordered by file then creation time.
+    /// Includes rows whose stored path no longer exists on disk.
+    pub fn list_for_project(&self, project_id: i64) -> AppResult<Vec<Annotation>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, project_id, relative_path, anchor_json, snapshot, is_resolved, created_at, updated_at
+             FROM annotations
+             WHERE project_id = ?
+             ORDER BY relative_path ASC, created_at ASC, id ASC",
+        )?;
+
+        let rows = stmt.query_map([project_id], AnnotationRow::from_row)?;
+
+        let mut annotations = Vec::new();
+        for row in rows {
+            annotations.push(self.hydrate(row?)?);
+        }
+
+        Ok(annotations)
+    }
+
+    /// Sets the Resolved flag on the given ids that belong to `project_id`,
+    /// returning the count. Ids from other projects are ignored.
+    pub fn set_resolved_many(
+        &self,
+        project_id: i64,
+        ids: &[i64],
+        resolved: bool,
+    ) -> AppResult<usize> {
+        let mut updated = 0;
+        for id in ids {
+            updated += self.conn.execute(
+                "UPDATE annotations
+                 SET is_resolved = ?, updated_at = datetime('now')
+                 WHERE project_id = ? AND id = ?",
+                params![resolved as i64, project_id, id],
+            )?;
+        }
+        Ok(updated)
+    }
+
+    /// Deletes the given ids that belong to `project_id`, returning the count.
+    /// Ids from other projects are ignored rather than deleted.
+    pub fn delete_many(&self, project_id: i64, ids: &[i64]) -> AppResult<usize> {
+        let mut deleted = 0;
+        for id in ids {
+            deleted += self.conn.execute(
+                "DELETE FROM annotations WHERE project_id = ? AND id = ?",
+                params![project_id, id],
+            )?;
+        }
+        Ok(deleted)
+    }
+
+    /// Deletes every annotation in one project, returning the count.
+    pub fn delete_for_project(&self, project_id: i64) -> AppResult<usize> {
+        let deleted = self
+            .conn
+            .execute("DELETE FROM annotations WHERE project_id = ?", [project_id])?;
+        Ok(deleted)
+    }
+
     pub fn find_by_id(&self, id: i64) -> AppResult<Option<Annotation>> {
         let row = self.conn.query_row(
             "SELECT id, project_id, relative_path, anchor_json, snapshot, is_resolved, created_at, updated_at

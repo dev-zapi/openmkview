@@ -5,6 +5,7 @@ import { projectStore } from '../stores/projectStore';
 import { appStore } from '../stores/appStore';
 import { diffStore } from '../stores/diffStore';
 import { offlineStore } from '../stores/offlineStore';
+import { annotationStore } from '../stores/annotationStore';
 import { navigateToFile } from '../utils/router';
 import { settingsStore } from '../stores/settingsStore';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
@@ -42,9 +43,16 @@ export const useFile = () => {
 
   const openFile = async (path: string, updateUrl: boolean = true) => {
     const project = projectStore.state.activeProject;
-    if (!project) return;
+    if (!project) {
+      annotationStore.cancelPendingJump(path);
+      return;
+    }
 
-    if (!confirmDiscardIfDirty()) return;
+    if (!confirmDiscardIfDirty()) {
+      // The management panel may have armed a cross-file jump for this path.
+      annotationStore.cancelPendingJump(path);
+      return;
+    }
 
     const node = fileStore.findNodeByPath(path);
     const fileType = node?.fileType;
@@ -82,6 +90,7 @@ export const useFile = () => {
         navigateToFile(project.id, path);
       }
     } catch (error) {
+      annotationStore.cancelPendingJump(path);
       console.error('Failed to load file:', error);
       fileStore.setLoadError(
         offlineStore.online()
