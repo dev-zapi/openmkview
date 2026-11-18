@@ -11,9 +11,11 @@ interface AnnotationColumnProps {
 const COLUMN_WIDTH = 300;
 
 function excerptFor(annotation: Annotation): string {
-  const block = annotation.anchor?.segments?.find((segment) => segment.kind === 'block');
-  const text = block?.kind === 'block' ? block.blockText : annotation.snapshot;
-  return text?.trim() || 'Anchored content';
+  const parts = (annotation.anchor?.segments ?? [])
+    .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part));
+  return parts.join(' … ') || annotation.snapshot?.trim() || 'Anchored content';
 }
 
 function timeFor(annotation: Annotation): string {

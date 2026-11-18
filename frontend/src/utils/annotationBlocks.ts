@@ -1,13 +1,21 @@
 import type { Annotation, AnnotationAnchor, BlockAnchorSegment } from '../types';
 import { decodeDiagramCode } from './markdown';
+import {
+  normalizeBlockText,
+  hashBlockContent,
+  type BlockModel,
+} from './blockModel';
+import { getBlockContentElement, clearRangeHighlights, highlightTextRange } from './rangeHighlight';
+import { resolveAnchor } from './anchorResolver';
+import { highlightSearchMatches } from './searchHighlight';
 
-/** A top-level rendered block with the content identity used by Anchors. */
+/**
+ * A top-level rendered block and its DOM edge. The annotation identity
+ * (`model`) is serializable; DOM references live only here, at the edge.
+ */
 export interface RenderedBlock {
   element: HTMLElement;
-  blockId: string;
-  blockType: string;
-  text: string;
-  headingPath: string[];
+  model: BlockModel;
 }
 
 const ANNOTATABLE_TAGS = new Set([
@@ -15,19 +23,8 @@ const ANNOTATABLE_TAGS = new Set([
   'p', 'ul', 'ol', 'blockquote', 'pre', 'table',
 ]);
 
-export function normalizeBlockText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
-}
-
-/** FNV-1a hash, kept synchronous so the render pass stays synchronous. */
-export function hashBlockContent(input: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < input.length; i += 1) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
-}
+/** Exposes the content root used for selection/highlight offsets. */
+export { getBlockContentElement };
 
 function blockTypeOf(element: HTMLElement): string {
   if (element.tagName === 'DIV' && element.classList.contains('table-wrapper')) {
@@ -117,7 +114,10 @@ export function assignBlockAnchors(root: HTMLElement): RenderedBlock[] {
     child.setAttribute('data-block-id', blockId);
     child.classList.add('annotation-block');
 
-    blocks.push({ element: child, blockId, blockType: type, text, headingPath });
+    blocks.push({
+      element: child,
+      model: { id: blockId, type, text, headingPath },
+    });
 
     if (level > 0) {
       headingStack.push({ level, text });
@@ -135,11 +135,14 @@ export function ensureBlockMarkers(blocks: RenderedBlock[]): void {
     const marker = document.createElement('button');
     marker.type = 'button';
     marker.className = 'annotation-marker';
-    const label = block.text
-      ? `Annotate this block: ${block.text.slice(0, 60)}`
+    const label = block.model.text
+      ? `Annotate this block: ${block.model.text.slice(0, 60)}`
       : 'Annotate this block';
     marker.setAttribute('aria-label', label);
     marker.title = label;
+    // Keep the online affordance so Offline Mode can toggle the title and
+    // restore it when the connection returns.
+    marker.dataset.defaultTitle = label;
     marker.innerHTML =
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     block.element.appendChild(marker);
@@ -147,78 +150,133 @@ export function ensureBlockMarkers(blocks: RenderedBlock[]): void {
 }
 
 export function blockAnchorFrom(block: RenderedBlock): AnnotationAnchor {
+  const model = block.model;
   const segment: BlockAnchorSegment = {
     kind: 'block',
-    blockHash: block.blockId,
-    blockText: block.text,
-    blockType: block.blockType,
-    headingPath: block.headingPath,
+    blockHash: model.id,
+    blockText: model.text,
+    blockType: model.type,
+    headingPath: model.headingPath,
   };
   return { version: 1, segments: [segment] };
 }
 
-function findBlock(root: HTMLElement, blockHash: string): HTMLElement | null {
-  const escaped = blockHash.replace(/["\\]/g, '\\$&');
-  return root.querySelector<HTMLElement>(`[data-block-id="${escaped}"]`);
-}
-
 /**
- * Groups annotations by the block they anchor to. Multiple annotations may
- * share one block (and overlapping anchors are legal), so this returns lists
- * rather than a single annotation per block.
- */
-export function annotationsByBlock(annotations: Annotation[]): Map<string, Annotation[]> {
-  const grouped = new Map<string, Annotation[]>();
-
-  for (const annotation of annotations) {
-    for (const segment of annotation.anchor?.segments ?? []) {
-      if (segment.kind !== 'block') continue;
-      const existing = grouped.get(segment.blockHash) ?? [];
-      existing.push(annotation);
-      grouped.set(segment.blockHash, existing);
-    }
-  }
-
-  return grouped;
-}
-
-/**
- * Re-attaches stored annotations to rendered blocks by content-hash match.
- * Idempotent: safe to call after every render and every annotation change.
- * Handles multiple annotations per block: a block is dimmed only when every
- * annotation on it is Resolved.
+ * Re-attaches stored annotations to rendered blocks by running the pure
+ * Anchor resolver over the block model. Idempotent: safe to call after every
+ * render, annotation change, and search change.
+ *
+ * Multiple annotations may share a block. Resolved dimming is per enclosing
+ * block: a block is dimmed only when every annotation attached to it (whole
+ * block, text range, or both) is Resolved. Individual text marks keep their
+ * own resolved styling so mixed threads stay distinguishable inside a block.
  */
 export function applyAnnotationHighlights(
   root: HTMLElement,
-  annotations: Annotation[]
-): void {
-  for (const block of Array.from(root.querySelectorAll<HTMLElement>('.annotation-block'))) {
-    block.classList.remove('annotation-highlighted', 'annotation-resolved');
-    block.removeAttribute('data-annotation-id');
-    block.removeAttribute('data-annotation-ids');
-    const marker = block.querySelector<HTMLElement>('.annotation-marker');
+  annotations: Annotation[],
+  blocks: RenderedBlock[]
+): Map<string, Annotation[]> {
+  for (const block of blocks) {
+    block.element.classList.remove('annotation-highlighted', 'annotation-resolved');
+    block.element.removeAttribute('data-annotation-id');
+    block.element.removeAttribute('data-annotation-ids');
+    const marker = block.element.querySelector<HTMLElement>('.annotation-marker');
     marker?.classList.remove('has-annotation', 'resolved');
     marker?.setAttribute('aria-pressed', 'false');
   }
+  clearRangeHighlights(root);
 
-  for (const [blockHash, blockAnnotations] of annotationsByBlock(annotations)) {
-    const block = findBlock(root, blockHash);
-    if (!block || blockAnnotations.length === 0) continue;
+  const elementsById = new Map(blocks.map((block) => [block.model.id, block.element]));
+  const models = blocks.map((block) => block.model);
+  const attachments = new Map<string, Annotation[]>();
+  const blockIds = new Map<string, number[]>();
+  const blockResolved = new Map<string, boolean>();
 
-    block.classList.add('annotation-highlighted');
-    block.setAttribute('data-annotation-ids', blockAnnotations.map((a) => a.id).join(','));
-    // Legacy callers still read a single id; point at the first live thread.
-    const primary = blockAnnotations.find((annotation) => !annotation.resolved) ?? blockAnnotations[0];
-    block.setAttribute('data-annotation-id', String(primary.id));
+  const attach = (blockId: string, annotation: Annotation) => {
+    const current = attachments.get(blockId) ?? [];
+    if (!current.some((candidate) => candidate.id === annotation.id)) {
+      current.push(annotation);
+      attachments.set(blockId, current);
+    }
+    // Mixed-block Resolved state: every annotation touching the block must be
+    // Resolved for the block itself to dim.
+    blockResolved.set(
+      blockId,
+      (blockResolved.get(blockId) ?? true) && annotation.resolved
+    );
+  };
 
-    const allResolved = blockAnnotations.every((annotation) => annotation.resolved);
-    if (allResolved) block.classList.add('annotation-resolved');
+  for (const annotation of annotations) {
+    const resolution = resolveAnchor(models, annotation.anchor);
+    if (resolution.status !== 'resolved') continue;
 
-    const marker = block.querySelector<HTMLElement>('.annotation-marker');
-    if (marker) {
-      marker.classList.add('has-annotation');
-      marker.setAttribute('aria-pressed', 'true');
-      if (allResolved) marker.classList.add('resolved');
+    for (const segment of resolution.segments) {
+      const element = elementsById.get(segment.blockId);
+      if (!element) continue;
+
+      attach(segment.blockId, annotation);
+
+      if (segment.kind === 'block') {
+        element.classList.add('annotation-highlighted');
+        const ids = blockIds.get(segment.blockId) ?? [];
+        if (!ids.includes(annotation.id)) ids.push(annotation.id);
+        blockIds.set(segment.blockId, ids);
+        continue;
+      }
+
+      const content = getBlockContentElement(element, modelType(models, segment.blockId));
+      highlightTextRange(content, segment.start, segment.end, {
+        annotationId: annotation.id,
+        resolved: annotation.resolved,
+      });
     }
   }
+
+  for (const [blockId, element] of elementsById) {
+    const ids = blockIds.get(blockId);
+    if (ids && ids.length > 0) {
+      element.setAttribute('data-annotation-id', String(ids[0]));
+      element.setAttribute('data-annotation-ids', ids.join(','));
+      if (blockResolved.get(blockId)) element.classList.add('annotation-resolved');
+    }
+
+    const attached = attachments.get(blockId);
+    if (attached && attached.length > 0) {
+      const marker = element.querySelector<HTMLElement>('.annotation-marker');
+      marker?.classList.add('has-annotation');
+      marker?.setAttribute('aria-pressed', 'true');
+      if (attached.every((annotation) => annotation.resolved)) {
+        marker?.classList.add('resolved');
+      }
+    }
+  }
+
+  return attachments;
+}
+
+function modelType(models: BlockModel[], blockId: string): string {
+  return models.find((model) => model.id === blockId)?.type ?? 'p';
+}
+
+export interface AppliedHighlights {
+  searchMatches: HTMLElement[];
+  attachments: Map<string, Annotation[]>;
+}
+
+/**
+ * The one ordering that keeps both highlight layers findable:
+ * remove annotation marks, run search over the unwrapped text, then apply
+ * annotation segments. Search skips annotation marks, so reversing this
+ * order would make annotated passages invisible to search.
+ */
+export function applySearchAndAnnotationHighlights(
+  root: HTMLElement,
+  query: string,
+  annotations: Annotation[],
+  blocks: RenderedBlock[]
+): AppliedHighlights {
+  clearRangeHighlights(root);
+  const searchMatches = highlightSearchMatches(root, query);
+  const attachments = applyAnnotationHighlights(root, annotations, blocks);
+  return { searchMatches, attachments };
 }

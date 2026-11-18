@@ -17,9 +17,9 @@ interface MainPaneProps {
   activeTab: TabType;
   isOutlineOpen: boolean;
   outlineCount: number;
-  isAnnotationsOpen?: boolean;
-  onAnnotationsToggle?: () => void;
-  onCloseAnnotations?: () => void;
+  isAnnotationColumnOpen?: boolean;
+  onAnnotationColumnToggle?: () => void;
+  onCloseAnnotationColumn?: () => void;
   headings: Heading[];
   loading: boolean;
   activeProjectId?: number;
@@ -81,7 +81,7 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             isOutlineOpen={props.isOutlineOpen}
             outlineCount={props.outlineCount}
             annotationCount={annotationStore.annotations().length}
-            isAnnotationsOpen={props.isAnnotationsOpen ?? false}
+            isAnnotationColumnOpen={props.isAnnotationColumnOpen ?? false}
             content={props.currentFile!.content}
             fileType={props.currentFileType}
             binary={props.currentFile!.binary}
@@ -91,7 +91,9 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             currentSearchResult={props.currentSearchResult}
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
-            onAnnotationsToggle={props.onAnnotationsToggle}
+            annotationsVisible={annotationStore.visible()}
+            onAnnotationsToggle={() => annotationStore.toggleVisible()}
+            onAnnotationColumnToggle={props.onAnnotationColumnToggle}
             onSearchClick={props.onSearchClick}
             onSearchClose={props.onSearchClose}
             onSearchQueryChange={props.onSearchQueryChange}
@@ -117,7 +119,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             currentSearchResult={props.currentSearchResult}
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
-            onAnnotationsToggle={props.onAnnotationsToggle}
+            annotationsVisible={annotationStore.visible()}
+            onAnnotationsToggle={() => annotationStore.toggleVisible()}
             onSearchClick={props.onSearchClick}
             onSearchClose={props.onSearchClose}
             onSearchQueryChange={props.onSearchQueryChange}
@@ -182,8 +185,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
 
       <Show when={props.currentFile && props.currentFileType === 'markdown'}>
         <AnnotationColumn
-          isOpen={props.isAnnotationsOpen ?? false}
-          onClose={props.onCloseAnnotations ?? (() => {})}
+          isOpen={props.isAnnotationColumnOpen ?? false}
+          onClose={props.onCloseAnnotationColumn ?? (() => {})}
         />
       </Show>
     </main>

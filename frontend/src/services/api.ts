@@ -9,8 +9,32 @@ import type {
   FileSaveResponse,
 } from '../types';
 import { authStore } from '../stores/authStore';
+import { offlineStore } from '../stores/offlineStore';
+
+const ANNOTATION_API_PREFIX = '/api/annotations';
+
+/**
+ * Offline Mode is read-only (ADR-0002): annotation GETs are served from the
+ * runtime cache, but every annotation mutation must fail fast without a
+ * network attempt. Centralizing the guard here means every current and
+ * future annotation mutator inherits it automatically.
+ */
+function isAnnotationMutation(input: RequestInfo | URL, init?: RequestInit): boolean {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  if (method === 'GET') return false;
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
+  return url.startsWith(ANNOTATION_API_PREFIX);
+}
 
 async function request(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (isAnnotationMutation(input, init) && !offlineStore.online()) {
+    throw new Error('Annotations are read-only while offline');
+  }
   const res = init === undefined ? await fetch(input) : await fetch(input, init);
   if (res.status === 401) {
     authStore.setAuthenticated(false);
@@ -112,6 +136,20 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ project_id: projectId, from, to }),
+    });
+    await checkResponse(res);
+  },
+
+  async renameFile(path: string, newName: string, projectId: number): Promise<void> {
+    const res = await request('/api/files', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'rename',
+        project_id: projectId,
+        path,
+        new_name: newName,
+      }),
     });
     await checkResponse(res);
   },

@@ -1,8 +1,89 @@
 use crate::db::{AnnotationRepository, ProjectRepository};
 use crate::errors::{AppError, AppResult};
-use crate::models::{Annotation, CreateAnnotationRequest};
+use crate::models::{Annotation, CreateAnnotationRequest, Project};
 use crate::services::FileService;
 use rusqlite::Connection;
+use serde_json::Value;
+use std::path::Path;
+
+fn bad_anchor(message: &str) -> AppError {
+    AppError::BadRequest(message.into())
+}
+
+fn validate_segment_common(segment: &serde_json::Map<String, Value>) -> AppResult<()> {
+    let block_hash = segment
+        .get("blockHash")
+        .and_then(Value::as_str)
+        .ok_or_else(|| bad_anchor("Anchor segment requires a blockHash"))?;
+    if block_hash.is_empty() {
+        return Err(bad_anchor("Anchor segment blockHash cannot be empty"));
+    }
+
+    if segment.get("blockText").and_then(Value::as_str).is_none() {
+        return Err(bad_anchor("Anchor segment requires blockText"));
+    }
+    if segment.get("blockType").and_then(Value::as_str).is_none() {
+        return Err(bad_anchor("Anchor segment requires blockType"));
+    }
+
+    let heading_path = segment
+        .get("headingPath")
+        .and_then(Value::as_array)
+        .ok_or_else(|| bad_anchor("Anchor segment requires a headingPath array"))?;
+    if heading_path.iter().any(|part| !part.is_string()) {
+        return Err(bad_anchor(
+            "Anchor segment headingPath must contain strings",
+        ));
+    }
+
+    Ok(())
+}
+
+fn validate_anchor(anchor: &Value) -> AppResult<()> {
+    let object = anchor
+        .as_object()
+        .ok_or_else(|| bad_anchor("Anchor must be a JSON object"))?;
+
+    object
+        .get("version")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| bad_anchor("Anchor requires a numeric version"))?;
+
+    let segments = object
+        .get("segments")
+        .and_then(Value::as_array)
+        .filter(|segments| !segments.is_empty())
+        .ok_or_else(|| bad_anchor("Anchor requires at least one segment"))?;
+
+    for segment in segments {
+        let segment = segment
+            .as_object()
+            .ok_or_else(|| bad_anchor("Anchor segment must be an object"))?;
+        validate_segment_common(segment)?;
+
+        match segment.get("kind").and_then(Value::as_str) {
+            Some("block") => {}
+            Some("text") => {
+                let quote = segment
+                    .get("quote")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| bad_anchor("Text segment requires a quote"))?;
+                if quote.trim().is_empty() {
+                    return Err(bad_anchor("Text segment quote cannot be empty"));
+                }
+                if segment.get("prefix").and_then(Value::as_str).is_none() {
+                    return Err(bad_anchor("Text segment requires a prefix"));
+                }
+                if segment.get("suffix").and_then(Value::as_str).is_none() {
+                    return Err(bad_anchor("Text segment requires a suffix"));
+                }
+            }
+            _ => return Err(bad_anchor("Anchor segment kind must be block or text")),
+        }
+    }
+
+    Ok(())
+}
 
 pub struct AnnotationService<'a> {
     annotation_repo: AnnotationRepository<'a>,
@@ -22,8 +103,16 @@ impl<'a> AnnotationService<'a> {
         project_id: i64,
         relative_path: &str,
     ) -> AppResult<Vec<Annotation>> {
-        self.require_project(project_id)?;
+        let project = self.require_project(project_id)?;
         FileService::validate_relative_path(relative_path)?;
+
+        // Documents only surface annotations for files that currently exist at
+        // the stored path. Trashed files and files renamed outside the app are
+        // hidden here while their rows stay in the database (ADR-0006).
+        if !Path::new(&project.path).join(relative_path).is_file() {
+            return Ok(Vec::new());
+        }
+
         self.annotation_repo
             .list_for_file(project_id, relative_path)
     }
@@ -40,6 +129,7 @@ impl<'a> AnnotationService<'a> {
         if !req.anchor.is_object() {
             return Err(AppError::BadRequest("Anchor must be a JSON object".into()));
         }
+        validate_anchor(&req.anchor)?;
 
         let anchor_json = serde_json::to_string(&req.anchor)?;
         self.annotation_repo
@@ -101,11 +191,21 @@ impl<'a> AnnotationService<'a> {
             .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
     }
 
-    fn require_project(&self, project_id: i64) -> AppResult<()> {
-        if self.project_repo.find_by_id(project_id)?.is_none() {
-            return Err(AppError::NotFound("Project not found".into()));
-        }
-        Ok(())
+    /// Follow a file or directory that was renamed/moved inside the app.
+    ///
+    /// The filesystem stays the source of truth: only annotation rows are
+    /// rewritten, and nothing is ever written into the project directory.
+    pub fn migrate_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
+        self.require_project(project_id)?;
+        FileService::validate_relative_path(from)?;
+        FileService::validate_relative_path(to)?;
+        self.annotation_repo.move_paths(project_id, from, to)
+    }
+
+    fn require_project(&self, project_id: i64) -> AppResult<Project> {
+        self.project_repo
+            .find_by_id(project_id)?
+            .ok_or_else(|| AppError::NotFound("Project not found".into()))
     }
 }
 

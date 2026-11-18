@@ -1,6 +1,8 @@
 import { createSignal } from 'solid-js';
 import type { Annotation, AnnotationAnchor, AnnotationNote } from '../types';
 import { api } from '../services/api';
+import { offlineStore } from './offlineStore';
+import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
 
 const [annotations, setAnnotations] = createSignal<Annotation[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
@@ -9,11 +11,17 @@ const [error, setError] = createSignal<string | null>(null);
 const [jumpRequest, setJumpRequest] = createSignal<{ annotationId: number; nonce: number } | null>(
   null,
 );
+const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
 
 let loadedKey: string | null = null;
 let currentProjectId: number | null = null;
 let currentRelativePath: string | null = null;
 let jumpNonce = 0;
+
+function applyVisibility(nextVisible: boolean): void {
+  setVisible(nextVisible);
+  saveAnnotationsVisible(nextVisible);
+}
 
 function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
@@ -30,6 +38,16 @@ export const annotationStore = {
   loading,
   error,
   jumpRequest,
+  visible,
+
+  /** Whether annotation writes may be attempted (connected only). */
+  canMutate(): boolean {
+    return offlineStore.online();
+  },
+
+  toggleVisible(): void {
+    applyVisibility(!visible());
+  },
 
   /** Load annotations for the given file, deduplicating repeat calls. */
   async load(projectId: number, relativePath: string): Promise<void> {
@@ -88,6 +106,20 @@ export const annotationStore = {
     setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
   },
 
+  /** All annotations whose Anchor references the given block, in list order. */
+  byBlockHash(blockHash: string): Annotation[] {
+    return annotations().filter(
+      (annotation) =>
+        annotation.projectId === currentProjectId &&
+        annotation.relativePath === currentRelativePath &&
+        annotation.anchor?.segments?.some(
+          (segment) =>
+            (segment.kind === 'block' || segment.kind === 'text') &&
+            segment.blockHash === blockHash
+        )
+    );
+  },
+
   /** Appends a Reply to the thread and keeps the list in sync. */
   async appendNote(annotationId: number, body: string): Promise<Annotation> {
     const updated = await api.addAnnotationNote(annotationId, body);
@@ -118,20 +150,13 @@ export const annotationStore = {
     setJumpRequest({ annotationId, nonce: jumpNonce });
   },
 
-  annotationsForBlock(blockHash: string): Annotation[] {
-    return annotations().filter(
-      (annotation) =>
-        annotation.projectId === currentProjectId &&
-        annotation.relativePath === currentRelativePath &&
-        annotation.anchor?.segments?.some(
-          (segment) => segment.kind === 'block' && segment.blockHash === blockHash,
-        ),
-    );
+  /** Clears a handled jump so a remount cannot replay it. */
+  clearJump(): void {
+    setJumpRequest(null);
   },
 
-  /** Whole-block lookup retained for single-annotation callers. */
-  byBlockHash(blockHash: string): Annotation | undefined {
-    return annotationStore.annotationsForBlock(blockHash)[0];
+  annotationsForBlock(blockHash: string): Annotation[] {
+    return annotationStore.byBlockHash(blockHash);
   },
 
   /** All note bodies for a thread, in time order (the API already orders them). */

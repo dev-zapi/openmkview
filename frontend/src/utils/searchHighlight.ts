@@ -1,3 +1,5 @@
+import { collectTextNodes, ANNOTATION_HIGHLIGHT_ATTR } from './rangeHighlight';
+
 const SEARCH_MARK_ATTR = 'data-search-highlight';
 const SEARCH_MATCH_CLASS = 'search-match';
 const SEARCH_MATCH_CURRENT_CLASS = 'search-match-current';
@@ -7,6 +9,11 @@ const shouldSkipTextNode = (node: Text): boolean => {
   if (!parent) return true;
 
   if (parent.closest(`mark[${SEARCH_MARK_ATTR}]`)) {
+    return true;
+  }
+
+  // Search must not retokenize annotated text; annotation offsets stay valid.
+  if (parent.closest(`mark[${ANNOTATION_HIGHLIGHT_ATTR}]`)) {
     return true;
   }
 
@@ -36,28 +43,11 @@ export const highlightSearchMatches = (root: HTMLElement, query: string): HTMLEl
 
   const ownerDocument = root.ownerDocument || document;
 
-  const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const textNode = node as Text;
-      if (shouldSkipTextNode(textNode)) {
-        return NodeFilter.FILTER_REJECT;
-      }
-
-      const value = textNode.nodeValue || '';
-      if (!value.trim() || !value.toLocaleLowerCase().includes(normalizedQuery)) {
-        return NodeFilter.FILTER_REJECT;
-      }
-
-      return NodeFilter.FILTER_ACCEPT;
-    },
+  const textNodes = collectTextNodes(root, (textNode) => {
+    if (shouldSkipTextNode(textNode)) return true;
+    const value = textNode.nodeValue || '';
+    return !value.trim() || !value.toLocaleLowerCase().includes(normalizedQuery);
   });
-
-  const textNodes: Text[] = [];
-  let currentNode = walker.nextNode();
-  while (currentNode) {
-    textNodes.push(currentNode as Text);
-    currentNode = walker.nextNode();
-  }
 
   const matches: HTMLElement[] = [];
 

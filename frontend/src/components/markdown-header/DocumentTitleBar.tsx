@@ -15,7 +15,7 @@ export interface DocumentTitleBarProps {
   outlineCount: number;
   isOutlineOpen: boolean;
   annotationCount?: number;
-  isAnnotationsOpen?: boolean;
+  isAnnotationColumnOpen?: boolean;
   isFullscreen: boolean;
   fileType?: FileType;
   /** Binary files render a placeholder page; hide all view tabs. */
@@ -26,7 +26,11 @@ export interface DocumentTitleBarProps {
   projectName?: string;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  /** Reading-mode toggle: hide/show all Annotation highlights and markers. */
+  annotationsVisible?: boolean;
   onAnnotationsToggle?: () => void;
+  /** Independent annotation column toggle (#18). */
+  onAnnotationColumnToggle?: () => void;
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
   isSearchActive?: boolean;
@@ -117,6 +121,13 @@ const outlineIcon = (
 );
 
 const annotationsIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m9 11-6 6v3h9l3-3" />
+    <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
+  </svg>
+);
+
+const annotationColumnIcon = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
@@ -277,9 +288,16 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                 </Show>
               </MenuItem>
 
-              <MenuItem onClick={() => props.onAnnotationsToggle?.()}>
-                {annotationsIcon}
-                <span>Annotations</span>
+              <Show when={props.fileType === 'markdown' && props.onAnnotationsToggle}>
+                <MenuItem onClick={() => props.onAnnotationsToggle?.()}>
+                  {annotationsIcon}
+                  <span>{props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}</span>
+                </MenuItem>
+              </Show>
+
+              <MenuItem onClick={() => props.onAnnotationColumnToggle?.()}>
+                {annotationColumnIcon}
+                <span>Annotation column</span>
                 <Show when={(props.annotationCount ?? 0) > 0}>
                   <span class="ui-menu-badge">{props.annotationCount}</span>
                 </Show>
@@ -397,11 +415,24 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
           </Show>
         </button>
 
+        <Show when={props.fileType === 'markdown' && props.onAnnotationsToggle}>
+          <button
+            type="button"
+            class={`${styles.toolbarButtonIcon} ${props.annotationsVisible !== false ? styles.active : ''}`}
+            onClick={() => props.onAnnotationsToggle?.()}
+            title={props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}
+            aria-label={props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}
+            aria-pressed={props.annotationsVisible !== false}
+          >
+            {annotationsIcon}
+          </button>
+        </Show>
+
         <button
-          class={`${styles.toolbarButtonIcon} ${props.isAnnotationsOpen ? styles.active : ''}`}
-          onClick={() => props.onAnnotationsToggle?.()}
-          title="Annotations"
-          aria-label="Annotations"
+          class={`${styles.toolbarButtonIcon} ${props.isAnnotationColumnOpen ? styles.active : ''}`}
+          onClick={() => props.onAnnotationColumnToggle?.()}
+          title="Annotation column"
+          aria-label="Annotation column"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>

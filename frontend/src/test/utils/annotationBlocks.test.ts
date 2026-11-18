@@ -4,6 +4,7 @@ import {
   ensureBlockMarkers,
   blockAnchorFrom,
   applyAnnotationHighlights,
+  applySearchAndAnnotationHighlights,
 } from '../../utils/annotationBlocks';
 import { encodeDiagramCode } from '../../utils/markdown';
 import type { Annotation } from '../../types';
@@ -20,17 +21,17 @@ describe('annotationBlocks', () => {
     const first = assignBlockAnchors(createRoot(html));
     const second = assignBlockAnchors(createRoot(html));
 
-    expect(first.map((block) => block.blockId)).toEqual(
-      second.map((block) => block.blockId)
+    expect(first.map((block) => block.model.id)).toEqual(
+      second.map((block) => block.model.id)
     );
-    expect(first[1].text).toBe('Hello world');
+    expect(first[1].model.text).toBe('Hello world');
   });
 
   it('distinguishes identical blocks by occurrence', () => {
     const blocks = assignBlockAnchors(createRoot('<p>Same</p><p>Same</p>'));
 
     expect(blocks).toHaveLength(2);
-    expect(blocks[0].blockId).not.toBe(blocks[1].blockId);
+    expect(blocks[0].model.id).not.toBe(blocks[1].model.id);
   });
 
   it('records the heading path in effect for each block', () => {
@@ -40,12 +41,12 @@ describe('annotationBlocks', () => {
       )
     );
 
-    expect(blocks.find((block) => block.text === 'alpha')?.headingPath).toEqual(['Intro']);
-    expect(blocks.find((block) => block.text === 'beta')?.headingPath).toEqual([
+    expect(blocks.find((block) => block.model.text === 'alpha')?.model.headingPath).toEqual(['Intro']);
+    expect(blocks.find((block) => block.model.text === 'beta')?.model.headingPath).toEqual([
       'Intro',
       'Details',
     ]);
-    expect(blocks.find((block) => block.text === 'gamma')?.headingPath).toEqual([
+    expect(blocks.find((block) => block.model.text === 'gamma')?.model.headingPath).toEqual([
       'Intro',
       'Other',
     ]);
@@ -63,8 +64,8 @@ describe('annotationBlocks', () => {
 
     const [block] = assignBlockAnchors(root);
 
-    expect(block.blockType).toBe('code');
-    expect(block.text).toBe('const value = 1;');
+    expect(block.model.type).toBe('code');
+    expect(block.model.text).toBe('const value = 1;');
   });
 
   it('anchors diagram wrappers to the diagram source', () => {
@@ -77,8 +78,8 @@ describe('annotationBlocks', () => {
 
     const [block] = assignBlockAnchors(root);
 
-    expect(block.blockType).toBe('code');
-    expect(block.text).toBe(source);
+    expect(block.model.type).toBe('code');
+    expect(block.model.text).toBe(source);
   });
 
   it('anchors table wrappers to the table content', () => {
@@ -88,14 +89,14 @@ describe('annotationBlocks', () => {
       )
     );
 
-    expect(blocks[0].blockType).toBe('table');
-    expect(blocks[0].text).toBe('Name');
+    expect(blocks[0].model.type).toBe('table');
+    expect(blocks[0].model.text).toBe('Name');
   });
 
   it('builds a versioned whole-block anchor payload', () => {
     const [block] = assignBlockAnchors(
       createRoot('<h1>Intro</h1><p>alpha</p>')
-    ).filter((candidate) => candidate.text === 'alpha');
+    ).filter((candidate) => candidate.model.text === 'alpha');
 
     const anchor = blockAnchorFrom(block);
 
@@ -103,7 +104,7 @@ describe('annotationBlocks', () => {
     expect(anchor.segments).toEqual([
       {
         kind: 'block',
-        blockHash: block.blockId,
+        blockHash: block.model.id,
         blockText: 'alpha',
         blockType: 'p',
         headingPath: ['Intro'],
@@ -119,14 +120,45 @@ describe('annotationBlocks', () => {
     expect(marker?.getAttribute('aria-label')).toBe('Annotate this block: alpha');
   });
 
-  it('attaches annotations by block hash and clears stale attachments', () => {
+  it('attaches multiple annotations to the same block', () => {
     const root = createRoot('<p>alpha</p><p>beta</p>');
     const blocks = assignBlockAnchors(root);
+    const first = annotationFor(7, blockAnchorFrom(blocks[0]));
+    const second = annotationFor(8, blockAnchorFrom(blocks[0]));
+
+    const attached = applyAnnotationHighlights(root, [first, second], blocks);
+
+    expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(true);
+    expect(blocks[0].element.getAttribute('data-annotation-ids')).toBe('7,8');
+    expect(attached.get(blocks[0].model.id)?.map((annotation) => annotation.id)).toEqual([
+      7, 8,
+    ]);
+    expect(blocks[1].element.classList.contains('annotation-highlighted')).toBe(false);
+  });
+
+  it('highlights text segments and resolves them through the Anchor resolver', () => {
+    const root = createRoot('<p>The quick brown fox.</p>');
+    const blocks = assignBlockAnchors(root);
+    ensureBlockMarkers(blocks);
     const annotation: Annotation = {
-      id: 7,
+      id: 9,
       projectId: 1,
       relativePath: 'doc.md',
-      anchor: blockAnchorFrom(blocks[0]),
+      anchor: {
+        version: 1,
+        segments: [
+          {
+            kind: 'text',
+            blockHash: blocks[0].model.id,
+            blockText: blocks[0].model.text,
+            blockType: 'p',
+            headingPath: [],
+            quote: 'quick brown',
+            prefix: 'The ',
+            suffix: ' fox.',
+          },
+        ],
+      },
       snapshot: null,
       resolved: false,
       createdAt: '2026-01-01 00:00:00',
@@ -134,15 +166,173 @@ describe('annotationBlocks', () => {
       notes: [],
     };
 
-    applyAnnotationHighlights(root, [annotation]);
+    const attached = applyAnnotationHighlights(root, [annotation], blocks);
+
+    const marks = root.querySelectorAll('mark[data-annotation-id="9"]');
+    expect(marks).toHaveLength(1);
+    expect(marks[0].textContent).toBe('quick brown');
+    expect(blocks[0].element.querySelector('.annotation-marker')?.classList.contains('has-annotation')).toBe(true);
+    expect(attached.get(blocks[0].model.id)?.[0]?.id).toBe(9);
+  });
+
+  it('does not attach an Outdated annotation', () => {
+    const root = createRoot('<p>current text</p>');
+    const blocks = assignBlockAnchors(root);
+    const annotation: Annotation = {
+      id: 10,
+      projectId: 1,
+      relativePath: 'doc.md',
+      anchor: {
+        version: 1,
+        segments: [
+          {
+            kind: 'text',
+            blockHash: 'gone',
+            blockText: 'current text',
+            blockType: 'p',
+            headingPath: [],
+            quote: 'vanished words',
+            prefix: '',
+            suffix: '',
+          },
+        ],
+      },
+      snapshot: null,
+      resolved: false,
+      createdAt: '2026-01-01 00:00:00',
+      updatedAt: '2026-01-01 00:00:00',
+      notes: [],
+    };
+
+    const attached = applyAnnotationHighlights(root, [annotation], blocks);
+
+    expect(root.querySelector('mark[data-annotation-id="10"]')).toBeNull();
+    expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(false);
+    expect(attached.size).toBe(0);
+  });
+
+  it('finds search matches inside text that is also annotated', () => {
+    const root = createRoot('<p>alpha beta gamma</p>');
+    const blocks = assignBlockAnchors(root);
+    ensureBlockMarkers(blocks);
+    const annotation: Annotation = {
+      id: 11,
+      projectId: 1,
+      relativePath: 'doc.md',
+      anchor: {
+        version: 1,
+        segments: [
+          {
+            kind: 'text',
+            blockHash: blocks[0].model.id,
+            blockText: blocks[0].model.text,
+            blockType: 'p',
+            headingPath: [],
+            quote: 'beta',
+            prefix: 'alpha ',
+            suffix: ' gamma',
+          },
+        ],
+      },
+      snapshot: null,
+      resolved: false,
+      createdAt: '2026-01-01 00:00:00',
+      updatedAt: '2026-01-01 00:00:00',
+      notes: [],
+    };
+
+    const applied = applySearchAndAnnotationHighlights(
+      root,
+      'beta',
+      [annotation],
+      blocks
+    );
+
+    expect(applied.searchMatches).toHaveLength(1);
+    expect(applied.searchMatches[0].textContent).toBe('beta');
+    expect(root.querySelector('mark[data-annotation-id="11"]')?.textContent).toBe('beta');
+    expect(root.textContent).toBe('alpha beta gamma');
+  });
+
+  it('attaches annotations by block hash and clears stale attachments', () => {
+    const root = createRoot('<p>alpha</p><p>beta</p>');
+    const blocks = assignBlockAnchors(root);
+    const annotation = annotationFor(7, blockAnchorFrom(blocks[0]));
+
+    applyAnnotationHighlights(root, [annotation], blocks);
 
     expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(true);
     expect(blocks[0].element.getAttribute('data-annotation-id')).toBe('7');
     expect(blocks[1].element.classList.contains('annotation-highlighted')).toBe(false);
 
-    applyAnnotationHighlights(root, []);
+    applyAnnotationHighlights(root, [], blocks);
 
     expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(false);
     expect(blocks[0].element.hasAttribute('data-annotation-id')).toBe(false);
   });
+
+  it('dims a mixed block only when every attached annotation is Resolved', () => {
+    const root = createRoot('<p>alpha beta</p>');
+    const blocks = assignBlockAnchors(root);
+    ensureBlockMarkers(blocks);
+    const blockModel = blocks[0].model;
+
+    const blockAnnotation: Annotation = {
+      ...annotationFor(20, blockAnchorFrom(blocks[0])),
+      resolved: true,
+    };
+    const textAnnotation: Annotation = {
+      ...annotationFor(21, {
+        version: 1,
+        segments: [
+          {
+            kind: 'text',
+            blockHash: blockModel.id,
+            blockText: blockModel.text,
+            blockType: 'p',
+            headingPath: [],
+            quote: 'beta',
+            prefix: 'alpha ',
+            suffix: '',
+          },
+        ],
+      }),
+      resolved: false,
+    };
+
+    applyAnnotationHighlights(root, [blockAnnotation, textAnnotation], blocks);
+
+    // Mixed threads: the block stays live so the Active thread is not dimmed.
+    expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(true);
+    expect(blocks[0].element.classList.contains('annotation-resolved')).toBe(false);
+    expect(
+      blocks[0].element.querySelector('.annotation-marker')?.classList.contains('resolved')
+    ).toBe(false);
+
+    // Resolving the remaining thread dims the block and its marker.
+    applyAnnotationHighlights(
+      root,
+      [blockAnnotation, { ...textAnnotation, resolved: true }],
+      blocks
+    );
+
+    expect(blocks[0].element.classList.contains('annotation-resolved')).toBe(true);
+    expect(
+      blocks[0].element.querySelector('.annotation-marker')?.classList.contains('resolved')
+    ).toBe(true);
+  });
 });
+
+function annotationFor(id: number, anchor: Annotation['anchor']): Annotation {
+  return {
+    id,
+    projectId: 1,
+    relativePath: 'doc.md',
+    anchor,
+    snapshot: null,
+    resolved: false,
+    createdAt: '2026-01-01 00:00:00',
+    updatedAt: '2026-01-01 00:00:00',
+    notes: [],
+  };
+}

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, probeFetch } from './fixtures';
 import { loginIfNeeded, waitForDesktopApp } from './fixtures';
 
 interface MarkdownFileTarget {
@@ -38,16 +38,6 @@ const contentUrl = (f: MarkdownFileTarget) =>
 
 // 页面内 fetch 探测：断网后不做整页导航时请求是真被阻断的
 // （Chromium 的离线模拟在整页导航后会失效，因此离线断言必须在同一页面内完成）
-async function probeFetch(page: import('@playwright/test').Page, url: string): Promise<string> {
-  return page.evaluate(async (u) => {
-    try {
-      const res = await fetch(u);
-      return `status:${res.status}`;
-    } catch {
-      return 'failed';
-    }
-  }, url);
-}
 
 test.describe('PWA offline mode', () => {
   test('app shell and cached content work offline; uncached content shows empty state', async ({

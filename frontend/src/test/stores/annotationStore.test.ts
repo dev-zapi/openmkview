@@ -53,16 +53,29 @@ describe('annotationStore', () => {
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.load(1, 'a.md');
     expect(annotationStore.annotations()).toEqual([first]);
-    expect(annotationStore.byBlockHash('blk-a')?.id).toBe(1);
+    expect(annotationStore.byBlockHash('blk-a')?.[0]?.id).toBe(1);
 
     const second = annotationStore.load(1, 'b.md');
     expect(annotationStore.annotations()).toEqual([]);
-    expect(annotationStore.byBlockHash('blk-a')).toBeUndefined();
+    expect(annotationStore.byBlockHash('blk-a')).toEqual([]);
 
     (globalThis as any).__resolveSecond(jsonResponse([annotationFor(2, 1, 'b.md', 'blk-b')]));
     await second;
     expect(annotationStore.annotations()).toHaveLength(1);
-    expect(annotationStore.byBlockHash('blk-b')?.id).toBe(2);
+    expect(annotationStore.byBlockHash('blk-b')?.[0]?.id).toBe(2);
+  });
+
+  it('returns every annotation targeting the same block', async () => {
+    const first = annotationFor(1, 1, 'a.md', 'blk-shared');
+    const second = annotationFor(2, 1, 'a.md', 'blk-shared');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse([first, second]));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'a.md');
+
+    expect(annotationStore.byBlockHash('blk-shared').map((annotation) => annotation.id)).toEqual([
+      1, 2,
+    ]);
   });
 
   it('does not resolve a block hash from a different file', async () => {
@@ -72,6 +85,6 @@ describe('annotationStore', () => {
     const { annotationStore } = await import('../../stores/annotationStore');
     await annotationStore.load(1, 'current.md');
     // The annotation belongs to project 2 / other.md, so it is not current.
-    expect(annotationStore.byBlockHash('blk-shared')).toBeUndefined();
+    expect(annotationStore.byBlockHash('blk-shared')).toEqual([]);
   });
 });
