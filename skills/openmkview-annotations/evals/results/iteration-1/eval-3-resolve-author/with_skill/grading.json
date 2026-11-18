@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "With skill: author filter returns only threads containing a claude note",
+      "passed": true,
+      "evidence": "before=2 claude annotations"
+    },
+    {
+      "text": "With skill: batch resolve updates exactly the claude annotations",
+      "passed": true,
+      "evidence": "updated=2"
+    },
+    {
+      "text": "With skill: no unresolved claude annotations remain",
+      "passed": true,
+      "evidence": "after=[]"
+    },
+    {
+      "text": "With skill: annotations from other authors stay unresolved",
+      "passed": true,
+      "evidence": "alice thread untouched"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  }
+}

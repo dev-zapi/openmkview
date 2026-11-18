@@ -1,0 +1,40 @@
+{
+  "expectations": [
+    {
+      "text": "Auth: init exchanges credentials once and saves a token",
+      "passed": true,
+      "evidence": "authRequired=true tokenSaved=true"
+    },
+    {
+      "text": "Auth: agent config is mode 0600 and holds a bearer token",
+      "passed": true,
+      "evidence": "token present, mode 600"
+    },
+    {
+      "text": "Auth: the CLI reads the API with the Bearer token",
+      "passed": true,
+      "evidence": "list returned []"
+    },
+    {
+      "text": "Auth: a revoked Tool Session yields the actionable 401 hint",
+      "passed": true,
+      "evidence": "exit 1, hint printed"
+    },
+    {
+      "text": "Auth: unauthenticated API requests return the Chinese 401 body",
+      "passed": true,
+      "evidence": "{\"error\":\"未登录或登录已过期\"}"
+    },
+    {
+      "text": "Auth: login re-exchanges and restores access",
+      "passed": true,
+      "evidence": "list works after login"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Baseline: list output parses as a JSON array",
+      "passed": true,
+      "evidence": "node JSON.parse -> array"
+    },
+    {
+      "text": "Baseline: both seeded human annotations are returned",
+      "passed": true,
+      "evidence": "ids 3 and 4 present"
+    },
+    {
+      "text": "Baseline: every note exposes author alice and isAgent false",
+      "passed": true,
+      "evidence": "author/isAgent fields read back correctly"
+    },
+    {
+      "text": "Baseline: the answer names both requested changes",
+      "passed": true,
+      "evidence": "answer.md mentions Node 18 and the placeholder sentence"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  }
+}

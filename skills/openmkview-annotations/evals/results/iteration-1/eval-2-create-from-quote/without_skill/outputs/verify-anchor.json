@@ -1,0 +1,14 @@
+{
+  "annotationId": 6,
+  "relativePath": "README.md",
+  "quote": "fox jumps",
+  "expectedKind": "text",
+  "expectedBlockText": "The quick brownfox jumps overthe lazy dog.",
+  "storedBlockTexts": [
+    "fox jumps over"
+  ],
+  "storedTextSegmentCount": 1,
+  "blockTextInProjection": false,
+  "storedMatchesCliBuilder": false,
+  "verdict": "Outdated"
+}

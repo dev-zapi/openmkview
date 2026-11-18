@@ -1,0 +1,36 @@
+{
+  "id": 8,
+  "projectId": 1,
+  "relativePath": "guide.md",
+  "anchor": {
+    "segments": [
+      {
+        "blockHash": "blk-f8f15e65",
+        "blockText": "Annotations are stored beside the document, never inside it.",
+        "blockType": "p",
+        "headingPath": [
+          "Guide"
+        ],
+        "kind": "text",
+        "prefix": "Annotations are stored beside the document, ",
+        "quote": "never inside it",
+        "suffix": "."
+      }
+    ],
+    "version": 1
+  },
+  "snapshot": "never inside it",
+  "resolved": false,
+  "createdAt": "2026-11-18 13:11:36",
+  "updatedAt": "2026-11-18 13:11:36",
+  "notes": [
+    {
+      "id": 8,
+      "annotationId": 8,
+      "body": "Agent note B.",
+      "author": "claude",
+      "isAgent": true,
+      "createdAt": "2026-11-18 13:11:36"
+    }
+  ]
+}

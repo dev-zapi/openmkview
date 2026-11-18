@@ -1,0 +1,37 @@
+{
+  "id": 6,
+  "projectId": 1,
+  "relativePath": "README.md",
+  "anchor": {
+    "segments": [
+      {
+        "blockHash": "blk-3d9a46a1",
+        "blockText": "fox jumps over",
+        "blockType": "p",
+        "headingPath": [
+          "OpenMKView Fixture",
+          "Overview"
+        ],
+        "kind": "text",
+        "prefix": "",
+        "quote": "fox jumps",
+        "suffix": " over"
+      }
+    ],
+    "version": 1
+  },
+  "snapshot": "fox jumps",
+  "resolved": false,
+  "createdAt": "2026-11-18 13:11:36",
+  "updatedAt": "2026-11-18 13:11:36",
+  "notes": [
+    {
+      "id": 6,
+      "annotationId": 6,
+      "body": "Explain what the fox represents; this is a placeholder.",
+      "author": "claude",
+      "isAgent": true,
+      "createdAt": "2026-11-18 13:11:36"
+    }
+  ]
+}

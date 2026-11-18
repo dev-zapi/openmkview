@@ -1,0 +1,49 @@
+{
+  "skill_name": "openmkview-annotations",
+  "description": "Three realistic prompts run against a synthetic fixture instance, with the skill (CLI) and without it (raw HTTP plus a hand-crafted Anchor). Results live in results/iteration-1/.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "read-feedback",
+      "prompt": "I'm reviewing feedback left on the fixture project's README.md. List the annotations on README.md and tell me what the human wants me to change. Don't change anything yet.",
+      "expected_output": "A parsed annotation list and a short summary naming both human requests: mention Node 18+ before install, and replace the placeholder fox sentence with a real example.",
+      "files": ["evals/fixture/README.md"],
+      "expectations": [
+        "The list output parses as a JSON array",
+        "Both seeded human annotations are returned",
+        "Every note exposes author alice and isAgent false",
+        "The answer names both requested changes"
+      ],
+      "baseline_notes": "Raw HTTP can read this too; these assertions are non-discriminating by design."
+    },
+    {
+      "id": 2,
+      "name": "create-from-quote",
+      "prompt": "Create an annotation on README.md quoting 'fox jumps' and saying: 'Explain what the fox represents; this is a placeholder.' Use your author name claude.",
+      "expected_output": "An annotation whose first note is author claude, isAgent true, and whose Anchor is Active — the stored blockText is the rendered paragraph ('The quick brownfox jumps overthe lazy dog.'), not the raw wrapped source line.",
+      "files": ["evals/fixture/README.md"],
+      "expectations": [
+        "The create response parses as JSON with an annotation id",
+        "The created note carries author claude and isAgent true",
+        "The stored anchor quotes the requested span",
+        "The CLI-computed anchor is Active (stored anchor equals the CLI builder on the same content)",
+        "Hard-wrapped prose projects to rendered text (soft breaks concatenate)"
+      ],
+      "baseline_notes": "The no-skill baseline posts hand-crafted anchor JSON built from the raw source line; the server accepts it but it resolves Outdated (blockText 'fox jumps over')."
+    },
+    {
+      "id": 3,
+      "name": "resolve-author",
+      "prompt": "Resolve every annotation authored by claude in the fixture project, then confirm none remain unresolved. Leave the human's annotations alone.",
+      "expected_output": "Both claude-authored annotations resolved, no unresolved claude threads left, and the alice-authored thread still unresolved.",
+      "files": ["evals/fixture/README.md", "evals/fixture/guide.md"],
+      "expectations": [
+        "The author filter returns only threads containing a claude note",
+        "Batch resolve updates exactly the claude annotations",
+        "No unresolved claude annotations remain",
+        "Annotations from other authors stay unresolved"
+      ],
+      "baseline_notes": "Raw HTTP can do this too; the assertions confirm the documented ?author= contract."
+    }
+  ]
+}
