@@ -211,6 +211,26 @@ describe('annotationStore', () => {
       [3, 'source snapshot'],
     ]);
   });
+
+  it('lets Source re-resolve after a save invalidates the Preview map', async () => {
+    const { annotationStore } = await import('../../stores/annotationStore');
+    annotationStore.setOutdatedSnapshots(new Map([[1, 'pre-edit snapshot']]));
+    expect(annotationStore.previewOutdatedResolved()).toBe(true);
+
+    // Preview → Edit/save → Source: the saved content invalidates the
+    // pre-edit decisions, so the next resolver (Source) is authoritative.
+    annotationStore.invalidateOutdatedStatus();
+
+    expect(annotationStore.previewOutdatedResolved()).toBe(false);
+    expect(annotationStore.outdatedSnapshots().size).toBe(0);
+
+    annotationStore.publishSourceOutdatedSnapshots(
+      new Map([[2, 'post-edit source snapshot']])
+    );
+    expect([...annotationStore.outdatedSnapshots().entries()]).toEqual([
+      [2, 'post-edit source snapshot'],
+    ]);
+  });
 });
 
 describe('annotationStore management panel', () => {

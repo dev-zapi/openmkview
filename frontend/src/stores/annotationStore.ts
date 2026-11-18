@@ -138,6 +138,17 @@ export const annotationStore = {
     setOutdatedSnapshotsSignal(snapshots);
   },
 
+  /**
+   * The file content changed (in-app save, reload, or external load): the
+   * rendered Preview's status map describes the old content. Drop it so the
+   * next view to resolve (Preview or Source) becomes authoritative instead of
+   * carrying pre-edit Active/Outdated decisions into the new content.
+   */
+  invalidateOutdatedStatus(): void {
+    setOutdatedSnapshotsSignal(new Map());
+    setPreviewOutdatedResolved(false);
+  },
+
   isOutdated(id: number): boolean {
     return outdatedSnapshots().has(id);
   },

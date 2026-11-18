@@ -227,6 +227,24 @@ test.describe('source view annotation echo', () => {
     await expect(column.getByText('Outdated', { exact: true }).first()).toBeVisible();
   });
 
+  test('invalidates pre-edit status when Source opens right after a save', async ({
+    page,
+  }) => {
+    const column = await openAnnotationColumn(page);
+    await createBlockAnnotation(page, PARAGRAPH_TWO, 'Edited source note');
+
+    // Save in Edit Mode, then go straight to Source: Preview never remounts to
+    // republish status, so the saved content must invalidate the old map.
+    await replaceDocumentInEditMode(page, REWRITTEN_MARKDOWN, 'Source Echo E2E', false);
+    await switchToSource(page);
+
+    await expect(page.getByRole('mark')).toHaveCount(0);
+    const outdatedPanel = page.getByRole('status', { name: 'Outdated annotations' });
+    await expect(outdatedPanel).toBeVisible();
+    await expect(outdatedPanel).toContainText(PARAGRAPH_TWO);
+    await expect(column.getByText('Outdated', { exact: true }).first()).toBeVisible();
+  });
+
   test('keeps the canonical Preview status when Source could locate the quote', async ({
     page,
   }) => {

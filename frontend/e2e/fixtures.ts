@@ -284,7 +284,8 @@ export async function selectTextRange(
 export async function replaceDocumentInEditMode(
   page: Page,
   content: string,
-  heading: string
+  heading: string,
+  returnToPreview = true
 ): Promise<void> {
   const header = page.locator('header');
   await header.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -305,6 +306,8 @@ export async function replaceDocumentInEditMode(
   );
   await saveButton.click();
   await saved;
+
+  if (!returnToPreview) return;
 
   await header.getByRole('button', { name: 'Preview', exact: true }).click();
   await expect(page.getByRole('heading', { name: heading })).toBeVisible();
