@@ -520,4 +520,12 @@ where
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::is_public_path;
+
+    #[test]
+    fn annotation_api_is_not_public() {
+        assert!(!is_public_path("/api/annotations"));
+        assert!(!is_public_path("/api/annotations/42"));
+    }
+}

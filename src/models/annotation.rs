@@ -40,8 +40,8 @@ pub struct CreateAnnotationRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct AnnotationListParams {
     pub project_id: i64,
+    #[serde(rename = "relativePath")]
     pub relative_path: String,
 }
