@@ -129,6 +129,37 @@ test.describe('whole-block annotations', () => {
     await expect(page.getByRole('dialog', { name: 'Annotation' })).not.toBeVisible();
   });
 
+  test('marker stays reachable across a real mouse transit into the rail', async ({ page }) => {
+    const paragraph = page.getByText('A paragraph with a stable block for annotation.', {
+      exact: true,
+    });
+    await expect(paragraph).toBeVisible();
+
+    // Hovering the text reveals the marker; wait out the 150ms fade-in.
+    await paragraph.hover();
+    const marker = paragraph.getByRole('button', { name: /Annotate this block/ });
+    await expect(marker).toHaveCSS('opacity', '1');
+
+    // A real pointer travels through the wrapper padding between the text
+    // and the rail marker, where no element lives. Stepped moves reproduce
+    // that transit — locator.hover() teleports and cannot catch the hover
+    // dropout that used to fade the marker out mid-flight.
+    const from = await paragraph.boundingBox();
+    const to = await marker.boundingBox();
+    if (!from || !to) throw new Error('missing paragraph or marker box');
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 40 });
+
+    // The marker must still be fully lit at the end of the transit, and a
+    // click at its center must open the composer.
+    await expect(marker).toHaveCSS('opacity', '1');
+    await page.mouse.click(to.x + to.width / 2, to.y + to.height / 2);
+    const composer = page.getByRole('dialog', { name: 'New annotation' });
+    await expect(composer).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(composer).not.toBeVisible();
+  });
+
   test('offers a chooser when a block carries multiple annotations', async ({ page }) => {
     const paragraph = page.getByText('A paragraph with a stable block for annotation.', {
       exact: true,
