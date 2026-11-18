@@ -18,17 +18,6 @@ function applyVisibility(nextVisible: boolean): void {
   saveAnnotationsVisible(nextVisible);
 }
 
-/**
- * Offline Mode is read-only (ADR-0002): never attempt an annotation write
- * while offline. UI surfaces disable their controls via canMutate(); this
- * guard keeps any unguarded caller from firing a doomed request.
- */
-function requireOnline(): void {
-  if (!offlineStore.online()) {
-    throw new Error('Annotations are read-only while offline');
-  }
-}
-
 function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
 }
@@ -39,13 +28,9 @@ export const annotationStore = {
   error,
   visible,
 
-  /** Whether annotation writes may be attempted (Online Mode only). */
+  /** Whether annotation writes may be attempted (connected only). */
   canMutate(): boolean {
     return offlineStore.online();
-  },
-
-  setVisible(nextVisible: boolean): void {
-    applyVisibility(nextVisible);
   },
 
   toggleVisible(): void {
@@ -95,7 +80,6 @@ export const annotationStore = {
     anchor: AnnotationAnchor,
     body: string
   ): Promise<Annotation> {
-    requireOnline();
     const created = await api.createAnnotation({ projectId, relativePath, anchor, body });
     if (loadedKey === fileKey(projectId, relativePath)) {
       setAnnotations((current) => [...current, created]);
@@ -104,7 +88,6 @@ export const annotationStore = {
   },
 
   async remove(id: number): Promise<void> {
-    requireOnline();
     await api.deleteAnnotation(id);
     setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
   },

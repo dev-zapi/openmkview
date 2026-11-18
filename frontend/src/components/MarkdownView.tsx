@@ -173,14 +173,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const applyOfflineState = () => {
     const offline = !annotationStore.canMutate();
     for (const marker of contentRef?.querySelectorAll<HTMLButtonElement>('.annotation-marker') ?? []) {
-      marker.disabled = offline;
-      marker.title = offline
-        ? 'Unavailable offline'
-        : marker.dataset.defaultTitle || 'Annotate this block';
+      // Annotated markers only open the read-only viewer, which stays
+      // available offline. Only the creation path is disabled.
+      const opensViewer = marker.classList.contains('has-annotation');
+      marker.disabled = offline && !opensViewer;
+      marker.title =
+        marker.disabled
+          ? 'Unavailable offline'
+          : marker.dataset.defaultTitle || 'Annotate this block';
     }
-    // Creation is unavailable offline: never leave a composer open that
-    // would fail on Save. Viewing cached popovers stays allowed.
-    if (offline && panel()?.mode === 'composer') setPanel(null);
   };
 
   const prepareAnnotationPass = () => {
@@ -189,11 +190,11 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     const blocks = assignBlockAnchors(contentRef);
     renderedBlocks = new Map(blocks.map((block) => [block.blockId, block]));
     ensureBlockMarkers(blocks);
-    applyOfflineState();
     applyAnnotationHighlights(
       contentRef,
       annotationStore.visible() ? annotationStore.annotations() : []
     );
+    applyOfflineState();
   };
 
   const applyAnnotations = () => {
@@ -203,6 +204,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       contentRef,
       annotationStore.visible() ? annotationStore.annotations() : []
     );
+    applyOfflineState();
   };
 
   onMount(() => {

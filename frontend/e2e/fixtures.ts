@@ -65,6 +65,90 @@ export async function openReadmeInEdit(page: Page) {
   await expect(page.locator('.editor-status-bar')).toBeVisible();
 }
 
+/** A scratch Markdown file inside the first open project. */
+export interface FileTarget {
+  projectId: number;
+  path: string;
+}
+
+/** Create a uniquely named Markdown file in the first open project. */
+export async function createScratchFile(
+  page: Page,
+  body: string,
+  prefix = 'annotations-e2e'
+): Promise<FileTarget> {
+  return page.evaluate(async ({ body, prefix }) => {
+    const projectsRes = await fetch('/api/projects?open=true');
+    if (!projectsRes.ok) throw new Error('cannot list projects');
+    const projects = await projectsRes.json();
+    const projectId = projects[0]?.id;
+    if (!projectId) throw new Error('no open project to annotate');
+
+    const name = `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
+    const createRes = await fetch('/api/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', project_id: projectId, name }),
+    });
+    if (!createRes.ok) throw new Error(`cannot create scratch file: ${createRes.status}`);
+
+    const saveRes = await fetch('/api/files/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, relativePath: name, content: body }),
+    });
+    if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
+
+    return { projectId, path: name };
+  }, { body, prefix });
+}
+
+/** Delete the scratch file's annotations first, then the file itself. */
+export async function removeScratchFile(page: Page, target: FileTarget): Promise<void> {
+  await page.evaluate(async ({ projectId, path }) => {
+    const listRes = await fetch(
+      `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(path)}`
+    );
+    if (listRes.ok) {
+      const annotations = await listRes.json();
+      for (const annotation of annotations) {
+        await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
+      }
+    }
+
+    await fetch('/api/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, path }),
+    });
+  }, target);
+}
+
+/** Open a scratch file by URL and wait for its top-level heading. */
+export async function openScratchFile(
+  page: Page,
+  target: FileTarget,
+  heading: string
+): Promise<void> {
+  await page.goto(
+    `/project/${target.projectId}/files/${encodeURIComponent(target.path)}`,
+    { waitUntil: 'domcontentloaded' }
+  );
+  await expect(page.getByRole('heading', { name: heading })).toBeVisible({ timeout: 15000 });
+}
+
+/** In-page fetch probe: offline assertions must stay in the same page. */
+export async function probeFetch(page: Page, url: string): Promise<string> {
+  return page.evaluate(async (u) => {
+    try {
+      const res = await fetch(u);
+      return `status:${res.status}`;
+    } catch {
+      return 'failed';
+    }
+  }, url);
+}
+
 // 扩展 test fixture，添加控制台日志收集
 export const test = base.extend<TestFixtures>({
   consoleMessages: async ({ page }, use) => {

@@ -1,4 +1,13 @@
-import { test, expect, loginIfNeeded, waitForDesktopApp } from './fixtures';
+import {
+  test,
+  expect,
+  loginIfNeeded,
+  waitForDesktopApp,
+  createScratchFile,
+  removeScratchFile,
+  probeFetch,
+  type FileTarget,
+} from './fixtures';
 import type { Page } from '@playwright/test';
 
 // Offline assertions must run in-page: Chromium stops enforcing offline mode
@@ -10,59 +19,9 @@ const SCRATCH_MARKDOWN = [
   '',
   'A paragraph whose annotation must survive offline.',
   '',
+  'An unannotated paragraph.',
+  '',
 ].join('\n');
-
-interface FileTarget {
-  projectId: number;
-  path: string;
-}
-
-async function createScratchFile(page: Page): Promise<FileTarget> {
-  return page.evaluate(async ({ body }) => {
-    const projectsRes = await fetch('/api/projects?open=true');
-    if (!projectsRes.ok) throw new Error('cannot list projects');
-    const projects = await projectsRes.json();
-    const projectId = projects[0]?.id;
-    if (!projectId) throw new Error('no open project to annotate');
-
-    const name = `annotations-offline-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
-    const createRes = await fetch('/api/files', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', project_id: projectId, name }),
-    });
-    if (!createRes.ok) throw new Error(`cannot create scratch file: ${createRes.status}`);
-
-    const saveRes = await fetch('/api/files/content', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, relativePath: name, content: body }),
-    });
-    if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
-
-    return { projectId, path: name };
-  }, { body: SCRATCH_MARKDOWN });
-}
-
-async function removeScratchFile(page: Page, target: FileTarget): Promise<void> {
-  await page.evaluate(async ({ projectId, path }) => {
-    const listRes = await fetch(
-      `/api/annotations?project_id=${projectId}&relativePath=${encodeURIComponent(path)}`
-    );
-    if (listRes.ok) {
-      const annotations = await listRes.json();
-      for (const annotation of annotations) {
-        await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
-      }
-    }
-
-    await fetch('/api/files', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, path }),
-    });
-  }, target);
-}
 
 /** Another root-level markdown file, used as the in-page "navigate away" hop. */
 async function findOtherMarkdownFile(
@@ -84,9 +43,6 @@ async function findOtherMarkdownFile(
   }, { excludePath, projectId });
 }
 
-const fileUrl = (projectId: number, path: string) =>
-  `/project/${projectId}/files/${encodeURIComponent(path)}`;
-
 const annotationsUrl = (target: FileTarget) =>
   `/api/annotations?project_id=${target.projectId}&relativePath=${encodeURIComponent(target.path)}`;
 
@@ -102,17 +58,6 @@ async function navigateInPage(page: Page, projectId: number, path: string): Prom
   }, { projectId, path });
 }
 
-async function probeFetch(page: Page, url: string): Promise<string> {
-  return page.evaluate(async (u) => {
-    try {
-      const res = await fetch(u);
-      return `status:${res.status}`;
-    } catch {
-      return 'failed';
-    }
-  }, url);
-}
-
 test.describe('annotations offline read-only', () => {
   let target: FileTarget;
   let otherFile: string | null;
@@ -122,7 +67,7 @@ test.describe('annotations offline read-only', () => {
     await loginIfNeeded(page);
     await waitForDesktopApp(page);
 
-    target = await createScratchFile(page);
+    target = await createScratchFile(page, SCRATCH_MARKDOWN, 'annotations-offline');
     otherFile = await findOtherMarkdownFile(page, target.path, target.projectId);
   });
 
@@ -167,10 +112,30 @@ test.describe('annotations offline read-only', () => {
     await navigateInPage(page, target.projectId, otherFile!);
     await expect(page.locator('.markdown-wrapper, .load-error')).toBeVisible({ timeout: 15000 });
     await navigateInPage(page, target.projectId, target.path);
-    await expect(paragraph).toHaveClass(/annotation-highlighted/);
+    await expect(paragraph.getByRole('button', { name: /Annotate this block/ })).toBeVisible();
+
+    // Start a draft on an unannotated block, then lose connectivity.
+    const unannotated = page.getByText('An unannotated paragraph.', { exact: true });
+    await unannotated.hover();
+    const creationMarker = unannotated.getByRole('button', { name: /Annotate this block/ });
+    await creationMarker.click();
+    const draftComposer = page.getByRole('dialog', { name: 'New annotation' });
+    await expect(draftComposer).toBeVisible();
+    const draftInput = draftComposer.getByRole('textbox');
+    await draftInput.fill('Draft written while connected');
 
     await context.setOffline(true);
     await expect(page.locator('.offline-indicator')).toBeVisible();
+
+    // The open composer stays open with the draft preserved, but its controls
+    // are visibly disabled instead of failing on Save.
+    await expect(draftComposer).toBeVisible();
+    await expect(draftInput).toHaveValue('Draft written while connected');
+    await expect(draftInput).toBeDisabled();
+    await expect(draftComposer.getByRole('button', { name: 'Save' })).toBeDisabled();
+    await expect(draftComposer).toContainText('Read-only while offline');
+    await draftComposer.getByRole('button', { name: 'Cancel' }).click();
+    await expect(draftComposer).not.toBeVisible();
 
     // The annotation list itself is served from the runtime cache offline.
     expect(await probeFetch(page, annotationsUrl(target))).toBe('status:200');
@@ -187,13 +152,12 @@ test.describe('annotations offline read-only', () => {
     const offlineParagraph = page.getByText('A paragraph whose annotation must survive offline.', {
       exact: true,
     });
-    await expect(offlineParagraph).toHaveClass(/annotation-highlighted/);
-    const marker = offlineParagraph.getByRole('button', { name: /Annotate this block/ });
-    await expect(marker).toBeVisible();
-    await expect(marker).toBeDisabled();
-    await expect(marker).toHaveAttribute('title', 'Unavailable offline');
+    const viewerMarker = offlineParagraph.getByRole('button', { name: /Annotate this block/ });
+    await expect(viewerMarker).toBeVisible();
+    // Annotated markers only open the cached viewer, so they stay enabled.
+    await expect(viewerMarker).not.toBeDisabled();
 
-    // Clicking the highlight still opens the cached popover.
+    // Clicking the highlight opens the cached popover.
     await offlineParagraph.click();
     const viewer = page.getByRole('dialog', { name: 'Annotation' });
     await expect(viewer).toBeVisible();
@@ -206,7 +170,16 @@ test.describe('annotations offline read-only', () => {
       'Unavailable offline'
     );
     await expect(viewer).toContainText('Read-only while offline');
-    await expect(page.getByRole('dialog', { name: 'New annotation' })).not.toBeVisible();
     await expect(page.locator('.annotation-error')).not.toBeVisible();
+
+    // Creation markers on unannotated blocks are disabled with an affordance,
+    // and clicking the block cannot open a new composer.
+    const unannotatedMarker = page
+      .getByText('An unannotated paragraph.', { exact: true })
+      .getByRole('button', { name: /Annotate this block/ });
+    await expect(unannotatedMarker).toBeDisabled();
+    await expect(unannotatedMarker).toHaveAttribute('title', 'Unavailable offline');
+    await page.getByText('An unannotated paragraph.', { exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'New annotation' })).not.toBeVisible();
   });
 });
