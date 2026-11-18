@@ -65,6 +65,8 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  /* Anchors the floating document header (frosted glass over content) */
+  position: relative;
 }
 
 .mobileContent {
@@ -74,6 +76,13 @@
   padding: 0;
   padding-bottom: max(12px, var(--safe-bottom));
   overscroll-behavior: contain;
+}
+
+/* The merged document header floats over this scroller; give its strip
+   back as padding so content rests below and scrolls beneath the glass. */
+.mobileContent.hasFloatingHeader {
+  padding-top: calc(44px + var(--safe-top));
+  scroll-padding-top: calc(44px + var(--safe-top));
 }
 
 /* When the bottom view bar is docked it owns the safe-bottom inset */

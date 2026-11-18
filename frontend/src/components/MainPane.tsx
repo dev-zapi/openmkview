@@ -64,6 +64,12 @@ export const MainPane: Component<MainPaneProps> = (props) => {
     () => props.isOutlineOpen,
   );
 
+  // The header floats over the pane (frosted glass); flag the scroll port so
+  // it pads content below the bar. Matches the <Show> conditions below.
+  const showDocumentHeader = () =>
+    props.showHeader !== false &&
+    (Boolean(props.currentFile) || Boolean(props.imagePreviewUrl && props.currentFileType === 'image'));
+
   return (
     <main class="main">
       <div class="main-left">
@@ -117,7 +123,7 @@ export const MainPane: Component<MainPaneProps> = (props) => {
           />
         </Show>
 
-        <div class="main-content">
+        <div class="main-content" classList={{ 'has-glass-header': showDocumentHeader() }}>
           <Show when={props.loading}>
             <div class="loading">Loading...</div>
           </Show>

@@ -1,4 +1,11 @@
+/* Floats over the pane (anchored to .main-left on desktop, .mobileMain on
+   mobile) so the frosted-glass bars blur the content scrolling beneath. */
 .markdownHeader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
   background: transparent;
 }
 
