@@ -1,4 +1,4 @@
-import { test as base, expect, Page } from '@playwright/test';
+import { test as base, expect, Page, type Locator } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -150,6 +150,145 @@ export async function probeFetch(page: Page, url: string): Promise<string> {
       return 'failed';
     }
   }, url);
+}
+
+/** Fill and save the annotation composer dialog. */
+export async function saveComposer(page: Page, body: string): Promise<void> {
+  const composer = page.getByRole('dialog', { name: 'New annotation' });
+  await expect(composer).toBeVisible();
+  await composer.getByRole('textbox').fill(body);
+  await composer.getByRole('button', { name: 'Save' }).click();
+  await expect(composer).not.toBeVisible();
+}
+
+/** Annotate the whole block containing `paragraphText`. */
+export async function createBlockAnnotation(
+  page: Page,
+  paragraphText: string,
+  body: string
+): Promise<void> {
+  const paragraph = page.getByRole('paragraph').filter({ hasText: paragraphText });
+  await expect(paragraph).toBeVisible();
+  await paragraph.hover();
+  await paragraph.getByRole('button', { name: /Annotate this block/ }).click();
+  await saveComposer(page, body);
+}
+
+/**
+ * Selects from `startPhrase` through the end of `endPhrase` in Preview.
+ * Boundaries are mapped by absolute offset, so phrases may span blocks and
+ * may end exactly at a text node boundary.
+ */
+export async function selectTextRange(
+  page: Page,
+  startPhrase: string,
+  endPhrase: string
+): Promise<void> {
+  await page.evaluate(
+    ({ startPhrase, endPhrase }) => {
+      const content = document.querySelector('.markdown-content');
+      if (!content) throw new Error('markdown content not found');
+
+      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      let combined = '';
+      let node = walker.nextNode() as Text | null;
+      while (node) {
+        nodes.push(node);
+        combined += node.nodeValue || '';
+        node = walker.nextNode() as Text | null;
+      }
+
+      const locateBoundary = (offset: number) => {
+        let remaining = offset;
+        for (const text of nodes) {
+          const length = text.nodeValue?.length || 0;
+          if (remaining <= length) return { node: text, offset: remaining };
+          remaining -= length;
+        }
+        const last = nodes[nodes.length - 1];
+        return { node: last, offset: last.nodeValue?.length || 0 };
+      };
+
+      /** Keeps the start inside real content, never a whitespace-only node. */
+      const locatePhraseStart = (offset: number) => {
+        let remaining = offset;
+        for (let index = 0; index < nodes.length; index += 1) {
+          const text = nodes[index];
+          const length = text.nodeValue?.length || 0;
+          if (remaining < length) return { node: text, offset: remaining };
+          if (remaining === length) {
+            const next = nodes[index + 1];
+            if (next && !(text.nodeValue || '').trim()) {
+              return { node: next, offset: 0 };
+            }
+            return { node: text, offset: length };
+          }
+          remaining -= length;
+        }
+        const last = nodes[nodes.length - 1];
+        return { node: last, offset: last.nodeValue?.length || 0 };
+      };
+
+      const startOffset = combined.indexOf(startPhrase);
+      if (startOffset === -1) throw new Error(`cannot find phrase: ${startPhrase}`);
+      const endSearchFrom =
+        endPhrase === startPhrase ? startOffset : startOffset + startPhrase.length;
+      const endOffset = combined.indexOf(endPhrase, endSearchFrom);
+      if (endOffset === -1) throw new Error(`cannot find phrase: ${endPhrase}`);
+
+      const start = locatePhraseStart(startOffset);
+      const end = locateBoundary(endOffset + endPhrase.length);
+      const range = document.createRange();
+      range.setStart(start.node, start.offset);
+      range.setEnd(end.node, end.offset);
+
+      const selection = window.getSelection();
+      if (!selection) throw new Error('no selection');
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+    },
+    { startPhrase, endPhrase }
+  );
+}
+
+/** Replace the whole document through Edit Mode and return to Preview. */
+export async function replaceDocumentInEditMode(
+  page: Page,
+  content: string,
+  heading: string
+): Promise<void> {
+  const header = page.locator('header');
+  await header.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.locator('.editor-status-bar')).toBeVisible();
+
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.insertText(content);
+
+  const saveButton = page.locator('button[title="Save (Ctrl+S)"]').first();
+  await expect(saveButton).toBeEnabled({ timeout: 10000 });
+
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/files/content') &&
+      response.request().method() === 'PUT'
+  );
+  await saveButton.click();
+  await saved;
+
+  await header.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+}
+
+/** Open the independent annotation column and return its region. */
+export async function openAnnotationColumn(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'Annotation column', exact: true }).first().click();
+  const column = page.getByRole('region', { name: 'Annotations' });
+  await expect(column).toBeVisible();
+  return column;
 }
 
 /** A throwaway project directory seeded through the real project API. */

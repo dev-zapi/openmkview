@@ -4,6 +4,11 @@ import {
   loginIfNeeded,
   createScratchProject,
   removeScratchProject,
+  saveComposer,
+  createBlockAnnotation,
+  selectTextRange,
+  replaceDocumentInEditMode,
+  openAnnotationColumn,
   type ScratchProject,
 } from './fixtures';
 import type { Page } from '@playwright/test';
@@ -52,114 +57,12 @@ async function openScratchProject(page: Page, target: ScratchProject): Promise<v
 }
 
 /** Selects from `startPhrase` through the end of `endPhrase`. */
-async function selectTextRange(
-  page: Page,
-  startPhrase: string,
-  endPhrase: string
-): Promise<void> {
-  await page.evaluate(
-    ({ startPhrase, endPhrase }) => {
-      const content = document.querySelector('.markdown-content');
-      if (!content) throw new Error('markdown content not found');
-
-      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-      const nodes: Text[] = [];
-      let combined = '';
-      let node = walker.nextNode() as Text | null;
-      while (node) {
-        nodes.push(node);
-        combined += node.nodeValue || '';
-        node = walker.nextNode() as Text | null;
-      }
-
-      const locate = (phrase: string, from: number) => {
-        const offset = combined.indexOf(phrase, from);
-        if (offset === -1) {
-          throw new Error(`cannot find phrase: ${phrase} in ${combined.slice(0, 300)}`);
-        }
-        let remaining = offset;
-        for (const text of nodes) {
-          const length = text.nodeValue?.length || 0;
-          if (remaining <= length) return { node: text, offset: remaining };
-          remaining -= length;
-        }
-        throw new Error(`cannot map phrase: ${phrase}`);
-      };
-
-      const startOffset = combined.indexOf(startPhrase);
-      const start = locate(startPhrase, 0);
-      const endSearchFrom =
-        endPhrase === startPhrase ? startOffset : startOffset + startPhrase.length;
-      const end = locate(endPhrase, endSearchFrom);
-      const range = document.createRange();
-      range.setStart(start.node, start.offset);
-      range.setEnd(end.node, end.offset + endPhrase.length);
-
-      const selection = window.getSelection();
-      if (!selection) throw new Error('no selection');
-      selection.removeAllRanges();
-      selection.addRange(range);
-      document.dispatchEvent(new Event('selectionchange'));
-    },
-    { startPhrase, endPhrase }
-  );
-}
-
-async function saveComposer(page: Page, body: string): Promise<void> {
-  const composer = page.getByRole('dialog', { name: 'New annotation' });
-  await expect(composer).toBeVisible();
-  await composer.getByRole('textbox').fill(body);
-  await composer.getByRole('button', { name: 'Save' }).click();
-  await expect(composer).not.toBeVisible();
-}
-
 async function createSelectionAnnotation(page: Page, body: string): Promise<void> {
   await selectTextRange(page, SURVIVING_QUOTE, SURVIVING_QUOTE);
   const button = page.getByRole('button', { name: 'Annotate selected text' });
   await expect(button).toBeVisible();
   await button.click();
   await saveComposer(page, body);
-}
-
-async function createBlockAnnotation(page: Page, body: string): Promise<void> {
-  const paragraph = page.getByRole('paragraph').filter({ hasText: DELETED_PARAGRAPH });
-  await expect(paragraph).toBeVisible();
-  await paragraph.hover();
-  const marker = paragraph.getByRole('button', { name: /Annotate this block/ });
-  await marker.click();
-  await saveComposer(page, body);
-}
-
-/** Saves a whole new document body through Edit Mode. */
-async function replaceDocumentInEditMode(page: Page, content: string): Promise<void> {
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await expect(page.locator('.editor-status-bar')).toBeVisible();
-
-  const editor = page.locator('.cm-content');
-  await editor.click();
-  await page.keyboard.press('Control+A');
-  await page.keyboard.insertText(content);
-
-  const saveButton = page.locator('button[title="Save (Ctrl+S)"]').first();
-  await expect(saveButton).toBeEnabled({ timeout: 10000 });
-
-  const saved = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/files/content') &&
-      response.request().method() === 'PUT'
-  );
-  await saveButton.click();
-  await saved;
-
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Drift Annotation E2E' })).toBeVisible();
-}
-
-async function openAnnotationColumn(page: Page) {
-  await page.getByRole('button', { name: 'Annotation column', exact: true }).first().click();
-  const column = page.getByRole('region', { name: 'Annotations' });
-  await expect(column).toBeVisible();
-  return column;
 }
 
 test.describe('document drift', () => {
@@ -180,13 +83,13 @@ test.describe('document drift', () => {
 
   test('edit save re-resolves anchors, badges Outdated, and re-anchors', async ({ page }) => {
     await createSelectionAnnotation(page, 'Survivor note');
-    await createBlockAnnotation(page, 'Doomed note');
+    await createBlockAnnotation(page, DELETED_PARAGRAPH, 'Doomed note');
 
     await expect(page.locator('mark', { hasText: SURVIVING_QUOTE }).first()).toBeVisible();
 
     // In-app save after rewording the surviving paragraph and deleting the
     // doomed one. Preview must redraw from the fresh content.
-    await replaceDocumentInEditMode(page, REWRITTEN_MARKDOWN);
+    await replaceDocumentInEditMode(page, REWRITTEN_MARKDOWN, 'Drift Annotation E2E');
 
     // Fuzzy match: the stored quote still resolves inside reworded text.
     const survivorHighlight = page.locator('mark', { hasText: SURVIVING_QUOTE });
