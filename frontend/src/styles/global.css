@@ -1450,16 +1450,16 @@
 .annotation-marker {
   position: absolute;
   top: 4px;
-  left: -30px;
+  left: -15px;
   z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--color-card);
   color: var(--color-muted-foreground);
   cursor: pointer;
