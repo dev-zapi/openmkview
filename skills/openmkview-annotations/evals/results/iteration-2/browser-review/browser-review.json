@@ -1,0 +1,48 @@
+{
+  "url": "http://127.0.0.1:34617",
+  "target": "http://127.0.0.1:34617/project/1/files/README.md",
+  "withSkill": {
+    "id": 13,
+    "state": "Active",
+    "author": "claude",
+    "badges": [
+      "Agent"
+    ],
+    "outdatedAttribute": null
+  },
+  "baseline": {
+    "id": 14,
+    "state": "Outdated",
+    "author": "claude",
+    "badges": [
+      "Agent"
+    ],
+    "outdatedAttribute": "true"
+  },
+  "screenshot": "annotation-column.png",
+  "assertions": [
+    {
+      "text": "CLI-created annotation renders as Active",
+      "passed": true,
+      "evidence": "state=Active"
+    },
+    {
+      "text": "CLI-created annotation carries author claude",
+      "passed": true,
+      "evidence": "author=claude"
+    },
+    {
+      "text": "CLI-created annotation carries the Agent badge",
+      "passed": true,
+      "evidence": "badges=[\"Agent\"]"
+    },
+    {
+      "text": "Baseline raw-line annotation renders as Outdated",
+      "passed": true,
+      "evidence": "state=Outdated data-outdated=true"
+    }
+  ],
+  "consoleErrors": [
+    "Loading the stylesheet 'https://cdn.jsdelivr.net/npm/@fontsource/misans/4.5.0-chinese-simplified.min.css' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked."
+  ]
+}

@@ -1,67 +1,65 @@
 # openmkview-annotations evals
 
-The skill-creator loop applied to this skill: a synthetic fixture project, a
-scratch OpenMKView instance, three realistic prompts run once with the skill
-(the CLI) and once without it (raw HTTP plus a hand-crafted Anchor), quantitative
-assertions, and committed results.
+The skill-creator loop applied to this skill: a synthetic fixture, scratch
+OpenMKView instances, three realistic prompts, quantitative assertions, a real
+agent layer, a Playwright browser review, and committed results.
 
 ## Layout
 
 ```
 evals/
-├── evals.json              prompts + expectations (skill-creator schema)
-├── fixture/                synthetic Markdown project (wrapped prose, code, table)
+├── evals.json                      prompts + expectations (skill-creator schema)
+├── fixture/                        synthetic Markdown project
 ├── scripts/
-│   ├── boot-fixture.sh     boot open|auth scratch instance, write env.sh
-│   ├── stop-fixture.sh     stop and clean a fixture root
-│   ├── run-evals.sh        the whole loop (boots, runs, asserts, grades)
-│   ├── verify-anchor.mjs   check a stored Anchor against the CLI builder
-│   ├── baseline-raw.mjs    no-skill baseline (raw HTTP, naive Anchor)
-│   ├── summarize-list.mjs  deterministic "answer" from a list JSON
-│   ├── summarize-benchmark.mjs  grading.json -> benchmark.json/.md
-│   └── assert.mjs          append a graded assertion (viewer schema)
-└── results/iteration-1/    committed outputs, grading.json, benchmark, review
+│   ├── boot-fixture.sh             boot open|auth scratch instance, write env.sh
+│   ├── stop-fixture.sh             stop and clean a fixture root
+│   ├── run-evals.sh                deterministic + differential + browser + agent loop
+│   ├── run-agent-evals.sh          real `claude -p` sessions with the skill installed
+│   ├── baseline-raw.mjs            no-skill baseline (raw HTTP, raw-line whole-block Anchor)
+│   ├── resolver-status.mjs         REAL oracle: render blocks + frontend resolveAnchor
+│   ├── verify-anchor.mjs           structural CLI-builder comparison (not the oracle)
+│   ├── differential-anchor-check.mjs  api.md Python helper vs the CLI
+│   ├── browser-review.mjs          Playwright: Active/Outdated, author, Agent badge
+│   ├── filter-transcript.mjs       compact, committed agent transcripts
+│   ├── summarize-list.mjs          deterministic read-layer summary
+│   ├── summarize-benchmark.mjs     grading.json -> benchmark.json/.md
+│   ├── merge-grading.mjs           merge browser assertions into grading.json
+│   └── assert.mjs                  append one graded assertion (viewer schema)
+└── results/
+    ├── iteration-2/                authoritative results (re-run after review)
+    └── trigger-check.md            fresh-session trigger evidence
 ```
 
 ## Run it
 
 ```bash
-cargo build                          # needs target/debug/openmkview
-frontend: npm install               # only for the resolver-seam assertion
-node --version                      # >= 18
-skills/openmkview-annotations/evals/scripts/run-evals.sh
+cargo build                              # target/debug/openmkview
+cd frontend && npm install && npm run build   # browser review needs dist/
+cd .. && skills/openmkview-annotations/evals/scripts/run-evals.sh
 ```
 
-The script boots both an open and an auth instance on ephemeral ports under
-`~/.cache/omk-eval.*` (never `/tmp`), registers `fixture/`, and exits non-zero if
-any **with-skill** or **smoke** assertion fails. Baseline failures on the anchor
-fidelity assertions are expected and reported separately.
+Requirements: bash, curl, node >= 18, python3 (differential check), Chromium
+for Playwright (installed in the Playwright cache), and the `claude` CLI for the
+agent layer. The agent layer runs nested `claude -p` sessions in an isolated
+scratch workspace with `--permission-mode bypassPermissions` (authorized for
+this check) so the skill's CLI can execute.
 
-## What each run does
+## Layers
 
-| Eval | With skill | Without skill |
-|---|---|---|
-| read-feedback | `omk list --file README.md` | `curl /api/annotations` |
-| create-from-quote | `omk create --file README.md --quote "fox jumps"` | POST a hand-crafted Anchor built from the raw source line |
-| resolve-author | `omk list --author claude --unresolved` + `omk batch-resolve` | GET `?author=`, loop PUT `/resolved` |
+| Layer | What it proves |
+|---|---|
+| Deterministic | JSON shapes, authorship, filters, and the **real resolver status** for both the CLI and a raw-line baseline. |
+| Differential | The Python Anchor helper in `references/api.md` is byte-identical to the CLI across the fixture, escaped-pipe tables, and list continuations. |
+| Browser | The real web UI renders the CLI annotation as **Active** with author `claude` and an **Agent** badge, and the raw-line baseline as **Outdated**. |
+| Agent | A fresh `claude -p` session with the skill installed drives `omk.mjs`, answers eval 1 with a synthesized plan, and creates an Active annotation for eval 2. |
 
-The fixture's `## Overview` paragraph is hard-wrapped, so the rendered block
-text is `The quick brownfox jumps overthe lazy dog.` The CLI projects that
-correctly; the baseline's raw-line Anchor (`fox jumps over`) is accepted by the
-server but is **Outdated**. `verify-anchor.mjs` proves the difference by
-comparing the stored Anchor with the CLI builder, and the frontend
-`omkCli.test.ts` suite proves the builder resolves Active through the real
-Preview resolver seam.
+The deterministic layer resets annotation state between every run. Baseline
+failures on the three Anchor-fidelity assertions are expected and reported
+separately; the harness exits non-zero only for unexpected failures.
 
-## Auth smoke
+## Results
 
-The harness also exercises the init-first flow on an auth instance: exchange
-credentials once, read with a Bearer token, revoke the Tool Session, see the
-exact re-init hint on 401, then `login` to restore access.
-
-## Review records
-
-`results/iteration-1/review.md` holds the structured self-review and the
-assertion verdict table. Browser review was not practical in the headless
-implementation environment; the ticket allows a structured self-review, and the
-resolver-seam suite supplies the browser-equivalent evidence.
+`results/iteration-2/review.md` holds the verdict tables, the real resolver
+statuses, the browser evidence, and the agent transcript summary. Iteration 1 is
+superseded because its structural "stored == builder" heuristic was not a valid
+Active/Outdated oracle.

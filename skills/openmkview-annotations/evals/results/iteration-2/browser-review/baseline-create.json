@@ -1,0 +1,34 @@
+{
+  "id": 14,
+  "projectId": 1,
+  "relativePath": "README.md",
+  "anchor": {
+    "segments": [
+      {
+        "blockHash": "blk-12711af3",
+        "blockText": "Thank you for reading",
+        "blockType": "p",
+        "headingPath": [
+          "OpenMKView Fixture",
+          "Closing"
+        ],
+        "kind": "block"
+      }
+    ],
+    "version": 1
+  },
+  "snapshot": "Thank you for reading",
+  "resolved": false,
+  "createdAt": "2026-11-18 13:48:26",
+  "updatedAt": "2026-11-18 13:48:26",
+  "notes": [
+    {
+      "id": 14,
+      "annotationId": 14,
+      "body": "Browser review: raw-line baseline.",
+      "author": "claude",
+      "isAgent": true,
+      "createdAt": "2026-11-18 13:48:26"
+    }
+  ]
+}

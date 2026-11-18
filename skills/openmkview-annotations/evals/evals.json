@@ -1,20 +1,22 @@
 {
   "skill_name": "openmkview-annotations",
-  "description": "Three realistic prompts run against a synthetic fixture instance, with the skill (CLI) and without it (raw HTTP plus a hand-crafted Anchor). Results live in results/iteration-1/.",
+  "description": "Three realistic prompts run against a synthetic fixture instance, with the skill (CLI) and without it (raw HTTP plus a hand-crafted Anchor), plus a real-agent layer and a Playwright browser review. Results live in results/iteration-2/.",
   "evals": [
     {
       "id": 1,
       "name": "read-feedback",
       "prompt": "I'm reviewing feedback left on the fixture project's README.md. List the annotations on README.md and tell me what the human wants me to change. Don't change anything yet.",
-      "expected_output": "A parsed annotation list and a short summary naming both human requests: mention Node 18+ before install, and replace the placeholder fox sentence with a real example.",
+      "expected_output": "A parsed annotation list whose two threads carry the human's anchored spans and requests. The real-agent run additionally writes a short synthesized answer.",
       "files": ["evals/fixture/README.md"],
       "expectations": [
-        "The list output parses as a JSON array",
-        "Both seeded human annotations are returned",
-        "Every note exposes author alice and isAgent false",
-        "The answer names both requested changes"
+        "The list output parses as a JSON array (deterministic layer)",
+        "Both seeded human annotations are returned (deterministic layer)",
+        "Every note exposes author alice and isAgent false (deterministic layer)",
+        "The two requests are distinct threads with the expected anchored spans (deterministic layer)",
+        "Agent run: the answer names the Node 18 requirement and the placeholder-sentence request",
+        "Agent run: the answer synthesizes rather than echoing both note bodies verbatim"
       ],
-      "baseline_notes": "Raw HTTP can read this too; these assertions are non-discriminating by design."
+      "baseline_notes": "Raw HTTP can read this too; these reading assertions are non-discriminating by design. The agent-run answer check is non-tautological."
     },
     {
       "id": 2,
@@ -25,11 +27,14 @@
       "expectations": [
         "The create response parses as JSON with an annotation id",
         "The created note carries author claude and isAgent true",
-        "The stored anchor quotes the requested span",
-        "The CLI-computed anchor is Active (stored anchor equals the CLI builder on the same content)",
-        "Hard-wrapped prose projects to rendered text (soft breaks concatenate)"
+        "The stored anchor references the requested span",
+        "The stored anchor equals the CLI builder (structural)",
+        "Hard-wrapped prose projects to rendered text (soft breaks concatenate)",
+        "The stored anchor resolves Active through the real frontend resolver (rendered blocks + resolveAnchor)",
+        "Oracle control: a raw-line whole-block anchor resolves Outdated in the same run",
+        "Agent run: a real claude -p session creates an Active annotation with author claude"
       ],
-      "baseline_notes": "The no-skill baseline posts hand-crafted anchor JSON built from the raw source line; the server accepts it but it resolves Outdated (blockText 'fox jumps over')."
+      "baseline_notes": "The no-skill baseline posts a whole-block anchor whose blockText is the raw source line; the server accepts it, but the real resolver returns Outdated."
     },
     {
       "id": 3,

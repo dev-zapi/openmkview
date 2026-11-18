@@ -48,6 +48,9 @@ natural annotation request, without a manual pointer to the skill.
   nested `claude -p` session's Bash tool was disabled by the outer environment
   ("auto-mode safety check unavailable"), so the command could not run. This is
   an artifact of nesting the test, not of the skill.
-- Execution is covered by `results/iteration-1/`, which drives the same command
-  sequences against real instances and passes 31/31 with-skill/smoke
-  assertions.
+- Execution is covered by `results/iteration-2/`: the deterministic layer
+  passes **16/16** with-skill assertions, **6/6** auth assertions, the
+  differential check **20/20**, the browser review **4/4**, and the real-agent
+  layer **9/9** (12/15 baseline assertions pass; the three failures are the
+  expected Anchor-fidelity cases). The full harness reports
+  **37/37 unexpected-failure-free assertions, 3 expected baseline failures**.

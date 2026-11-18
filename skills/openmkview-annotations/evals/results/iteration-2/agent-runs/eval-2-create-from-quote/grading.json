@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "Agent: creates the annotation through the CLI",
+      "passed": true,
+      "evidence": "Bash command contains omk.mjs create"
+    },
+    {
+      "text": "Agent: annotation exists with author claude and isAgent true",
+      "passed": true,
+      "evidence": "id=3"
+    },
+    {
+      "text": "Agent: the created anchor resolves Active through the real resolver (control is Outdated)",
+      "passed": true,
+      "evidence": "agent=resolved control=outdated"
+    },
+    {
+      "text": "Agent: the note body carries the requested review request",
+      "passed": true,
+      "evidence": "body mentions the fox placeholder"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  }
+}
