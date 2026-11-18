@@ -24,6 +24,8 @@ const mockDefaultSettings = vi.hoisted(() => ({
   sessionTimeoutMinutes: 60,
   codeBlockThemeLight: 'github-light',
   codeBlockThemeDark: 'github-dark',
+  editorThemeLight: 'app',
+  editorThemeDark: 'one-dark',
   tableDensity: 'medium' as const,
   customStylesheet: '',
   tableWrap: 'wrap' as const,

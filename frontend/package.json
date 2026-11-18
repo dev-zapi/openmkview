@@ -28,6 +28,7 @@
     "@shikijs/langs": "^4.3.0",
     "@shikijs/themes": "^4.3.0",
     "@shikijs/transformers": "^4.3.0",
+    "@uiw/codemirror-themes-all": "^4.25.12",
     "codemirror": "^6.0.1",
     "dompurify": "^3.4.5",
     "marked": "^15.0.0",

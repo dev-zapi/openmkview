@@ -33,6 +33,8 @@ export interface ServerSettings {
   sessionTimeoutMinutes: number;
   codeBlockThemeLight: string;
   codeBlockThemeDark: string;
+  editorThemeLight: string;
+  editorThemeDark: string;
   tableDensity: 'small' | 'medium' | 'large';
   customStylesheet: string;
   tableWrap: 'wrap' | 'nowrap';
@@ -66,6 +68,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sessionTimeoutMinutes: 60,
   codeBlockThemeLight: 'github-light',
   codeBlockThemeDark: 'github-dark',
+  editorThemeLight: 'app',
+  editorThemeDark: 'one-dark',
   tableDensity: 'medium',
   customStylesheet: '',
   tableWrap: 'wrap',

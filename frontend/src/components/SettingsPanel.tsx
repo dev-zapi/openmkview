@@ -2,6 +2,7 @@ import { Component, createSignal, createEffect, createMemo, Show, onMount, onCle
 import type { JSX } from 'solid-js';
 import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary, WritingFontFamily } from '../types/app';
 import { applyTheme } from '../utils/theme';
+import { editorThemeLightPresets, editorThemeDarkPresets } from '../utils/editorThemes';
 import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize, resolvedWritingFontSize } from '../utils/settings';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
@@ -542,6 +543,32 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                     onChange={(e) => updateSetting('codeBlockThemeDark', e.currentTarget.value)}
                   >
                     <For each={codeThemeDarkPresets}>
+                      {(theme) => <option value={theme.value}>{theme.label}</option>}
+                    </For>
+                  </Select>
+                </div>
+
+                <div class="settings-item">
+                  <label for="editor-theme-light">Editor Theme (Light)</label>
+                  <Select
+                    id="editor-theme-light"
+                    value={settings().editorThemeLight}
+                    onChange={(e) => updateSetting('editorThemeLight', e.currentTarget.value)}
+                  >
+                    <For each={editorThemeLightPresets}>
+                      {(theme) => <option value={theme.value}>{theme.label}</option>}
+                    </For>
+                  </Select>
+                </div>
+
+                <div class="settings-item">
+                  <label for="editor-theme-dark">Editor Theme (Dark)</label>
+                  <Select
+                    id="editor-theme-dark"
+                    value={settings().editorThemeDark}
+                    onChange={(e) => updateSetting('editorThemeDark', e.currentTarget.value)}
+                  >
+                    <For each={editorThemeDarkPresets}>
                       {(theme) => <option value={theme.value}>{theme.label}</option>}
                     </For>
                   </Select>

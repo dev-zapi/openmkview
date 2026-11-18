@@ -77,6 +77,16 @@ fn default_code_theme_dark() -> String {
     "github-dark".to_string()
 }
 
+/// Edit-mode CodeMirror theme ids. "app" keeps the app-token light theme;
+/// "one-dark" preserves the previously hardcoded dark behavior.
+fn default_editor_theme_light() -> String {
+    "app".to_string()
+}
+
+fn default_editor_theme_dark() -> String {
+    "one-dark".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemSettings {
     #[serde(rename = "markdownWidth", default)]
@@ -108,6 +118,10 @@ pub struct SystemSettings {
     pub code_block_theme_light: String,
     #[serde(rename = "codeBlockThemeDark", default = "default_code_theme_dark")]
     pub code_block_theme_dark: String,
+    #[serde(rename = "editorThemeLight", default = "default_editor_theme_light")]
+    pub editor_theme_light: String,
+    #[serde(rename = "editorThemeDark", default = "default_editor_theme_dark")]
+    pub editor_theme_dark: String,
     #[serde(rename = "protectedPaths", default = "default_protected_paths")]
     pub protected_paths: Vec<String>,
     #[serde(rename = "trashExpireDays", default = "default_trash_expire_days")]
@@ -145,6 +159,8 @@ impl Default for SystemSettings {
             writing_width: WritingWidthSetting::default(),
             code_block_theme_light: default_code_theme_light(),
             code_block_theme_dark: default_code_theme_dark(),
+            editor_theme_light: default_editor_theme_light(),
+            editor_theme_dark: default_editor_theme_dark(),
             protected_paths: default_protected_paths(),
             trash_expire_days: default_trash_expire_days(),
             session_timeout_minutes: default_session_timeout_minutes(),
@@ -245,6 +261,20 @@ mod tests {
         assert_eq!(settings.table_density, TableDensity::Medium);
         assert_eq!(settings.custom_stylesheet, "");
         assert_eq!(settings.editor_font_size, "");
+    }
+
+    #[test]
+    fn default_editor_themes_preserve_previous_behavior() {
+        let settings = SystemSettings::default();
+        assert_eq!(settings.editor_theme_light, "app");
+        assert_eq!(settings.editor_theme_dark, "one-dark");
+    }
+
+    #[test]
+    fn empty_json_yields_default_editor_themes() {
+        let settings: SystemSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(settings.editor_theme_light, "app");
+        assert_eq!(settings.editor_theme_dark, "one-dark");
     }
 
     #[test]

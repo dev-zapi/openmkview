@@ -56,7 +56,7 @@ export const MobileLayout: Component<MobileLayoutProps> = (props) => {
         <Show when={props.headerContent}>
           {(content) => content()}
         </Show>
-        <div class={styles.mobileContent}>
+        <div class={styles.mobileContent} classList={{ [styles.hasFloatingHeader]: Boolean(props.headerContent) }}>
           {props.children}
         </div>
         <Show when={props.bottomBarContent}>

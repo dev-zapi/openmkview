@@ -134,6 +134,8 @@ export const extractServerSettings = (settings: Settings): ServerSettings => {
     writingWidth: settings.writingWidth,
     codeBlockThemeLight: settings.codeBlockThemeLight,
     codeBlockThemeDark: settings.codeBlockThemeDark,
+    editorThemeLight: settings.editorThemeLight,
+    editorThemeDark: settings.editorThemeDark,
     protectedPaths: settings.protectedPaths,
     placeholderDirs: settings.placeholderDirs,
     ignoredFiles: settings.ignoredFiles,

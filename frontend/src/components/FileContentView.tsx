@@ -192,6 +192,9 @@ export const FileContentView: Component<FileContentViewProps> = (props) => {
             projectId={props.activeProjectId}
             fileType={props.currentFileType}
             theme={props.theme}
+            editorTheme={
+              props.theme === 'dark' ? props.settings.editorThemeDark : props.settings.editorThemeLight
+            }
             onSave={props.onSave}
             onDirtyChange={props.onDirtyChange}
             registerContentGetter={props.registerContentGetter}
