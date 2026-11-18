@@ -3,9 +3,7 @@ import { highlightCode } from '../services/shikiService';
 import { escapeHtml } from '../utils/html';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 import { annotationStore } from '../stores/annotationStore';
-import {
-  locateAnchorInSource,
-} from '../utils/sourceAnchorLocator';
+import { locateAnchorInSource } from '../utils/sourceAnchorLocator';
 import type { Annotation } from '../types';
 
 interface SourceViewProps {
@@ -21,7 +19,6 @@ interface SourceViewProps {
 }
 
 interface OutdatedSourceAnnotation {
-  id: number;
   excerpt: string;
 }
 
@@ -189,7 +186,6 @@ const SourceView: Component<SourceViewProps> = (props) => {
         const snapshot = annotation.snapshot?.trim() || location.snapshot;
         snapshots.set(annotation.id, snapshot);
         outdated.push({
-          id: annotation.id,
           excerpt: snapshot || annotationExcerpt(annotation),
         });
         continue;
