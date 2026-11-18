@@ -300,6 +300,48 @@ fn directory_rename_moves_descendants_and_ignores_sibling_prefixes() {
 }
 
 #[test]
+fn renaming_a_file_does_not_move_a_sibling_with_a_prefixed_name() {
+    let fixture = fixture_with_files(&[("notes.md", "# Notes\n"), ("notes.md.bak", "# Backup\n")]);
+    let service = AnnotationService::new(&fixture.conn);
+
+    service
+        .create(create_request(fixture.project_id, "notes.md", "main note"))
+        .expect("create notes annotation");
+    let backup = service
+        .create(create_request(
+            fixture.project_id,
+            "notes.md.bak",
+            "backup note",
+        ))
+        .expect("create backup annotation");
+
+    fs::rename(
+        fixture.project_dir.join("notes.md"),
+        fixture.project_dir.join("renamed.md"),
+    )
+    .expect("rename notes file");
+
+    let moved = service
+        .migrate_paths(fixture.project_id, "notes.md", "renamed.md")
+        .expect("migrate renamed file");
+    assert_eq!(moved, 1);
+
+    assert_eq!(
+        service
+            .list_for_file(fixture.project_id, "renamed.md")
+            .expect("list renamed file")
+            .len(),
+        1
+    );
+
+    let untouched = service
+        .list_for_file(fixture.project_id, "notes.md.bak")
+        .expect("list prefixed sibling");
+    assert_eq!(untouched.len(), 1);
+    assert_eq!(untouched[0].id, backup.id);
+}
+
+#[test]
 fn trash_hides_annotations_and_restore_brings_them_back() {
     let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
     let service = AnnotationService::new(&fixture.conn);
