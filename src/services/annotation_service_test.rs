@@ -273,6 +273,35 @@ fn author_filter_keeps_annotations_with_a_note_by_that_author() {
 }
 
 #[test]
+fn legacy_notes_without_authorship_read_back_as_null_and_false() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "Current note"))
+        .expect("create annotation");
+
+    // Simulate a row written before authorship existed: no author, no flag.
+    conn.execute(
+        "DELETE FROM annotation_notes WHERE annotation_id = ?",
+        [created.id],
+    )
+    .expect("remove current note");
+    conn.execute(
+        "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
+        rusqlite::params![created.id, "Legacy note"],
+    )
+    .expect("insert legacy note");
+
+    let listed = service
+        .list_for_file(project_id, "doc.md", None)
+        .expect("list annotations");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].notes[0].body, "Legacy note");
+    assert_eq!(listed[0].notes[0].author, None);
+    assert!(!listed[0].notes[0].is_agent);
+}
+
+#[test]
 fn listing_is_scoped_to_the_requested_file() {
     let (_temp_dir, conn, project_id) = setup();
     let service = AnnotationService::new(&conn);

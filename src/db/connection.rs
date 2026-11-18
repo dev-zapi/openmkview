@@ -116,3 +116,42 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
 
     Ok(conn)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::init_db;
+    use rusqlite::Connection;
+    use tempfile::TempDir;
+
+    #[test]
+    fn migrates_legacy_annotation_notes_to_authorship_columns() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("legacy.db");
+
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE annotation_notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    annotation_id INTEGER NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+                INSERT INTO annotation_notes (annotation_id, body) VALUES (1, 'legacy');",
+            )
+            .unwrap();
+        }
+
+        let conn = init_db(&db_path).unwrap();
+        let (author, is_agent): (Option<String>, i64) = conn
+            .query_row(
+                "SELECT author, is_agent FROM annotation_notes WHERE body = 'legacy'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+
+        assert_eq!(author, None);
+        assert_eq!(is_agent, 0);
+    }
+}
