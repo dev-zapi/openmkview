@@ -24,6 +24,9 @@ export interface DocumentTitleBarProps {
   projectName?: string;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  /** Reading-mode toggle: hide/show all Annotation highlights and markers. */
+  annotationsVisible?: boolean;
+  onAnnotationsToggle?: () => void;
   onFullscreenToggle: () => void;
   onSearchClick: () => void;
   isSearchActive?: boolean;
@@ -110,6 +113,13 @@ const outlineIcon = (
     <line x1="4" y1="6" x2="20" y2="6" />
     <line x1="4" y1="12" x2="20" y2="12" />
     <line x1="4" y1="18" x2="20" y2="18" />
+  </svg>
+);
+
+const annotationsIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m9 11-6 6v3h9l3-3" />
+    <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
   </svg>
 );
 
@@ -267,6 +277,13 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
                   <span class="ui-menu-badge">{props.outlineCount}</span>
                 </Show>
               </MenuItem>
+
+              <Show when={props.fileType === 'markdown' && props.onAnnotationsToggle}>
+                <MenuItem onClick={() => props.onAnnotationsToggle?.()}>
+                  {annotationsIcon}
+                  <span>{props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}</span>
+                </MenuItem>
+              </Show>
             </MenuContent>
           </Menu>
         </div>
@@ -379,6 +396,19 @@ export const DocumentTitleBar: Component<DocumentTitleBarProps> = (props) => {
             <span class={styles.badge}>{props.outlineCount}</span>
           </Show>
         </button>
+
+        <Show when={props.fileType === 'markdown' && props.onAnnotationsToggle}>
+          <button
+            type="button"
+            class={`${styles.toolbarButtonIcon} ${props.annotationsVisible !== false ? styles.active : ''}`}
+            onClick={() => props.onAnnotationsToggle?.()}
+            title={props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}
+            aria-label={props.annotationsVisible === false ? 'Show annotations' : 'Hide annotations'}
+            aria-pressed={props.annotationsVisible !== false}
+          >
+            {annotationsIcon}
+          </button>
+        </Show>
 
         <button
           class={`${styles.toolbarButtonIcon} ${styles.fullscreenButton}`}

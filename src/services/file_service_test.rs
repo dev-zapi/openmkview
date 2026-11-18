@@ -180,6 +180,18 @@ fn test_rename_file_not_found() {
 }
 
 #[test]
+fn test_rename_file_returns_new_forward_slash_relative_path() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let docs = temp_dir.path().join("docs");
+    fs::create_dir_all(&docs).unwrap();
+    fs::write(docs.join("old.md"), "# Old").unwrap();
+
+    let new_relative = FileService::rename_file(temp_dir.path(), "docs/old.md", "new.md").unwrap();
+
+    assert_eq!(new_relative, "docs/new.md");
+}
+
+#[test]
 fn test_rename_file_rejects_path_traversal() {
     let temp_dir = tempfile::tempdir().unwrap();
     fs::write(temp_dir.path().join("old.md"), "").unwrap();
@@ -640,6 +652,22 @@ fn test_move_file_to_root() {
     assert!(result.is_ok());
     assert!(!src_path.exists());
     assert!(temp_dir.path().join("readme.md").exists());
+}
+
+#[test]
+fn test_move_file_returns_new_forward_slash_relative_path() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let docs = temp_dir.path().join("docs");
+    let other = temp_dir.path().join("other");
+    fs::create_dir_all(&docs).unwrap();
+    fs::create_dir_all(&other).unwrap();
+    fs::write(docs.join("readme.md"), "# Readme").unwrap();
+
+    let new_relative = FileService::move_file(temp_dir.path(), "docs/readme.md", "other").unwrap();
+    assert_eq!(new_relative, "other/readme.md");
+
+    let root_relative = FileService::move_file(temp_dir.path(), "other/readme.md", "").unwrap();
+    assert_eq!(root_relative, "readme.md");
 }
 
 #[test]

@@ -150,6 +150,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   const onContentClick = (event: MouseEvent) => {
     if (!contentRef) return;
+    // Pure-reading mode: no markers or highlights exist, so annotation
+    // interactions are off while ordinary links/copy/etc keep working.
+    if (!annotationStore.visible()) return;
+
     const target = event.target as HTMLElement | null;
     if (!target) return;
 
@@ -247,8 +251,23 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     setSelectionCapture({ anchor, excerpt, left, top });
   };
 
+  const applyOfflineState = () => {
+    const offline = !annotationStore.canMutate();
+    for (const marker of contentRef?.querySelectorAll<HTMLButtonElement>('.annotation-marker') ?? []) {
+      // Annotated markers only open the read-only viewer, which stays
+      // available offline. Only the creation path is disabled.
+      const opensViewer = marker.classList.contains('has-annotation');
+      marker.disabled = offline && !opensViewer;
+      marker.title =
+        marker.disabled
+          ? 'Unavailable offline'
+          : marker.dataset.defaultTitle || 'Annotate this block';
+    }
+  };
+
   const prepareAnnotationPass = () => {
     if (!contentRef) return;
+    contentRef.classList.toggle('annotations-hidden', !annotationStore.visible());
     const blocks = assignBlockAnchors(contentRef);
     renderedBlocks = new Map(blocks.map((block) => [block.model.id, block]));
     renderedBlockList = blocks;
@@ -256,18 +275,21 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     setSelectionCapture(null);
     blockAttachments = applyAnnotationHighlights(
       contentRef,
-      annotationStore.annotations(),
+      annotationStore.visible() ? annotationStore.annotations() : [],
       blocks
     );
+    applyOfflineState();
   };
 
   const applyAnnotations = () => {
     if (!contentRef || renderedBlockList.length === 0) return;
+    contentRef.classList.toggle('annotations-hidden', !annotationStore.visible());
     blockAttachments = applyAnnotationHighlights(
       contentRef,
-      annotationStore.annotations(),
+      annotationStore.visible() ? annotationStore.annotations() : [],
       renderedBlockList
     );
+    applyOfflineState();
   };
 
   onMount(() => {
@@ -290,7 +312,17 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   createEffect(() => {
     renderedHtml();
     annotationStore.annotations();
+    // Re-applying on visibility keeps highlights and markers in sync when the
+    // reading-mode toggle flips without a re-render.
+    annotationStore.visible();
     applyAnnotations();
+  });
+
+  // Offline Mode disables creation/editing controls in place, including
+  // markers that were rendered before the connection dropped.
+  createEffect(() => {
+    annotationStore.canMutate();
+    applyOfflineState();
   });
 
   createEffect(() => {
@@ -705,6 +737,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   const renderComposer = (current: AnnotationPanel) => {
     if (current.mode !== 'composer') return null;
+    const offline = !annotationStore.canMutate();
     return (
       <div class="annotation-composer">
         <label class="annotation-composer-label" for="annotation-note-body">Note</label>
@@ -715,9 +748,13 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           rows={4}
           placeholder="Write a note… Markdown is supported"
           value={composerBody()}
+          disabled={offline}
           onInput={(event) => setComposerBody(event.currentTarget.value)}
           ref={(element) => setTimeout(() => element.focus(), 0)}
         />
+        <Show when={offline}>
+          <p class="annotation-offline-note">Read-only while offline</p>
+        </Show>
         <Show when={annotationError()}>
           <p class="annotation-error" role="alert">{annotationError()}</p>
         </Show>
@@ -728,7 +765,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           <button
             type="button"
             class="annotation-action-primary"
-            disabled={savingAnnotation() || composerBody().trim().length === 0}
+            disabled={offline || savingAnnotation() || composerBody().trim().length === 0}
             onClick={() => void saveAnnotation()}
           >
             {savingAnnotation() ? 'Saving…' : 'Save'}
@@ -741,6 +778,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   const renderViewer = (current: AnnotationPanel) => {
     if (current.mode !== 'view') return null;
     const annotation = current.annotation;
+    const offline = !annotationStore.canMutate();
     return (
       <div class="annotation-viewer">
         <div class="annotation-thread">
@@ -753,6 +791,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
             )}
           </For>
         </div>
+        <Show when={offline}>
+          <p class="annotation-offline-note">Read-only while offline</p>
+        </Show>
         <Show when={annotationError()}>
           <p class="annotation-error" role="alert">{annotationError()}</p>
         </Show>
@@ -760,7 +801,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
           <button
             type="button"
             class="annotation-action-danger"
-            disabled={savingAnnotation()}
+            disabled={offline || savingAnnotation()}
+            title={offline ? 'Unavailable offline' : undefined}
             onClick={() => void removeAnnotation(annotation)}
           >
             Delete

@@ -1490,6 +1490,23 @@
   border-color: var(--color-border);
 }
 
+/* Offline Mode: creation controls stay visible but clearly unavailable. */
+.annotation-block:hover > .annotation-marker:disabled,
+.annotation-block.annotation-highlighted > .annotation-marker:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.annotation-marker:disabled {
+  cursor: not-allowed;
+}
+
+/* Pure-reading mode: hide every marker; highlight classes are also dropped
+   by MarkdownView, this rule covers markers rendered before the toggle. */
+.markdown-content.annotations-hidden .annotation-marker {
+  display: none;
+}
+
 .annotation-block.annotation-highlighted {
   border-radius: 4px;
   background-image: linear-gradient(
@@ -1686,4 +1703,10 @@
   margin: 8px 0 0;
   font-size: 0.8125rem;
   color: var(--color-destructive);
+}
+
+.annotation-offline-note {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
 }
