@@ -23,6 +23,9 @@ export interface MarkdownHeaderProps {
   currentSearchResult: number;
   onTabChange: (tab: TabType) => void;
   onOutlineToggle: () => void;
+  /** Reading-mode toggle: hide/show all Annotation highlights and markers. */
+  annotationsVisible?: boolean;
+  onAnnotationsToggle?: () => void;
   onSearchClick: () => void;
   onSearchClose: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -155,6 +158,8 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         binary={props.binary}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
+        annotationsVisible={props.annotationsVisible}
+        onAnnotationsToggle={props.onAnnotationsToggle}
         onFullscreenToggle={handleFullscreenToggle}
         onSearchClick={props.onSearchClick}
         isSearchActive={usesInlineSearch() && props.isSearchOpen}

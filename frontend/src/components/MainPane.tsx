@@ -3,6 +3,7 @@ import { MarkdownHeader } from './markdown-header';
 import { FileContentView } from './FileContentView';
 import OutlinePanel from './OutlinePanel';
 import { useScrollSpy } from '../hooks/useScrollSpy';
+import { annotationStore } from '../stores/annotationStore';
 import type { FileContent, FileType, Heading } from '../types';
 import type { TabType } from './markdown-header';
 import type { Settings, ThemeType } from '../types/app';
@@ -84,6 +85,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             currentSearchResult={props.currentSearchResult}
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
+            annotationsVisible={annotationStore.visible()}
+            onAnnotationsToggle={() => annotationStore.toggleVisible()}
             onSearchClick={props.onSearchClick}
             onSearchClose={props.onSearchClose}
             onSearchQueryChange={props.onSearchQueryChange}
@@ -109,6 +112,8 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             currentSearchResult={props.currentSearchResult}
             onTabChange={props.onTabChange}
             onOutlineToggle={props.onOutlineToggle}
+            annotationsVisible={annotationStore.visible()}
+            onAnnotationsToggle={() => annotationStore.toggleVisible()}
             onSearchClick={props.onSearchClick}
             onSearchClose={props.onSearchClose}
             onSearchQueryChange={props.onSearchQueryChange}
