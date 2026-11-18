@@ -1,7 +1,7 @@
 use crate::errors::{AppError, AppResult};
 use crate::models::{
-    AddNoteRequest, AnnotationListParams, CreateAnnotationRequest, SetResolvedRequest,
-    UpdateNoteRequest,
+    AddNoteRequest, AnnotationListParams, AnnotationProjectParams, BatchDeleteRequest,
+    BatchResolveRequest, CreateAnnotationRequest, SetResolvedRequest, UpdateNoteRequest,
 };
 use crate::services::AnnotationService;
 use crate::AppState;
@@ -19,6 +19,22 @@ pub async fn list_annotations(
 
     let service = AnnotationService::new(&conn);
     let annotations = service.list_for_file(query.project_id, &query.relative_path)?;
+
+    Ok(HttpResponse::Ok().json(annotations))
+}
+
+/// GET /api/annotations/manage?project_id=<id>
+pub async fn list_project_annotations(
+    data: web::Data<AppState>,
+    query: web::Query<AnnotationProjectParams>,
+) -> AppResult<HttpResponse> {
+    let conn = data
+        .db
+        .lock()
+        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+
+    let service = AnnotationService::new(&conn);
+    let annotations = service.list_for_project(query.project_id)?;
 
     Ok(HttpResponse::Ok().json(annotations))
 }
@@ -105,4 +121,52 @@ pub async fn set_resolved(
     let annotation = service.set_resolved(path.into_inner(), body.resolved)?;
 
     Ok(HttpResponse::Ok().json(annotation))
+}
+
+/// POST /api/annotations/batch-delete
+pub async fn batch_delete_annotations(
+    data: web::Data<AppState>,
+    body: web::Json<BatchDeleteRequest>,
+) -> AppResult<HttpResponse> {
+    let conn = data
+        .db
+        .lock()
+        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+
+    let service = AnnotationService::new(&conn);
+    let deleted = service.batch_delete(body.project_id, &body.ids)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "deleted": deleted })))
+}
+
+/// POST /api/annotations/batch-resolve
+pub async fn batch_resolve_annotations(
+    data: web::Data<AppState>,
+    body: web::Json<BatchResolveRequest>,
+) -> AppResult<HttpResponse> {
+    let conn = data
+        .db
+        .lock()
+        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+
+    let service = AnnotationService::new(&conn);
+    let updated = service.batch_resolve(body.project_id, &body.ids, body.resolved)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "updated": updated })))
+}
+
+/// DELETE /api/annotations/project/{project_id}
+pub async fn clear_project_annotations(
+    data: web::Data<AppState>,
+    path: web::Path<i64>,
+) -> AppResult<HttpResponse> {
+    let conn = data
+        .db
+        .lock()
+        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+
+    let service = AnnotationService::new(&conn);
+    let deleted = service.clear_project(path.into_inner())?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "deleted": deleted })))
 }

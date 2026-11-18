@@ -30,6 +30,18 @@ pub struct Annotation {
     pub notes: Vec<AnnotationNote>,
 }
 
+/// A project-wide management row: the Annotation plus whether its stored
+/// relative path still exists on disk. Rows whose file was renamed or moved
+/// outside the app are kept and surfaced here (ADR-0006) instead of being
+/// attached to whatever now lives at the old path.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedAnnotation {
+    #[serde(flatten)]
+    pub annotation: Annotation,
+    pub orphaned: bool,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAnnotationRequest {
@@ -62,4 +74,24 @@ pub struct AnnotationListParams {
     pub project_id: i64,
     #[serde(rename = "relativePath")]
     pub relative_path: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnnotationProjectParams {
+    pub project_id: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchDeleteRequest {
+    pub project_id: i64,
+    pub ids: Vec<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchResolveRequest {
+    pub project_id: i64,
+    pub ids: Vec<i64>,
+    pub resolved: bool,
 }
