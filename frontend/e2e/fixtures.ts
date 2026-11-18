@@ -202,6 +202,9 @@ export async function removeScratchProject(
           await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
         }
       }
+      // Close the project so later specs never pick this deleted scratch
+      // directory as the first open project.
+      await fetch(`/api/projects/${projectId}/close`, { method: 'POST' });
     },
     { projectId: target.projectId, relativePath: target.path }
   );
