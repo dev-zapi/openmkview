@@ -1,17 +1,13 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { test, expect, loginIfNeeded } from './fixtures';
 import type { Locator, Page } from '@playwright/test';
 
-// Annotation column + thread lifecycle (ticket #18). Each test seeds its own
-// throwaway project directory and file through the real API, so the spec is
-// isolation-safe against a scratch backend (port 4618) and parallel agents.
+// Annotation column + thread lifecycle (ticket #18). Uses a uniquely named
+// scratch file inside the seeded open project, like the other annotation
+// specs, so it never leaves invalid projects behind for later specs.
 // Assertions stay on user-visible surfaces (roles, text, focus, viewport).
 
 test.describe.configure({ mode: 'serial' });
 
-const FILE_NAME = 'annotations-column-e2e.md';
 const TARGET = 'The target paragraph for the annotation column.';
 
 function scratchMarkdown(): string {
@@ -34,32 +30,43 @@ function scratchMarkdown(): string {
 
 interface FileTarget {
   projectId: number;
-  projectDir: string;
   path: string;
 }
 
 async function seedProject(page: Page): Promise<FileTarget> {
-  const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openmkview-ann18-'));
-  fs.writeFileSync(path.join(projectDir, FILE_NAME), scratchMarkdown());
+  return page.evaluate(async ({ body }) => {
+    const projectsRes = await fetch('/api/projects?open=true');
+    if (!projectsRes.ok) throw new Error('cannot list projects');
+    const projects = await projectsRes.json();
+    const projectId = projects[0]?.id;
+    if (!projectId) throw new Error('no open project to annotate');
 
-  const project = await page.evaluate(async ({ dir }) => {
-    const res = await fetch('/api/projects', {
+    const name = `annotations-column-${Date.now()}-${Math.random().toString(16).slice(2)}.md`;
+    const createRes = await fetch('/api/files', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: dir }),
+      body: JSON.stringify({ action: 'create', project_id: projectId, name }),
     });
-    if (!res.ok) throw new Error(`cannot create scratch project: ${res.status}`);
-    return res.json();
-  }, { dir: projectDir });
+    if (!createRes.ok) throw new Error(`cannot create scratch file: ${createRes.status}`);
 
-  await page.goto(`/project/${project.id}/files/${encodeURIComponent(FILE_NAME)}`, {
-    waitUntil: 'domcontentloaded',
-  });
-  await expect(page.getByRole('heading', { name: 'Column Annotation E2E' })).toBeVisible({
-    timeout: 15000,
-  });
+    const saveRes = await fetch('/api/files/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, relativePath: name, content: body }),
+    });
+    if (!saveRes.ok) throw new Error(`cannot seed scratch file: ${saveRes.status}`);
 
-  return { projectId: project.id, projectDir, path: FILE_NAME };
+    return { projectId, path: name };
+  }, { body: scratchMarkdown() }).then(async (target) => {
+    await page.goto(
+      `/project/${target.projectId}/files/${encodeURIComponent(target.path)}`,
+      { waitUntil: 'domcontentloaded' },
+    );
+    await expect(page.getByRole('heading', { name: 'Column Annotation E2E' })).toBeVisible({
+      timeout: 15000,
+    });
+    return target;
+  });
 }
 
 async function cleanupProject(page: Page, target: FileTarget): Promise<void> {
@@ -73,9 +80,13 @@ async function cleanupProject(page: Page, target: FileTarget): Promise<void> {
         await fetch(`/api/annotations/${annotation.id}`, { method: 'DELETE' });
       }
     }
-  }, { projectId: target.projectId, relativePath: target.path });
 
-  fs.rmSync(target.projectDir, { recursive: true, force: true });
+    await fetch('/api/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, path: relativePath }),
+    });
+  }, { projectId: target.projectId, relativePath: target.path });
 }
 
 function targetParagraph(page: Page): Locator {
@@ -107,7 +118,7 @@ async function createAnnotation(page: Page, body: string): Promise<void> {
 }
 
 async function openColumn(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'Annotations', exact: true }).click();
+  await page.getByRole('button', { name: 'Annotation column', exact: true }).click();
   const column = page.getByRole('region', { name: 'Annotations' });
   await expect(column).toBeVisible();
   return column;
@@ -119,6 +130,49 @@ async function openViewer(page: Page): Promise<Locator> {
   const viewer = page.getByRole('dialog', { name: 'Annotation' });
   await expect(viewer).toBeVisible();
   return viewer;
+}
+
+/** Selects a phrase inside rendered text so the floating Annotate button appears. */
+async function selectTextPhrase(page: Page, phrase: string): Promise<void> {
+  await page.evaluate(({ phrase }) => {
+    const content = document.querySelector('.markdown-content');
+    if (!content) throw new Error('markdown content not found');
+
+    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    const nodes: Text[] = [];
+    let combined = '';
+    let node = walker.nextNode() as Text | null;
+    while (node) {
+      nodes.push(node);
+      combined += node.nodeValue || '';
+      node = walker.nextNode() as Text | null;
+    }
+
+    const offset = combined.indexOf(phrase);
+    if (offset === -1) throw new Error(`cannot find phrase: ${phrase}`);
+    let remaining = offset;
+    let startNode: Text | null = null;
+    let startOffset = 0;
+    for (const text of nodes) {
+      const length = text.nodeValue?.length || 0;
+      if (remaining <= length) {
+        startNode = text;
+        startOffset = remaining;
+        break;
+      }
+      remaining -= length;
+    }
+    if (!startNode) throw new Error(`cannot map phrase: ${phrase}`);
+
+    const range = document.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(startNode, startOffset + phrase.length);
+    const selection = window.getSelection();
+    if (!selection) throw new Error('no selection');
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+  }, { phrase });
 }
 
 test.describe('annotation column lifecycle', () => {
@@ -236,6 +290,31 @@ test.describe('annotation column lifecycle', () => {
     // Without a highlight, clicking the content no longer opens the annotation.
     await paragraph.click();
     await expect(page.getByRole('dialog', { name: 'Annotation' })).not.toBeVisible();
+  });
+
+  test('column handles text-range annotations and jumps to the selected text', async ({ page }) => {
+    await targetParagraph(page).scrollIntoViewIfNeeded();
+    await selectTextPhrase(page, 'target paragraph');
+    await page.getByRole('button', { name: 'Annotate selected text' }).click();
+    const composer = page.getByRole('dialog', { name: 'New annotation' });
+    await expect(composer).toBeVisible();
+    await composer.getByRole('textbox').fill('Range note');
+    await composer.getByRole('button', { name: 'Save' }).click();
+    await expect(composer).not.toBeVisible();
+
+    const column = await openColumn(page);
+    const entry = column.getByRole('button', { name: /Jump to annotation/ });
+    await expect(entry).toHaveCount(1);
+    await expect(entry).toContainText('target paragraph');
+
+    await page.getByRole('heading', { name: 'Column Annotation E2E' }).scrollIntoViewIfNeeded();
+    const mark = page.locator('mark[data-annotation-id]', { hasText: 'target paragraph' }).first();
+    await expect(mark).not.toBeInViewport();
+
+    await entry.click();
+
+    await expect(mark).toBeInViewport();
+    await expect(mark).toBeFocused();
   });
 
   test('resolve can be filtered out and un-resolve restores the column entry', async ({ page }) => {

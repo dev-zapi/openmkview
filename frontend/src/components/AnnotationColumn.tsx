@@ -14,16 +14,11 @@ function excerptFor(annotation: Annotation): string {
   // An Outdated annotation shows the text it was originally anchored to.
   const outdated = annotationStore.outdatedSnapshot(annotation.id);
   if (outdated) return outdated;
-  const segment = annotation.anchor?.segments?.find(
-    (candidate) => candidate.kind === 'block' || candidate.kind === 'text'
-  );
-  const text =
-    segment?.kind === 'block'
-      ? segment.blockText
-      : segment?.kind === 'text'
-        ? segment.quote
-        : annotation.snapshot;
-  return text?.trim() || 'Anchored content';
+  const parts = (annotation.anchor?.segments ?? [])
+    .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part));
+  return parts.join(' … ') || annotation.snapshot?.trim() || 'Anchored content';
 }
 
 function timeFor(annotation: Annotation): string {

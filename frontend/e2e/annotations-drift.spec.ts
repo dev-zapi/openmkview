@@ -156,7 +156,7 @@ async function replaceDocumentInEditMode(page: Page, content: string): Promise<v
 }
 
 async function openAnnotationColumn(page: Page) {
-  await page.getByRole('button', { name: 'Annotations', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Annotation column', exact: true }).first().click();
   const column = page.getByRole('region', { name: 'Annotations' });
   await expect(column).toBeVisible();
   return column;

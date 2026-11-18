@@ -19,6 +19,9 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
   const [pending, setPending] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
+  const canMutate = () => annotationStore.canMutate();
+  const offlineTitle = () => (canMutate() ? undefined : 'Unavailable offline');
+
   const run = async (action: () => Promise<unknown>) => {
     setPending(true);
     setError(null);
@@ -79,6 +82,9 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
 
   return (
     <div class="annotation-thread" data-resolved={props.annotation.resolved ? 'true' : 'false'}>
+      <Show when={!canMutate()}>
+        <p class="annotation-offline-note">Read-only while offline</p>
+      </Show>
       <For each={props.annotation.notes}>
         {(note) => (
           <div class="annotation-note" data-note-id={String(note.id)}>
@@ -87,7 +93,8 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
               <button
                 type="button"
                 class="annotation-note-edit"
-                disabled={pending()}
+                disabled={pending() || !canMutate()}
+                title={offlineTitle()}
                 onClick={() => startEdit(note)}
               >
                 Edit
@@ -101,6 +108,7 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
                 class="annotation-composer-input"
                 aria-label="Note body"
                 rows={3}
+                disabled={!canMutate()}
                 value={noteDraft()}
                 onInput={(event) => setNoteDraft(event.currentTarget.value)}
               />
@@ -116,7 +124,8 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
                 <button
                   type="button"
                   class="annotation-action-primary"
-                  disabled={pending() || noteDraft().trim().length === 0}
+                  disabled={pending() || !canMutate() || noteDraft().trim().length === 0}
+                  title={offlineTitle()}
                   onClick={() => saveEdit(note)}
                 >
                   Save
@@ -132,7 +141,10 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
           class="annotation-composer-input"
           aria-label="Reply body"
           rows={2}
-          placeholder="Write a reply… Markdown is supported"
+          placeholder={
+            canMutate() ? 'Write a reply… Markdown is supported' : 'Unavailable offline'
+          }
+          disabled={!canMutate()}
           value={replyBody()}
           onInput={(event) => setReplyBody(event.currentTarget.value)}
         />
@@ -140,7 +152,8 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
           <button
             type="button"
             class="annotation-action-primary"
-            disabled={pending() || replyBody().trim().length === 0}
+            disabled={pending() || !canMutate() || replyBody().trim().length === 0}
+            title={offlineTitle()}
             onClick={submitReply}
           >
             Reply
@@ -158,7 +171,8 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
         <button
           type="button"
           class="annotation-action-secondary"
-          disabled={pending()}
+          disabled={pending() || !canMutate()}
+          title={offlineTitle()}
           onClick={toggleResolved}
         >
           {props.annotation.resolved ? 'Unresolve' : 'Resolve'}
@@ -166,7 +180,8 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
         <button
           type="button"
           class="annotation-action-danger"
-          disabled={pending()}
+          disabled={pending() || !canMutate()}
+          title={offlineTitle()}
           onClick={remove}
         >
           Delete

@@ -197,6 +197,11 @@ export function annotationsByBlock(annotations: Annotation[]): Map<string, Annot
  *
  * Outdated annotations are never highlighted; they are reported here so the
  * column can badge them and their popover can show the original text.
+ *
+ * Multiple annotations may share a block. Resolved dimming is per enclosing
+ * block: a block is dimmed only when every annotation attached to it (whole
+ * block, text range, or both) is Resolved. Individual text marks keep their
+ * own resolved styling so mixed threads stay distinguishable inside a block.
  */
 export function applyAnnotationHighlights(
   root: HTMLElement,
@@ -226,6 +231,12 @@ export function applyAnnotationHighlights(
       current.push(annotation);
       attachments.set(blockId, current);
     }
+    // Mixed-block Resolved state: every annotation touching the block must be
+    // Resolved for the block itself to dim.
+    blockResolved.set(
+      blockId,
+      (blockResolved.get(blockId) ?? true) && annotation.resolved
+    );
   };
 
   for (const annotation of annotations) {
@@ -245,12 +256,8 @@ export function applyAnnotationHighlights(
       if (segment.kind === 'block') {
         element.classList.add('annotation-highlighted');
         const ids = blockIds.get(segment.blockId) ?? [];
-        ids.push(annotation.id);
+        if (!ids.includes(annotation.id)) ids.push(annotation.id);
         blockIds.set(segment.blockId, ids);
-        blockResolved.set(
-          segment.blockId,
-          (blockResolved.get(segment.blockId) ?? true) && annotation.resolved
-        );
         continue;
       }
 
@@ -270,12 +277,14 @@ export function applyAnnotationHighlights(
       if (blockResolved.get(blockId)) element.classList.add('annotation-resolved');
     }
 
-    const annotation = attachments.get(blockId)?.[0];
-    if (annotation) {
+    const attached = attachments.get(blockId);
+    if (attached && attached.length > 0) {
       const marker = element.querySelector<HTMLElement>('.annotation-marker');
       marker?.classList.add('has-annotation');
       marker?.setAttribute('aria-pressed', 'true');
-      if (annotation.resolved) marker?.classList.add('resolved');
+      if (attached.every((annotation) => annotation.resolved)) {
+        marker?.classList.add('resolved');
+      }
     }
   }
 

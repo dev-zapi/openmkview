@@ -27,8 +27,9 @@ export interface MarkdownHeaderProps {
   onOutlineToggle: () => void;
   /** Reading-mode toggle: hide/show all Annotation highlights and markers. */
   annotationsVisible?: boolean;
-  onAnnotationsVisibilityToggle?: () => void;
+  isAnnotationColumnOpen?: boolean;
   onAnnotationsToggle?: () => void;
+  onAnnotationColumnToggle?: () => void;
   onSearchClick: () => void;
   onSearchClose: () => void;
   onSearchQueryChange: (query: string) => void;
@@ -157,15 +158,15 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         outlineCount={props.outlineCount}
         isOutlineOpen={props.isOutlineOpen}
         annotationCount={props.annotationCount}
-        isAnnotationsOpen={props.isAnnotationsOpen}
+        isAnnotationColumnOpen={props.isAnnotationColumnOpen}
         isFullscreen={isFullscreen()}
         fileType={props.fileType}
         binary={props.binary}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         annotationsVisible={props.annotationsVisible}
-        onAnnotationsVisibilityToggle={props.onAnnotationsVisibilityToggle}
         onAnnotationsToggle={props.onAnnotationsToggle}
+        onAnnotationColumnToggle={props.onAnnotationColumnToggle}
         onFullscreenToggle={handleFullscreenToggle}
         onSearchClick={props.onSearchClick}
         isSearchActive={usesInlineSearch() && props.isSearchOpen}

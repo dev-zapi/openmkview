@@ -17,7 +17,7 @@ import {
   type RenderedBlock,
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
-import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
+import { createMarkdownPipeline, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import AnnotationThread from './AnnotationThread';
 import FrontmatterPanel from './FrontmatterPanel';
@@ -93,9 +93,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (left + width > window.innerWidth - 8) {
       left = Math.max(8, rect.left - width - 8);
     }
-    // The popover can scroll, but it must start high enough that its action
-    // row stays reachable when the anchored block is deep in the viewport.
-    const maxTop = Math.max(8, window.innerHeight - 480);
+    // Reserve room for the whole popover: long threads must not push their
+    // actions below the viewport. Mirrors the CSS max-height bound.
+    const popoverHeight = Math.min(480, window.innerHeight * 0.6);
+    const maxTop = Math.max(8, window.innerHeight - popoverHeight - 16);
     const top = Math.max(8, Math.min(rect.top, maxTop));
     return { left, top };
   };
@@ -148,19 +149,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       setComposerBody('');
     } catch (error) {
       setAnnotationError(error instanceof Error ? error.message : 'Failed to save annotation');
-    } finally {
-      setSavingAnnotation(false);
-    }
-  };
-
-  const removeAnnotation = async (annotation: Annotation) => {
-    setSavingAnnotation(true);
-    setAnnotationError(null);
-    try {
-      await annotationStore.remove(annotation.id);
-      setPanel(null);
-    } catch (error) {
-      setAnnotationError(error instanceof Error ? error.message : 'Failed to delete annotation');
     } finally {
       setSavingAnnotation(false);
     }
@@ -220,6 +208,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const block = blockId ? renderedBlocks.get(blockId) : undefined;
       if (!blockElement || !block) return;
 
+      // Multiple annotations may share a block; the render pass lists them so
+      // the chooser can disambiguate instead of opening an arbitrary thread.
       const annotations = blockAttachments.get(block.model.id) ?? [];
       if (annotations.length > 0) {
         openAnnotations(annotations, marker.getBoundingClientRect());
@@ -427,32 +417,49 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     const annotation = untrack(() => annotationStore.annotations()).find(
       (candidate) => candidate.id === jump.annotationId,
     );
+    // Text-range anchors may span several segments; any segment with a block
+    // identity gives us a landing point. Prefer the annotation's first mark so
+    // the exact selected text is focused.
     const segment = annotation?.anchor?.segments?.find(
       (part) => part.kind === 'block' || part.kind === 'text',
     );
-    if (!segment) return;
+    if (!annotation || !segment) {
+      annotationStore.clearJump();
+      return;
+    }
 
     const escaped = segment.blockHash.replace(/["\\]/g, '\\$&');
     const timer = setTimeout(() => {
+      const mark = contentRef?.querySelector<HTMLElement>(
+        `mark[data-annotation-id="${annotation.id}"]`,
+      );
       const block = contentRef?.querySelector<HTMLElement>(
         `.annotation-block[data-block-id="${escaped}"]`,
       );
-      if (!block) return;
+      const target = mark ?? block;
+      if (!target) {
+        annotationStore.clearJump();
+        return;
+      }
 
-      const scroller = block.closest('.content-main') as HTMLElement | null;
+      const scrollTarget = block ?? (target.closest('.annotation-block') as HTMLElement | null);
+      const scroller = (scrollTarget ?? target).closest('.content-main') as HTMLElement | null;
       if (scroller) {
-        const rect = block.getBoundingClientRect();
+        const rect = target.getBoundingClientRect();
         const containerRect = scroller.getBoundingClientRect();
         const offsetTop = rect.top - containerRect.top + scroller.scrollTop - 60;
         scroller.scrollTo({ top: offsetTop, behavior: 'smooth' });
       } else {
-        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      block.classList.add('annotation-jump-target');
-      block.setAttribute('tabindex', '-1');
-      block.focus({ preventScroll: true });
-      setTimeout(() => block.classList.remove('annotation-jump-target'), 1600);
+      target.classList.add('annotation-jump-target');
+      target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+      setTimeout(() => target.classList.remove('annotation-jump-target'), 1600);
+
+      // Consume the request so a remount cannot replay it.
+      annotationStore.clearJump();
     }, 0);
 
     onCleanup(() => clearTimeout(timer));
@@ -911,14 +918,10 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     const outdated = () => annotationStore.isOutdated(annotation.id);
     const snapshot = () =>
       annotationStore.outdatedSnapshot(annotation.id) ?? annotation.snapshot ?? '';
-    const excerpt =
-      annotation.anchor?.segments?.find((segment) => segment.kind === 'block')?.blockText ||
-      annotation.snapshot ||
-      '';
 
     return (
       <div class="annotation-viewer">
-        <p class="annotation-anchor-excerpt">{excerpt.slice(0, 160)}</p>
+        <p class="annotation-anchor-excerpt">{annotationExcerpt(annotation)}</p>
         <Show when={outdated()}>
           <div class="annotation-outdated" role="status">
             <span class="annotation-outdated-badge">Outdated</span>

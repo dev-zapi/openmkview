@@ -215,6 +215,11 @@ export const annotationStore = {
     return annotationStore.annotationsForBlock(blockHash);
   },
 
+  /** Clears a handled jump so a remount cannot replay it. */
+  clearJump(): void {
+    setJumpRequest(null);
+  },
+
   /** All note bodies for a thread, in time order (the API already orders them). */
   notesFor(annotationId: number): AnnotationNote[] {
     return annotations().find((annotation) => annotation.id === annotationId)?.notes ?? [];
