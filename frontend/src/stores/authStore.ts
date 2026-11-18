@@ -20,6 +20,7 @@ import {
 function applyAuthStatus(data: AuthStatus) {
   setAuthRequired(data.authRequired);
   setAuthenticated(data.authenticated);
+  setUsername(data.username ?? null);
   setPasskeyConfigured(Boolean(data.passkeyConfigured));
   setPasskeyAvailable(Boolean(data.passkeyAvailable));
   setPasskeyOrigin(data.passkeyOrigin || null);
@@ -30,6 +31,7 @@ function applyAuthStatus(data: AuthStatus) {
 
 const [authRequired, setAuthRequired] = createSignal(false);
 const [authenticated, setAuthenticated] = createSignal(true);
+const [username, setUsername] = createSignal<string | null>(null);
 const [passkeyConfigured, setPasskeyConfigured] = createSignal(false);
 const [passkeyAvailable, setPasskeyAvailable] = createSignal(false);
 const [passkeyOrigin, setPasskeyOrigin] = createSignal<string | null>(null);
@@ -44,6 +46,7 @@ async function readErrorMessage(res: Response): Promise<string> {
 export const authStore = {
   authRequired,
   authenticated,
+  username,
   passkeyConfigured,
   passkeyAvailable,
   passkeyOrigin,
@@ -51,11 +54,22 @@ export const authStore = {
   error,
   setAuthenticated,
   setAuthRequired,
+  setUsername,
   setPasskeyConfigured,
   setPasskeyAvailable,
   setPasskeyOrigin,
   setLoading,
   setError,
+
+  /**
+   * The author stamped on web writes. With auth enabled this is the logged-in
+   * username (null when unknown, e.g. before status loads). Auth-disabled
+   * instances have no username, so writes use a local fallback instead of
+   * making every note look like a legacy row.
+   */
+  noteAuthor(): string | null {
+    return authRequired() ? username() : 'You';
+  },
 
   async checkStatus(): Promise<AuthStatus | null> {
     setLoading(true);
@@ -103,6 +117,7 @@ export const authStore = {
   async logout(): Promise<void> {
     await fetch('/api/auth/logout', { method: 'POST' });
     setAuthenticated(false);
+    setUsername(null);
     setPasskeyConfigured(false);
     setPasskeyAvailable(false);
     setPasskeyOrigin(null);

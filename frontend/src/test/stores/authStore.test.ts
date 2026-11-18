@@ -5,6 +5,7 @@ describe('authStore.checkStatus', () => {
   beforeEach(() => {
     authStore.setAuthRequired(true);
     authStore.setAuthenticated(true);
+    authStore.setUsername(null);
     authStore.setError(null);
   });
 
@@ -27,6 +28,52 @@ describe('authStore.checkStatus', () => {
     expect(result?.authenticated).toBe(true);
     expect(authStore.authenticated()).toBe(true);
     expect(authStore.loading()).toBe(false);
+  });
+
+  it('exposes the logged-in username from auth status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        authRequired: true,
+        authenticated: true,
+        username: 'Jonas',
+        passkeyConfigured: false,
+        passkeyAvailable: false,
+      }), { status: 200 }),
+    ));
+
+    const result = await authStore.checkStatus();
+
+    expect(result?.username).toBe('Jonas');
+    expect(authStore.username()).toBe('Jonas');
+  });
+
+  it('clears the username when there is no authenticated session', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        authRequired: true,
+        authenticated: false,
+        passkeyConfigured: false,
+        passkeyAvailable: false,
+      }), { status: 200 }),
+    ));
+
+    await authStore.checkStatus();
+
+    expect(authStore.username()).toBeNull();
+  });
+
+  it('uses the username as the note author when auth is enabled', () => {
+    authStore.setAuthRequired(true);
+    authStore.setUsername('Jonas');
+
+    expect(authStore.noteAuthor()).toBe('Jonas');
+  });
+
+  it('falls back to a local author on auth-disabled instances', () => {
+    authStore.setAuthRequired(false);
+    authStore.setUsername(null);
+
+    expect(authStore.noteAuthor()).toBe('You');
   });
 
   it('marks the session unauthenticated on an explicit 401', async () => {

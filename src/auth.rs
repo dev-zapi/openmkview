@@ -69,6 +69,10 @@ pub struct LoginRequest {
 pub struct AuthStatusResponse {
     pub auth_required: bool,
     pub authenticated: bool,
+    /// Logged-in username, echoed so the web UI can stamp annotation
+    /// authorship. Never sent while unauthenticated.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_timeout_minutes: Option<u64>,
     pub passkey_configured: bool,
@@ -334,6 +338,7 @@ pub async fn auth_status(data: web::Data<AppState>, req: HttpRequest) -> AppResu
         return Ok(HttpResponse::Ok().json(AuthStatusResponse {
             auth_required: false,
             authenticated: true,
+            username: None,
             session_timeout_minutes: None,
             passkey_configured: false,
             passkey_available: false,
@@ -353,6 +358,7 @@ pub async fn auth_status(data: web::Data<AppState>, req: HttpRequest) -> AppResu
     Ok(HttpResponse::Ok().json(AuthStatusResponse {
         auth_required: true,
         authenticated,
+        username: authenticated.then(|| auth.config.username.clone()),
         session_timeout_minutes: Some(timeout_minutes),
         passkey_configured,
         passkey_available,
@@ -369,6 +375,7 @@ pub async fn auth_login(
         return Ok(HttpResponse::Ok().json(AuthStatusResponse {
             auth_required: false,
             authenticated: true,
+            username: None,
             session_timeout_minutes: None,
             passkey_configured: false,
             passkey_available: false,
@@ -388,6 +395,7 @@ pub async fn auth_login(
     Ok(HttpResponse::Ok().cookie(cookie).json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
+        username: Some(auth.config.username.clone()),
         session_timeout_minutes: Some(session_timeout_minutes(auth)?),
         passkey_configured,
         passkey_available,
@@ -407,11 +415,13 @@ pub async fn auth_update_session_timeout(
     let timeout_minutes = body.session_timeout_minutes.max(1);
     update_session_timeout(&data, timeout_minutes)?;
 
+    let username = data.auth.as_ref().map(|auth| auth.config.username.clone());
     let (passkey_configured, passkey_available, passkey_origin) = passkey_status(&data, &req)?;
 
     Ok(HttpResponse::Ok().json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
+        username,
         session_timeout_minutes: Some(timeout_minutes),
         passkey_configured,
         passkey_available,

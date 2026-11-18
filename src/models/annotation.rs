@@ -8,6 +8,11 @@ pub struct AnnotationNote {
     pub id: i64,
     pub annotation_id: i64,
     pub body: String,
+    /// Free-text author of the note (logged-in username or agent-supplied
+    /// name). `None` marks a legacy note written before authorship existed.
+    pub author: Option<String>,
+    /// Whether this note came from an agent rather than the human user.
+    pub is_agent: bool,
     pub created_at: String,
 }
 
@@ -49,6 +54,13 @@ pub struct CreateAnnotationRequest {
     pub relative_path: String,
     pub anchor: Value,
     pub body: String,
+    /// Author of the first note. Omitted/`null` means legacy/unknown and is
+    /// rendered as "—" in the UI.
+    #[serde(default)]
+    pub author: Option<String>,
+    /// Agent voice marker; omitted defaults to `false` (human).
+    #[serde(default)]
+    pub is_agent: bool,
 }
 
 /// Manual re-anchoring of an Outdated annotation: replaces the Anchor payload
@@ -64,6 +76,12 @@ pub struct ReanchorAnnotationRequest {
 #[serde(rename_all = "camelCase")]
 pub struct AddNoteRequest {
     pub body: String,
+    /// Author of the reply. Omitted/`null` marks the note as legacy/unknown.
+    #[serde(default)]
+    pub author: Option<String>,
+    /// Agent voice marker; omitted defaults to `false` (human).
+    #[serde(default)]
+    pub is_agent: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -83,11 +101,17 @@ pub struct AnnotationListParams {
     pub project_id: i64,
     #[serde(rename = "relativePath")]
     pub relative_path: String,
+    /// Optional author filter: keep threads with a note by this author.
+    #[serde(default)]
+    pub author: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AnnotationProjectParams {
     pub project_id: i64,
+    /// Optional author filter: keep threads with a note by this author.
+    #[serde(default)]
+    pub author: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

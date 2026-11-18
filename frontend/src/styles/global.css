@@ -1786,8 +1786,46 @@
   color: var(--color-muted-foreground);
 }
 
+.annotation-note-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .annotation-note-time {
   white-space: nowrap;
+}
+
+.annotation-note-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.annotation-note-author-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.annotation-note-author-name:empty {
+  visibility: hidden;
+}
+
+.annotation-note-agent-badge {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in oklab, var(--color-primary) 45%, transparent);
+  border-radius: 999px;
+  color: var(--color-primary);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
 }
 
 .annotation-note-edit {

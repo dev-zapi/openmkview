@@ -90,7 +90,15 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
         {(note) => (
           <div class="annotation-note" data-note-id={String(note.id)}>
             <div class="annotation-note-meta">
-              <span class="annotation-note-time">{annotationNoteTime(note)}</span>
+              <span class="annotation-note-meta-left">
+                <span class="annotation-note-time">{annotationNoteTime(note)}</span>
+                <span class="annotation-note-author">
+                  <span class="annotation-note-author-name">{note.author ?? '—'}</span>
+                  <Show when={note.isAgent}>
+                    <span class="annotation-note-agent-badge">Agent</span>
+                  </Show>
+                </span>
+              </span>
               <button
                 type="button"
                 class="annotation-note-edit"

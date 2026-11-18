@@ -37,6 +37,7 @@ impl<'a> AnnotationRepository<'a> {
         Self { conn }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create(
         &self,
         project_id: i64,
@@ -44,6 +45,8 @@ impl<'a> AnnotationRepository<'a> {
         anchor_json: &str,
         snapshot: Option<&str>,
         body: &str,
+        author: Option<&str>,
+        is_agent: bool,
     ) -> AppResult<Annotation> {
         self.conn.execute(
             "INSERT INTO annotations (project_id, relative_path, anchor_json, snapshot)
@@ -54,8 +57,9 @@ impl<'a> AnnotationRepository<'a> {
         let annotation_id = self.conn.last_insert_rowid();
 
         self.conn.execute(
-            "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
-            params![annotation_id, body],
+            "INSERT INTO annotation_notes (annotation_id, body, author, is_agent)
+             VALUES (?, ?, ?, ?)",
+            params![annotation_id, body, author, is_agent as i64],
         )?;
 
         self.find_by_id(annotation_id)?
@@ -66,15 +70,23 @@ impl<'a> AnnotationRepository<'a> {
         &self,
         project_id: i64,
         relative_path: &str,
+        author: Option<&str>,
     ) -> AppResult<Vec<Annotation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, project_id, relative_path, anchor_json, snapshot, is_resolved, created_at, updated_at
              FROM annotations
              WHERE project_id = ? AND relative_path = ?
+               AND (?3 IS NULL OR EXISTS (
+                   SELECT 1 FROM annotation_notes note
+                   WHERE note.annotation_id = annotations.id AND note.author = ?3
+               ))
              ORDER BY created_at ASC, id ASC",
         )?;
 
-        let rows = stmt.query_map(params![project_id, relative_path], AnnotationRow::from_row)?;
+        let rows = stmt.query_map(
+            params![project_id, relative_path, author],
+            AnnotationRow::from_row,
+        )?;
 
         let mut annotations = Vec::new();
         for row in rows {
@@ -86,15 +98,23 @@ impl<'a> AnnotationRepository<'a> {
 
     /// Every annotation in a project, ordered by file then creation time.
     /// Includes rows whose stored path no longer exists on disk.
-    pub fn list_for_project(&self, project_id: i64) -> AppResult<Vec<Annotation>> {
+    pub fn list_for_project(
+        &self,
+        project_id: i64,
+        author: Option<&str>,
+    ) -> AppResult<Vec<Annotation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, project_id, relative_path, anchor_json, snapshot, is_resolved, created_at, updated_at
              FROM annotations
              WHERE project_id = ?
+               AND (?2 IS NULL OR EXISTS (
+                   SELECT 1 FROM annotation_notes note
+                   WHERE note.annotation_id = annotations.id AND note.author = ?2
+               ))
              ORDER BY relative_path ASC, created_at ASC, id ASC",
         )?;
 
-        let rows = stmt.query_map([project_id], AnnotationRow::from_row)?;
+        let rows = stmt.query_map(params![project_id, author], AnnotationRow::from_row)?;
 
         let mut annotations = Vec::new();
         for row in rows {
@@ -232,14 +252,21 @@ impl<'a> AnnotationRepository<'a> {
     }
 
     /// Appends a Reply to an existing thread and returns the hydrated annotation.
-    pub fn append_note(&self, annotation_id: i64, body: &str) -> AppResult<Option<Annotation>> {
+    pub fn append_note(
+        &self,
+        annotation_id: i64,
+        body: &str,
+        author: Option<&str>,
+        is_agent: bool,
+    ) -> AppResult<Option<Annotation>> {
         if self.find_by_id(annotation_id)?.is_none() {
             return Ok(None);
         }
 
         self.conn.execute(
-            "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
-            params![annotation_id, body],
+            "INSERT INTO annotation_notes (annotation_id, body, author, is_agent)
+             VALUES (?, ?, ?, ?)",
+            params![annotation_id, body, author, is_agent as i64],
         )?;
         self.touch(annotation_id)?;
 
@@ -298,7 +325,7 @@ impl<'a> AnnotationRepository<'a> {
 
     fn load_notes(&self, annotation_id: i64) -> AppResult<Vec<AnnotationNote>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, annotation_id, body, created_at
+            "SELECT id, annotation_id, body, author, is_agent, created_at
              FROM annotation_notes
              WHERE annotation_id = ?
              ORDER BY created_at ASC, id ASC",
@@ -309,7 +336,9 @@ impl<'a> AnnotationRepository<'a> {
                 id: row.get(0)?,
                 annotation_id: row.get(1)?,
                 body: row.get(2)?,
-                created_at: row.get(3)?,
+                author: row.get(3)?,
+                is_agent: row.get::<_, i64>(4)? != 0,
+                created_at: row.get(5)?,
             })
         })?;
 

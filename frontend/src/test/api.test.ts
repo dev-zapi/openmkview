@@ -469,7 +469,16 @@ describe('api service', () => {
       resolved: false,
       createdAt: '2026-01-01 00:00:00',
       updatedAt: '2026-01-01 00:00:00',
-      notes: [{ id: 1, annotationId: 7, body: 'note', createdAt: '2026-01-01 00:00:00' }],
+      notes: [
+        {
+          id: 1,
+          annotationId: 7,
+          body: 'note',
+          author: 'Jonas',
+          isAgent: false,
+          createdAt: '2026-01-01 00:00:00',
+        },
+      ],
     };
 
     it('lists annotations for a file', async () => {

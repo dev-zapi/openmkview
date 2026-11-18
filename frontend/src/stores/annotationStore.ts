@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import type { Annotation, AnnotationAnchor, ManagedAnnotation } from '../types';
+import { authStore } from './authStore';
 import { api } from '../services/api';
 import { offlineStore } from './offlineStore';
 import { hashBlockContent } from '../utils/blockModel';
@@ -374,7 +375,14 @@ export const annotationStore = {
     anchor: AnnotationAnchor,
     body: string
   ): Promise<Annotation> {
-    const created = await api.createAnnotation({ projectId, relativePath, anchor, body });
+    const created = await api.createAnnotation({
+      projectId,
+      relativePath,
+      anchor,
+      body,
+      author: authStore.noteAuthor(),
+      isAgent: false,
+    });
     if (loadedKey === fileKey(projectId, relativePath)) {
       setAnnotations((current) => [...current, created]);
     }
@@ -420,7 +428,11 @@ export const annotationStore = {
 
   /** Appends a Reply to the thread and keeps the list in sync. */
   async appendNote(annotationId: number, body: string): Promise<Annotation> {
-    const updated = await api.addAnnotationNote(annotationId, body);
+    const updated = await api.addAnnotationNote(
+      annotationId,
+      body,
+      authStore.noteAuthor()
+    );
     replaceAnnotation(updated);
     return updated;
   },
