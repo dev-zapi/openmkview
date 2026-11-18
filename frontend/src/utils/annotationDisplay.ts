@@ -16,13 +16,16 @@ export function annotationNotePreview(annotation: Annotation): string {
 }
 
 /** Short label for the thread state, including the optional Outdated flag. */
-export function annotationState(annotation: Annotation): {
+export function annotationState(
+  annotation: Annotation,
+  outdated = annotation.outdated === true
+): {
   label: 'Active' | 'Resolved';
   outdated: boolean;
 } {
   return {
     label: annotation.resolved ? 'Resolved' : 'Active',
-    outdated: annotation.outdated === true,
+    outdated,
   };
 }
 

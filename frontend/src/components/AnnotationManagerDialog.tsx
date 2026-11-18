@@ -20,6 +20,17 @@ interface AnnotationManagerDialogProps {
 const emptySelection = () => new Set<number>();
 
 /**
+ * Outdated state is resolved per rendered document (#19) and exposed by the
+ * annotation store when that ticket is present; the optional payload field is
+ * the generic fallback. The panel renders the flag, not #19's badge/snapshot.
+ */
+function isRowOutdated(row: ManagedAnnotation): boolean {
+  if (row.outdated === true) return true;
+  const probe = annotationStore as unknown as { isOutdated?: (id: number) => boolean };
+  return probe.isOutdated?.(row.id) === true;
+}
+
+/**
  * Project-wide management fallback for annotations (#22). Lists every row in
  * the Active Project — including Outdated and path-orphaned ones — and offers
  * batch Resolved changes, batch delete, and a confirmed clear-all.
@@ -191,7 +202,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
               <tbody>
                 <For each={rows()}>
                   {(row) => {
-                    const state = annotationState(row);
+                    const state = annotationState(row, isRowOutdated(row));
                     return (
                       <tr class={row.orphaned ? 'annotation-manager-row-orphaned' : ''}>
                         <td>
