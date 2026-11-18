@@ -17,19 +17,9 @@ interface AnnotationManagerDialogProps {
   onOpenFile?: (path: string) => void;
 }
 
-/** The annotation store grows `isOutdated` when #19 lands; probe it optionally. */
-type AnnotationStoreWithOutdated = typeof annotationStore & {
-  isOutdated?: (annotationId: number) => boolean;
-};
-
-/**
- * Outdated state is resolved per rendered document (#19) and exposed by the
- * annotation store when that ticket is present; the optional payload field is
- * the generic fallback. The panel renders the flag, not #19's badge/snapshot.
- */
+/** Outdated state is published by the store for the annotation's own file. */
 function isRowOutdated(row: ManagedAnnotation): boolean {
-  if (row.outdated === true) return true;
-  return (annotationStore as AnnotationStoreWithOutdated).isOutdated?.(row.id) === true;
+  return annotationStore.isOutdated(row.id);
 }
 
 /**

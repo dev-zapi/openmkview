@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import type { Annotation, AnnotationAnchor, AnnotationNote, ManagedAnnotation } from '../types';
+import type { Annotation, AnnotationAnchor, ManagedAnnotation } from '../types';
 import { api } from '../services/api';
 import { offlineStore } from './offlineStore';
 import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
@@ -98,6 +98,29 @@ function applyManaged(next: ManagedAnnotation[]): void {
   setManagedSelection((current) => {
     const pruned = new Set([...current].filter((id) => live.has(id)));
     return pruned.size === current.size ? current : pruned;
+  });
+}
+
+/**
+ * The one local removal path for delete, batch delete, and clear-all: every
+ * list surface and the Outdated map are pruned together. Passing null means
+ * "everything".
+ */
+function removeLocally(ids: ReadonlySet<number> | null): void {
+  if (ids === null) {
+    setAnnotations([]);
+    applyManaged([]);
+    setOutdatedSnapshotsSignal(new Map());
+    return;
+  }
+
+  setAnnotations((current) => current.filter((annotation) => !ids.has(annotation.id)));
+  applyManaged(managed().filter((annotation) => !ids.has(annotation.id)));
+  setOutdatedSnapshotsSignal((current) => {
+    if (![...ids].some((id) => current.has(id))) return current;
+    const next = new Map(current);
+    for (const id of ids) next.delete(id);
+    return next;
   });
 }
 
@@ -261,12 +284,7 @@ export const annotationStore = {
 
   async remove(id: number): Promise<void> {
     await api.deleteAnnotation(id);
-    setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
-    setOutdatedSnapshotsSignal((current) => {
-      const next = new Map(current);
-      next.delete(id);
-      return next;
-    });
+    removeLocally(new Set([id]));
   },
 
   /**
@@ -363,9 +381,7 @@ export const annotationStore = {
   /** Multi-select delete in one project. Updates both list surfaces in place. */
   async batchDelete(projectId: number, ids: number[]): Promise<void> {
     await api.batchDeleteAnnotations(projectId, ids);
-    const removed = new Set(ids);
-    applyManaged(managed().filter((annotation) => !removed.has(annotation.id)));
-    setAnnotations((current) => current.filter((annotation) => !removed.has(annotation.id)));
+    removeLocally(new Set(ids));
   },
 
   /** Multi-select Resolved toggle in one project. */
@@ -383,8 +399,7 @@ export const annotationStore = {
   /** Deletes every annotation in the project after explicit confirmation. */
   async clearProject(projectId: number): Promise<void> {
     await api.clearProjectAnnotations(projectId);
-    applyManaged([]);
-    setAnnotations([]);
+    removeLocally(null);
   },
 
   /**
@@ -420,33 +435,9 @@ export const annotationStore = {
     pendingJump = null;
   },
 
-  /** All annotations whose Anchor references the given block, in list order. */
-  annotationsForBlock(blockHash: string): Annotation[] {
-    return annotations().filter(
-      (annotation) =>
-        annotation.projectId === currentProjectId &&
-        annotation.relativePath === currentRelativePath &&
-        annotation.anchor?.segments?.some(
-          (segment) =>
-            (segment.kind === 'block' || segment.kind === 'text') &&
-            segment.blockHash === blockHash
-        )
-    );
-  },
-
-  /** Alias for annotationsForBlock: both return every matching annotation. */
-  byBlockHash(blockHash: string): Annotation[] {
-    return annotationStore.annotationsForBlock(blockHash);
-  },
-
   /** Clears a handled jump so a remount cannot replay it. */
   clearJump(): void {
     setJumpRequest(null);
-  },
-
-  /** All note bodies for a thread, in time order (the API already orders them). */
-  notesFor(annotationId: number): AnnotationNote[] {
-    return annotations().find((annotation) => annotation.id === annotationId)?.notes ?? [];
   },
 };
 

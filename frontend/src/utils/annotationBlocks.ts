@@ -164,8 +164,6 @@ export function blockAnchorFrom(block: RenderedBlock): AnnotationAnchor {
 export interface AnnotationHighlightResult {
   /** Block id -> annotations attached to it (resolved anchors only). */
   attachments: Map<string, Annotation[]>;
-  /** Annotation id -> originally anchored text, for every Outdated anchor. */
-  outdated: Map<number, string>;
 }
 
 /**
@@ -223,7 +221,6 @@ export function applyAnnotationHighlights(
   const elementsById = new Map(blocks.map((block) => [block.model.id, block.element]));
   const models = blocks.map((block) => block.model);
   const attachments = new Map<string, Annotation[]>();
-  const outdated = new Map<number, string>();
   const blockIds = new Map<string, number[]>();
   const blockResolved = new Map<string, boolean>();
 
@@ -244,8 +241,7 @@ export function applyAnnotationHighlights(
   for (const annotation of annotations) {
     const resolution = resolveAnchor(models, annotation.anchor);
     if (resolution.status !== 'resolved') {
-      const snapshot = annotation.snapshot?.trim() || resolution.snapshot;
-      outdated.set(annotation.id, snapshot);
+      // Status is published by `resolveOutdated`; this pass only draws.
       continue;
     }
 
@@ -290,7 +286,7 @@ export function applyAnnotationHighlights(
     }
   }
 
-  return { attachments, outdated };
+  return { attachments };
 }
 
 function modelType(models: BlockModel[], blockId: string): string {
@@ -300,7 +296,6 @@ function modelType(models: BlockModel[], blockId: string): string {
 export interface AppliedHighlights {
   searchMatches: HTMLElement[];
   attachments: Map<string, Annotation[]>;
-  outdated: Map<number, string>;
 }
 
 /**

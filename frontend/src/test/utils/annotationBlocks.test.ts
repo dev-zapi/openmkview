@@ -212,7 +212,11 @@ describe('annotationBlocks', () => {
     expect(applied.attachments.size).toBe(0);
     // The resolver's snapshot drives the Outdated popover; the annotation is
     // never silently attached to unrelated content.
-    expect(applied.outdated.get(10)).toBe('vanished words');
+    const outdated = resolveOutdated(
+      blocks.map((block) => block.model),
+      [annotation]
+    );
+    expect(outdated.get(10)).toBe('vanished words');
   });
 
   it('does not report resolved annotations as Outdated', () => {
@@ -222,7 +226,12 @@ describe('annotationBlocks', () => {
 
     const applied = applyAnnotationHighlights(root, [annotation], blocks);
 
-    expect(applied.outdated.size).toBe(0);
+    expect(
+      resolveOutdated(
+        blocks.map((block) => block.model),
+        [annotation]
+      ).size
+    ).toBe(0);
     expect(applied.attachments.get(blocks[0].model.id)?.[0]?.id).toBe(12);
   });
 
