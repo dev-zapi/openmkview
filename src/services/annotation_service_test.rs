@@ -750,7 +750,7 @@ fn managed_list_does_not_leak_annotations_from_other_projects() {
 
 #[test]
 fn batch_delete_removes_only_selected_ids_from_the_given_project() {
-    let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n"), ("other.md", "# Other\n")]);
     let service = AnnotationService::new(&fixture.conn);
     let second_project_id = add_second_project(&fixture, &[("second.md", "# Second\n")]);
 
@@ -760,9 +760,9 @@ fn batch_delete_removes_only_selected_ids_from_the_given_project() {
     let first_to_delete = service
         .create(create_request(fixture.project_id, "doc.md", "delete one"))
         .expect("create first delete target");
-    let second_to_delete = service
-        .create(create_request(fixture.project_id, "doc.md", "delete two"))
-        .expect("create second delete target");
+    let cross_file_to_delete = service
+        .create(create_request(fixture.project_id, "other.md", "delete two"))
+        .expect("create cross-file delete target");
     let foreign = service
         .create(create_request(
             second_project_id,
@@ -774,7 +774,7 @@ fn batch_delete_removes_only_selected_ids_from_the_given_project() {
     let deleted = service
         .batch_delete(
             fixture.project_id,
-            &[first_to_delete.id, second_to_delete.id, foreign.id],
+            &[first_to_delete.id, cross_file_to_delete.id, foreign.id],
         )
         .expect("batch delete");
 
@@ -785,6 +785,10 @@ fn batch_delete_removes_only_selected_ids_from_the_given_project() {
         .expect("list remaining annotations");
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, keep.id);
+    assert!(service
+        .list_for_file(fixture.project_id, "other.md")
+        .expect("list other file")
+        .is_empty());
 
     let foreign_rows = service
         .list_for_file(second_project_id, "second.md")
@@ -815,16 +819,16 @@ fn batch_delete_with_no_ids_is_a_no_op() {
 
 #[test]
 fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
-    let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);
+    let fixture = fixture_with_files(&[("doc.md", "# Title\n"), ("other.md", "# Other\n")]);
     let service = AnnotationService::new(&fixture.conn);
     let second_project_id = add_second_project(&fixture, &[("second.md", "# Second\n")]);
 
     let first = service
         .create(create_request(fixture.project_id, "doc.md", "first"))
         .expect("create first annotation");
-    let second = service
-        .create(create_request(fixture.project_id, "doc.md", "second"))
-        .expect("create second annotation");
+    let cross_file = service
+        .create(create_request(fixture.project_id, "other.md", "cross file"))
+        .expect("create cross-file annotation");
     let untouched = service
         .create(create_request(fixture.project_id, "doc.md", "untouched"))
         .expect("create untouched annotation");
@@ -833,7 +837,11 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
         .expect("create foreign annotation");
 
     let resolved = service
-        .batch_resolve(fixture.project_id, &[first.id, second.id, foreign.id], true)
+        .batch_resolve(
+            fixture.project_id,
+            &[first.id, cross_file.id, foreign.id],
+            true,
+        )
         .expect("batch resolve");
 
     assert_eq!(resolved, 2);
@@ -848,19 +856,17 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
             .resolved
     );
     assert!(
-        listed
-            .iter()
-            .find(|entry| entry.id == second.id)
-            .expect("second present")
-            .resolved
-    );
-    assert!(
         !listed
             .iter()
             .find(|entry| entry.id == untouched.id)
             .expect("untouched present")
             .resolved
     );
+
+    let other_rows = service
+        .list_for_file(fixture.project_id, "other.md")
+        .expect("list other file");
+    assert!(other_rows[0].resolved);
 
     let foreign_rows = service
         .list_for_file(second_project_id, "second.md")
@@ -882,10 +888,9 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
             .resolved
     );
     assert!(
-        listed
-            .iter()
-            .find(|entry| entry.id == second.id)
-            .expect("second present")
+        service
+            .list_for_file(fixture.project_id, "other.md")
+            .expect("list other file after unresolve")[0]
             .resolved
     );
 }
