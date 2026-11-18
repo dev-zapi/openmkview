@@ -341,10 +341,12 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
    */
   const applyDecorations = () => {
     if (!contentRef) {
+      annotationStore.setOutdatedSnapshots(new Map());
       props.onSearchResultsChange?.(0);
       return;
     }
     if (renderedBlockList.length === 0) {
+      annotationStore.setOutdatedSnapshots(new Map());
       props.onSearchResultsChange?.(0);
       return;
     }
