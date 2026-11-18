@@ -1,4 +1,4 @@
-import type { Annotation } from '../types';
+import type { Annotation, AnnotationNote } from '../types';
 import { anchorExcerpt } from './anchorScoring';
 
 /**
@@ -20,7 +20,7 @@ export function annotationNotePreview(annotation: Annotation): string {
   return body || 'No note text';
 }
 
-/** Short label for the thread state, including the optional Outdated flag. */
+/** Short label for the thread state, including its Outdated flag. */
 export function annotationState(
   annotation: Annotation,
   outdated: boolean
@@ -49,9 +49,18 @@ export function parseAnnotationTimestamp(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Display timestamp for the management table. */
-export function annotationTime(annotation: Annotation): string {
-  const value = annotation.updatedAt || annotation.createdAt;
+/** The one localized rendering for every Annotation timestamp. */
+export function formatAnnotationTimestamp(value: string): string {
   const date = parseAnnotationTimestamp(value);
   return date ? date.toLocaleString() : value;
+}
+
+/** Display timestamp for the management table. */
+export function annotationTime(annotation: Annotation): string {
+  return formatAnnotationTimestamp(annotation.updatedAt || annotation.createdAt);
+}
+
+/** Display timestamp for one note in a thread. */
+export function annotationNoteTime(note: AnnotationNote): string {
+  return formatAnnotationTimestamp(note.createdAt);
 }

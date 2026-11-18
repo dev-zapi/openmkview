@@ -185,12 +185,19 @@ function removeLocally(ids: ReadonlySet<number> | null): void {
     setAnnotations([]);
     applyManaged([]);
     setOutdatedSnapshotsSignal(new Map());
+    setManagedOutdated(new Map());
     return;
   }
 
   setAnnotations((current) => current.filter((annotation) => !ids.has(annotation.id)));
   applyManaged(managed().filter((annotation) => !ids.has(annotation.id)));
   setOutdatedSnapshotsSignal((current) => {
+    if (![...ids].some((id) => current.has(id))) return current;
+    const next = new Map(current);
+    for (const id of ids) next.delete(id);
+    return next;
+  });
+  setManagedOutdated((current) => {
     if (![...ids].some((id) => current.has(id))) return current;
     const next = new Map(current);
     for (const id of ids) next.delete(id);

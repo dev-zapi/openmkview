@@ -243,37 +243,37 @@ test.describe('annotation management panel', () => {
     await expect(rowFor(manager, 'healthy note').getByRole('button', { name: 'Jump' })).toBeVisible();
   });
 
-  test('orphaned rows explain why they cannot jump', async ({ page }) => {
+  test('missing-file rows explain why they cannot jump', async ({ page }) => {
     const healthy = await createScratchFile(
       page,
       markdown('Management Healthy', TARGET_A),
       MANAGED_PREFIX
     );
-    const orphan = await createScratchFile(
+    const missingFile = await createScratchFile(
       page,
       markdown('Management Gone', TARGET_B),
       MANAGED_PREFIX
     );
-    targets = [healthy, orphan];
+    targets = [healthy, missingFile];
 
-    await createAnnotationViaApi(page, orphan, 'orphan note');
+    await createAnnotationViaApi(page, missingFile, 'missing file note');
     await page.evaluate(async ({ projectId, path }) => {
       await fetch('/api/files', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: projectId, path }),
       });
-    }, orphan);
+    }, missingFile);
 
     await openScratch(page, healthy, 'Management Healthy');
     // A real UI anchor so the row stays locatable (not Outdated).
     await createBlockAnnotation(page, TARGET_A, 'healthy note');
     const manager = await openManager(page);
 
-    const orphanRow = rowFor(manager, 'orphan note');
-    await expect(orphanRow).toContainText(orphan.path);
-    await expect(orphanRow).toContainText('File missing — cannot jump');
-    await expect(orphanRow.getByRole('button', { name: 'Jump' })).toHaveCount(0);
+    const missingFileRow = rowFor(manager, 'missing file note');
+    await expect(missingFileRow).toContainText(missingFile.path);
+    await expect(missingFileRow).toContainText('File missing — cannot jump');
+    await expect(missingFileRow.getByRole('button', { name: 'Jump' })).toHaveCount(0);
 
     await expect(rowFor(manager, 'healthy note').getByRole('button', { name: 'Jump' })).toBeVisible();
   });
