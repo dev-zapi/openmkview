@@ -85,6 +85,14 @@ cli() {
   OPENMKVIEW_AGENT_CONFIG="$AGENT_CONFIG" node "$OMK" "$@"
 }
 
+# Credentials for auth-mode init/login: the password is supplied only through
+# the environment; the CLI rejects it on the command line.
+cli_auth() {
+  OPENMKVIEW_AGENT_CONFIG="$AGENT_CONFIG" \
+  OPENMKVIEW_PASSWORD=secret \
+    node "$OMK" "$@"
+}
+
 wait_ready() {
   local url=$1
   for _ in $(seq 1 100); do
@@ -125,6 +133,37 @@ Alpha beta gamma is a repeated sentence.
 # Details
 
 Alpha beta gamma is a repeated sentence.
+
+# Wrapped prose
+
+The quick brown
+fox jumps over
+the lazy dog.
+
+## Quote
+
+> quote first line
+> quote second line
+
+## List
+
+- item first line
+  continuation line
+- second item
+
+## Table
+
+| A | B |
+|---|---|
+| C | D |
+
+Setext first line
+continued
+===
+
+## Images
+
+Text before ![alt text](pic.png) text after.
 MARKDOWN
 }
 
@@ -181,7 +220,7 @@ run_mode() {
 
   if [[ "$mode" == "auth" ]]; then
     local init_json="$mode_root/init.json"
-    cli init --url "$url" --username alice --password secret --label "smoke-$mode" >"$init_json"
+    cli_auth init --url "$url" --username alice --label "smoke-$mode" >"$init_json"
     [[ "$(jsonq "$init_json" 'd.authRequired')" == "true" ]] || fail "init did not detect auth"
     TOKEN=$(jsonq "$agent_config" 'd.token')
     [[ -n "$TOKEN" && "$TOKEN" != "null" ]] || fail "init did not store a token"
@@ -204,6 +243,14 @@ run_mode() {
   fi
   pass "$mode config is 0600 with URL + token only"
 
+  # A loosened config is tightened on the next load, with a loud warning.
+  chmod 0644 "$agent_config"
+  cli list --file "$docs/guide.md" >"$mode_root/tighten-list.json" 2>"$mode_root/tighten-err.txt"
+  [[ "$(stat -c '%a' "$agent_config")" == "600" ]] || fail "loadConfig did not tighten permissions"
+  grep -q "tightened to 600" "$mode_root/tighten-err.txt" \
+    || fail "loadConfig did not warn about loose permissions"
+  pass "$mode config tightened on load"
+
   # Empty list.
   local list_json="$mode_root/list-empty.json"
   cli list --file "$docs/guide.md" >"$list_json"
@@ -213,7 +260,7 @@ run_mode() {
   # OPENMKVIEW_URL overrides a configured URL (open mode only: no token needed).
   if [[ "$mode" == "open" ]]; then
     local override_config="$mode_root/override-agent.json"
-    node -e 'const fs=require("node:fs");fs.writeFileSync(process.argv[1], JSON.stringify({url:"http://127.0.0.1:1", token:null}));' "$override_config"
+    node -e 'const fs=require("node:fs");fs.writeFileSync(process.argv[1], JSON.stringify({url:"http://127.0.0.1:1", token:null}), {mode:0o600});' "$override_config"
     OPENMKVIEW_URL="$url" OPENMKVIEW_AGENT_CONFIG="$override_config" \
       node "$OMK" list --file "$docs/guide.md" >"$mode_root/override-list.json"
     [[ "$(jsonq "$mode_root/override-list.json" 'd.length')" == "0" ]] \
@@ -226,6 +273,7 @@ run_mode() {
   cli create --file "$docs/guide.md" --quote "development server" \
     --body "Agent note: clarify prerequisites." --author "claude" >"$created_json"
   ANNOTATION_ID=$(jsonq "$created_json" 'd.id')
+  PROJECT_ID=$(jsonq "$created_json" 'd.projectId')
   [[ "$(jsonq "$created_json" 'd.notes[0].author')" == "claude" ]] || fail "create did not stamp the author"
   [[ "$(jsonq "$created_json" 'd.notes[0].isAgent')" == "true" ]] || fail "create did not stamp isAgent"
   [[ "$(jsonq "$created_json" 'd.anchor.segments[0].kind')" == "text" ]] || fail "expected a text anchor"
@@ -244,6 +292,39 @@ run_mode() {
   [[ "$(jsonq "$human_json" 'd.notes[0].isAgent')" == "false" ]] || fail "--human did not clear isAgent"
   [[ "$(jsonq "$human_json" 'd.notes[0].author')" == "Jonas" ]] || fail "--human author mismatch"
   pass "$mode --human stamps a human note"
+
+  # Projection fidelity: a quote must match exactly what the rendered Preview
+  # sees for wrapped prose, blockquotes, list continuations, setext headings,
+  # tables, and images. Each failure mode changes blockText in a visible way.
+  local -a construct_ids=()
+  assert_construct() {
+    local label=$1 quote=$2 expected=$3 expected_type=${4:-}
+    local out="$mode_root/construct-$label.json"
+    cli create --file "$docs/guide.md" --quote "$quote" \
+      --body "Projection check: $label" --author claude >"$out"
+    local block_text
+    block_text=$(jsonq "$out" 'd.anchor.segments[0].blockText')
+    [[ "$block_text" == "$expected" ]] \
+      || fail "$label blockText: expected [$expected], got [$block_text]"
+    if [[ -n "$expected_type" ]]; then
+      [[ "$(jsonq "$out" 'd.anchor.segments[0].blockType')" == "$expected_type" ]] \
+        || fail "$label blockType: expected $expected_type"
+    fi
+    construct_ids+=("$(jsonq "$out" 'd.id')")
+    pass "$mode projection: $label"
+  }
+
+  assert_construct paragraph-wrapped "brownfox" "The quick brownfox jumps overthe lazy dog."
+  assert_construct blockquote-wrapped "linequote" "quote first linequote second line"
+  assert_construct list-continuation "linecontinuation" "item first linecontinuation line second item"
+  assert_construct setext-multiline "first linecontinued" "Setext first linecontinued" h1
+  assert_construct table-cells "C D" "A B C D" table
+  assert_construct image-alt "before text after" "Text before text after."
+
+  cli batch-delete "${construct_ids[@]}" --project "$PROJECT_ID" >"$mode_root/construct-cleanup.json"
+  [[ "$(jsonq "$mode_root/construct-cleanup.json" 'd.deleted')" == "6" ]] \
+    || fail "construct cleanup did not delete all six rows"
+  pass "$mode construct cleanup"
 
   # Reply.
   local reply_json="$mode_root/reply.json"
@@ -264,7 +345,6 @@ run_mode() {
   cli create --file "$docs/guide.md" --quote "Alpha beta gamma" \
     --body "Duplicate-context note." --author "claude" >"$duplicate_json"
   DUPLICATE_ID=$(jsonq "$duplicate_json" 'd.id')
-  PROJECT_ID=$(jsonq "$duplicate_json" 'd.projectId')
   [[ "$(jsonq "$duplicate_json" 'd.anchor.segments[0].kind')" == "text" ]] || fail "duplicate quote anchor kind"
   pass "$mode duplicate-block quote anchors"
 
@@ -335,12 +415,43 @@ run_mode() {
 
     # login re-exchanges and restores access.
     local login_json="$mode_root/login.json"
-    cli login --username alice --password secret --label "smoke-relogin" >"$login_json"
+    cli_auth login --username alice --label "smoke-relogin" >"$login_json"
     cli list --file "$docs/guide.md" >"$mode_root/list-after-login.json"
     [[ "$(jsonq "$mode_root/list-after-login.json" 'd.length > 0')" == "true" ]] || fail "login did not restore access"
     pass "$mode login restores a working session"
   fi
 }
+
+echo "== CLI entry and argument handling =="
+
+# A symlinked invocation must still run the CLI (realpath-based entry guard).
+ln -s "$OMK" "$SMOKE_ROOT/omk-symlink.mjs"
+node "$SMOKE_ROOT/omk-symlink.mjs" --help >"$SMOKE_ROOT/symlink-help.txt"
+grep -q "Usage:" "$SMOKE_ROOT/symlink-help.txt" || fail "symlinked CLI did not run"
+pass "symlinked entry point runs"
+
+# Unknown commands are rejected before config/URL resolution.
+unknown_status=0
+set +e
+env -u OPENMKVIEW_URL OPENMKVIEW_AGENT_CONFIG="$SMOKE_ROOT/no-such-config.json" \
+  node "$OMK" definitely-not-a-command >"$SMOKE_ROOT/unknown-out.txt" 2>"$SMOKE_ROOT/unknown-err.txt"
+unknown_status=$?
+set -e
+[[ "$unknown_status" -ne 0 ]] || fail "unknown command exited zero"
+grep -q "Unknown command" "$SMOKE_ROOT/unknown-err.txt" || fail "unknown command message missing"
+pass "unknown command rejected before config lookup"
+
+# Passwords are never accepted on the command line.
+password_status=0
+set +e
+env -u OPENMKVIEW_PASSWORD OPENMKVIEW_AGENT_CONFIG="$SMOKE_ROOT/no-such-config.json" \
+  node "$OMK" init --password secret >"$SMOKE_ROOT/password-out.txt" 2>"$SMOKE_ROOT/password-err.txt"
+password_status=$?
+set -e
+[[ "$password_status" -ne 0 ]] || fail "--password was accepted"
+grep -q "not accepted on the command line" "$SMOKE_ROOT/password-err.txt" \
+  || fail "--password rejection message missing"
+pass "--password flag rejected"
 
 run_mode open
 run_mode auth

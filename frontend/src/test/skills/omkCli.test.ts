@@ -297,6 +297,64 @@ describe('omk.mjs anchor construction', () => {
       expectResolvedInPreview(markdown, cli.buildAnchorFromMarkdown(markdown, quote));
     }
   });
+
+  it('mirrors rendered soft breaks, list continuations, setext headings, tables, and images', () => {
+    // `breaks: true` turns soft line breaks into <br> (no text node), so
+    // wrapped prose concatenates without a space. Lists keep a space only
+    // between items; table cells keep one space; image alt text is not text.
+    const markdown = [
+      '# Wrapped prose',
+      '',
+      'The quick brown',
+      'fox jumps over',
+      'the lazy dog.',
+      '',
+      '## Quote',
+      '',
+      '> quote first line',
+      '> quote second line',
+      '',
+      '## List',
+      '',
+      '- item first line',
+      '  continuation line',
+      '- second item',
+      '',
+      '## Table',
+      '',
+      '| A | B |',
+      '|---|---|',
+      '| C | D |',
+      '',
+      'Setext first line',
+      'continued',
+      '===',
+      '',
+      '## Images',
+      '',
+      'Text before ![alt text](pic.png) text after.',
+      '',
+    ].join('\n');
+
+    const cliBlocks = cli.parseMarkdownBlocks(markdown).map(
+      ({ id, type, text, headingPath }) => ({ id, type, text, headingPath })
+    );
+    const rendered = renderedBlocks(markdown).map(
+      ({ id, type, text, headingPath }) => ({ id, type, text, headingPath })
+    );
+    expect(cliBlocks).toEqual(rendered);
+
+    for (const quote of [
+      'brownfox', // wrapped paragraph: no separator at the soft break
+      'linequote', // wrapped blockquote: no separator
+      'linecontinuation', // list item continuation: no separator
+      'first linecontinued', // multi-line setext heading
+      'C D', // table cells are space-separated
+      'before text after', // image alt text is dropped
+    ]) {
+      expectResolvedInPreview(markdown, cli.buildAnchorFromMarkdown(markdown, quote));
+    }
+  });
 });
 
 describe('omk.mjs write identity', () => {

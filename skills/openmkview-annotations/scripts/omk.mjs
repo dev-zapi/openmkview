@@ -25,7 +25,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
 
 export const CONTEXT_LENGTH = 48;
@@ -60,7 +60,6 @@ function blockHashFor(type, text, occurrence) {
  * degrade an Anchor to Outdated — never make it match the wrong text.
  * ------------------------------------------------------------------------- */
 
-const BOUNDARY = '\u0001';
 const ESCAPABLE = /[\\`*_{}[\]()#+\-.!>~|]/;
 
 const NAMED_ENTITIES = {
@@ -199,8 +198,12 @@ function projectMarkdownLine(line) {
   text = text.replace(/^\s{0,3}([-+*]|\d{1,9}[.)])\s+/, '');
   text = text.replace(/^\[[ xX]\]\s+/, '');
 
+  // Images render as <img> with an empty textContent: their alt text must not
+  // leak into the anchor. Links contribute their visible label.
   text = text
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
+    .replace(/!\[([^\]]*)\]\[[^\]]*\]/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]*)\]\[[^\]]*\]/g, '$1')
     .replace(/<((?:https?|mailto):[^>]+)>/g, '$1')
     .replace(/<[^>]+>/g, '');
@@ -229,6 +232,34 @@ function pushCharacter(builder, character) {
 function pushLine(builder, projected) {
   for (const character of projected) pushCharacter(builder, character);
   pushCharacter(builder, '\n');
+}
+
+/**
+ * Appends prose content with no inter-line separator.
+ *
+ * The renderer is marked with `breaks: true`: every soft line break becomes a
+ * `<br>`, which contributes no text node, so `brown` + `fox` renders as
+ * `brownfox`. Leading whitespace on the next raw line does survive as text
+ * (collapsed to one space here), matching the renderer's `<br>  fox` output.
+ */
+function pushText(builder, projected) {
+  // CommonMark consumes trailing whitespace at a prose line end (two spaces
+  // are a hard break). The renderer's <br> carries none of it forward.
+  const content = projected.replace(/\s+$/, '');
+  for (const character of content) pushCharacter(builder, character);
+}
+
+function pushSeparator(builder) {
+  pushCharacter(builder, ' ');
+}
+
+/** Removes up to `width` leading spaces (a list container indent). */
+function stripIndent(line, width) {
+  let index = 0;
+  while (index < line.length && index < width && line[index] === ' ') {
+    index += 1;
+  }
+  return line.slice(index);
 }
 
 function finishBlock(builder, type, headingPath) {
@@ -275,13 +306,16 @@ function parseSourceBlocks(lines) {
   const blocks = [];
   const headingStack = [];
   const currentPath = () => headingStack.map((heading) => heading.text);
-  const updateHeading = (level, text) => {
+  const popHeadings = (level) => {
     while (
       headingStack.length > 0 &&
       headingStack[headingStack.length - 1].level >= level
     ) {
       headingStack.pop();
     }
+  };
+  const updateHeading = (level, text) => {
+    popHeadings(level);
     headingStack.push({ level, text });
   };
 
@@ -327,8 +361,11 @@ function parseSourceBlocks(lines) {
     const atx = ATX_RE.exec(line);
     if (atx) {
       const level = atx[1].length;
+      // A heading's path excludes itself and any previous heading at the same
+      // or deeper level (assignBlockAnchors pops before recording the path).
+      popHeadings(level);
       const builder = createBuilder();
-      pushLine(builder, projectMarkdownLine(atx[2]));
+      pushText(builder, projectMarkdownLine(atx[2]));
       blocks.push(finishBlock(builder, `h${level}`, currentPath()));
       updateHeading(level, normalizeBlockText(builder.text.join('')));
       index += 1;
@@ -362,7 +399,14 @@ function parseSourceBlocks(lines) {
       const builder = createBuilder();
       let cursor = index;
       while (cursor < lines.length && BLOCKQUOTE_RE.test(lines[cursor])) {
-        pushLine(builder, projectMarkdownLine(BLOCKQUOTE_RE.exec(lines[cursor])[1]));
+        const content = BLOCKQUOTE_RE.exec(lines[cursor])[1];
+        if (content.trim()) {
+          pushText(builder, projectMarkdownLine(content));
+        } else {
+          // A blank quoted line separates paragraphs inside the blockquote;
+          // the renderer leaves a text-node newline between them.
+          pushSeparator(builder);
+        }
         cursor += 1;
       }
       blocks.push(finishBlock(builder, 'blockquote', currentPath()));
@@ -376,8 +420,10 @@ function parseSourceBlocks(lines) {
 
       const addRow = (rowLine) => {
         for (const cell of splitTableRow(rowLine)) {
-          const projected = normalizeBlockText(projectMarkdownLine(cell));
-          for (const character of projected) pushCharacter(builder, character);
+          // Rendered cells are separated by text-node newlines, which
+          // normalize to a single space.
+          pushSeparator(builder);
+          pushText(builder, normalizeBlockText(projectMarkdownLine(cell)));
         }
       };
 
@@ -401,6 +447,8 @@ function parseSourceBlocks(lines) {
     if (list) {
       const builder = createBuilder();
       const ordered = /^\d/.test(list[2]);
+      const contentIndent = list[1].length + list[2].length + list[3].length;
+      let itemCount = 0;
       let cursor = index;
 
       while (cursor < lines.length) {
@@ -409,13 +457,21 @@ function parseSourceBlocks(lines) {
 
         const item = LIST_RE.exec(itemLine);
         if (item) {
-          pushLine(builder, projectMarkdownLine(item[4]));
+          // The renderer puts a newline between </li> and <li>, so items are
+          // separated by one space; continuation lines inside an item are not.
+          if (itemCount > 0) pushSeparator(builder);
+          pushText(builder, projectMarkdownLine(item[4]));
+          itemCount += 1;
           cursor += 1;
           continue;
         }
 
         if (startsNewBlock(lines, cursor)) break;
-        pushLine(builder, projectMarkdownLine(itemLine));
+        // Container indentation belongs to the list, not the item text.
+        pushText(
+          builder,
+          projectMarkdownLine(stripIndent(itemLine, contentIndent))
+        );
         cursor += 1;
       }
 
@@ -445,12 +501,13 @@ function parseSourceBlocks(lines) {
 
       if (cursor > index && startsNewBlock(lines, cursor)) break;
 
-      pushLine(builder, projectMarkdownLine(paragraphLine));
+      pushText(builder, projectMarkdownLine(paragraphLine));
       cursor += 1;
     }
 
     if (setextLevel !== null) {
       const text = normalizeBlockText(builder.text.join(''));
+      popHeadings(setextLevel);
       blocks.push(finishBlock(builder, `h${setextLevel}`, currentPath()));
       updateHeading(setextLevel, text);
     } else {
@@ -592,7 +649,6 @@ const BOOLEAN_FLAGS = new Set([
   'unresolved',
   'orphans',
   'help',
-  'json',
 ]);
 
 function parseArgs(argv) {
@@ -642,7 +698,20 @@ function output(value) {
 
 function loadConfig() {
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
+    // The token is a bearer credential: never leave it group/world readable.
+    try {
+      const mode = fs.statSync(CONFIG_PATH).mode & 0o777;
+      if (mode & 0o077) {
+        fs.chmodSync(CONFIG_PATH, 0o600);
+        process.stderr.write(
+          `Warning: ${CONFIG_PATH} was mode ${mode.toString(8)}; tightened to 600\n`
+        );
+      }
+    } catch {
+      // A stat/chmod failure must not make the config unreadable.
+    }
+    return JSON.parse(raw);
   } catch (error) {
     if (error.code === 'ENOENT') return null;
     throw new Error(`Cannot read ${CONFIG_PATH}: ${error.message}`);
@@ -911,7 +980,6 @@ async function commandInit(options) {
     process.env.OPENMKVIEW_USERNAME ||
     (await promptValue('Username: '));
   const password =
-    options.password ||
     process.env.OPENMKVIEW_PASSWORD ||
     (await promptValue('Password: ', { hidden: true }));
 
@@ -958,7 +1026,6 @@ async function commandLogin(options) {
     process.env.OPENMKVIEW_USERNAME ||
     (await promptValue('Username: '));
   const password =
-    options.password ||
     process.env.OPENMKVIEW_PASSWORD ||
     (await promptValue('Password: ', { hidden: true }));
 
@@ -1166,8 +1233,8 @@ async function commandBatchDelete(context, options) {
 const HELP = `omk — OpenMKView agent annotation CLI (zero dependencies, Node >= 18)
 
 Usage:
-  omk.mjs init [--url URL] [--username U] [--password P] [--label L]
-  omk.mjs login [--url URL] [--username U] [--password P]
+  omk.mjs init [--url URL] [--username U] [--label L]
+  omk.mjs login [--url URL] [--username U] [--label L]
   omk.mjs list [--file PATH] [--project ID|NAME|PATH] [--author A]
                [--resolved | --unresolved] [--orphans]
   omk.mjs show <id> [--project ID|NAME|PATH]
@@ -1186,8 +1253,11 @@ Behavior:
     OPENMKVIEW_URL overrides the configured URL; OPENMKVIEW_AGENT_CONFIG
     overrides the config file path (useful for isolated test instances).
   - init exchanges username/password once for a non-expiring Tool Session and
-    never stores the password. 401 means the session was revoked:
-    "Tool Session revoked — run omk.mjs init".
+    never stores the password. Credentials are prompted interactively or read
+    from OPENMKVIEW_USERNAME / OPENMKVIEW_PASSWORD; the password is never
+    accepted as a command-line flag. 401 means the session was revoked:
+    "Tool Session revoked — run omk.mjs init". --label names the Tool Session
+    shown in the settings UI (init and login).
   - create fetches the file through the files API and builds the Anchor
     client-side from rendered text. --quote is matched after whitespace
     normalization against a single block. Without --quote the annotation
@@ -1203,7 +1273,26 @@ Behavior:
     in a list because the API has no single-annotation GET.
 `;
 
+const COMMANDS = new Set([
+  'init',
+  'login',
+  'list',
+  'show',
+  'create',
+  'reply',
+  'resolve',
+  'delete',
+  'batch-resolve',
+  'batch-delete',
+]);
+
 async function main(argv) {
+  if (argv.some((arg) => arg === '--password' || arg.startsWith('--password='))) {
+    throw new Error(
+      '--password is not accepted on the command line; set OPENMKVIEW_PASSWORD or use the interactive prompt'
+    );
+  }
+
   const options = parseArgs(argv);
   if (options.help || options._.length === 0) {
     process.stdout.write(HELP);
@@ -1212,6 +1301,9 @@ async function main(argv) {
   }
 
   const command = options._[0];
+  if (!COMMANDS.has(command)) {
+    throw new Error(`Unknown command: ${command}\n\n${HELP}`);
+  }
 
   if (command === 'init') {
     await commandInit(options);
@@ -1249,16 +1341,27 @@ async function main(argv) {
     case 'batch-delete':
       await commandBatchDelete(context, options);
       break;
-    default:
-      throw new Error(`Unknown command: ${command}\n\n${HELP}`);
   }
 }
 
-const entry = process.argv[1]
-  ? pathToFileURL(path.resolve(process.argv[1])).href
-  : '';
+/**
+ * True when this module is the process entry point. Symlinked invocations are
+ * compared by real path: `import.meta.url` is the resolved file while
+ * `process.argv[1]` keeps the symlink path, which must still run the CLI.
+ */
+function isEntryPoint() {
+  if (!process.argv[1]) return false;
+  try {
+    return (
+      fs.realpathSync(process.argv[1]) ===
+      fs.realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+}
 
-if (import.meta.url === entry) {
+if (isEntryPoint()) {
   main(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${JSON.stringify({ error: error.message })}\n`);
     process.exitCode = 1;
