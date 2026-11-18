@@ -2,6 +2,8 @@ import { createSignal } from 'solid-js';
 import type { Annotation, AnnotationAnchor, ManagedAnnotation } from '../types';
 import { api } from '../services/api';
 import { offlineStore } from './offlineStore';
+import { hashBlockContent } from '../utils/blockModel';
+import { locateAnchorInSource } from '../utils/sourceAnchorLocator';
 import { loadAnnotationsVisible, saveAnnotationsVisible } from '../utils/settings';
 
 const [annotations, setAnnotations] = createSignal<Annotation[]>([]);
@@ -12,6 +14,11 @@ const [managed, setManaged] = createSignal<ManagedAnnotation[]>([]);
 const [managedSelection, setManagedSelection] = createSignal<Set<number>>(new Set());
 const [managedLoading, setManagedLoading] = createSignal<boolean>(false);
 const [managedError, setManagedError] = createSignal<string | null>(null);
+/**
+ * Project-wide Outdated snapshots for management rows, resolved lazily from
+ * each row's file content. Keyed by annotation id; value is the snapshot.
+ */
+const [managedOutdated, setManagedOutdated] = createSignal<Map<number, string>>(new Map());
 const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
 /**
  * Anchor resolution results published by the rendered document. Keyed by
@@ -51,6 +58,13 @@ let jumpNonce = 0;
 let viewNonce = 0;
 /** A jump waiting for another file's annotations to load. */
 let pendingJump: { projectId: number; relativePath: string; annotationId: number } | null = null;
+/** Guards the lazily filled management Outdated map against stale opens. */
+let managedResolveToken = 0;
+/**
+ * Project-wide resolution cache keyed by (project, path, content), so opening
+ * the manager repeatedly only re-reads files whose content changed.
+ */
+const managedOutdatedCache = new Map<string, Map<number, string>>();
 
 function requestJumpNow(annotationId: number): void {
   jumpNonce += 1;
@@ -83,6 +97,66 @@ function applyVisibility(nextVisible: boolean): void {
 
 function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
+}
+
+function managedContentKey(
+  projectId: number,
+  relativePath: string,
+  content: string
+): string {
+  return `${fileKey(projectId, relativePath)}\u0000${content.length}\u0000${hashBlockContent(content)}`;
+}
+
+/**
+ * Fill Outdated state for every management row from its own file's content.
+ * Lazy and progressive: each file resolves independently and the table fills
+ * as responses arrive. Missing files are skipped because the row's Missing
+ * File state already explains why its Anchor cannot be evaluated.
+ */
+async function resolveManagedOutdated(
+  projectId: number,
+  rows: ManagedAnnotation[],
+  token: number
+): Promise<void> {
+  const byPath = new Map<string, ManagedAnnotation[]>();
+  for (const row of rows) {
+    if (row.orphaned) continue;
+    const entries = byPath.get(row.relativePath) ?? [];
+    entries.push(row);
+    byPath.set(row.relativePath, entries);
+  }
+
+  await Promise.all(
+    [...byPath.entries()].map(async ([relativePath, fileRows]) => {
+      try {
+        const file = await api.getFileContent(relativePath, projectId);
+        if (token !== managedResolveToken) return;
+
+        const cacheKey = managedContentKey(projectId, relativePath, file.content);
+        let snapshots = managedOutdatedCache.get(cacheKey);
+        if (!snapshots) {
+          snapshots = new Map<number, string>();
+          for (const row of fileRows) {
+            const location = locateAnchorInSource(file.content, row.anchor);
+            if (location.status === 'outdated') {
+              snapshots.set(row.id, row.snapshot?.trim() || location.snapshot);
+            }
+          }
+          managedOutdatedCache.set(cacheKey, snapshots);
+        }
+
+        if (token !== managedResolveToken || snapshots.size === 0) return;
+        setManagedOutdated((current) => {
+          const next = new Map(current);
+          for (const [id, snapshot] of snapshots!) next.set(id, snapshot);
+          return next;
+        });
+      } catch {
+        // A vanished/unreadable file stays unresolved here; its row already
+        // carries the Missing File state from the management list.
+      }
+    })
+  );
 }
 
 function replaceAnnotation(updated: Annotation): void {
@@ -132,6 +206,7 @@ export const annotationStore = {
   managedSelection,
   managedLoading,
   managedError,
+  managedOutdated,
   visible,
   outdatedSnapshots,
   previewOutdatedResolved,
@@ -178,6 +253,20 @@ export const annotationStore = {
 
   outdatedSnapshot(id: number): string | null {
     return outdatedSnapshots().get(id) ?? null;
+  },
+
+  /** Whether the management resolution found the row's Anchor Outdated. */
+  isManagedOutdated(id: number): boolean {
+    return managedOutdated().has(id);
+  },
+
+  managedOutdatedSnapshot(id: number): string | null {
+    return managedOutdated().get(id) ?? null;
+  },
+
+  /** Whether the given file is the one whose annotations are loaded. */
+  isLoadedFile(projectId: number, relativePath: string): boolean {
+    return loadedKey === fileKey(projectId, relativePath);
   },
 
   /** Arm manual re-anchoring for an Outdated annotation. */
@@ -267,6 +356,9 @@ export const annotationStore = {
     applyManaged([]);
     setManagedLoading(false);
     setManagedError(null);
+    managedResolveToken += 1;
+    setManagedOutdated(new Map());
+    managedOutdatedCache.clear();
   },
 
   async create(
@@ -342,16 +434,22 @@ export const annotationStore = {
 
   /** Loads every annotation in the project for the management panel. */
   async loadForProject(projectId: number): Promise<void> {
+    const token = ++managedResolveToken;
     setManagedLoading(true);
     setManagedError(null);
+    setManagedOutdated(new Map());
     try {
       const loaded = await api.listProjectAnnotations(projectId);
+      if (token !== managedResolveToken) return;
       applyManaged(loaded);
+      // Progressive: rows render immediately, Outdated fills per file.
+      void resolveManagedOutdated(projectId, loaded, token);
     } catch (err) {
+      if (token !== managedResolveToken) return;
       applyManaged([]);
       setManagedError(err instanceof Error ? err.message : 'Failed to load annotations');
     } finally {
-      setManagedLoading(false);
+      if (token === managedResolveToken) setManagedLoading(false);
     }
   },
 

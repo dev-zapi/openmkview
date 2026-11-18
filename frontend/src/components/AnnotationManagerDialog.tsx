@@ -17,9 +17,26 @@ interface AnnotationManagerDialogProps {
   onOpenFile?: (path: string) => void;
 }
 
-/** Outdated state is published by the store for the annotation's own file. */
+/**
+ * The rendered file publishes canonical status; every other row is resolved
+ * lazily by the store against its own file's content.
+ */
 function isRowOutdated(row: ManagedAnnotation): boolean {
-  return annotationStore.isOutdated(row.id);
+  if (annotationStore.isOutdated(row.id)) return true;
+  if (
+    annotationStore.isLoadedFile(row.projectId, row.relativePath) &&
+    annotationStore.previewOutdatedResolved()
+  ) {
+    return false;
+  }
+  return annotationStore.isManagedOutdated(row.id);
+}
+
+function outdatedSnapshot(row: ManagedAnnotation): string | null {
+  return (
+    annotationStore.outdatedSnapshot(row.id) ??
+    annotationStore.managedOutdatedSnapshot(row.id)
+  );
 }
 
 /**
@@ -194,7 +211,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                         </td>
                         <td class="annotation-manager-file">{row.relativePath}</td>
                         <td class="annotation-manager-excerpt">
-                          {annotationExcerpt(row, annotationStore.outdatedSnapshot(row.id))}
+                          {annotationExcerpt(row, outdatedSnapshot(row))}
                         </td>
                         <td class="annotation-manager-note">{annotationNotePreview(row)}</td>
                         <td>
