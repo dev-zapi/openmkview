@@ -4,6 +4,7 @@ import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary, ToolSessionS
 import { applyTheme } from '../utils/theme';
 import { editorThemeLightPresets, editorThemeDarkPresets } from '../utils/editorThemes';
 import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize, resolvedWritingFontSize } from '../utils/settings';
+import { formatAnnotationTimestamp } from '../utils/annotationDisplay';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
@@ -400,12 +401,9 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
       return 'Never used';
     }
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-
-    return date.toLocaleString();
+    // SQLite stores UTC without a zone designator; the shared helper
+    // normalizes it before the browser parses it as a local time.
+    return formatAnnotationTimestamp(value);
   };
 
   const buildTimeLabel = () => {
@@ -799,7 +797,11 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                             <div class="passkey-card-meta">
                               <div class="passkey-card-name">{session.label}</div>
                               <div class="passkey-card-time">Created {formatTimestamp(session.createdAt)}</div>
-                              <div class="passkey-card-time">Last used {formatTimestamp(session.lastUsedAt)}</div>
+                              <div class="passkey-card-time">
+                                {session.lastUsedAt
+                                  ? `Last used ${formatTimestamp(session.lastUsedAt)}`
+                                  : 'Never used'}
+                              </div>
                             </div>
 
                             <Button

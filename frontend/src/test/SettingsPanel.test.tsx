@@ -103,6 +103,35 @@ describe('SettingsPanel', () => {
     });
   });
 
+  it('renders SQLite UTC timestamps without shifting the offset', async () => {
+    // Force a deterministic rendering so a raw `new Date(sqliteString)` would
+    // show the local-time conversion instead of the UTC instant.
+    vi.spyOn(Date.prototype, 'toLocaleString').mockImplementation(function (this: Date) {
+      return this.toISOString();
+    });
+    vi.spyOn(window, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url === '/api/auth/tool-sessions') {
+        return {
+          ok: true,
+          json: async () => ([
+            { id: 9, label: 'utc-session', createdAt: '2026-01-02 03:04:05' },
+          ]),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({ themes: [], credentials: [] }) } as Response;
+    });
+
+    render(() => <SettingsPanel isOpen={true} onClose={() => {}} authRequired={true} />);
+
+    const section = document.querySelector('#settings-tool-sessions') as HTMLElement;
+    await waitFor(() => {
+      expect(within(section).getByText('Created 2026-01-02T03:04:05.000Z')).toBeTruthy();
+    });
+    expect(within(section).getByText('Never used')).toBeTruthy();
+    expect(within(section).queryByText(/Last used/)).toBeNull();
+  });
+
   it('hides tool sessions when auth is disabled', () => {
     render(() => <SettingsPanel isOpen={true} onClose={() => {}} />);
     expect(document.querySelector('#settings-tool-sessions')).toBeNull();
