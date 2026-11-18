@@ -60,6 +60,13 @@ test.describe('annotation authorship', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // Wait until the shell resolves to either the login form or the app so
+    // loginIfNeeded cannot race an empty first paint.
+    await page
+      .getByRole('textbox', { name: 'Username' })
+      .or(page.locator('.app-container'))
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
     await loginIfNeeded(page);
     target = await createScratchFile(page, scratchMarkdown(), 'annotations-authorship');
     await openScratchFile(page, target, HEADING);
@@ -71,14 +78,19 @@ test.describe('annotation authorship', () => {
 
   test('human replies show the logged-in username', async ({ page }) => {
     const username = process.env.E2E_USERNAME;
-    if (!username) throw new Error('E2E_USERNAME is required for the authorship spec');
+    test.skip(!username, 'requires E2E_USERNAME (auth-enabled run)');
 
     await createBlockAnnotation(page, TARGET, 'Human note');
     const column = await openAnnotationColumn(page);
 
-    const firstNote = column.locator('.annotation-note').first();
-    await expect(firstNote.locator('.annotation-note-author-name')).toHaveText(username);
-    await expect(firstNote.locator('.annotation-note-agent-badge')).toHaveCount(0);
+    // Append through the thread composer so the Reply path is exercised, not
+    // only the annotation's opening note.
+    await column.getByLabel('Reply body').fill('Human reply');
+    await column.getByRole('button', { name: 'Reply' }).click();
+
+    const reply = column.locator('.annotation-note').nth(1);
+    await expect(reply.locator('.annotation-note-author-name')).toHaveText(username!);
+    await expect(reply.locator('.annotation-note-agent-badge')).toHaveCount(0);
   });
 
   test('agent replies created through the API show an agent badge', async ({ page }) => {
