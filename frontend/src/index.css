@@ -365,6 +365,15 @@ body {
   gap: 16px;
 }
 
+.login-version {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground) / 0.55);
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
 .login-field {
   display: flex;
   flex-direction: column;

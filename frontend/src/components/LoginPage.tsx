@@ -1,12 +1,24 @@
-import { Component, createSignal, Show } from 'solid-js';
+import { Component, createResource, createSignal, Show } from 'solid-js';
 import { authStore } from '../stores/authStore';
 import { Button, Input } from './ui';
+
+const fetchVersion = async (): Promise<string | null> => {
+  try {
+    const response = await fetch('/api/version');
+    if (!response.ok) return null;
+    const body = (await response.json()) as { version?: string };
+    return body.version ?? null;
+  } catch {
+    return null;
+  }
+};
 
 const LoginPage: Component = () => {
   const [username, setUsername] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [submitting, setSubmitting] = createSignal(false);
   const [passkeySubmitting, setPasskeySubmitting] = createSignal(false);
+  const [version] = createResource(fetchVersion);
 
   const handleSubmit = async (event: Event) => {
     event.preventDefault();
@@ -98,6 +110,10 @@ const LoginPage: Component = () => {
             </Button>
           </Show>
         </form>
+
+        <Show when={version()}>
+          <p class="login-version">{version()}</p>
+        </Show>
       </div>
     </div>
   );

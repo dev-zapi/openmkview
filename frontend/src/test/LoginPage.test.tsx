@@ -101,4 +101,33 @@ describe('LoginPage', () => {
       expect(screen.getByText('Sign in with Passkey')).toBeTruthy();
     });
   });
+
+  it('shows version info below the form when the API responds', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ version: 'v0.2.0-abc1234' }),
+      }),
+    );
+
+    render(() => <LoginPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('v0.2.0-abc1234')).toBeTruthy();
+    });
+  });
+
+  it('renders no version info when the API fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error('offline')),
+    );
+
+    render(() => <LoginPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/v\d/)).toBeNull();
+    });
+  });
 });
