@@ -106,9 +106,10 @@ export interface Annotation {
   notes: AnnotationNote[];
 }
 
-/** A management-panel row: the annotation plus whether its file still exists. */
+/** A management-panel row: the annotation plus whether its file is missing. */
 export interface ManagedAnnotation extends Annotation {
-  orphaned: boolean;
+  /** Missing File: the stored path no longer exists on disk. */
+  missingFile: boolean;
 }
 
 export interface CreateAnnotationRequest {

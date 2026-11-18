@@ -1821,7 +1821,7 @@ textarea {
   vertical-align: top;
 }
 
-.annotation-manager-row-orphaned {
+.annotation-manager-row-missing-file {
   opacity: 0.78;
 }
 
@@ -1858,10 +1858,15 @@ textarea {
   font-weight: 600;
 }
 
-.annotation-manager-orphan {
+.annotation-manager-missing-file,
+.annotation-manager-outdated {
   color: var(--color-text-soft);
   font-size: 12px;
   font-style: italic;
+}
+
+.annotation-manager-outdated {
+  color: var(--color-warning);
 }
 
 .annotation-manager-link {

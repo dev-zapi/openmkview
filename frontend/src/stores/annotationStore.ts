@@ -120,7 +120,7 @@ async function resolveManagedOutdated(
 ): Promise<void> {
   const byPath = new Map<string, ManagedAnnotation[]>();
   for (const row of rows) {
-    if (row.orphaned) continue;
+    if (row.missingFile) continue;
     const entries = byPath.get(row.relativePath) ?? [];
     entries.push(row);
     byPath.set(row.relativePath, entries);

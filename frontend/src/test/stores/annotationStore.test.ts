@@ -227,7 +227,7 @@ describe('annotationStore management panel', () => {
   });
 
   function managedFor(id: number, relativePath = 'a.md') {
-    return { ...annotationFor(id, 1, relativePath, `blk-${id}`), orphaned: false };
+    return { ...annotationFor(id, 1, relativePath, `blk-${id}`), missingFile: false };
   }
 
   it('loads the project-wide management list', async () => {
@@ -268,7 +268,7 @@ describe('annotationStore management panel', () => {
   it('resolves Outdated across files and skips Missing File rows', async () => {
     const healthy = managedFor(1, 'a.md');
     const outdated = managedFor(2, 'b.md');
-    const missing = { ...managedFor(3, 'gone.md'), orphaned: true };
+    const missing = { ...managedFor(3, 'gone.md'), missingFile: true };
     (global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/api/annotations/manage')) {
