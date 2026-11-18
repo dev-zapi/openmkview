@@ -2,12 +2,29 @@ import { Component, createResource, createSignal, Show } from 'solid-js';
 import { authStore } from '../stores/authStore';
 import { Button, Input } from './ui';
 
+interface VersionInfo {
+  version?: string;
+  build_time?: string;
+}
+
+const formatBuildTime = (iso: string): string | null => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return (
+    `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+};
+
 const fetchVersion = async (): Promise<string | null> => {
   try {
     const response = await fetch('/api/version');
     if (!response.ok) return null;
-    const body = (await response.json()) as { version?: string };
-    return body.version ?? null;
+    const body = (await response.json()) as VersionInfo;
+    if (!body.version) return null;
+    const buildTime = body.build_time ? formatBuildTime(body.build_time) : null;
+    return buildTime ? `${body.version} - ${buildTime}` : body.version;
   } catch {
     return null;
   }
