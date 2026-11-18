@@ -258,10 +258,10 @@ fi
 # that builder resolves Active through the real Preview resolver seam.
 SEAM_STATUS=0
 ( cd "$REPO_ROOT/frontend" && npx vitest run src/test/skills/omkCli.test.ts ) \
-  > "$E2/with_skill/outputs/resolver-seam.log" 2>&1 || SEAM_STATUS=$?
+  > "$E2/with_skill/outputs/resolver-seam.txt" 2>&1 || SEAM_STATUS=$?
 # Keep committed logs free of machine-specific absolute paths.
 node -e 'const fs=require("node:fs");const p=process.argv[1];const root=process.argv[2];fs.writeFileSync(p,fs.readFileSync(p,"utf8").split(root).join("<repo>"));' \
-  "$E2/with_skill/outputs/resolver-seam.log" "$REPO_ROOT"
+  "$E2/with_skill/outputs/resolver-seam.txt" "$REPO_ROOT"
 if [[ "$SEAM_STATUS" -eq 0 ]]; then
   grade "$E2/with_skill" true "With skill: the frontend resolver seam resolves CLI-built anchors as Active" "vitest src/test/skills/omkCli.test.ts passed"
   pass "eval2 with-skill resolver seam"
