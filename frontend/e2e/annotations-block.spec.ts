@@ -105,12 +105,19 @@ test.describe('whole-block annotations', () => {
     await expect(block).toHaveClass(/annotation-highlighted/);
     await expect(marker).toHaveClass(/has-annotation/);
 
-    // Clicking the marker opens a popover with the rendered note.
-    await marker.click();
-    const noteBody = page.locator('.annotation-popover .annotation-note-body');
+    // Clicking the highlighted block opens a popover with the rendered note.
+    await block.click();
+    let noteBody = page.locator('.annotation-popover .annotation-note-body');
     await expect(noteBody).toBeVisible();
     await expect(noteBody).toContainText('Annotation note body');
     await expect(noteBody.locator('strong')).toHaveText('note');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.annotation-popover')).not.toBeVisible();
+
+    // Clicking the marker opens the same popover.
+    await marker.click();
+    noteBody = page.locator('.annotation-popover .annotation-note-body');
+    await expect(noteBody).toContainText('Annotation note body');
 
     // Reloading re-fetches the API list and re-attaches by block content hash.
     await page.reload({ waitUntil: 'domcontentloaded' });
