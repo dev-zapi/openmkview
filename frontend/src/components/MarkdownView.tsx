@@ -19,6 +19,7 @@ import {
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
 import { anchorExcerpt } from '../utils/anchorScoring';
+import { resolveAnchor } from '../utils/anchorResolver';
 import { createMarkdownPipeline, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import AnnotationThread from './AnnotationThread';
@@ -448,14 +449,20 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       return;
     }
 
-    const escaped = segment.blockHash.replace(/["\\]/g, '\\$&');
     const timer = setTimeout(() => {
       const mark = contentRef?.querySelector<HTMLElement>(
         `mark[data-annotation-id="${annotation.id}"]`,
       );
-      const block = contentRef?.querySelector<HTMLElement>(
-        `.annotation-block[data-block-id="${escaped}"]`,
+      // Recompute the block identity instead of trusting the stored hash:
+      // after an identical block is inserted above, the old hash now names the
+      // new block and a stored-hash query would silently miss.
+      const resolution = resolveAnchor(
+        renderedBlockList.map((rendered) => rendered.model),
+        annotation.anchor,
       );
+      const resolvedBlockId =
+        resolution.status === 'resolved' ? resolution.segments[0]?.blockId : undefined;
+      const block = resolvedBlockId ? renderedBlocks.get(resolvedBlockId)?.element : undefined;
       const target = mark ?? block;
       if (!target) {
         annotationStore.clearJump();

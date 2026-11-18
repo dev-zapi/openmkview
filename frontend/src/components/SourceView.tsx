@@ -258,6 +258,50 @@ const SourceView: Component<SourceViewProps> = (props) => {
     applySourceHighlights(annotationStore.annotations(), annotationStore.visible());
   });
 
+  /**
+   * Honor a column jump while the Source tab is active. The Preview is not
+   * mounted to consume the request, and leaving it armed would replay the
+   * jump on a later Preview mount. The source locator already computes the
+   * anchored lines, so scroll to the first one and consume the request.
+   */
+  let handledJumpNonce = 0;
+  createEffect(() => {
+    const jump = annotationStore.jumpRequest();
+    if (!jump || jump.nonce === handledJumpNonce) return;
+    // Wait until the highlighted source exists; this effect reruns as it does.
+    if (isLoading() || !highlightedRef) return;
+
+    handledJumpNonce = jump.nonce;
+    const annotation = untrack(() => annotationStore.annotations()).find(
+      (candidate) => candidate.id === jump.annotationId
+    );
+    if (!annotation) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    const location = locateAnchorInSource(props.content, annotation.anchor);
+    const line =
+      location.status === 'located'
+        ? Array.from(
+            highlightedRef.querySelectorAll<HTMLElement>('pre code > .line')
+          )[location.ranges[0]?.start - 1]
+        : undefined;
+    if (!line) {
+      annotationStore.clearJump();
+      return;
+    }
+
+    line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    line.classList.add('annotation-jump-target');
+    line.setAttribute('tabindex', '-1');
+    line.focus({ preventScroll: true });
+    setTimeout(() => line.classList.remove('annotation-jump-target'), 1600);
+
+    // Consume it here so a later Preview mount cannot replay the jump.
+    annotationStore.clearJump();
+  });
+
   return (
     <div class="source-view-wrapper">
       <Show when={isLoading()}>
