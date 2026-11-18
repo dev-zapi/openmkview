@@ -53,8 +53,9 @@ export interface FileSaveResponse {
 }
 
 /**
- * One segment of an Annotation's Anchor. #16 only creates whole-block
- * segments; text-range segments arrive with ticket #17.
+ * One segment of an Annotation's Anchor. A whole-block annotation has a
+ * single `block` segment; a text selection has one `text` segment per block
+ * it covers (ADR-0005).
  */
 export interface BlockAnchorSegment {
   kind: 'block';
@@ -65,9 +66,25 @@ export interface BlockAnchorSegment {
   headingPath: string[];
 }
 
+export interface TextAnchorSegment {
+  kind: 'text';
+  blockHash: string;
+  blockText: string;
+  blockType: string;
+  headingPath: string[];
+  /** Selected text, whitespace-normalized. */
+  quote: string;
+  /** Short whitespace-normalized excerpt before the selection in the block. */
+  prefix: string;
+  /** Short whitespace-normalized excerpt after the selection in the block. */
+  suffix: string;
+}
+
+export type AnchorSegment = BlockAnchorSegment | TextAnchorSegment;
+
 export interface AnnotationAnchor {
   version: number;
-  segments: BlockAnchorSegment[];
+  segments: AnchorSegment[];
 }
 
 export interface AnnotationNote {

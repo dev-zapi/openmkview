@@ -1,21 +1,22 @@
-import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, For, Show } from 'solid-js';
+import { Component, createSignal, createEffect, createMemo, onCleanup, onMount, untrack, For, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { highlightCode, getHighlighter } from '../services/shikiService';
 import { renderDiagram, type DiagramType } from '../services/diagramService';
 import DiagramZoomModal from './DiagramZoomModal';
 import type { ZoomDiagramSource } from '../services/diagramZoomService';
-import type { Annotation, Heading } from '../types';
+import type { Annotation, AnnotationAnchor, Heading } from '../types';
 import { parseFrontmatter, hasFrontmatter } from '../utils/frontmatter';
 import { escapeHtml, unescapeHtml } from '../utils/html';
 import { generateHeadingId, isDiagramLanguage, encodeDiagramCode, decodeDiagramCode } from '../utils/markdown';
-import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
+import { setActiveSearchMatch } from '../utils/searchHighlight';
 import {
   assignBlockAnchors,
   ensureBlockMarkers,
   blockAnchorFrom,
-  applyAnnotationHighlights,
+  applySearchAndAnnotationHighlights,
   type RenderedBlock,
 } from '../utils/annotationBlocks';
+import { anchorFromSelection } from '../utils/selectionAnchor';
 import { createMarkdownPipeline, renderNoteMarkdown, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import FrontmatterPanel from './FrontmatterPanel';
@@ -45,7 +46,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
   interface ComposerPanel {
     mode: 'composer';
-    block: RenderedBlock;
+    anchor: AnnotationAnchor;
+    excerpt: string;
     left: number;
     top: number;
   }
@@ -57,14 +59,32 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     top: number;
   }
 
-  type AnnotationPanel = ComposerPanel | ViewerPanel;
+  interface ChooserPanel {
+    mode: 'chooser';
+    annotations: Annotation[];
+    left: number;
+    top: number;
+  }
+
+  interface SelectionCapture {
+    anchor: AnnotationAnchor;
+    excerpt: string;
+    left: number;
+    top: number;
+  }
+
+  type AnnotationPanel = ComposerPanel | ViewerPanel | ChooserPanel;
 
   const [panel, setPanel] = createSignal<AnnotationPanel | null>(null);
+  const [selectionCapture, setSelectionCapture] =
+    createSignal<SelectionCapture | null>(null);
   const [composerBody, setComposerBody] = createSignal('');
   const [savingAnnotation, setSavingAnnotation] = createSignal(false);
   const [annotationError, setAnnotationError] = createSignal<string | null>(null);
   let panelRef: HTMLDivElement | undefined;
   let renderedBlocks = new Map<string, RenderedBlock>();
+  let renderedBlockList: RenderedBlock[] = [];
+  let blockAttachments = new Map<string, Annotation[]>();
 
   const panelPosition = (rect: DOMRect): { left: number; top: number } => {
     const width = 320;
@@ -76,17 +96,32 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     return { left, top };
   };
 
-  const openComposer = (block: RenderedBlock, rect: DOMRect) => {
+  const openComposer = (anchor: AnnotationAnchor, excerpt: string, rect: DOMRect) => {
     const position = panelPosition(rect);
+    setSelectionCapture(null);
     setComposerBody('');
     setAnnotationError(null);
-    setPanel({ mode: 'composer', block, ...position });
+    setPanel({ mode: 'composer', anchor, excerpt, ...position });
   };
 
   const openViewer = (annotation: Annotation, rect: DOMRect) => {
     const position = panelPosition(rect);
     setAnnotationError(null);
     setPanel({ mode: 'view', annotation, ...position });
+  };
+
+  const openChooser = (annotations: Annotation[], rect: DOMRect) => {
+    const position = panelPosition(rect);
+    setAnnotationError(null);
+    setPanel({ mode: 'chooser', annotations, ...position });
+  };
+
+  /** Opens the only annotation directly, or a chooser when several match. */
+  const openAnnotations = (annotations: Annotation[], rect: DOMRect) => {
+    if (annotations.length === 0) return false;
+    if (annotations.length === 1) openViewer(annotations[0], rect);
+    else openChooser(annotations, rect);
+    return true;
   };
 
   const saveAnnotation = async () => {
@@ -104,7 +139,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     setSavingAnnotation(true);
     setAnnotationError(null);
     try {
-      await annotationStore.create(projectId, relativePath, blockAnchorFrom(current.block), body);
+      await annotationStore.create(projectId, relativePath, current.anchor, body);
       setPanel(null);
       setComposerBody('');
     } catch (error) {
@@ -127,6 +162,13 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     }
   };
 
+  const openAnnotationById = (id: number, rect: DOMRect) => {
+    const annotation = annotationStore
+      .annotations()
+      .find((candidate) => candidate.id === id);
+    if (annotation) openViewer(annotation, rect);
+  };
+
   const onContentClick = (event: MouseEvent) => {
     if (!contentRef) return;
     // Pure-reading mode: no markers or highlights exist, so annotation
@@ -135,6 +177,19 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
     const target = event.target as HTMLElement | null;
     if (!target) return;
+
+    const textHighlight = target.closest(
+      'mark[data-annotation-id]'
+    ) as HTMLElement | null;
+    if (textHighlight) {
+      event.preventDefault();
+      event.stopPropagation();
+      openAnnotationById(
+        Number(textHighlight.getAttribute('data-annotation-id')),
+        textHighlight.getBoundingClientRect()
+      );
+      return;
+    }
 
     const marker = target.closest('.annotation-marker') as HTMLElement | null;
     if (marker) {
@@ -145,11 +200,15 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       const block = blockId ? renderedBlocks.get(blockId) : undefined;
       if (!blockElement || !block) return;
 
-      const annotation = annotationStore.byBlockHash(block.blockId);
-      if (annotation) {
-        openViewer(annotation, marker.getBoundingClientRect());
+      const annotations = blockAttachments.get(block.model.id) ?? [];
+      if (annotations.length > 0) {
+        openAnnotations(annotations, marker.getBoundingClientRect());
       } else {
-        openComposer(block, marker.getBoundingClientRect());
+        openComposer(
+          blockAnchorFrom(block),
+          block.model.text,
+          marker.getBoundingClientRect()
+        );
       }
       return;
     }
@@ -160,14 +219,77 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     const blockElement = target.closest('.annotation-block') as HTMLElement | null;
     if (!blockElement || !blockElement.classList.contains('annotation-highlighted')) return;
 
-    const annotationId = Number(blockElement.getAttribute('data-annotation-id'));
-    const annotation = annotationStore
-      .annotations()
-      .find((candidate) => candidate.id === annotationId);
-    if (!annotation) return;
+    // Multiple annotations on one block are listed by the render pass; the
+    // chooser consumes that list instead of silently opening an arbitrary one.
+    const ids = (
+      blockElement.getAttribute('data-annotation-ids') ??
+      blockElement.getAttribute('data-annotation-id') ??
+      ''
+    )
+      .split(',')
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const annotations = ids
+      .map((id) =>
+        annotationStore.annotations().find((candidate) => candidate.id === id)
+      )
+      .filter((candidate): candidate is Annotation => Boolean(candidate));
+    if (annotations.length === 0) return;
 
     event.preventDefault();
-    openViewer(annotation, blockElement.getBoundingClientRect());
+    openAnnotations(annotations, blockElement.getBoundingClientRect());
+  };
+
+  const updateSelectionCapture = () => {
+    if (
+      !contentRef ||
+      !props.projectId ||
+      !props.currentFilePath ||
+      !annotationStore.visible() ||
+      !annotationStore.canMutate()
+    ) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const selection = document.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (
+      !contentRef.contains(range.startContainer) ||
+      !contentRef.contains(range.endContainer)
+    ) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const anchor = anchorFromSelection(contentRef, selection, renderedBlockList);
+    if (!anchor) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const rect = range.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      setSelectionCapture(null);
+      return;
+    }
+
+    const excerpt = anchor.segments
+      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
+      .join(' … ');
+    const buttonWidth = 116;
+    let left = rect.right + 8;
+    if (left + buttonWidth > window.innerWidth - 8) {
+      left = Math.max(8, rect.left - buttonWidth - 8);
+    }
+    const top = Math.max(8, rect.top - 38);
+
+    setSelectionCapture({ anchor, excerpt, left, top });
   };
 
   const applyOfflineState = () => {
@@ -188,27 +310,51 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     if (!contentRef) return;
     contentRef.classList.toggle('annotations-hidden', !annotationStore.visible());
     const blocks = assignBlockAnchors(contentRef);
-    renderedBlocks = new Map(blocks.map((block) => [block.blockId, block]));
+    renderedBlocks = new Map(blocks.map((block) => [block.model.id, block]));
+    renderedBlockList = blocks;
     ensureBlockMarkers(blocks);
-    applyAnnotationHighlights(
-      contentRef,
-      annotationStore.visible() ? annotationStore.annotations() : []
-    );
-    applyOfflineState();
+    setSelectionCapture(null);
+    applyDecorations();
   };
 
-  const applyAnnotations = () => {
-    if (!contentRef) return;
+  /**
+   * Keep the two highlight layers in one order: annotation marks are removed,
+   * search scans the unwrapped text, then annotation segments are applied.
+   * Search deliberately skips annotation marks, so applying annotations first
+   * would hide their text from search.
+   */
+  const applyDecorations = () => {
+    if (!contentRef) {
+      props.onSearchResultsChange?.(0);
+      return;
+    }
+    if (renderedBlockList.length === 0) {
+      props.onSearchResultsChange?.(0);
+      return;
+    }
     contentRef.classList.toggle('annotations-hidden', !annotationStore.visible());
-    applyAnnotationHighlights(
+
+    const applied = applySearchAndAnnotationHighlights(
       contentRef,
-      annotationStore.visible() ? annotationStore.annotations() : []
+      props.searchQuery || '',
+      annotationStore.visible() ? annotationStore.annotations() : [],
+      renderedBlockList
+    );
+    searchMatches = applied.searchMatches;
+    blockAttachments = applied.attachments;
+    props.onSearchResultsChange?.(searchMatches.length);
+    setActiveSearchMatch(
+      searchMatches,
+      untrack(() => props.currentSearchResult || 0)
     );
     applyOfflineState();
   };
 
   onMount(() => {
     contentRef?.addEventListener('click', onContentClick);
+    document.addEventListener('selectionchange', updateSelectionCapture);
+    contentRef?.addEventListener('mouseup', updateSelectionCapture);
+    document.addEventListener('keyup', updateSelectionCapture);
   });
 
   createEffect(() => {
@@ -227,7 +373,8 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     // Re-applying on visibility keeps highlights and markers in sync when the
     // reading-mode toggle flips without a re-render.
     annotationStore.visible();
-    applyAnnotations();
+    props.searchQuery;
+    applyDecorations();
   });
 
   // Offline Mode disables creation/editing controls in place, including
@@ -619,20 +766,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
   });
 
   createEffect(() => {
-    renderedHtml();
-    const query = props.searchQuery || '';
-
-    if (!contentRef) {
-      props.onSearchResultsChange?.(0);
-      return;
-    }
-
-    searchMatches = highlightSearchMatches(contentRef, query);
-    props.onSearchResultsChange?.(searchMatches.length);
-    setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
-  });
-
-  createEffect(() => {
     props.currentSearchResult;
     setActiveSearchMatch(searchMatches, props.currentSearchResult || 0);
   });
@@ -642,6 +775,9 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       clearTimeout(renderTimer);
     }
     contentRef?.removeEventListener('click', onContentClick);
+    contentRef?.removeEventListener('mouseup', updateSelectionCapture);
+    document.removeEventListener('selectionchange', updateSelectionCapture);
+    document.removeEventListener('keyup', updateSelectionCapture);
   });
 
   const renderComposer = (current: AnnotationPanel) => {
@@ -650,7 +786,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     return (
       <div class="annotation-composer">
         <label class="annotation-composer-label" for="annotation-note-body">Note</label>
-        <p class="annotation-anchor-excerpt">{current.block.text.slice(0, 160)}</p>
+        <p class="annotation-anchor-excerpt">{current.excerpt.slice(0, 160)}</p>
         <textarea
           id="annotation-note-body"
           class="annotation-composer-input"
@@ -721,6 +857,44 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
+  const annotationExcerpt = (annotation: Annotation): string =>
+    annotation.anchor.segments
+      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
+      .join(' … ')
+      .slice(0, 120);
+
+  const renderChooser = (current: AnnotationPanel) => {
+    if (current.mode !== 'chooser') return null;
+    return (
+      <div class="annotation-chooser">
+        <p class="annotation-composer-label">Annotations here</p>
+        <div class="annotation-chooser-list">
+          <For each={current.annotations}>
+            {(annotation) => (
+              <button
+                type="button"
+                class="annotation-chooser-item"
+                onClick={() =>
+                  setPanel({
+                    mode: 'view',
+                    annotation,
+                    left: current.left,
+                    top: current.top,
+                  })
+                }
+              >
+                <span class="annotation-chooser-excerpt">{annotationExcerpt(annotation)}</span>
+                <span class="annotation-chooser-note">
+                  {annotation.notes[0]?.body ?? ''}
+                </span>
+              </button>
+            )}
+          </For>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       ref={containerRef}
@@ -736,6 +910,32 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
         <FrontmatterPanel data={frontmatterData()} />
       )}
       <div ref={contentRef} class="markdown-content" innerHTML={renderedHtml()} />
+      <Show when={selectionCapture()}>
+        {(capture) => (
+          <Portal>
+            <button
+              type="button"
+              class="annotation-selection-button"
+              aria-label="Annotate selected text"
+              style={{
+                left: `${capture().left}px`,
+                top: `${capture().top}px`,
+              }}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                openComposer(
+                  capture().anchor,
+                  capture().excerpt,
+                  new DOMRect(capture().left, capture().top, 0, 0)
+                );
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              Annotate
+            </button>
+          </Portal>
+        )}
+      </Show>
       <Show when={panel()}>
         {(current) => (
           <Portal>
@@ -743,11 +943,18 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
               ref={panelRef}
               class="annotation-popover"
               role="dialog"
-              aria-label={current().mode === 'composer' ? 'New annotation' : 'Annotation'}
+              aria-label={
+                current().mode === 'composer'
+                  ? 'New annotation'
+                  : current().mode === 'chooser'
+                    ? 'Annotations here'
+                    : 'Annotation'
+              }
               style={{ left: `${current().left}px`, top: `${current().top}px` }}
             >
               {renderComposer(current())}
               {renderViewer(current())}
+              {renderChooser(current())}
             </div>
           </Portal>
         )}

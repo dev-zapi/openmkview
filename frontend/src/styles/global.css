@@ -1528,6 +1528,47 @@
   cursor: pointer;
 }
 
+.markdown-content mark.annotation-text-highlight {
+  padding: 0;
+  border-radius: 2px;
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--color-primary) 22%, transparent),
+    color-mix(in oklab, var(--color-primary) 22%, transparent)
+  );
+  background-color: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.markdown-content mark.annotation-text-highlight.annotation-resolved {
+  background-image: linear-gradient(
+    color-mix(in oklab, var(--color-muted-foreground) 14%, transparent),
+    color-mix(in oklab, var(--color-muted-foreground) 14%, transparent)
+  );
+}
+
+.annotation-selection-button {
+  position: fixed;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--color-popover, var(--color-card));
+  color: var(--color-primary);
+  box-shadow: 0 6px 18px color-mix(in oklab, black 16%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.annotation-selection-button:hover {
+  background: color-mix(in oklab, var(--color-primary) 10%, var(--color-card));
+}
+
 /* Keep real interactions inside an annotated block feeling unchanged. */
 .annotation-block.annotation-highlighted a,
 .annotation-block.annotation-highlighted button,
@@ -1662,6 +1703,44 @@
   margin: 8px 0 0;
   font-size: 0.8125rem;
   color: var(--color-destructive);
+}
+
+.annotation-chooser-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.annotation-chooser-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-card);
+  color: var(--color-foreground);
+  text-align: left;
+  cursor: pointer;
+}
+
+.annotation-chooser-item:hover {
+  border-color: var(--color-primary);
+}
+
+.annotation-chooser-excerpt {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--color-muted-foreground);
+}
+
+.annotation-chooser-note {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .annotation-offline-note {

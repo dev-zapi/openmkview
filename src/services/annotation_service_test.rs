@@ -205,6 +205,106 @@ fn create_rejects_path_traversal() {
     assert!(matches!(result, Err(AppError::ValidationError(_))));
 }
 
+fn text_anchor() -> Value {
+    json!({
+        "version": 1,
+        "segments": [{
+            "kind": "text",
+            "blockHash": "blk-text",
+            "blockText": "The quick brown fox jumps.",
+            "blockType": "p",
+            "headingPath": ["Intro"],
+            "quote": "quick brown",
+            "prefix": "The ",
+            "suffix": " fox jumps."
+        }]
+    })
+}
+
+fn create_request_with_anchor(anchor: Value) -> CreateAnnotationRequest {
+    CreateAnnotationRequest {
+        project_id: 1,
+        relative_path: "doc.md".to_string(),
+        anchor,
+        body: "Selection note".to_string(),
+    }
+}
+
+#[test]
+fn create_accepts_a_text_segment_anchor() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let mut request = create_request_with_anchor(text_anchor());
+    request.project_id = project_id;
+
+    let created = service
+        .create(request)
+        .expect("create text anchor annotation");
+
+    assert_eq!(created.anchor, text_anchor());
+}
+
+#[test]
+fn create_rejects_malformed_anchors() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let malformed = [
+        json!(["not an object"]),
+        json!({ "version": 1 }),
+        json!({ "version": 1, "segments": [] }),
+        json!({
+            "version": 1,
+            "segments": [{
+                "kind": "text",
+                "blockHash": "blk-text",
+                "blockText": "text",
+                "blockType": "p",
+                "headingPath": [],
+                "quote": "   ",
+                "prefix": "",
+                "suffix": ""
+            }]
+        }),
+        json!({
+            "version": 1,
+            "segments": [{
+                "kind": "text",
+                "blockHash": "blk-text",
+                "blockText": "text",
+                "blockType": "p",
+                "headingPath": "Intro",
+                "quote": "text",
+                "prefix": "",
+                "suffix": ""
+            }]
+        }),
+        json!({
+            "version": 1,
+            "segments": [{
+                "kind": "block",
+                "blockHash": "blk-block",
+                "blockText": "text",
+                "blockType": "p",
+                "headingPath": []
+            }, {
+                "kind": "unknown",
+                "blockHash": "blk-block"
+            }]
+        }),
+    ];
+
+    for anchor in malformed {
+        let mut request = create_request_with_anchor(anchor.clone());
+        request.project_id = project_id;
+        let result = service.create(request);
+        assert!(
+            matches!(result, Err(AppError::BadRequest(_))),
+            "expected BadRequest for anchor {anchor}, got {result:?}"
+        );
+    }
+}
+
 #[test]
 fn rename_moves_annotations_to_the_new_relative_path() {
     let fixture = fixture_with_files(&[("doc.md", "# Title\n")]);

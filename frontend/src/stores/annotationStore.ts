@@ -92,14 +92,16 @@ export const annotationStore = {
     setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
   },
 
-  /** Whole-block lookup: #16 anchors carry exactly one block segment. */
-  byBlockHash(blockHash: string): Annotation | undefined {
-    return annotations().find(
+  /** All annotations whose Anchor references the given block, in list order. */
+  byBlockHash(blockHash: string): Annotation[] {
+    return annotations().filter(
       (annotation) =>
         annotation.projectId === currentProjectId &&
         annotation.relativePath === currentRelativePath &&
         annotation.anchor?.segments?.some(
-          (segment) => segment.kind === 'block' && segment.blockHash === blockHash
+          (segment) =>
+            (segment.kind === 'block' || segment.kind === 'text') &&
+            segment.blockHash === blockHash
         )
     );
   },
