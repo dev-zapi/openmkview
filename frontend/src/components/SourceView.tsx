@@ -4,6 +4,7 @@ import { escapeHtml } from '../utils/html';
 import { highlightSearchMatches, setActiveSearchMatch } from '../utils/searchHighlight';
 import { annotationStore } from '../stores/annotationStore';
 import { locateAnchorInSource } from '../utils/sourceAnchorLocator';
+import { anchorExcerpt } from '../utils/anchorScoring';
 import type { Annotation } from '../types';
 
 interface SourceViewProps {
@@ -152,12 +153,6 @@ const SourceView: Component<SourceViewProps> = (props) => {
     }
   });
 
-  const annotationExcerpt = (annotation: Annotation): string =>
-    (annotation.anchor?.segments ?? [])
-      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-      .filter((text) => Boolean(text))
-      .join(' … ');
-
   /**
    * Read-only Source echo. Line highlights are best-effort; an unlocatable
    * Anchor degrades to the Outdated badge instead of a wrong line. Status is
@@ -203,7 +198,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
       if (previewResolved) {
         const canonicalSnapshot = canonicalOutdated.get(annotation.id);
         if (canonicalSnapshot !== undefined) {
-          outdated.push({ excerpt: canonicalSnapshot || annotationExcerpt(annotation) });
+          outdated.push({ excerpt: canonicalSnapshot || anchorExcerpt(annotation.anchor) });
           continue;
         }
 
@@ -218,7 +213,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
       if (location.status === 'outdated') {
         const snapshot = annotation.snapshot?.trim() || location.snapshot;
         sourceSnapshots.set(annotation.id, snapshot);
-        outdated.push({ excerpt: snapshot || annotationExcerpt(annotation) });
+        outdated.push({ excerpt: snapshot || anchorExcerpt(annotation.anchor) });
         continue;
       }
 
@@ -242,7 +237,7 @@ const SourceView: Component<SourceViewProps> = (props) => {
       }
 
       const label = entries
-        .map((entry) => annotationExcerpt(entry))
+        .map((entry) => anchorExcerpt(entry.anchor))
         .filter((text) => text.length > 0)
         .join(' … ');
       element.setAttribute('role', 'mark');

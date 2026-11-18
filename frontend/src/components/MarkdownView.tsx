@@ -18,6 +18,7 @@ import {
   type RenderedBlock,
 } from '../utils/annotationBlocks';
 import { anchorFromSelection } from '../utils/selectionAnchor';
+import { anchorExcerpt } from '../utils/anchorScoring';
 import { createMarkdownPipeline, sanitizeMarkdownHtml } from '../utils/sanitizedMarkdown';
 import { annotationStore } from '../stores/annotationStore';
 import AnnotationThread from './AnnotationThread';
@@ -302,9 +303,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
       return;
     }
 
-    const excerpt = anchor.segments
-      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-      .join(' … ');
+    const excerpt = anchorExcerpt(anchor);
     const buttonWidth = 116;
     let left = rect.right + 8;
     if (left + buttonWidth > window.innerWidth - 8) {
@@ -958,7 +957,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
 
     return (
       <div class="annotation-viewer">
-        <p class="annotation-anchor-excerpt">{annotationExcerpt(annotation)}</p>
+        <p class="annotation-anchor-excerpt">{anchorExcerpt(annotation.anchor).slice(0, 120)}</p>
         <Show when={outdated()}>
           <div class="annotation-outdated" role="status">
             <span class="annotation-outdated-badge">Outdated</span>
@@ -985,12 +984,6 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
     );
   };
 
-  const annotationExcerpt = (annotation: Annotation): string =>
-    annotation.anchor.segments
-      .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-      .join(' … ')
-      .slice(0, 120);
-
   const renderChooser = (current: AnnotationPanel) => {
     if (current.mode !== 'chooser') return null;
     return (
@@ -1011,7 +1004,7 @@ const MarkdownView: Component<MarkdownViewProps> = (props) => {
                   })
                 }
               >
-                <span class="annotation-chooser-excerpt">{annotationExcerpt(annotation)}</span>
+                <span class="annotation-chooser-excerpt">{anchorExcerpt(annotation.anchor).slice(0, 120)}</span>
                 <span class="annotation-chooser-note">
                   {annotation.notes[0]?.body ?? ''}
                 </span>

@@ -1,4 +1,5 @@
 import type { Annotation } from '../types';
+import { anchorExcerpt } from './anchorScoring';
 
 /**
  * The text an annotation is anchored to, for compact list surfaces. When the
@@ -10,11 +11,7 @@ export function annotationExcerpt(
 ): string {
   const snapshot = outdatedSnapshot?.trim();
   if (snapshot) return snapshot;
-  const parts = (annotation.anchor?.segments ?? [])
-    .map((segment) => (segment.kind === 'text' ? segment.quote : segment.blockText))
-    .map((part) => part?.trim())
-    .filter((part): part is string => Boolean(part));
-  return parts.join(' … ') || annotation.snapshot?.trim() || 'Anchored content';
+  return anchorExcerpt(annotation.anchor) || annotation.snapshot?.trim() || 'Anchored content';
 }
 
 /** First note body, condensed for the management table. */
@@ -26,7 +23,7 @@ export function annotationNotePreview(annotation: Annotation): string {
 /** Short label for the thread state, including the optional Outdated flag. */
 export function annotationState(
   annotation: Annotation,
-  outdated = annotation.outdated === true
+  outdated: boolean
 ): {
   label: 'Active' | 'Resolved';
   outdated: boolean;

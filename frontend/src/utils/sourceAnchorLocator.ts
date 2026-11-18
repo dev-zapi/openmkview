@@ -1,15 +1,14 @@
 import type { AnnotationAnchor, AnchorSegment } from '../types';
-import { normalizeBlockText } from './blockModel';
 import {
   blockMatchScore,
-  contextScore,
-  exactMatchScore,
-  findQuoteOccurrences,
+  findQuoteMatches,
   isObject,
+  occurrenceScore,
   outdatedFromAnchor,
   segmentAnchorText,
-  segmentStringField,
+  segmentQuote,
   selectBestOccurrence,
+  selectWholeBlock,
   type OutdatedResult,
   type ScoredOccurrence,
 } from './anchorScoring';
@@ -50,28 +49,28 @@ function locateTextSegment(
   projection: SourceProjection,
   segment: AnchorSegment
 ): SourceLineRange | null {
-  const quote = normalizeBlockText(segmentStringField(segment, 'quote'));
+  const quote = segmentQuote(segment);
   if (!quote) return null;
 
-  const prefix = segmentStringField(segment, 'prefix');
-  const suffix = segmentStringField(segment, 'suffix');
   const occurrences: ScoredOccurrence<number>[] = [];
 
-  for (const start of findQuoteOccurrences(projection.text, quote)) {
-    const end = start + quote.length; // exclusive
-    const blockIndex = projection.blockOf[start];
+  for (const match of findQuoteMatches(projection.text, quote)) {
+    const blockIndex = projection.blockOf[match.start];
     // A match must stay inside one block; sentinels already prevent `indexOf`
     // from crossing them, and this guards any future projection change.
-    if (blockIndex < 0 || projection.blockOf[end - 1] !== blockIndex) continue;
+    if (blockIndex < 0 || projection.blockOf[match.end - 1] !== blockIndex) continue;
 
     occurrences.push({
       candidate: blockIndex,
-      start,
-      end,
-      score:
-        blockMatchScore(projection.blocks[blockIndex], segment) +
-        contextScore(projection.text, start, end, prefix, suffix) +
-        exactMatchScore(projection.text, start, end, quote),
+      start: match.start,
+      end: match.end,
+      score: occurrenceScore(
+        blockMatchScore(projection.blocks[blockIndex], segment),
+        projection.text,
+        match,
+        segment,
+        quote
+      ),
     });
   }
 
@@ -90,32 +89,15 @@ function locateBlockSegment(
   projection: SourceProjection,
   segment: AnchorSegment
 ): SourceLineRange | null {
-  const blockText = normalizeBlockText(segmentStringField(segment, 'blockText'));
-  if (!blockText) return null;
-
   // A whole-block Anchor must equal an entire block, never a substring.
-  const occurrences: ScoredOccurrence<number>[] = [];
-  projection.blocks.forEach((block, blockIndex) => {
-    if (block.text !== blockText) return;
-    occurrences.push({
-      candidate: blockIndex,
-      start: projection.blockOffsets[blockIndex].start,
-      end: projection.blockOffsets[blockIndex].end,
-      score: blockMatchScore(block, segment),
-    });
-  });
-
-  const best = selectBestOccurrence(
-    occurrences,
-    (occurrence) => {
-      const block = projection.blocks[occurrence.candidate];
-      return `${block.startLine}:${block.endLine}`;
-    }
+  const block = selectWholeBlock(
+    projection.blocks,
+    (candidate) => candidate,
+    segment,
+    (candidate) => `${candidate.startLine}:${candidate.endLine}`
   );
-  if (!best) return null;
 
-  const block = projection.blocks[best.candidate];
-  return { start: block.startLine, end: block.endLine };
+  return block ? { start: block.startLine, end: block.endLine } : null;
 }
 
 function mergeRanges(ranges: SourceLineRange[]): SourceLineRange[] {
