@@ -1,5 +1,6 @@
 import type {
   Annotation,
+  AnnotationAnchor,
   CreateAnnotationRequest,
   FileNode,
   FileContent,
@@ -228,5 +229,16 @@ export const api = {
   async deleteAnnotation(id: number): Promise<void> {
     const res = await request(`/api/annotations/${id}`, { method: 'DELETE' });
     await checkResponse(res);
+  },
+
+  /** Manual re-anchoring: replace an Outdated annotation's Anchor payload. */
+  async reanchorAnnotation(id: number, anchor: AnnotationAnchor): Promise<Annotation> {
+    const res = await request(`/api/annotations/${id}/anchor`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ anchor }),
+    });
+    await checkResponse(res);
+    return res.json();
   },
 };

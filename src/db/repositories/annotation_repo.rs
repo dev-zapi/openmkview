@@ -106,6 +106,30 @@ impl<'a> AnnotationRepository<'a> {
         Ok(rows > 0)
     }
 
+    /// Replace an annotation's Anchor payload and snapshot in one write.
+    ///
+    /// Returns `None` when the annotation does not exist so the service can
+    /// map it to NotFound instead of silently creating a row.
+    pub fn update_anchor(
+        &self,
+        id: i64,
+        anchor_json: &str,
+        snapshot: Option<&str>,
+    ) -> AppResult<Option<Annotation>> {
+        let rows = self.conn.execute(
+            "UPDATE annotations
+             SET anchor_json = ?, snapshot = ?, updated_at = datetime('now')
+             WHERE id = ?",
+            params![anchor_json, snapshot, id],
+        )?;
+
+        if rows == 0 {
+            return Ok(None);
+        }
+
+        self.find_by_id(id)
+    }
+
     /// Rewrite stored paths after an in-app rename or move.
     ///
     /// A file/directory renamed to `to` moves every row anchored exactly at

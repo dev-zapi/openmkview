@@ -130,7 +130,7 @@ describe('annotationBlocks', () => {
 
     expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(true);
     expect(blocks[0].element.getAttribute('data-annotation-ids')).toBe('7,8');
-    expect(attached.get(blocks[0].model.id)?.map((annotation) => annotation.id)).toEqual([
+    expect(attached.attachments.get(blocks[0].model.id)?.map((annotation) => annotation.id)).toEqual([
       7, 8,
     ]);
     expect(blocks[1].element.classList.contains('annotation-highlighted')).toBe(false);
@@ -172,10 +172,10 @@ describe('annotationBlocks', () => {
     expect(marks).toHaveLength(1);
     expect(marks[0].textContent).toBe('quick brown');
     expect(blocks[0].element.querySelector('.annotation-marker')?.classList.contains('has-annotation')).toBe(true);
-    expect(attached.get(blocks[0].model.id)?.[0]?.id).toBe(9);
+    expect(attached.attachments.get(blocks[0].model.id)?.[0]?.id).toBe(9);
   });
 
-  it('does not attach an Outdated annotation', () => {
+  it('reports Outdated annotations with their snapshot and no highlight', () => {
     const root = createRoot('<p>current text</p>');
     const blocks = assignBlockAnchors(root);
     const annotation: Annotation = {
@@ -204,11 +204,25 @@ describe('annotationBlocks', () => {
       notes: [],
     };
 
-    const attached = applyAnnotationHighlights(root, [annotation], blocks);
+    const applied = applyAnnotationHighlights(root, [annotation], blocks);
 
     expect(root.querySelector('mark[data-annotation-id="10"]')).toBeNull();
     expect(blocks[0].element.classList.contains('annotation-highlighted')).toBe(false);
-    expect(attached.size).toBe(0);
+    expect(applied.attachments.size).toBe(0);
+    // The resolver's snapshot drives the Outdated popover; the annotation is
+    // never silently attached to unrelated content.
+    expect(applied.outdated.get(10)).toBe('vanished words');
+  });
+
+  it('does not report resolved annotations as Outdated', () => {
+    const root = createRoot('<p>Still here</p>');
+    const blocks = assignBlockAnchors(root);
+    const annotation = annotationFor(12, blockAnchorFrom(blocks[0]));
+
+    const applied = applyAnnotationHighlights(root, [annotation], blocks);
+
+    expect(applied.outdated.size).toBe(0);
+    expect(applied.attachments.get(blocks[0].model.id)?.[0]?.id).toBe(12);
   });
 
   it('finds search matches inside text that is also annotated', () => {

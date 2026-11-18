@@ -8,6 +8,16 @@ const [annotations, setAnnotations] = createSignal<Annotation[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
 const [error, setError] = createSignal<string | null>(null);
 const [visible, setVisible] = createSignal<boolean>(loadAnnotationsVisible());
+/**
+ * Anchor resolution results published by the rendered document. Keyed by
+ * annotation id, value is the text as originally anchored. An annotation is
+ * Outdated exactly when it appears here.
+ */
+const [outdatedSnapshots, setOutdatedSnapshotsSignal] = createSignal<Map<number, string>>(
+  new Map()
+);
+/** Annotation awaiting a fresh text selection for manual re-anchoring. */
+const [reanchorTarget, setReanchorTarget] = createSignal<number | null>(null);
 
 let loadedKey: string | null = null;
 let currentProjectId: number | null = null;
@@ -27,10 +37,34 @@ export const annotationStore = {
   loading,
   error,
   visible,
+  outdatedSnapshots,
+  reanchorTarget,
 
   /** Whether annotation writes may be attempted (connected only). */
   canMutate(): boolean {
     return offlineStore.online();
+  },
+
+  /** Publish the render pass's resolution results (called after every render). */
+  setOutdatedSnapshots(snapshots: Map<number, string>): void {
+    setOutdatedSnapshotsSignal(snapshots);
+  },
+
+  isOutdated(id: number): boolean {
+    return outdatedSnapshots().has(id);
+  },
+
+  outdatedSnapshot(id: number): string | null {
+    return outdatedSnapshots().get(id) ?? null;
+  },
+
+  /** Arm manual re-anchoring for an Outdated annotation. */
+  startReanchor(id: number): void {
+    setReanchorTarget(id);
+  },
+
+  cancelReanchor(): void {
+    setReanchorTarget(null);
   },
 
   toggleVisible(): void {
@@ -70,6 +104,8 @@ export const annotationStore = {
     currentProjectId = null;
     currentRelativePath = null;
     setAnnotations([]);
+    setOutdatedSnapshotsSignal(new Map());
+    setReanchorTarget(null);
     setLoading(false);
     setError(null);
   },
@@ -90,6 +126,30 @@ export const annotationStore = {
   async remove(id: number): Promise<void> {
     await api.deleteAnnotation(id);
     setAnnotations((current) => current.filter((annotation) => annotation.id !== id));
+    setOutdatedSnapshotsSignal((current) => {
+      const next = new Map(current);
+      next.delete(id);
+      return next;
+    });
+  },
+
+  /**
+   * Manual re-anchoring: attach an Outdated annotation to a freshly selected
+   * range. The server returns the updated annotation; its previous Outdated
+   * status is cleared locally so the badge disappears immediately.
+   */
+  async reanchor(id: number, anchor: AnnotationAnchor): Promise<Annotation> {
+    const updated = await api.reanchorAnnotation(id, anchor);
+    setAnnotations((current) =>
+      current.map((annotation) => (annotation.id === id ? updated : annotation))
+    );
+    setOutdatedSnapshotsSignal((current) => {
+      const next = new Map(current);
+      next.delete(id);
+      return next;
+    });
+    setReanchorTarget(null);
+    return updated;
   },
 
   /** All annotations whose Anchor references the given block, in list order. */

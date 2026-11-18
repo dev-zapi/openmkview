@@ -14,9 +14,9 @@ use openmkview::handlers::{
     get_theme_css_content, get_trash_stats, get_version, install_custom_theme, list_annotations,
     list_projects, list_themes, list_trash, move_file, move_to_trash, open_project, passkey_delete,
     passkey_list, passkey_login_finish, passkey_login_start, passkey_register_finish,
-    passkey_register_start, rename_file, resolve_path, restore_from_trash, save_file_content,
-    search_favicons, serve_project_file, update_project, update_project_color, update_settings,
-    validate_project,
+    passkey_register_start, reanchor_annotation, rename_file, resolve_path, restore_from_trash,
+    save_file_content, search_favicons, serve_project_file, update_project, update_project_color,
+    update_settings, validate_project,
 };
 use openmkview::passkey::{build_passkey_sites, build_passkey_state};
 use openmkview::paths::AppPaths;
@@ -197,6 +197,10 @@ fn configure_routes(cfg: &mut web::ServiceConfig) {
         .route("/api/trash/stats", web::get().to(get_trash_stats))
         .route("/api/annotations", web::get().to(list_annotations))
         .route("/api/annotations", web::post().to(create_annotation))
+        .route(
+            "/api/annotations/{id}/anchor",
+            web::put().to(reanchor_annotation),
+        )
         .route("/api/annotations/{id}", web::delete().to(delete_annotation))
         .route("/", web::get().to(static_files::serve_index))
         .route("/{path:.*}", web::get().to(static_files::serve_static));

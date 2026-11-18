@@ -87,4 +87,45 @@ describe('annotationStore', () => {
     // The annotation belongs to project 2 / other.md, so it is not current.
     expect(annotationStore.byBlockHash('blk-shared')).toEqual([]);
   });
+
+  it('re-anchors an Outdated annotation and clears its status', async () => {
+    const annotation = annotationFor(1, 1, 'a.md', 'blk-gone');
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse([annotation]))
+      .mockResolvedValueOnce(jsonResponse({ ...annotation, snapshot: 'fresh quote' }));
+
+    const { annotationStore } = await import('../../stores/annotationStore');
+    await annotationStore.load(1, 'a.md');
+    annotationStore.setOutdatedSnapshots(new Map([[1, 'old quote']]));
+    expect(annotationStore.isOutdated(1)).toBe(true);
+
+    annotationStore.startReanchor(1);
+    expect(annotationStore.reanchorTarget()).toBe(1);
+
+    const freshAnchor = {
+      version: 1,
+      segments: [
+        {
+          kind: 'text' as const,
+          blockHash: 'blk-new',
+          blockText: 'fresh quote paragraph',
+          blockType: 'p',
+          headingPath: [],
+          quote: 'fresh quote',
+          prefix: '',
+          suffix: ' paragraph',
+        },
+      ],
+    };
+    await annotationStore.reanchor(1, freshAnchor);
+
+    expect(global.fetch).toHaveBeenLastCalledWith('/api/annotations/1/anchor', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ anchor: freshAnchor }),
+    });
+    expect(annotationStore.annotations()[0].snapshot).toBe('fresh quote');
+    expect(annotationStore.isOutdated(1)).toBe(false);
+    expect(annotationStore.reanchorTarget()).toBeNull();
+  });
 });

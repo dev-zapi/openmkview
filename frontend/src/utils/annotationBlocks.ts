@@ -161,16 +161,26 @@ export function blockAnchorFrom(block: RenderedBlock): AnnotationAnchor {
   return { version: 1, segments: [segment] };
 }
 
+export interface AnnotationHighlightResult {
+  /** Block id -> annotations attached to it (resolved anchors only). */
+  attachments: Map<string, Annotation[]>;
+  /** Annotation id -> originally anchored text, for every Outdated anchor. */
+  outdated: Map<number, string>;
+}
+
 /**
  * Re-attaches stored annotations to rendered blocks by running the pure
  * Anchor resolver over the block model. Idempotent: safe to call after every
  * render, annotation change, and search change.
+ *
+ * Outdated annotations are never highlighted; they are reported here so the
+ * column can badge them and their popover can show the original text.
  */
 export function applyAnnotationHighlights(
   root: HTMLElement,
   annotations: Annotation[],
   blocks: RenderedBlock[]
-): Map<string, Annotation[]> {
+): AnnotationHighlightResult {
   for (const block of blocks) {
     block.element.classList.remove('annotation-highlighted', 'annotation-resolved');
     block.element.removeAttribute('data-annotation-id');
@@ -183,6 +193,7 @@ export function applyAnnotationHighlights(
   const elementsById = new Map(blocks.map((block) => [block.model.id, block.element]));
   const models = blocks.map((block) => block.model);
   const attachments = new Map<string, Annotation[]>();
+  const outdated = new Map<number, string>();
   const blockIds = new Map<string, number[]>();
   const blockResolved = new Map<string, boolean>();
 
@@ -196,7 +207,11 @@ export function applyAnnotationHighlights(
 
   for (const annotation of annotations) {
     const resolution = resolveAnchor(models, annotation.anchor);
-    if (resolution.status !== 'resolved') continue;
+    if (resolution.status !== 'resolved') {
+      const snapshot = annotation.snapshot?.trim() || resolution.snapshot;
+      outdated.set(annotation.id, snapshot);
+      continue;
+    }
 
     for (const segment of resolution.segments) {
       const element = elementsById.get(segment.blockId);
@@ -240,7 +255,7 @@ export function applyAnnotationHighlights(
     }
   }
 
-  return attachments;
+  return { attachments, outdated };
 }
 
 function modelType(models: BlockModel[], blockId: string): string {
@@ -250,6 +265,7 @@ function modelType(models: BlockModel[], blockId: string): string {
 export interface AppliedHighlights {
   searchMatches: HTMLElement[];
   attachments: Map<string, Annotation[]>;
+  outdated: Map<number, string>;
 }
 
 /**
@@ -266,6 +282,6 @@ export function applySearchAndAnnotationHighlights(
 ): AppliedHighlights {
   clearRangeHighlights(root);
   const searchMatches = highlightSearchMatches(root, query);
-  const attachments = applyAnnotationHighlights(root, annotations, blocks);
-  return { searchMatches, attachments };
+  const applied = applyAnnotationHighlights(root, annotations, blocks);
+  return { searchMatches, ...applied };
 }

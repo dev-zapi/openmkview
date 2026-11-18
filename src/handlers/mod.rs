@@ -9,7 +9,9 @@ mod theme_handler;
 mod trash_handler;
 mod version_handler;
 
-pub use annotation_handler::{create_annotation, delete_annotation, list_annotations};
+pub use annotation_handler::{
+    create_annotation, delete_annotation, list_annotations, reanchor_annotation,
+};
 pub use auth_handler::{auth_login, auth_logout, auth_status, auth_update_session_timeout};
 pub use file_handler::{
     create_file, delete_file, get_file_content, get_file_tree, move_file, rename_file,

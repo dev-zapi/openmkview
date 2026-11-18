@@ -1,5 +1,5 @@
 use crate::errors::{AppError, AppResult};
-use crate::models::{AnnotationListParams, CreateAnnotationRequest};
+use crate::models::{AnnotationListParams, CreateAnnotationRequest, ReanchorAnnotationRequest};
 use crate::services::AnnotationService;
 use crate::AppState;
 use actix_web::{web, HttpResponse};
@@ -32,6 +32,23 @@ pub async fn create_annotation(
 
     let service = AnnotationService::new(&conn);
     let annotation = service.create(body.into_inner())?;
+
+    Ok(HttpResponse::Ok().json(annotation))
+}
+
+/// PUT /api/annotations/{id}/anchor
+pub async fn reanchor_annotation(
+    data: web::Data<AppState>,
+    path: web::Path<i64>,
+    body: web::Json<ReanchorAnnotationRequest>,
+) -> AppResult<HttpResponse> {
+    let conn = data
+        .db
+        .lock()
+        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+
+    let service = AnnotationService::new(&conn);
+    let annotation = service.reanchor(path.into_inner(), body.into_inner().anchor)?;
 
     Ok(HttpResponse::Ok().json(annotation))
 }
