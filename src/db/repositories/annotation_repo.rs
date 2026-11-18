@@ -106,6 +106,46 @@ impl<'a> AnnotationRepository<'a> {
         Ok(rows > 0)
     }
 
+    /// Rewrite stored paths after an in-app rename or move.
+    ///
+    /// A file/directory renamed to `to` moves every row anchored exactly at
+    /// `from` plus every descendant below it. Prefixes are segment-aware:
+    /// moving `docs` must not touch `docs-other`. Rows are selected by project
+    /// and filtered in Rust so paths containing `%` or `_` cannot miscarry.
+    pub fn move_paths(&self, project_id: i64, from: &str, to: &str) -> AppResult<usize> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, relative_path FROM annotations WHERE project_id = ?")?;
+        let rows = stmt.query_map([project_id], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })?;
+
+        let descendant_prefix = format!("{}/", from);
+        let mut updates = Vec::new();
+        for row in rows {
+            let (id, relative_path) = row?;
+            let new_path = if relative_path == from {
+                to.to_string()
+            } else if relative_path.starts_with(&descendant_prefix) {
+                format!("{}{}", to, &relative_path[from.len()..])
+            } else {
+                continue;
+            };
+            updates.push((id, new_path));
+        }
+        drop(stmt);
+
+        let mut moved = 0;
+        for (id, new_path) in updates {
+            moved += self.conn.execute(
+                "UPDATE annotations SET relative_path = ?, updated_at = datetime('now')
+                 WHERE id = ?",
+                params![new_path, id],
+            )?;
+        }
+        Ok(moved)
+    }
+
     fn hydrate(&self, row: AnnotationRow) -> AppResult<Annotation> {
         let anchor = serde_json::from_str(&row.anchor_json)?;
 

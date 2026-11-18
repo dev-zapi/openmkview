@@ -1,7 +1,7 @@
 use crate::db::{ProjectRepository, SettingsRepository};
 use crate::errors::{AppError, AppResult};
 use crate::models::{FileMoveRequest, FileOperationRequest, FileSaveRequest, FileSaveResponse};
-use crate::services::{FileService, ProjectService};
+use crate::services::{AnnotationService, FileService, ProjectService};
 use crate::AppState;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
@@ -122,7 +122,11 @@ pub async fn rename_file(
         .as_ref()
         .ok_or_else(|| AppError::BadRequest("New file name is required".into()))?;
 
-    FileService::rename_file(&project_path, old_path, new_name)?;
+    // Annotation rows follow the file to its new relative path. The filesystem
+    // remains the source of truth; this only migrates the database key.
+    let new_relative_path = FileService::rename_file(&project_path, old_path, new_name)?;
+    AnnotationService::new(&conn).migrate_paths(body.project_id, old_path, &new_relative_path)?;
+
     Ok(HttpResponse::Ok().body("Renamed successfully"))
 }
 
@@ -158,7 +162,8 @@ pub async fn move_file(
 
     let project_path = project_service.get_project_path(body.project_id)?;
 
-    FileService::move_file(&project_path, &body.from, &body.to)?;
+    let new_relative_path = FileService::move_file(&project_path, &body.from, &body.to)?;
+    AnnotationService::new(&conn).migrate_paths(body.project_id, &body.from, &new_relative_path)?;
     Ok(HttpResponse::Ok().body("Moved successfully"))
 }
 
