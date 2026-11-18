@@ -1,6 +1,13 @@
 import { Component, onMount, onCleanup, createEffect, Show, untrack } from 'solid-js';
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
-import { Compartment, EditorState, type Extension, type Range } from '@codemirror/state';
+import {
+  Compartment,
+  EditorState,
+  StateEffect,
+  StateField,
+  type Extension,
+  type Range,
+} from '@codemirror/state';
 import { html } from '@codemirror/lang-html';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -11,6 +18,8 @@ import { defaultKeymap, historyKeymap, history } from '@codemirror/commands';
 import { basicSetup } from 'codemirror';
 import type { FileType } from '../types';
 import { writingModeStore, writingSessionKey } from '../stores/writingModeStore';
+import { annotationStore } from '../stores/annotationStore';
+import { resolveEditorAnnotationLines } from '../utils/editorAnnotationEcho';
 import './CodeMirrorEditor.css';
 
 /**
@@ -209,6 +218,66 @@ const PARAGRAPH_FOCUS_EXTENSION = ViewPlugin.fromClass(
   },
 );
 
+/**
+ * Edit Mode is read-only for Annotations: resolved Anchors get a line
+ * decoration, never a creation or editing affordance. Paragraph Focus keeps
+ * its own line decorations, so both class sets stack on the same `.cm-line`.
+ *
+ * The decoration set is computed outside the editor (Solid) and pushed in
+ * through an effect, then mapped through document changes so in-flight typing
+ * does not need a re-resolution per keystroke. Save/load/status changes
+ * recompute it; a short debounced pass covers pause-in-typing drift.
+ */
+const SET_ANNOTATION_ECHO = StateEffect.define<DecorationSet>();
+
+const ANNOTATION_ECHO_FIELD = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+
+  update(decorations, transaction) {
+    decorations = decorations.map(transaction.changes);
+    for (const effect of transaction.effects) {
+      if (effect.is(SET_ANNOTATION_ECHO)) decorations = effect.value;
+    }
+    return decorations;
+  },
+
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+/** Build the read-only echo over a document snapshot. */
+const annotationEchoDecorations = (view: EditorView): DecorationSet => {
+  // Hidden annotations leave no trace in Edit Mode, matching the reading-mode
+  // toggle in Preview and Source.
+  const visible = annotationStore.visible();
+  const annotations = visible ? annotationStore.annotations() : [];
+  const outdatedIds = new Set(annotationStore.outdatedSnapshots().keys());
+  const lines = resolveEditorAnnotationLines(
+    view.state.doc.toString(),
+    annotations,
+    outdatedIds,
+  );
+
+  const doc = view.state.doc;
+  const ranges: Range<Decoration>[] = [];
+  for (const line of lines) {
+    if (line.from < 0 || line.from > doc.length) continue;
+    const positioned = doc.lineAt(line.from);
+    const label = line.excerpt ? `Annotated: ${line.excerpt}` : 'Annotated';
+    ranges.push(
+      Decoration.line({
+        class: `cm-annotation-line${line.resolved ? ' cm-annotation-resolved' : ''}`,
+        attributes: {
+          role: 'mark',
+          'aria-label': label,
+          title: label,
+        },
+      }).range(positioned.from),
+    );
+  }
+
+  return Decoration.set(ranges, true);
+};
+
 export interface CodeMirrorEditorProps {
   initialContent: string;
   fileName?: string;
@@ -271,6 +340,33 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
   /** Paragraph dimming; only included while Writing Mode and Focus are on. */
   const focusExtension = () => (isFocusActive() ? PARAGRAPH_FOCUS_EXTENSION : []);
 
+  /**
+   * Apply the latest read-only Annotation echo to the live document. Signals
+   * are read untracked when this runs from the typing debounce, so the timer
+   * can never create a reactive subscription of its own.
+   */
+  const applyAnnotationEcho = () => {
+    if (!editorView) return;
+    const decorations = untrack(() => annotationEchoDecorations(editorView!));
+    editorView.dispatch({ effects: SET_ANNOTATION_ECHO.of(decorations) });
+  };
+
+  let annotationEchoTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Content changed under the decorations. The decoration set already maps
+   * through the edit, so this is only a pause-in-typing re-resolution: it
+   * keeps a moved/removed anchor from leaving stale highlights behind without
+   * re-running the locator on every keystroke.
+   */
+  const scheduleAnnotationEcho = () => {
+    if (annotationEchoTimer !== null) clearTimeout(annotationEchoTimer);
+    annotationEchoTimer = setTimeout(() => {
+      annotationEchoTimer = null;
+      applyAnnotationEcho();
+    }, 600);
+  };
+
   const getCurrentContent = () => {
     return editorView?.state.doc.toString() || '';
   };
@@ -320,6 +416,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     const updateListener = EditorView.updateListener.of((update: any) => {
       if (update.docChanged) {
         checkDirty();
+        scheduleAnnotationEcho();
       }
     });
 
@@ -366,6 +463,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
       writingCompartment.of(isWritingActive() ? WRITING_THEME : []),
       typewriterCompartment.of(isTypewriterActive() ? TYPEWRITER_CENTER : []),
       focusCompartment.of(focusExtension()),
+      ANNOTATION_ECHO_FIELD,
       saveKeybinding,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       updateListener,
@@ -390,13 +488,42 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     if (props.registerContentGetter) {
       props.registerContentGetter(getCurrentContent);
     }
+
+    // The editor exists now; resolve once even when the annotation store
+    // already settled before the view was built.
+    applyAnnotationEcho();
   });
 
   onCleanup(() => {
+    if (annotationEchoTimer !== null) {
+      clearTimeout(annotationEchoTimer);
+      annotationEchoTimer = null;
+    }
     if (editorView) {
       editorView.destroy();
       editorView = undefined;
     }
+  });
+
+  // Edit Mode is another entry point to the same per-file annotations; the
+  // store deduplicates when Preview or Source already loaded them.
+  createEffect(() => {
+    const projectId = props.projectId;
+    const relativePath = props.filePath;
+    if (projectId && relativePath) {
+      void annotationStore.load(projectId, relativePath);
+    }
+  });
+
+  // Re-echo when the store settles, the reading-mode toggle flips, the
+  // canonical Outdated map changes, or a save/reload swaps the content.
+  createEffect(() => {
+    annotationStore.annotations();
+    annotationStore.visible();
+    annotationStore.outdatedSnapshots();
+    props.initialContent;
+    if (!editorView) return;
+    applyAnnotationEcho();
   });
 
   createEffect(() => {
@@ -409,6 +536,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
         doc: newContent,
         extensions: editorExtensions,
       }));
+      applyAnnotationEcho();
     }
   });
 
@@ -424,6 +552,7 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
         const currentContent = getCurrentContent();
         editorView.destroy();
         createEditor(currentContent);
+        applyAnnotationEcho();
       }
     });
   });
