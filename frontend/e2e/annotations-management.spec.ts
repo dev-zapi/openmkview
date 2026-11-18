@@ -216,6 +216,33 @@ test.describe('annotation management panel', () => {
     await expect(targetB).toBeFocused();
   });
 
+  test('shows Outdated state for rows in a different file', async ({ page }) => {
+    const healthy = await createScratchFile(
+      page,
+      markdown('Management Healthy', TARGET_A),
+      MANAGED_PREFIX
+    );
+    const drifted = await createScratchFile(
+      page,
+      markdown('Management Drifted', TARGET_B),
+      MANAGED_PREFIX
+    );
+    targets = [healthy, drifted];
+
+    // The anchor text is absent from the drifted file, so its row must resolve
+    // Outdated from that file's own content, not from the open file's status.
+    await createAnnotationViaApi(page, drifted, 'cross-file outdated note');
+
+    await openScratch(page, healthy, 'Management Healthy');
+    await createBlockAnnotation(page, TARGET_A, 'healthy note');
+    const manager = await openManager(page);
+
+    const driftedRow = rowFor(manager, 'cross-file outdated note');
+    await expect(driftedRow).toContainText('Outdated');
+    await expect(driftedRow.getByRole('button', { name: 'Jump' })).toHaveCount(0);
+    await expect(rowFor(manager, 'healthy note').getByRole('button', { name: 'Jump' })).toBeVisible();
+  });
+
   test('orphaned rows explain why they cannot jump', async ({ page }) => {
     const healthy = await createScratchFile(
       page,

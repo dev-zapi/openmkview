@@ -198,7 +198,9 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
               <tbody>
                 <For each={rows()}>
                   {(row) => {
-                    const state = annotationState(row, isRowOutdated(row));
+                    // A function: project-wide Outdated resolution fills in
+                    // progressively, so the state cell must stay reactive.
+                    const state = () => annotationState(row, isRowOutdated(row));
                     return (
                       <tr
                         class={
@@ -221,16 +223,16 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                         <td>
                           <span
                             class={`annotation-state ${
-                              state.outdated
+                              state().outdated
                                 ? 'outdated'
                                 : row.resolved
                                   ? 'resolved'
                                   : ''
                             }`}
                           >
-                            {state.label}
+                            {state().label}
                           </span>
-                          <Show when={state.outdated}>
+                          <Show when={state().outdated}>
                             <span class="annotation-manager-badge">Outdated</span>
                           </Show>
                         </td>
@@ -245,7 +247,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                             }
                           >
                             <Show
-                              when={!state.outdated}
+                              when={!state().outdated}
                               fallback={
                                 <span class="annotation-manager-outdated">
                                   Outdated — cannot locate text
