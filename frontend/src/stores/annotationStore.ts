@@ -7,6 +7,8 @@ const [loading, setLoading] = createSignal<boolean>(false);
 const [error, setError] = createSignal<string | null>(null);
 
 let loadedKey: string | null = null;
+let currentProjectId: number | null = null;
+let currentRelativePath: string | null = null;
 
 function fileKey(projectId: number, relativePath: string): string {
   return `${projectId}\u0000${relativePath}`;
@@ -23,6 +25,11 @@ export const annotationStore = {
     if (key === loadedKey) return;
 
     loadedKey = key;
+    currentProjectId = projectId;
+    currentRelativePath = relativePath;
+    // Never let the previous file's annotations survive into the new file,
+    // even for the few milliseconds before the fetch resolves.
+    setAnnotations([]);
     setLoading(true);
     setError(null);
 
@@ -42,6 +49,8 @@ export const annotationStore = {
 
   reset(): void {
     loadedKey = null;
+    currentProjectId = null;
+    currentRelativePath = null;
     setAnnotations([]);
     setLoading(false);
     setError(null);
@@ -67,10 +76,13 @@ export const annotationStore = {
 
   /** Whole-block lookup: #16 anchors carry exactly one block segment. */
   byBlockHash(blockHash: string): Annotation | undefined {
-    return annotations().find((annotation) =>
-      annotation.anchor?.segments?.some(
-        (segment) => segment.kind === 'block' && segment.blockHash === blockHash
-      )
+    return annotations().find(
+      (annotation) =>
+        annotation.projectId === currentProjectId &&
+        annotation.relativePath === currentRelativePath &&
+        annotation.anchor?.segments?.some(
+          (segment) => segment.kind === 'block' && segment.blockHash === blockHash
+        )
     );
   },
 };
