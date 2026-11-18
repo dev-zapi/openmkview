@@ -103,7 +103,25 @@ fn delete_removes_the_annotation_and_its_notes() {
         .create(create_request(project_id, "doc.md", "temporary"))
         .expect("create annotation");
 
+    let note_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM annotation_notes WHERE annotation_id = ?",
+            [created.id],
+            |row| row.get(0),
+        )
+        .expect("count notes before delete");
+    assert_eq!(note_count, 1);
+
     service.delete(created.id).expect("delete annotation");
+
+    let note_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM annotation_notes WHERE annotation_id = ?",
+            [created.id],
+            |row| row.get(0),
+        )
+        .expect("count notes after delete");
+    assert_eq!(note_count, 0);
 
     let listed = service
         .list_for_file(project_id, "doc.md")
