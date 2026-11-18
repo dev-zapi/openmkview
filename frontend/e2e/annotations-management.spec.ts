@@ -131,18 +131,45 @@ async function cleanup(page: Page, targets: FileTarget[]): Promise<void> {
 
 /**
  * Create a project whose directory and content this test owns, so project-wide
- * operations (clear-all) can never touch the shared seeded project.
+ * operations (clear-all) can never touch the shared seeded project. The shared
+ * project is immediately re-opened so concurrently running specs that pick
+ * `projects[0]` keep targeting the seeded project rather than this one.
  */
-async function createOwnedProject(page: Page, path: string): Promise<number> {
-  return page.evaluate(async (projectPath) => {
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: projectPath }),
-    });
-    if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
-    return (await res.json()).id as number;
-  }, path);
+async function createOwnedProject(
+  page: Page,
+  path: string,
+  restoreProjectPath?: string
+): Promise<number> {
+  return page.evaluate(
+    async ({ projectPath, restorePath }) => {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: projectPath }),
+      });
+      if (!res.ok) throw new Error(`cannot create owned project: ${res.status}`);
+      const project = await res.json();
+
+      if (restorePath) {
+        await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: restorePath }),
+        });
+      }
+      return project.id as number;
+    },
+    { projectPath: path, restorePath: restoreProjectPath }
+  );
+}
+
+async function firstOpenProjectPath(page: Page): Promise<string | undefined> {
+  return page.evaluate(async () => {
+    const res = await fetch('/api/projects?open=true');
+    if (!res.ok) return undefined;
+    const projects = await res.json();
+    return (projects[0]?.path as string | undefined) ?? undefined;
+  });
 }
 
 test.describe('annotation management panel', () => {
@@ -249,7 +276,8 @@ test.describe('annotation management panel', () => {
     await expect(rowFor(manager, 'delete note one')).toHaveCount(0);
     await expect(rowFor(manager, 'delete note two')).toHaveCount(0);
     await expect(rowFor(manager, 'keep note three')).toBeVisible();
-    await expect(manager.getByText('1 annotation in this project')).toBeVisible();
+    // The panel is project-wide, so other specs may have rows here too; only
+    // assert that our selected rows were the ones removed.
   });
 
   test('multi-select Resolved toggle works in one action each way', async ({ page }) => {
@@ -266,13 +294,18 @@ test.describe('annotation management panel', () => {
     await openScratch(page, file, 'Management Resolve');
     const manager = await openManager(page);
 
-    await manager.getByRole('checkbox', { name: 'Select all annotations' }).check();
+    // Select only this test's rows: the shared project may carry rows from
+    // concurrently running annotation specs.
+    await rowFor(manager, 'resolve note one').getByRole('checkbox').check();
+    await rowFor(manager, 'resolve note two').getByRole('checkbox').check();
+    await expect(manager.getByText('2 selected')).toBeVisible();
     await manager.getByRole('button', { name: 'Resolve selected' }).click();
 
     await expect(rowFor(manager, 'resolve note one').getByText('Resolved')).toBeVisible();
     await expect(rowFor(manager, 'resolve note two').getByText('Resolved')).toBeVisible();
 
-    await manager.getByRole('checkbox', { name: 'Select all annotations' }).check();
+    await rowFor(manager, 'resolve note one').getByRole('checkbox').check();
+    await rowFor(manager, 'resolve note two').getByRole('checkbox').check();
     await manager.getByRole('button', { name: 'Unresolve selected' }).click();
 
     await expect(rowFor(manager, 'resolve note one').getByText('Active')).toBeVisible();
@@ -291,7 +324,8 @@ test.describe('annotation management panel', () => {
 
     let projectId: number | undefined;
     try {
-      projectId = await createOwnedProject(page, projectDir);
+      const harnessProjectPath = await firstOpenProjectPath(page);
+      projectId = await createOwnedProject(page, projectDir, harnessProjectPath);
       const target = { projectId, path: filePath };
       await createAnnotationViaApi(page, target, 'clear note one');
       await createAnnotationViaApi(page, target, 'clear note two');

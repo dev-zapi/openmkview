@@ -162,7 +162,7 @@ test.describe('whole-block annotations', () => {
     }, target);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await openScratchFile(page, target);
+    await openScratchFile(page, target, 'Block Annotation E2E');
 
     const reloaded = page.getByText('A paragraph with a stable block for annotation.', {
       exact: true,
