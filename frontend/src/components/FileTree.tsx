@@ -78,6 +78,11 @@ function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
     // Use 12px (= 2px item-margin + 10px scrollbar) so both browsers land on
     // a symmetric 10px visual inset on each side.
     '--trees-padding-inline-override': '12px',
+    // Nudge the ⋮ context-menu trigger 5px left of its library-computed
+    // offset (padding-inline 12 + item-padding-x 8 - focus-ring 1 = 19px).
+    // Redefined here because only this composite shifts the button;
+    // tweaking its parts would also move row content or padding.
+    '--trees-context-menu-trigger-inline-offset': '24px',
     '--trees-theme-sidebar-bg': 'var(--color-bg)',
     '--trees-theme-sidebar-fg': 'var(--color-text)',
     '--trees-theme-list-hover-bg': 'var(--color-hover-bg)',
