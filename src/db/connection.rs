@@ -1,6 +1,18 @@
 use rusqlite::Connection;
 use std::path::Path;
 
+/// True when `column` is already present on `table`; drives the additive
+/// migrations below so `ALTER TABLE` runs at most once.
+fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
+    conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info(?1) WHERE name = ?2",
+        rusqlite::params![table, column],
+        |row| row.get::<_, i32>(0),
+    )
+    .unwrap_or(0)
+        > 0
+}
+
 pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
     let conn = Connection::open(db_path)?;
 
@@ -53,16 +65,7 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
     )?;
 
     // Migration: Add color column if it doesn't exist
-    let color_column_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name='color'",
-            [],
-            |row| row.get::<_, i32>(0),
-        )
-        .unwrap_or(0)
-        > 0;
-
-    if !color_column_exists {
+    if !column_exists(&conn, "projects", "color") {
         conn.execute(
             "ALTER TABLE projects ADD COLUMN color TEXT NULL DEFAULT NULL",
             [],
@@ -70,16 +73,7 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
     }
 
     // Migration: Add icon column if it doesn't exist
-    let icon_column_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('projects') WHERE name='icon'",
-            [],
-            |row| row.get::<_, i32>(0),
-        )
-        .unwrap_or(0)
-        > 0;
-
-    if !icon_column_exists {
+    if !column_exists(&conn, "projects", "icon") {
         conn.execute(
             "ALTER TABLE projects ADD COLUMN icon TEXT NULL DEFAULT NULL",
             [],
@@ -87,16 +81,7 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
     }
 
     // Migration: Add author column if it doesn't exist
-    let author_column_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('annotation_notes') WHERE name='author'",
-            [],
-            |row| row.get::<_, i32>(0),
-        )
-        .unwrap_or(0)
-        > 0;
-
-    if !author_column_exists {
+    if !column_exists(&conn, "annotation_notes", "author") {
         conn.execute(
             "ALTER TABLE annotation_notes ADD COLUMN author TEXT NULL DEFAULT NULL",
             [],
@@ -105,16 +90,7 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
 
     // Migration: Add is_agent flag if it doesn't exist. Existing notes predate
     // authorship and backfill to 0 (human/no author).
-    let is_agent_column_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('annotation_notes') WHERE name='is_agent'",
-            [],
-            |row| row.get::<_, i32>(0),
-        )
-        .unwrap_or(0)
-        > 0;
-
-    if !is_agent_column_exists {
+    if !column_exists(&conn, "annotation_notes", "is_agent") {
         conn.execute(
             "ALTER TABLE annotation_notes ADD COLUMN is_agent INTEGER NOT NULL DEFAULT 0",
             [],
