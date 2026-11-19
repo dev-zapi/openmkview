@@ -28,6 +28,15 @@ test('document and sidebar top bars share the document toolbar height', async ({
     });
     expect(rect).toEqual({ height: 46, top: 0 });
   }
+
+  for (const header of [toolbar, outline, annotations]) {
+    const material = await header.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { background: style.backgroundColor, backdropFilter: style.backdropFilter };
+    });
+    expect(material.background).toMatch(/0\.82\)$/);
+    expect(material.backdropFilter).toBe('blur(16px) saturate(1.2)');
+  }
 });
 
 test('file tree rows scroll beneath its translucent header without moving search', async ({ page }) => {
@@ -93,4 +102,65 @@ test('file tree rows scroll beneath its translucent header without moving search
     const scrollBottom = root.querySelector('[data-file-tree-virtualized-scroll="true"]')!.getBoundingClientRect().bottom;
     return scrollBottom - element.getBoundingClientRect().bottom;
   })).toBe(0);
+});
+
+test('outline and annotation rows scroll beneath their frosted headers', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 700 });
+  await page.goto('/project/1/files/%2FREADME.md', { waitUntil: 'domcontentloaded' });
+  await loginIfNeeded(page);
+
+  const outline = page.locator('.outline-panel-header');
+  const annotations = page.locator('.annotation-column-header');
+  if (!(await outline.isVisible())) {
+    await page.getByRole('button', { name: 'Document outline', exact: true }).click();
+  }
+  if (!(await annotations.isVisible())) {
+    await page.getByRole('button', { name: 'Annotation column', exact: true }).click();
+  }
+  await expect(outline).toBeVisible();
+  await expect(annotations).toBeVisible();
+
+  await page.evaluate(() => {
+    const outlineContent = document.querySelector('.outline-panel-content')!;
+    for (let index = 0; index < 20; index++) {
+      const item = document.createElement('div');
+      item.className = 'outline-item';
+      item.textContent = `Outline test ${index}`;
+      outlineContent.appendChild(item);
+    }
+
+    const annotationContent = document.querySelector('.annotation-column-content')!;
+    for (let index = 0; index < 20; index++) {
+      const item = document.createElement('div');
+      item.className = 'annotation-column-item';
+      item.textContent = `Annotation test ${index}`;
+      item.style.minHeight = '60px';
+      annotationContent.appendChild(item);
+    }
+  });
+
+  const outlineContent = page.locator('.outline-panel-content');
+  const annotationContent = page.locator('.annotation-column-content');
+  await outlineContent.evaluate((element) => { element.scrollTop = 70; });
+  await annotationContent.evaluate((element) => { element.scrollTop = 250; });
+
+  const geometry = await page.evaluate(() => {
+    const intersectsHeader = (rowSelector: string, headerSelector: string) => {
+      const row = document.querySelector(rowSelector)!.getBoundingClientRect();
+      const header = document.querySelector(headerSelector)!.getBoundingClientRect();
+      return row.top < header.bottom && row.bottom > header.top;
+    };
+    const filter = document.querySelector('.annotation-column-filter')!.getBoundingClientRect();
+    return {
+      outlineBehindHeader: intersectsHeader('.outline-item', '.outline-panel-header'),
+      annotationBehindHeader: intersectsHeader('.annotation-column-item', '.annotation-column-header'),
+      filterTop: filter.top,
+      filterHeight: filter.height,
+    };
+  });
+
+  expect(geometry.outlineBehindHeader).toBe(true);
+  expect(geometry.annotationBehindHeader).toBe(true);
+  expect(geometry.filterTop).toBe(46);
+  expect(geometry.filterHeight).toBe(35);
 });

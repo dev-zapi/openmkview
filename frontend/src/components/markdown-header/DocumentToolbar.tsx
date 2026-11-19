@@ -132,7 +132,7 @@ const exportOptions = (fileType?: FileType): { format: ExportFormat; label: stri
 
 export const DocumentToolbar: Component<DocumentToolbarProps> = (props) => {
   return (
-    <div class={styles.toolbar} data-document-toolbar>
+    <div class={`${styles.toolbar} topbar-glass`} data-document-toolbar>
       <div class={styles.identity}>
         <Icon name="file" size={17} />
         <span class={styles.filename}>{props.fileName}</span>

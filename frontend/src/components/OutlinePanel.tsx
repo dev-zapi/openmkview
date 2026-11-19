@@ -92,7 +92,7 @@ const OutlinePanel: Component<OutlinePanelProps> = (props) => {
       class={`outline-panel ${props.isOpen ? '' : 'outline-panel-hidden'}`}
       style={{ width: props.isOpen ? `${props.outlineWidth}px` : '0px', transition: props.transition }}
     >
-      <div class="outline-panel-header">
+      <div class="outline-panel-header topbar-glass">
         <h3>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="4" y1="6" x2="20" y2="6"/>
