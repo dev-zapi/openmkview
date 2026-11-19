@@ -46,8 +46,83 @@ describe('annotationStore', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     (global.fetch as any).mockReset();
+    const { authStore } = await import('../../stores/authStore');
+    authStore.setAuthRequired(true);
+    authStore.setUsername(null);
     const { annotationStore } = await import('../../stores/annotationStore');
     annotationStore.reset();
+  });
+
+  it('stamps created annotations with the logged-in username', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setUsername('Jonas');
+
+    const created = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(created));
+
+    await annotationStore.create(1, 'a.md', created.anchor, 'note');
+
+    const request = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(request).toEqual({
+      projectId: 1,
+      relativePath: 'a.md',
+      anchor: created.anchor,
+      body: 'note',
+      author: 'Jonas',
+      isAgent: false,
+    });
+  });
+
+  it('stamps replies with the logged-in username and a human voice', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setUsername('Jonas');
+
+    const updated = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(updated));
+
+    await annotationStore.appendNote(1, 'reply');
+
+    const request = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(request).toEqual({ body: 'reply', author: 'Jonas', isAgent: false });
+  });
+
+  it('stamps null authorship when auth is on but no username is known', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setAuthRequired(true);
+    authStore.setUsername(null);
+
+    const updated = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any).mockResolvedValueOnce(jsonResponse(updated));
+
+    await annotationStore.appendNote(1, 'reply');
+
+    const request = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(request.author).toBeNull();
+  });
+
+  it('stamps null authorship when the instance has no auth', async () => {
+    const { authStore } = await import('../../stores/authStore');
+    const { annotationStore } = await import('../../stores/annotationStore');
+    authStore.setAuthRequired(false);
+    authStore.setUsername(null);
+
+    const created = annotationFor(1, 1, 'a.md', 'blk-a');
+    (global.fetch as any)
+      .mockResolvedValueOnce(jsonResponse(created))
+      .mockResolvedValueOnce(jsonResponse(created));
+
+    await annotationStore.create(1, 'a.md', created.anchor, 'note');
+    const createRequest = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(createRequest.author).toBeNull();
+    expect(createRequest.isAgent).toBe(false);
+
+    await annotationStore.appendNote(1, 'reply');
+    const replyRequest = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
+    expect(replyRequest.author).toBeNull();
+    expect(replyRequest.isAgent).toBe(false);
   });
 
   it('clears the previous file annotations as soon as another file loads', async () => {

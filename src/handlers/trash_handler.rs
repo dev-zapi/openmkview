@@ -1,3 +1,4 @@
+use crate::auth::lock_db;
 use crate::db::{ProjectRepository, SettingsRepository};
 use crate::errors::{AppError, AppResult};
 use crate::models::{
@@ -13,10 +14,7 @@ pub async fn move_to_trash(
     data: web::Data<AppState>,
     body: web::Json<TrashMoveRequest>,
 ) -> AppResult<HttpResponse> {
-    let conn = data
-        .db
-        .lock()
-        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+    let conn = lock_db(&data)?;
 
     let project_repo = ProjectRepository::new(&conn);
     let project = project_repo
@@ -49,10 +47,7 @@ pub async fn restore_from_trash(
     data: web::Data<AppState>,
     body: web::Json<TrashRestoreRequest>,
 ) -> AppResult<HttpResponse> {
-    let conn = data
-        .db
-        .lock()
-        .map_err(|_| AppError::InternalError("Database lock error".into()))?;
+    let conn = lock_db(&data)?;
 
     let project_repo = ProjectRepository::new(&conn);
     let project = project_repo

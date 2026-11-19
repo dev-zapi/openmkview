@@ -2,7 +2,7 @@ use super::*;
 use crate::db::init_db;
 use crate::db::ProjectRepository;
 use crate::errors::AppError;
-use crate::models::CreateAnnotationRequest;
+use crate::models::{AddNoteRequest, CreateAnnotationRequest};
 use crate::paths::AppPaths;
 use crate::services::TrashService;
 use serde_json::{json, Value};
@@ -97,7 +97,22 @@ fn create_request(project_id: i64, relative_path: &str, body: &str) -> CreateAnn
         relative_path: relative_path.to_string(),
         anchor: block_anchor(),
         body: body.to_string(),
+        author: None,
+        is_agent: false,
     }
+}
+
+fn authored_request(
+    project_id: i64,
+    relative_path: &str,
+    body: &str,
+    author: &str,
+    is_agent: bool,
+) -> CreateAnnotationRequest {
+    let mut request = create_request(project_id, relative_path, body);
+    request.author = Some(author.to_string());
+    request.is_agent = is_agent;
+    request
 }
 
 #[test]
@@ -119,12 +134,244 @@ fn creates_and_lists_annotation_with_first_note() {
     assert_eq!(created.notes[0].annotation_id, created.id);
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
 
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].id, created.id);
     assert_eq!(listed[0].notes.len(), 1);
+}
+
+#[test]
+fn create_records_the_note_author_and_agent_flag() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let mut request = create_request(project_id, "doc.md", "Agent note");
+    request.author = Some("openmkview-agent".to_string());
+    request.is_agent = true;
+
+    let created = service.create(request).expect("create annotation");
+    assert_eq!(created.notes[0].author.as_deref(), Some("openmkview-agent"));
+    assert!(created.notes[0].is_agent);
+
+    let listed = service
+        .list_for_file(project_id, "doc.md", None)
+        .expect("list annotations");
+
+    assert_eq!(
+        listed[0].notes[0].author.as_deref(),
+        Some("openmkview-agent")
+    );
+    assert!(listed[0].notes[0].is_agent);
+}
+
+#[test]
+fn omitted_authorship_defaults_to_legacy_null_and_human() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    // Older clients and the CLI may omit the authorship fields entirely.
+    let request: CreateAnnotationRequest = serde_json::from_value(json!({
+        "projectId": project_id,
+        "relativePath": "doc.md",
+        "anchor": block_anchor(),
+        "body": "Old client note"
+    }))
+    .expect("deserialize create request without authorship");
+
+    let created = service.create(request).expect("create annotation");
+    assert_eq!(created.notes[0].author, None);
+    assert!(!created.notes[0].is_agent);
+
+    let reply: AddNoteRequest = serde_json::from_value(json!({ "body": "Old client reply" }))
+        .expect("deserialize reply without authorship");
+    let updated = service
+        .append_note(
+            created.id,
+            &reply.body,
+            reply.author.as_deref(),
+            reply.is_agent,
+        )
+        .expect("append reply");
+
+    assert_eq!(updated.notes[1].author, None);
+    assert!(!updated.notes[1].is_agent);
+}
+
+#[test]
+fn author_filter_keeps_annotations_with_a_note_by_that_author() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let human_only = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Human note",
+            "Jonas",
+            false,
+        ))
+        .expect("create human annotation");
+    let agent_only = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Agent note",
+            "openmkview-agent",
+            true,
+        ))
+        .expect("create agent annotation");
+    let mixed = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Human starts the thread",
+            "Jonas",
+            false,
+        ))
+        .expect("create mixed annotation");
+    service
+        .append_note(mixed.id, "Agent replies", Some("openmkview-agent"), true)
+        .expect("append agent reply");
+    service
+        .create(create_request(project_id, "other.md", "Legacy note"))
+        .expect("create legacy annotation");
+
+    let by_agent = service
+        .list_for_file(project_id, "doc.md", Some("openmkview-agent"))
+        .expect("list by agent");
+    let agent_ids: Vec<i64> = by_agent.iter().map(|annotation| annotation.id).collect();
+    assert_eq!(agent_ids, vec![agent_only.id, mixed.id]);
+
+    let by_human = service
+        .list_for_file(project_id, "doc.md", Some("Jonas"))
+        .expect("list by human");
+    let human_ids: Vec<i64> = by_human.iter().map(|annotation| annotation.id).collect();
+    assert_eq!(human_ids, vec![human_only.id, mixed.id]);
+
+    let unfiltered = service
+        .list_for_file(project_id, "doc.md", None)
+        .expect("list unfiltered");
+    assert_eq!(unfiltered.len(), 3);
+
+    let unknown = service
+        .list_for_file(project_id, "doc.md", Some("nobody"))
+        .expect("list unknown author");
+    assert!(unknown.is_empty());
+
+    let managed = service
+        .list_for_project(project_id, Some("openmkview-agent"))
+        .expect("manage by agent");
+    let managed_ids: Vec<i64> = managed.iter().map(|row| row.annotation.id).collect();
+    assert_eq!(managed_ids, vec![agent_only.id, mixed.id]);
+
+    let managed_unfiltered = service
+        .list_for_project(project_id, None)
+        .expect("manage unfiltered");
+    assert_eq!(managed_unfiltered.len(), 4);
+}
+
+#[test]
+fn legacy_notes_without_authorship_read_back_as_null_and_false() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "Current note"))
+        .expect("create annotation");
+
+    // Simulate a row written before authorship existed: no author, no flag.
+    conn.execute(
+        "DELETE FROM annotation_notes WHERE annotation_id = ?",
+        [created.id],
+    )
+    .expect("remove current note");
+    conn.execute(
+        "INSERT INTO annotation_notes (annotation_id, body) VALUES (?, ?)",
+        rusqlite::params![created.id, "Legacy note"],
+    )
+    .expect("insert legacy note");
+
+    let listed = service
+        .list_for_file(project_id, "doc.md", None)
+        .expect("list annotations");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].notes[0].body, "Legacy note");
+    assert_eq!(listed[0].notes[0].author, None);
+    assert!(!listed[0].notes[0].is_agent);
+}
+
+#[test]
+fn authorship_names_are_trimmed_and_blank_names_are_legacy() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let trimmed = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Named note",
+            "  Jonas  ",
+            false,
+        ))
+        .expect("create named annotation");
+    assert_eq!(trimmed.notes[0].author.as_deref(), Some("Jonas"));
+
+    let blank = service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Blank author note",
+            "   ",
+            true,
+        ))
+        .expect("create blank-author annotation");
+    assert_eq!(blank.notes[0].author, None);
+    assert!(blank.notes[0].is_agent);
+
+    let replied = service
+        .append_note(trimmed.id, "Named reply", Some("  Agent  "), true)
+        .expect("append named reply");
+    assert_eq!(replied.notes[1].author.as_deref(), Some("Agent"));
+
+    let blank_reply = service
+        .append_note(trimmed.id, "Blank reply", Some("   "), false)
+        .expect("append blank reply");
+    assert_eq!(blank_reply.notes[2].author, None);
+}
+
+#[test]
+fn blank_author_filter_means_no_filter() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    service
+        .create(authored_request(
+            project_id,
+            "doc.md",
+            "Named note",
+            "Jonas",
+            false,
+        ))
+        .expect("create annotation");
+    service
+        .create(create_request(project_id, "other.md", "Legacy note"))
+        .expect("create legacy annotation");
+
+    let all_for_file = service
+        .list_for_file(project_id, "doc.md", Some(""))
+        .expect("list with empty filter");
+    assert_eq!(all_for_file.len(), 1);
+
+    let all_for_file_blank = service
+        .list_for_file(project_id, "doc.md", Some("   "))
+        .expect("list with blank filter");
+    assert_eq!(all_for_file_blank.len(), 1);
+
+    let all_for_project = service
+        .list_for_project(project_id, Some(""))
+        .expect("manage with empty filter");
+    assert_eq!(all_for_project.len(), 2);
 }
 
 #[test]
@@ -140,7 +387,7 @@ fn listing_is_scoped_to_the_requested_file() {
         .expect("create other annotation");
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
 
     assert_eq!(listed.len(), 1);
@@ -178,7 +425,7 @@ fn delete_removes_the_annotation_and_its_notes() {
     assert_eq!(note_count, 0);
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
     assert!(listed.is_empty());
 }
@@ -214,6 +461,43 @@ fn create_rejects_empty_note_body() {
 }
 
 #[test]
+fn create_rejects_an_over_long_author() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let at_limit = "a".repeat(200);
+    service
+        .create(authored_request(
+            project_id, "doc.md", "Note", &at_limit, false,
+        ))
+        .expect("200-char author is accepted");
+
+    let over_limit = "a".repeat(201);
+    let result = service.create(authored_request(
+        project_id,
+        "doc.md",
+        "Note",
+        &over_limit,
+        false,
+    ));
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[test]
+fn replies_reject_an_over_long_author() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "First note"))
+        .expect("create annotation");
+
+    let over_limit = "a".repeat(201);
+    let result = service.append_note(created.id, "Reply", Some(&over_limit), false);
+
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[test]
 fn create_rejects_path_traversal() {
     let (_temp_dir, conn, project_id) = setup();
     let service = AnnotationService::new(&conn);
@@ -234,7 +518,7 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
     let first_note_id = created.notes[0].id;
 
     let after_first_reply = service
-        .append_note(created.id, "Second note — **Markdown**")
+        .append_note(created.id, "Second note — **Markdown**", None, false)
         .expect("append first reply");
     assert_eq!(after_first_reply.notes.len(), 2);
     assert_eq!(after_first_reply.notes[0].id, first_note_id);
@@ -244,7 +528,7 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
     );
 
     let after_second_reply = service
-        .append_note(created.id, "Third note")
+        .append_note(created.id, "Third note", None, false)
         .expect("append second reply");
     let bodies: Vec<&str> = after_second_reply
         .notes
@@ -261,9 +545,37 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
         .all(|pair| pair[0].id < pair[1].id));
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
     assert_eq!(listed[0].notes.len(), 3);
+}
+
+#[test]
+fn reply_records_the_author_and_agent_flag() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "Human note"))
+        .expect("create annotation");
+
+    let replied = service
+        .append_note(created.id, "Agent reply", Some("openmkview-agent"), true)
+        .expect("append reply");
+
+    assert_eq!(replied.notes.len(), 2);
+    assert_eq!(replied.notes[0].author, None);
+    assert!(!replied.notes[0].is_agent);
+    assert_eq!(replied.notes[1].author.as_deref(), Some("openmkview-agent"));
+    assert!(replied.notes[1].is_agent);
+
+    let listed = service
+        .list_for_file(project_id, "doc.md", None)
+        .expect("list annotations");
+    assert_eq!(
+        listed[0].notes[1].author.as_deref(),
+        Some("openmkview-agent")
+    );
+    assert!(listed[0].notes[1].is_agent);
 }
 
 #[test]
@@ -274,10 +586,10 @@ fn reply_requires_an_existing_annotation_and_a_non_empty_body() {
         .create(create_request(project_id, "doc.md", "only note"))
         .expect("create annotation");
 
-    let unknown = service.append_note(9999, "reply");
+    let unknown = service.append_note(9999, "reply", None, false);
     assert!(matches!(unknown, Err(AppError::NotFound(_))));
 
-    let empty = service.append_note(created.id, "   ");
+    let empty = service.append_note(created.id, "   ", None, false);
     assert!(matches!(empty, Err(AppError::BadRequest(_))));
 }
 
@@ -289,7 +601,7 @@ fn editing_a_note_updates_only_that_note() {
         .create(create_request(project_id, "doc.md", "First note"))
         .expect("create annotation");
     let second = service
-        .append_note(created.id, "Second note")
+        .append_note(created.id, "Second note", None, false)
         .expect("append reply");
     let first_note_id = created.notes[0].id;
     let second_note_id = second.notes[1].id;
@@ -338,7 +650,7 @@ fn resolving_and_unresolving_a_thread_persists() {
     assert!(resolved.resolved);
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
     assert!(listed[0].resolved);
 
@@ -348,7 +660,7 @@ fn resolving_and_unresolving_a_thread_persists() {
     assert!(!unresolved.resolved);
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
     assert!(!listed[0].resolved);
 
@@ -378,6 +690,8 @@ fn create_request_with_anchor(anchor: Value) -> CreateAnnotationRequest {
         relative_path: "doc.md".to_string(),
         anchor,
         body: "Selection note".to_string(),
+        author: None,
+        is_agent: false,
     }
 }
 
@@ -477,7 +791,7 @@ fn rename_moves_annotations_to_the_new_relative_path() {
     assert_eq!(moved, 1);
 
     let listed = service
-        .list_for_file(fixture.project_id, "renamed.md")
+        .list_for_file(fixture.project_id, "renamed.md", None)
         .expect("list moved annotations");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].id, created.id);
@@ -485,7 +799,7 @@ fn rename_moves_annotations_to_the_new_relative_path() {
     assert_eq!(listed[0].notes[0].body, "kept note");
 
     assert!(service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list old path")
         .is_empty());
 }
@@ -530,21 +844,21 @@ fn directory_rename_moves_descendants_and_ignores_sibling_prefixes() {
 
     assert_eq!(
         service
-            .list_for_file(fixture.project_id, "renamed/a.md")
+            .list_for_file(fixture.project_id, "renamed/a.md", None)
             .expect("list renamed a")
             .len(),
         1
     );
     assert_eq!(
         service
-            .list_for_file(fixture.project_id, "renamed/nested/b.md")
+            .list_for_file(fixture.project_id, "renamed/nested/b.md", None)
             .expect("list renamed b")
             .len(),
         1
     );
 
     let untouched = service
-        .list_for_file(fixture.project_id, "docs-other/c.md")
+        .list_for_file(fixture.project_id, "docs-other/c.md", None)
         .expect("list sibling");
     assert_eq!(untouched.len(), 1);
     assert_eq!(untouched[0].id, sibling.id);
@@ -579,14 +893,14 @@ fn renaming_a_file_does_not_move_a_sibling_with_a_prefixed_name() {
 
     assert_eq!(
         service
-            .list_for_file(fixture.project_id, "renamed.md")
+            .list_for_file(fixture.project_id, "renamed.md", None)
             .expect("list renamed file")
             .len(),
         1
     );
 
     let untouched = service
-        .list_for_file(fixture.project_id, "notes.md.bak")
+        .list_for_file(fixture.project_id, "notes.md.bak", None)
         .expect("list prefixed sibling");
     assert_eq!(untouched.len(), 1);
     assert_eq!(untouched[0].id, backup.id);
@@ -611,7 +925,7 @@ fn trash_hides_annotations_and_restore_brings_them_back() {
     .expect("move file to trash");
     assert!(!fixture.project_dir.join("doc.md").exists());
     assert!(service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list while trashed")
         .is_empty());
 
@@ -624,7 +938,7 @@ fn trash_hides_annotations_and_restore_brings_them_back() {
     .expect("restore file");
 
     let listed = service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list after restore");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].id, created.id);
@@ -653,11 +967,11 @@ fn external_rename_keeps_annotation_rows_queryable() {
     // The old path is gone from the document surface, and the annotation was
     // not silently re-associated with some other file at the new path.
     assert!(service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list orphaned path")
         .is_empty());
     assert!(service
-        .list_for_file(fixture.project_id, "moved.md")
+        .list_for_file(fixture.project_id, "moved.md", None)
         .expect("list new path")
         .is_empty());
 
@@ -692,7 +1006,7 @@ fn managed_list_covers_every_project_file_and_marks_missing_paths_as_orphaned() 
     fs::remove_file(fixture.project_dir.join("gone.md")).expect("remove file externally");
 
     let managed = service
-        .list_for_project(fixture.project_id)
+        .list_for_project(fixture.project_id, None)
         .expect("list management annotations");
 
     assert_eq!(managed.len(), 3);
@@ -732,7 +1046,7 @@ fn managed_list_does_not_leak_annotations_from_other_projects() {
         .expect("create second annotation");
 
     let managed = service
-        .list_for_project(fixture.project_id)
+        .list_for_project(fixture.project_id, None)
         .expect("list first project");
 
     assert_eq!(managed.len(), 1);
@@ -742,7 +1056,7 @@ fn managed_list_does_not_leak_annotations_from_other_projects() {
         .all(|entry| entry.annotation.project_id == fixture.project_id));
 
     let second_managed = service
-        .list_for_project(second_project_id)
+        .list_for_project(second_project_id, None)
         .expect("list second project");
     assert_eq!(second_managed.len(), 1);
     assert_eq!(second_managed[0].annotation.id, second.id);
@@ -781,17 +1095,17 @@ fn batch_delete_removes_only_selected_ids_from_the_given_project() {
     assert_eq!(deleted, 2);
 
     let remaining = service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list remaining annotations");
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, keep.id);
     assert!(service
-        .list_for_file(fixture.project_id, "other.md")
+        .list_for_file(fixture.project_id, "other.md", None)
         .expect("list other file")
         .is_empty());
 
     let foreign_rows = service
-        .list_for_file(second_project_id, "second.md")
+        .list_for_file(second_project_id, "second.md", None)
         .expect("list foreign project annotations");
     assert_eq!(foreign_rows.len(), 1);
     assert_eq!(foreign_rows[0].id, foreign.id);
@@ -810,7 +1124,7 @@ fn batch_delete_with_no_ids_is_a_no_op() {
     assert_eq!(deleted, 0);
     assert_eq!(
         service
-            .list_for_file(project_id, "doc.md")
+            .list_for_file(project_id, "doc.md", None)
             .expect("list annotations")
             .len(),
         1
@@ -846,7 +1160,7 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
 
     assert_eq!(resolved, 2);
     let listed = service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list annotations");
     assert!(
         listed
@@ -864,12 +1178,12 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
     );
 
     let other_rows = service
-        .list_for_file(fixture.project_id, "other.md")
+        .list_for_file(fixture.project_id, "other.md", None)
         .expect("list other file");
     assert!(other_rows[0].resolved);
 
     let foreign_rows = service
-        .list_for_file(second_project_id, "second.md")
+        .list_for_file(second_project_id, "second.md", None)
         .expect("list foreign annotations");
     assert!(!foreign_rows[0].resolved);
 
@@ -878,7 +1192,7 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
         .expect("batch unresolve");
     assert_eq!(unresolved, 1);
     let listed = service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list after unresolve");
     assert!(
         !listed
@@ -889,7 +1203,7 @@ fn batch_resolve_updates_only_selected_ids_in_the_given_project() {
     );
     assert!(
         service
-            .list_for_file(fixture.project_id, "other.md")
+            .list_for_file(fixture.project_id, "other.md", None)
             .expect("list other file after unresolve")[0]
             .resolved
     );
@@ -929,16 +1243,16 @@ fn clear_project_removes_every_annotation_in_only_that_project() {
 
     assert_eq!(deleted, 2);
     assert!(service
-        .list_for_file(fixture.project_id, "doc.md")
+        .list_for_file(fixture.project_id, "doc.md", None)
         .expect("list doc")
         .is_empty());
     assert!(service
-        .list_for_file(fixture.project_id, "other.md")
+        .list_for_file(fixture.project_id, "other.md", None)
         .expect("list other")
         .is_empty());
 
     let foreign_rows = service
-        .list_for_file(second_project_id, "second.md")
+        .list_for_file(second_project_id, "second.md", None)
         .expect("list foreign project");
     assert_eq!(foreign_rows.len(), 1);
     assert_eq!(foreign_rows[0].id, foreign.id);
@@ -1000,7 +1314,7 @@ fn reanchor_replaces_the_anchor_and_refreshes_the_snapshot() {
     assert_eq!(reanchored.notes[0].body, "drifted note");
 
     let listed = service
-        .list_for_file(project_id, "doc.md")
+        .list_for_file(project_id, "doc.md", None)
         .expect("list re-anchored annotation");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].anchor, text_anchor());

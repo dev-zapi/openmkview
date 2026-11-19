@@ -1,0 +1,54 @@
+{
+  "skill_name": "openmkview-annotations",
+  "description": "Three realistic prompts run against a synthetic fixture instance, with the skill (CLI) and without it (raw HTTP plus a hand-crafted Anchor), plus a real-agent layer and a Playwright browser review. Results live in results/iteration-2/.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "read-feedback",
+      "prompt": "I'm reviewing feedback left on the fixture project's README.md. List the annotations on README.md and tell me what the human wants me to change. Don't change anything yet.",
+      "expected_output": "A parsed annotation list whose two threads carry the human's anchored spans and requests. The real-agent run additionally writes a short synthesized answer.",
+      "files": ["evals/fixture/README.md"],
+      "expectations": [
+        "The list output parses as a JSON array (deterministic layer)",
+        "Both seeded human annotations are returned (deterministic layer)",
+        "Every note exposes author alice and isAgent false (deterministic layer)",
+        "The two requests are distinct threads with the expected anchored spans (deterministic layer)",
+        "Agent run: the answer names the Node 18 requirement and the placeholder-sentence request",
+        "Agent run: the answer synthesizes rather than echoing both note bodies verbatim"
+      ],
+      "baseline_notes": "Raw HTTP can read this too; these reading assertions are non-discriminating by design. The agent-run answer check is non-tautological."
+    },
+    {
+      "id": 2,
+      "name": "create-from-quote",
+      "prompt": "Create an annotation on README.md quoting 'fox jumps' and saying: 'Explain what the fox represents; this is a placeholder.' Use your author name claude.",
+      "expected_output": "An annotation whose first note is author claude, isAgent true, and whose Anchor is Active — the stored blockText is the rendered paragraph ('The quick brownfox jumps overthe lazy dog.'), not the raw wrapped source line.",
+      "files": ["evals/fixture/README.md"],
+      "expectations": [
+        "The create response parses as JSON with an annotation id",
+        "The created note carries author claude and isAgent true",
+        "The stored anchor references the requested span",
+        "The stored anchor equals the CLI builder (structural)",
+        "Hard-wrapped prose projects to rendered text (soft breaks concatenate)",
+        "The stored anchor resolves Active through the real frontend resolver (rendered blocks + resolveAnchor)",
+        "Oracle control: a raw-line whole-block anchor resolves Outdated in the same run",
+        "Agent run: a real claude -p session creates an Active annotation with author claude"
+      ],
+      "baseline_notes": "The no-skill baseline posts a whole-block anchor whose blockText is the raw source line; the server accepts it, but the real resolver returns Outdated."
+    },
+    {
+      "id": 3,
+      "name": "resolve-author",
+      "prompt": "Resolve every annotation authored by claude in the fixture project, then confirm none remain unresolved. Leave the human's annotations alone.",
+      "expected_output": "Both claude-authored annotations resolved, no unresolved claude threads left, and the alice-authored thread still unresolved.",
+      "files": ["evals/fixture/README.md", "evals/fixture/guide.md"],
+      "expectations": [
+        "The author filter returns only threads containing a claude note",
+        "Batch resolve updates exactly the claude annotations",
+        "No unresolved claude annotations remain",
+        "Annotations from other authors stay unresolved"
+      ],
+      "baseline_notes": "Raw HTTP can do this too; the assertions confirm the documented ?author= contract."
+    }
+  ]
+}

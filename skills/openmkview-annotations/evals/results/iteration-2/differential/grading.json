@@ -1,0 +1,15 @@
+{
+  "expectations": [
+    {
+      "text": "Python Anchor helper in references/api.md matches the CLI on the fixture and edge cases",
+      "passed": true,
+      "evidence": "20/20 cases (escaped pipes, deep list continuations)"
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 0,
+    "total": 1,
+    "pass_rate": 1
+  }
+}

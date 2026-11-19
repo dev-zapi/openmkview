@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import type { Annotation, AnnotationAnchor, ManagedAnnotation } from '../types';
+import { authStore } from './authStore';
 import { api } from '../services/api';
 import { offlineStore } from './offlineStore';
 import { hashBlockContent } from '../utils/blockModel';
@@ -374,7 +375,14 @@ export const annotationStore = {
     anchor: AnnotationAnchor,
     body: string
   ): Promise<Annotation> {
-    const created = await api.createAnnotation({ projectId, relativePath, anchor, body });
+    const created = await api.createAnnotation({
+      projectId,
+      relativePath,
+      anchor,
+      body,
+      author: authStore.noteAuthor(),
+      isAgent: false,
+    });
     if (loadedKey === fileKey(projectId, relativePath)) {
       setAnnotations((current) => [...current, created]);
     }
@@ -420,7 +428,11 @@ export const annotationStore = {
 
   /** Appends a Reply to the thread and keeps the list in sync. */
   async appendNote(annotationId: number, body: string): Promise<Annotation> {
-    const updated = await api.addAnnotationNote(annotationId, body);
+    const updated = await api.addAnnotationNote(
+      annotationId,
+      body,
+      authStore.noteAuthor()
+    );
     replaceAnnotation(updated);
     return updated;
   },
@@ -471,12 +483,19 @@ export const annotationStore = {
   },
 
   /** Selects every management row, or clears the selection when all are selected. */
-  toggleManagedSelectionAll(): void {
-    setManagedSelection((current) =>
-      current.size === managed().length
-        ? new Set<number>()
-        : new Set(managed().map((annotation) => annotation.id)),
-    );
+  toggleManagedSelectionAll(ids?: number[]): void {
+    const scope = ids ?? managed().map((annotation) => annotation.id);
+    setManagedSelection((current) => {
+      const next = new Set(current);
+      const allSelected =
+        scope.length > 0 && scope.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of scope) next.delete(id);
+      } else {
+        for (const id of scope) next.add(id);
+      }
+      return next;
+    });
   },
 
   clearManagedSelection(): void {

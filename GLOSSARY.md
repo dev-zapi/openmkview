@@ -100,6 +100,14 @@ _Avoid_: orphan, orphaned row, path-orphaned, orphaned annotation
 A note appended to an Annotation's thread after its first note, ordered by time. Single-user by design: a reply extends the annotation, it is not a conversation turn.
 _Avoid_: response, follow-up comment, message
 
+**Author**:
+The free-text name attached to every note in an Annotation thread: the logged-in username for web writes, or a name supplied by an agent client. Each note also carries an Agent flag, so a thread distinguishes the human's voice from an agent's independently of the name. Authorship is advisory, not an identity system — any client may claim any name, and legacy notes with no Author display "—". List endpoints can filter by Author. See `docs/adr/0007-reply-authorship.md`.
+_Avoid_: owner, account, user identity, 作者
+
 **Resolved**:
 The state of an Annotation thread marked as dealt with. Applies to the whole thread, never to individual Replies. Resolved annotations keep their highlights in a dimmed style and can be filtered out in the annotation column.
 _Avoid_: done, closed, finished, 已完成
+
+**Tool Session**:
+A non-expiring credential for non-interactive clients, such as the annotation CLI. Created by exchanging the instance username and password exactly once; the plaintext token is returned once and only its SHA-256 hash is stored in SQLite. Clients authenticate with `Authorization: Bearer <token>` across `/api/*` alongside the browser cookie. Tool Sessions survive server restarts and are invalidated only by manual deletion in the settings panel. See `docs/adr/0008-tool-sessions.md`.
+_Avoid_: API key, permanent token, 永久令牌, bearer session

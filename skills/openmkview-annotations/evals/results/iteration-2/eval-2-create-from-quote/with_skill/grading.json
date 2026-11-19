@@ -1,0 +1,50 @@
+{
+  "expectations": [
+    {
+      "text": "With skill: create response parses as JSON with an annotation id",
+      "passed": true,
+      "evidence": "id=5"
+    },
+    {
+      "text": "With skill: created note carries author claude and isAgent true",
+      "passed": true,
+      "evidence": "author=claude isAgent=true"
+    },
+    {
+      "text": "With skill: stored anchor references the requested span",
+      "passed": true,
+      "evidence": "text segment quote=\"fox jumps\""
+    },
+    {
+      "text": "With skill: stored anchor equals the CLI builder on the same content (structural)",
+      "passed": true,
+      "evidence": "blockText=The quick brownfox jumps overthe lazy dog."
+    },
+    {
+      "text": "With skill: hard-wrapped prose projects to rendered text (soft breaks concatenate)",
+      "passed": true,
+      "evidence": "blockText='The quick brownfox jumps overthe lazy dog.'"
+    },
+    {
+      "text": "With skill: the stored anchor resolves Active through the real frontend resolver",
+      "passed": true,
+      "evidence": "resolver status=resolved"
+    },
+    {
+      "text": "Oracle sanity: the raw-line control anchor resolves Outdated in the same run",
+      "passed": true,
+      "evidence": "control status=outdated"
+    },
+    {
+      "text": "With skill: the frontend projection suite passes over the fixture constructs",
+      "passed": true,
+      "evidence": "vitest src/test/skills/omkCli.test.ts passed"
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1
+  }
+}

@@ -598,6 +598,7 @@ pub async fn passkey_login_finish(
     Ok(HttpResponse::Ok().cookie(cookie).json(AuthStatusResponse {
         auth_required: true,
         authenticated: true,
+        username: Some(auth.config.username.clone()),
         session_timeout_minutes: Some(current_session_timeout_minutes(auth)?),
         passkey_configured: site_status.configured,
         passkey_available: site_status.has_credentials,

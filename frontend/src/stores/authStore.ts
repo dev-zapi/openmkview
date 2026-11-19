@@ -4,6 +4,7 @@ import type {
   PasskeyCeremonyStart,
   PasskeyCredentialSummary,
   PasskeyListResponse,
+  ToolSessionSummary,
 } from '../types/app';
 import { settingsStore } from './settingsStore';
 import {
@@ -19,6 +20,7 @@ import {
 function applyAuthStatus(data: AuthStatus) {
   setAuthRequired(data.authRequired);
   setAuthenticated(data.authenticated);
+  setUsername(data.username ?? null);
   setPasskeyConfigured(Boolean(data.passkeyConfigured));
   setPasskeyAvailable(Boolean(data.passkeyAvailable));
   setPasskeyOrigin(data.passkeyOrigin || null);
@@ -29,6 +31,7 @@ function applyAuthStatus(data: AuthStatus) {
 
 const [authRequired, setAuthRequired] = createSignal(false);
 const [authenticated, setAuthenticated] = createSignal(true);
+const [username, setUsername] = createSignal<string | null>(null);
 const [passkeyConfigured, setPasskeyConfigured] = createSignal(false);
 const [passkeyAvailable, setPasskeyAvailable] = createSignal(false);
 const [passkeyOrigin, setPasskeyOrigin] = createSignal<string | null>(null);
@@ -43,6 +46,7 @@ async function readErrorMessage(res: Response): Promise<string> {
 export const authStore = {
   authRequired,
   authenticated,
+  username,
   passkeyConfigured,
   passkeyAvailable,
   passkeyOrigin,
@@ -50,11 +54,21 @@ export const authStore = {
   error,
   setAuthenticated,
   setAuthRequired,
+  setUsername,
   setPasskeyConfigured,
   setPasskeyAvailable,
   setPasskeyOrigin,
   setLoading,
   setError,
+
+  /**
+   * The author stamped on web writes: the logged-in username, or null when
+   * unknown (auth-disabled instances and loads before status resolves).
+   * ADR-0007 keeps "unknown" honest rather than fabricating a name.
+   */
+  noteAuthor(): string | null {
+    return username();
+  },
 
   async checkStatus(): Promise<AuthStatus | null> {
     setLoading(true);
@@ -102,6 +116,7 @@ export const authStore = {
   async logout(): Promise<void> {
     await fetch('/api/auth/logout', { method: 'POST' });
     setAuthenticated(false);
+    setUsername(null);
     setPasskeyConfigured(false);
     setPasskeyAvailable(false);
     setPasskeyOrigin(null);
@@ -235,6 +250,37 @@ export const authStore = {
     setPasskeyAvailable(data.credentials.length > 0);
     setError(null);
     return data.credentials;
+  },
+
+  async listToolSessions(): Promise<ToolSessionSummary[]> {
+    const res = await fetch('/api/auth/tool-sessions');
+    if (!res.ok) {
+      const message = await readErrorMessage(res);
+      setError(message);
+      throw new Error(message);
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      throw new Error('Unexpected Tool Sessions response');
+    }
+
+    setError(null);
+    return data as ToolSessionSummary[];
+  },
+
+  async deleteToolSession(id: number): Promise<void> {
+    const res = await fetch(`/api/auth/tool-sessions/${encodeURIComponent(String(id))}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const message = await readErrorMessage(res);
+      setError(message);
+      throw new Error(message);
+    }
+
+    setError(null);
   },
 };
 

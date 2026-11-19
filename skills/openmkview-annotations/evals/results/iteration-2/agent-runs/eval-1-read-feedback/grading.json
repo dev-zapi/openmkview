@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "Agent: the installed skill drives the omk.mjs CLI",
+      "passed": true,
+      "evidence": "transcript mentions omk.mjs"
+    },
+    {
+      "text": "Agent: lists the annotations through the CLI",
+      "passed": true,
+      "evidence": "Bash command contains omk.mjs list"
+    },
+    {
+      "text": "Agent answer: names the Node 18 requirement",
+      "passed": true,
+      "evidence": "answer mentions Node 18"
+    },
+    {
+      "text": "Agent answer: names the placeholder-sentence request",
+      "passed": true,
+      "evidence": "answer mentions placeholder/replacement"
+    },
+    {
+      "text": "Agent answer: synthesizes the requests rather than only echoing the note bodies",
+      "passed": true,
+      "evidence": "non-echo remainder=760 chars with a synthesis term"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1
+  }
+}

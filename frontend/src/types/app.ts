@@ -78,6 +78,8 @@ export const DEFAULT_SETTINGS: Settings = {
 export interface AuthStatus {
   authRequired: boolean;
   authenticated: boolean;
+  /** Logged-in username; null/absent when unauthenticated or auth is off. */
+  username?: string | null;
   sessionTimeoutMinutes?: number;
   passkeyConfigured: boolean;
   passkeyAvailable: boolean;
@@ -93,6 +95,13 @@ export interface PasskeyCredentialSummary {
 
 export interface PasskeyListResponse {
   credentials: PasskeyCredentialSummary[];
+}
+
+export interface ToolSessionSummary {
+  id: number;
+  label: string;
+  createdAt: string;
+  lastUsedAt?: string;
 }
 
 export interface PasskeyCeremonyStart<T = unknown> {

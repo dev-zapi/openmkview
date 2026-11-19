@@ -91,6 +91,10 @@ export interface AnnotationNote {
   id: number;
   annotationId: number;
   body: string;
+  /** Free-text author; null for legacy notes written before authorship. */
+  author: string | null;
+  /** True when the note came from an agent rather than the human user. */
+  isAgent: boolean;
   createdAt: string;
 }
 
@@ -117,6 +121,8 @@ export interface CreateAnnotationRequest {
   relativePath: string;
   anchor: AnnotationAnchor;
   body: string;
+  author?: string | null;
+  isAgent?: boolean;
 }
 
 export interface GitCommit {

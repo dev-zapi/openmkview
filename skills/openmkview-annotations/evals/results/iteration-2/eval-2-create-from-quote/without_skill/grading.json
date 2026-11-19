@@ -1,0 +1,45 @@
+{
+  "expectations": [
+    {
+      "text": "Baseline: create response parses as JSON with an annotation id",
+      "passed": true,
+      "evidence": "id=6"
+    },
+    {
+      "text": "Baseline: created note carries author claude and isAgent true",
+      "passed": true,
+      "evidence": "author=claude isAgent=true"
+    },
+    {
+      "text": "Baseline: stored anchor references the requested span",
+      "passed": true,
+      "evidence": "raw-line blockText contains the quote"
+    },
+    {
+      "text": "Baseline: stored anchor equals the CLI builder (structural)",
+      "passed": false,
+      "evidence": "differs: raw source line"
+    },
+    {
+      "text": "Baseline: stored blockText is a projected rendered block",
+      "passed": false,
+      "evidence": "storedBlockText=fox jumps over is a raw source line"
+    },
+    {
+      "text": "Baseline: the raw-line anchor resolves Active through the real frontend resolver",
+      "passed": false,
+      "evidence": "resolver status=outdated"
+    },
+    {
+      "text": "Oracle sanity: a CLI anchor resolves Active in the same run",
+      "passed": true,
+      "evidence": "control status=resolved"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 3,
+    "total": 7,
+    "pass_rate": 0.5714285714285714
+  }
+}

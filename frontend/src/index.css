@@ -1813,6 +1813,35 @@ textarea {
   font-size: 13px;
 }
 
+.annotation-manager-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.annotation-manager-filter label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-soft);
+}
+
+.annotation-manager-filter input {
+  flex: 0 1 240px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.annotation-manager-filter input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
 .annotation-manager-table-wrap {
   flex: 1;
   overflow: auto;
@@ -2417,6 +2446,33 @@ textarea {
   opacity: 0.75;
 }
 
+.tool-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tool-session-empty {
+  border: 1px dashed hsl(var(--border));
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.7;
+  background: hsl(var(--muted));
+}
+
+.tool-session-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  background: hsl(var(--muted));
+}
+
 /* passkey-register-btn / passkey-delete-btn: visual rules now supplied by <Button>;
    kept only for layout overrides (margin-top on register, legacy class selector) */
 .passkey-register-btn {
@@ -2798,6 +2854,11 @@ textarea {
   }
 
   .passkey-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tool-session-card {
     flex-direction: column;
     align-items: flex-start;
   }

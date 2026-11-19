@@ -1,0 +1,108 @@
+{
+  "helper": "references/api.md python block",
+  "total": 20,
+  "passed": 20,
+  "mismatches": [],
+  "cases": [
+    {
+      "name": "README.md [fox jumps]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "README.md [npm run dev]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "README.md [omk list]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "README.md [OpenMKView Fixture]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "README.md [whole file]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "guide.md [never inside it]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "guide.md [whole file]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "notes.md [First bullet]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "notes.md [spanning two lines]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "notes.md [whole file]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [brownfox]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [linequote]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [linecontinuation]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [deeper continuation]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [first linecontinued]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [C D]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [before text after]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [x | y]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [y z]",
+      "match": true,
+      "detail": ""
+    },
+    {
+      "name": "edge.md [whole file]",
+      "match": true,
+      "detail": ""
+    }
+  ]
+}

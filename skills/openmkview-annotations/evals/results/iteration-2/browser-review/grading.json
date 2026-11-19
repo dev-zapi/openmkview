@@ -1,0 +1,30 @@
+{
+  "expectations": [
+    {
+      "text": "CLI-created annotation renders as Active",
+      "passed": true,
+      "evidence": "state=Active"
+    },
+    {
+      "text": "CLI-created annotation carries author claude",
+      "passed": true,
+      "evidence": "author=claude"
+    },
+    {
+      "text": "CLI-created annotation carries the Agent badge",
+      "passed": true,
+      "evidence": "badges=[\"Agent\"]"
+    },
+    {
+      "text": "Baseline raw-line annotation renders as Outdated",
+      "passed": true,
+      "evidence": "state=Outdated data-outdated=true"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  }
+}
