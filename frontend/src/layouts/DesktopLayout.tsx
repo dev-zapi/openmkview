@@ -40,10 +40,13 @@ interface DesktopLayoutProps {
   gitPanelOpen: boolean;
   outlineWidth: number;
   outlineTransition: string;
+  annotationColumnWidth: number;
+  annotationColumnTransition: string;
   gitOperation?: RemoteGitAction;
   gitUnavailable: boolean;
   pullDisabled: boolean;
   onOutlineStartDragging: (event: MouseEvent) => void;
+  onAnnotationColumnStartDragging: (event: MouseEvent) => void;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
   onOpenProject: () => void;
@@ -152,6 +155,9 @@ export const DesktopLayout: Component<DesktopLayoutProps> = (props) => {
         outlineWidth={props.outlineWidth}
         outlineTransition={props.outlineTransition}
         onOutlineStartDragging={props.onOutlineStartDragging}
+        annotationColumnWidth={props.annotationColumnWidth}
+        annotationColumnTransition={props.annotationColumnTransition}
+        onAnnotationColumnStartDragging={props.onAnnotationColumnStartDragging}
         onTabChange={props.onTabChange}
         onOutlineToggle={props.onOutlineToggle}
         onAnnotationColumnToggle={props.onAnnotationColumnToggle}

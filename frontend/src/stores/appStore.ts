@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js';
 import type { TabType } from '../components/markdown-header/ViewTabs';
-import { DEFAULT_OUTLINE_WIDTH } from '../types/app';
+import { DEFAULT_OUTLINE_WIDTH, DEFAULT_ANNOTATION_COLUMN_WIDTH } from '../types/app';
 import { loadOutlineOpenByFileType, saveOutlineOpenByFileType } from '../utils/settings';
 import type { OutlineOpenByFileType } from '../utils/settings';
 
@@ -23,6 +23,9 @@ const [isDragging, setIsDragging] = createSignal(false);
 const [outlineWidth, setOutlineWidth] = createSignal(DEFAULT_OUTLINE_WIDTH);
 const [isOutlineDragging, setIsOutlineDragging] = createSignal(false);
 const [outlineDragOrigin, setOutlineDragOrigin] = createSignal({ pointerX: 0, width: 0 });
+const [annotationColumnWidth, setAnnotationColumnWidth] = createSignal(DEFAULT_ANNOTATION_COLUMN_WIDTH);
+const [isAnnotationColumnDragging, setIsAnnotationColumnDragging] = createSignal(false);
+const [annotationColumnDragOrigin, setAnnotationColumnDragOrigin] = createSignal({ pointerX: 0, width: 0 });
 const [openProjectDialogOpen, setOpenProjectDialogOpen] = createSignal(false);
 const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
 const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
@@ -56,6 +59,12 @@ export const appStore = {
   setIsOutlineDragging,
   outlineDragOrigin,
   setOutlineDragOrigin,
+  annotationColumnWidth,
+  setAnnotationColumnWidth,
+  isAnnotationColumnDragging,
+  setIsAnnotationColumnDragging,
+  annotationColumnDragOrigin,
+  setAnnotationColumnDragOrigin,
   openProjectDialogOpen,
   setOpenProjectDialogOpen,
   colorPickerOpen,
@@ -126,6 +135,10 @@ export const appStore = {
 
   initOutlineWidth(width: number) {
     setOutlineWidth(width);
+  },
+
+  initAnnotationColumnWidth(width: number) {
+    setAnnotationColumnWidth(width);
   },
 
   checkMobile() {

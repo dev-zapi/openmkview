@@ -62,6 +62,9 @@ interface MainPaneProps {
   outlineWidth: number;
   outlineTransition: string;
   onOutlineStartDragging: (event: MouseEvent) => void;
+  annotationColumnWidth?: number;
+  annotationColumnTransition?: string;
+  onAnnotationColumnStartDragging?: (event: MouseEvent) => void;
   onFileOpen?: (path: string) => void;
 }
 
@@ -198,6 +201,9 @@ export const MainPane: Component<MainPaneProps> = (props) => {
           projectId={props.activeProjectId}
           currentFilePath={props.currentFile?.path ?? null}
           onOpenFile={props.onFileOpen}
+          width={props.annotationColumnWidth}
+          transition={props.annotationColumnTransition}
+          onStartDragging={props.onAnnotationColumnStartDragging}
         />
       </Show>
     </main>

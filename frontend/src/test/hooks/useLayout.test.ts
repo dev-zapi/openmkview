@@ -8,6 +8,7 @@ describe('useLayout', () => {
   beforeEach(() => {
     appStore.setIsDragging(false);
     appStore.setIsOutlineDragging(false);
+    appStore.setIsAnnotationColumnDragging(false);
     appStore.setSidebarWidth(280);
     appStore.setIsMobile(false);
     appStore.setOutlineOpen(false);
@@ -163,6 +164,40 @@ describe('useLayout', () => {
     outline.remove();
   });
 
+  it('resizes the annotation column, clamps its width, and saves on mouseup', () => {
+    const column = document.createElement('div');
+    column.className = 'annotation-column';
+    vi.spyOn(column, 'getBoundingClientRect').mockReturnValue({ width: 300 } as DOMRect);
+    const handle = document.createElement('div');
+    column.append(handle);
+    document.body.append(column);
+
+    const { setupResizeHandlers, startAnnotationColumnDragging, getAnnotationColumnTransitionStyle } = useLayout();
+    const cleanup = setupResizeHandlers();
+    const startEvent = new MouseEvent('mousedown', { clientX: 900 });
+    Object.defineProperty(startEvent, 'currentTarget', { value: handle });
+    startAnnotationColumnDragging(startEvent);
+    expect(getAnnotationColumnTransitionStyle()).toBe('none');
+
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 860 }));
+    expect(appStore.annotationColumnWidth()).toBe(340);
+    expect(localStorage.getItem('annotation-column-width')).not.toBe('340');
+
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 1000 }));
+    expect(appStore.annotationColumnWidth()).toBe(200);
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 100 }));
+    expect(appStore.annotationColumnWidth()).toBe(480);
+    document.dispatchEvent(new MouseEvent('mouseup'));
+
+    expect(appStore.isAnnotationColumnDragging()).toBe(false);
+    expect(localStorage.getItem('annotation-column-width')).toBe('480');
+    expect(document.body.style.cursor).toBe('');
+    expect(document.body.style.userSelect).toBe('');
+    expect(getAnnotationColumnTransitionStyle()).toBe('width 0.2s cubic-bezier(0.4, 0, 0.2, 1)');
+    cleanup();
+    column.remove();
+  });
+
   it('clamps sidebar width on resize', () => {
     const { setupResizeHandlers } = useLayout();
     const cleanup = setupResizeHandlers();
@@ -178,6 +213,23 @@ describe('useLayout', () => {
     expect(appStore.sidebarWidth()).toBe(320);
     expect(localStorage.getItem('filetree-sidebar-width')).toBe('320');
 
+    cleanup();
+  });
+
+  it('clamps annotation column width on resize', () => {
+    const { setupResizeHandlers } = useLayout();
+    const cleanup = setupResizeHandlers();
+    appStore.setAnnotationColumnWidth(500);
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 800,
+    });
+
+    window.dispatchEvent(new Event('resize'));
+
+    expect(appStore.annotationColumnWidth()).toBe(320);
+    expect(localStorage.getItem('annotation-column-width')).toBe('320');
     cleanup();
   });
 });

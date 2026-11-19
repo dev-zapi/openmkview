@@ -13,7 +13,7 @@ import { offlineStore } from './stores/offlineStore';
 import type { Project } from './types';
 import type { RemoteGitAction } from './utils/gitPanel';
 import { mobileLayoutStore } from './components/mobile';
-import { getMarkdownStyle, loadOutlineWidth } from './utils/settings';
+import { getMarkdownStyle, loadOutlineWidth, loadAnnotationColumnWidth } from './utils/settings';
 import { getFileTypeCategory } from './utils/fileType';
 import './styles/global.css';
 import './components/ColorPicker.css';
@@ -41,6 +41,7 @@ const App: Component = () => {
 
   const savedOutlineWidth = loadOutlineWidth();
   appStore.initOutlineWidth(savedOutlineWidth);
+  appStore.initAnnotationColumnWidth(loadAnnotationColumnWidth());
 
   const isDocumentFile = () => {
     const fileType = fileStore.currentFileType();
@@ -121,6 +122,7 @@ const App: Component = () => {
   const theme = createMemo(() => settingsStore.effectiveTheme);
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
   const outlineTransition = createMemo(() => layoutHook.getOutlineTransitionStyle());
+  const annotationColumnTransition = createMemo(() => layoutHook.getAnnotationColumnTransitionStyle());
 
   const handleSearchClick = () => {
     if (!isDocumentFile()) {
@@ -278,6 +280,9 @@ const App: Component = () => {
           outlineWidth={appStore.outlineWidth()}
           outlineTransition={outlineTransition()}
           onOutlineStartDragging={layoutHook.startOutlineDragging}
+          annotationColumnWidth={appStore.annotationColumnWidth()}
+          annotationColumnTransition={annotationColumnTransition()}
+          onAnnotationColumnStartDragging={layoutHook.startAnnotationColumnDragging}
           onProjectClick={(project) => void projectHook.switchProject(project)}
           onProjectContextMenu={projectHook.openColorPicker}
           onOpenProject={projectHook.openProject}

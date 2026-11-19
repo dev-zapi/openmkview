@@ -3,7 +3,9 @@ import {
   saveSidebarWidth, 
   getValidatedSidebarWidth,
   saveOutlineWidth,
-  getValidatedOutlineWidth 
+  getValidatedOutlineWidth,
+  saveAnnotationColumnWidth,
+  getValidatedAnnotationColumnWidth
 } from '../utils/settings';
 import { mobileLayoutStore } from '../stores/mobileLayoutStore';
 import { fileStore } from '../stores/fileStore';
@@ -26,6 +28,13 @@ export const useLayout = () => {
         );
         appStore.setOutlineWidth(newWidth);
       }
+      if (appStore.isAnnotationColumnDragging()) {
+        const origin = appStore.annotationColumnDragOrigin();
+        const newWidth = getValidatedAnnotationColumnWidth(
+          origin.width + origin.pointerX - e.clientX,
+        );
+        appStore.setAnnotationColumnWidth(newWidth);
+      }
     };
 
     const handleMouseUp = () => {
@@ -37,6 +46,12 @@ export const useLayout = () => {
       if (appStore.isOutlineDragging()) {
         appStore.setIsOutlineDragging(false);
         saveOutlineWidth(appStore.outlineWidth());
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+      if (appStore.isAnnotationColumnDragging()) {
+        appStore.setIsAnnotationColumnDragging(false);
+        saveAnnotationColumnWidth(appStore.annotationColumnWidth());
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
       }
@@ -58,6 +73,13 @@ export const useLayout = () => {
       if (currentOutlineWidth > outlineMaxWidth) {
         appStore.setOutlineWidth(outlineMaxWidth);
         saveOutlineWidth(outlineMaxWidth);
+      }
+
+      const annotationColumnMaxWidth = window.innerWidth * 0.4;
+      const currentAnnotationColumnWidth = appStore.annotationColumnWidth();
+      if (currentAnnotationColumnWidth > annotationColumnMaxWidth) {
+        appStore.setAnnotationColumnWidth(annotationColumnMaxWidth);
+        saveAnnotationColumnWidth(annotationColumnMaxWidth);
       }
     };
 
@@ -91,6 +113,18 @@ export const useLayout = () => {
     document.body.style.userSelect = 'none';
   };
 
+  const startAnnotationColumnDragging = (event: MouseEvent) => {
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    const column = handle.closest<HTMLElement>('.annotation-column');
+    const width = column?.getBoundingClientRect().width ?? appStore.annotationColumnWidth();
+    appStore.setAnnotationColumnDragOrigin({ pointerX: event.clientX, width });
+    appStore.setAnnotationColumnWidth(width);
+    appStore.setIsAnnotationColumnDragging(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
+
   const handleMobileOutlineToggle = () => {
     if (appStore.isMobile()) {
       mobileLayoutStore.toggleRightDrawer();
@@ -114,13 +148,19 @@ export const useLayout = () => {
     return appStore.isOutlineDragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
   };
 
+  const getAnnotationColumnTransitionStyle = () => {
+    return appStore.isAnnotationColumnDragging() ? 'none' : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+  };
+
   return {
     setupResizeHandlers,
     startDragging,
     startOutlineDragging,
+    startAnnotationColumnDragging,
     handleMobileOutlineToggle,
     getSidebarTransitionStyle,
     getOutlineTransitionStyle,
+    getAnnotationColumnTransitionStyle,
   };
 };
 
