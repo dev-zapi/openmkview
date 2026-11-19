@@ -1,0 +1,157 @@
+.toolbar {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: hsl(var(--muted) / 0.82);
+  backdrop-filter: blur(16px) saturate(120%);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.toolbar button {
+  font: inherit;
+  color: inherit;
+}
+
+.toolbar button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  color: var(--color-text);
+}
+
+.filename {
+  color: var(--color-text-h);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  color: var(--color-text);
+  font-size: 12px;
+  white-space: nowrap;
+  padding-left: 4px;
+}
+
+.actions,
+.actionCluster {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.actionCluster {
+  flex-shrink: 0;
+  gap: 9px;
+}
+
+.icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.icon:hover:not(:disabled) {
+  background: var(--color-hover-bg);
+  color: var(--color-text-h);
+}
+
+.icon.selected {
+  background: var(--color-active-bg);
+  color: var(--color-text-h);
+}
+
+.count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  margin-left: 1px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--color-active-bg);
+  color: var(--color-text);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.icon:has(.count) {
+  width: auto;
+  min-width: 30px;
+  padding: 0 5px;
+}
+
+.rule {
+  display: block;
+  width: 1px;
+  height: 16px;
+  flex: 0 0 1px;
+  background: var(--color-border);
+}
+
+@container (max-width: 1000px) {
+  .toolbar {
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .meta {
+    display: none;
+  }
+
+  .actionCluster {
+    gap: 5px;
+  }
+}
+
+@container (max-width: 780px) {
+  .toolbar {
+    gap: 8px;
+  }
+
+  .filename {
+    max-width: 110px;
+  }
+
+  .actionCluster > .rule,
+  .actionCluster > .icon {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar * {
+    transition: none !important;
+  }
+}

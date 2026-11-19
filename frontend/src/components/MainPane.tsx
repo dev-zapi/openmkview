@@ -111,8 +111,6 @@ export const MainPane: Component<MainPaneProps> = (props) => {
             onSearchNext={props.onSearchNext}
             onSearchPrev={props.onSearchPrev}
             isDirty={props.isDirty}
-            onSave={props.onSave}
-            saving={props.saving}
           />
         </Show>
 

@@ -6,7 +6,7 @@
 }
 
 .codemirror-editor-container .cm-editor {
-  height: calc(100% - 32px);
+  height: calc(100% - 40px);
   flex: 1;
   overflow: auto;
 }
@@ -40,16 +40,90 @@
   text-align: right;
 }
 
-.editor-status-bar {
-  height: 32px;
+.editor-toolbar {
+  height: 40px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 0 16px;
-  background: var(--color-bg-subtle);
+  background: hsl(var(--background));
   border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-sans);
   font-size: 12px;
   color: var(--color-text);
+}
+
+.toolbar-file {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.toolbar-file > svg {
+  color: var(--color-text);
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-rule {
+  width: 1px;
+  height: 16px;
+  margin: 0 7px;
+  background: var(--color-border);
+}
+
+.editor-save-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.editor-save-button:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.editor-save-button:disabled {
+  background: var(--color-active-bg);
+  color: var(--color-text);
+  cursor: default;
+  opacity: 1;
+}
+
+.editor-save-button kbd {
+  margin-left: 5px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.editor-save-spinner {
+  animation: editor-save-spin 1s linear infinite;
+}
+
+@keyframes editor-save-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---- CodeMirror search panel, aligned with the shadcn token set ---- */
@@ -177,35 +251,33 @@
 }
 
 
-.file-name {
+.toolbar-file .file-name {
   font-weight: 500;
   color: var(--color-text-h);
 }
 
-.status-bar-file {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.status-bar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.dirty-badge {
+  background: hsl(var(--warning) / 0.12);
+  color: var(--color-text);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 3px;
 }
 
 .writing-toggle {
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 2px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.4;
+  border: none;
+  border-radius: 6px;
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
   color: var(--color-text);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .writing-toggle:hover {
@@ -213,10 +285,16 @@
   color: var(--color-text-h);
 }
 
+.writing-toggle:focus-visible,
+.editor-save-button:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
 .writing-toggle[aria-pressed='true'] {
   background: var(--color-active-bg);
-  border-color: var(--color-accent, #3b82f6);
   color: var(--color-text-h);
+  font-weight: 500;
 }
 
 /* Paragraph Focus: blocks away from the caret recede. */
@@ -285,28 +363,13 @@
   background-color: var(--color-hover-bg);
 }
 
-.dirty-badge {
-  background: var(--color-warning, #f59e0b);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: 8px;
-}
-
-.save-hint {
-  opacity: 0.6;
-  font-size: 11px;
-}
-
 @media (max-width: 768px) {
-  .editor-status-bar {
+  .editor-toolbar {
     padding: 0 8px;
-    height: 28px;
+    gap: 8px;
   }
 
-  .save-hint {
+  .editor-save-button kbd {
     display: none;
   }
 

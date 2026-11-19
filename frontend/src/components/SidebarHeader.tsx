@@ -56,7 +56,7 @@ const SidebarHeader: Component<SidebarHeaderProps> = (props) => {
   };
 
   return (
-    <div class="sidebar-header">
+    <div class="sidebar-header topbar-glass">
       <div class="sidebar-header-content">
         <span
           class="sidebar-header-icon"

@@ -78,19 +78,27 @@
 
 .viewTabs {
   display: flex;
+  align-items: center;
   gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: hsl(var(--accent) / 0.055);
 }
 
 .tabItem {
-  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
   border: none;
-  cursor: pointer;
-  padding: 6px 14px;
   border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
   color: var(--color-text);
-  transition: all 0.15s ease;
+  white-space: nowrap;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .tabItem:hover {
@@ -99,8 +107,10 @@
 }
 
 .tabItem.active {
+  background: hsl(var(--background));
   color: var(--color-text-h);
-  background: var(--color-active-bg);
+  font-weight: 600;
+  box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08);
 }
 
 .dirtyIndicator {

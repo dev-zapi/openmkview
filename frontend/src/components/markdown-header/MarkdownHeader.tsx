@@ -36,8 +36,6 @@ export interface MarkdownHeaderProps {
   onSearchNext: () => void;
   onSearchPrev: () => void;
   isDirty?: boolean;
-  onSave?: () => void;
-  saving?: boolean;
   /** Full path (mobile): tapping the filename reveals it. */
   filePath?: string;
   /** Project name shown with the revealed path (mobile). */
@@ -175,8 +173,6 @@ export const MarkdownHeader: Component<MarkdownHeaderProps> = (props) => {
         onCopyClick={handleCopyClick}
         onExportClick={handleExportClick}
         isDirty={props.isDirty}
-        onSave={props.onSave}
-        saving={props.saving}
         filePath={props.filePath}
         projectName={props.projectName}
         mobile={props.mobile}

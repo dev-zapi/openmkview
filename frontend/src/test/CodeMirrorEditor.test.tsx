@@ -42,25 +42,25 @@ describe('CodeMirrorEditor', () => {
     expect(getComputedStyle(content as Element).getPropertyValue('--editor-size')).toBe('24px');
   });
 
-  it('renders status bar with file name', () => {
+  it('renders an Edit-local toolbar', () => {
     render(() => (
       <CodeMirrorEditor initialContent="# Test" fileName="example.md" />
     ));
-    expect(screen.getByText('example.md')).toBeTruthy();
+    expect(screen.getByText('Editing')).toBeTruthy();
   });
 
-  it('shows Untitled when no file name provided', () => {
+  it('shows a save shortcut in the inner toolbar', () => {
     render(() => (
-      <CodeMirrorEditor initialContent="# Test" />
+      <CodeMirrorEditor initialContent="# Test" onSave={() => {}} />
     ));
-    expect(screen.getByText('Untitled')).toBeTruthy();
+    expect(screen.getByText('Ctrl S')).toBeTruthy();
   });
 
   it('shows dirty badge when isDirty is true', () => {
     render(() => (
       <CodeMirrorEditor initialContent="# Test" isDirty={true} />
     ));
-    expect(screen.getByText('Modified')).toBeTruthy();
+    expect(screen.getByText('Unsaved')).toBeTruthy();
   });
 
   it('does not show dirty badge when isDirty is false', () => {
@@ -71,11 +71,23 @@ describe('CodeMirrorEditor', () => {
     expect(dirtyBadge).toBeFalsy();
   });
 
-  it('shows save hint', () => {
+  it('saves from the inner toolbar and disables the button when clean', async () => {
+    const onSave = vi.fn();
     render(() => (
-      <CodeMirrorEditor initialContent="# Test" />
+      <CodeMirrorEditor initialContent="# Test" isDirty={true} onSave={onSave} />
     ));
-    expect(screen.getByText('Ctrl+S to save')).toBeTruthy();
+
+    const save = screen.getByRole('button', { name: 'Save changes' });
+    fireEvent.click(save);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(save.getAttribute('title')).toContain('Ctrl+S');
+  });
+
+  it('disables the inner save button when clean', () => {
+    render(() => (
+      <CodeMirrorEditor initialContent="# Test" isDirty={false} onSave={() => {}} />
+    ));
+    expect(screen.getByRole('button', { name: 'Saved' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('calls onDirtyChange when content changes', async () => {
@@ -372,7 +384,7 @@ describe('CodeMirrorEditor', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
 
-    it('shows the Modified dirty badge after typing in Writing Mode', async () => {
+    it('shows the Unsaved dirty badge after typing in Writing Mode', async () => {
       const [isDirty, setIsDirty] = createSignal(false);
       const { container } = render(() => (
         <CodeMirrorEditor
@@ -395,7 +407,7 @@ describe('CodeMirrorEditor', () => {
       view!.dispatch({ changes: { from: 0, insert: '>' } });
       await vi.runAllTimersAsync();
 
-      expect(screen.getByText('Modified')).toBeTruthy();
+      expect(screen.getByText('Unsaved')).toBeTruthy();
     });
 
     it('opens the search panel when searchRequestKey changes in Writing Mode', async () => {

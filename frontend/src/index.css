@@ -244,7 +244,7 @@
   --app-height: 100vh;
   /* Document title bar height (desktop); the floating header hands this
      much scroll port back to .content-main as padding. */
-  --doc-header-height: 40px;
+  --doc-header-height: 46px;
 }
 
 @supports (height: 100svh) {
@@ -883,7 +883,11 @@ body {
 }
 
 .sidebar-header {
-  height: 40px;
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  height: 46px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -892,8 +896,6 @@ body {
   letter-spacing: 0.8px;
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-subtle);
-  position: relative;
 }
 
 .sidebar-header-content {
@@ -1178,6 +1180,8 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 10px 0;
+  padding-top: calc(46px + 10px);
+  scroll-padding-top: calc(46px + 10px);
 }
 
 /* File tree hover visibility override */

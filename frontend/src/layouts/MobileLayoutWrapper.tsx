@@ -365,8 +365,6 @@ onClick={() => {
                onSearchNext={props.onSearchNext}
                onSearchPrev={props.onSearchPrev}
                isDirty={props.isDirty}
-               onSave={props.onSave}
-               saving={props.saving}
                mobile={true}
                onMenuClick={() => mobileLayoutStore.toggleLeftDrawer()}
             />

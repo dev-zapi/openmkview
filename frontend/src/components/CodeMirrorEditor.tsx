@@ -18,6 +18,7 @@ import { basicSetup } from 'codemirror';
 import type { FileType } from '../types';
 import { writingModeStore, writingSessionKey } from '../stores/writingModeStore';
 import { annotationStore } from '../stores/annotationStore';
+import { editorStore } from '../stores/editorStore';
 import { resolveEditorAnnotationLines } from '../utils/editorAnnotationEcho';
 import { resolveEditorThemeExtension } from '../utils/editorThemes';
 import './CodeMirrorEditor.css';
@@ -630,18 +631,24 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
     editorView.focus();
   });
 
+  const saveLabel = () =>
+    editorStore.saving() ? 'Saving…' : props.isDirty ? 'Save changes' : 'Saved';
+
   return (
     <div
       class="codemirror-editor-container"
       classList={{ 'writing-mode': isWritingActive() }}
       ref={editorContainer}
     >
-      <div class="editor-status-bar">
-        <div class="status-bar-file">
-          <span class="file-name">{props.fileName || 'Untitled'}</span>
-          {props.isDirty && <span class="dirty-badge">Modified</span>}
+      <div class="editor-toolbar">
+        <div class="toolbar-file">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+          </svg>
+          <span class="file-name">Editing</span>
+          {props.isDirty && <span class="dirty-badge">Unsaved</span>}
         </div>
-        <div class="status-bar-actions">
+        <div class="toolbar-actions">
           <Show when={canWrite()}>
             <button
               type="button"
@@ -673,7 +680,30 @@ export const CodeMirrorEditor: Component<CodeMirrorEditorProps> = (props) => {
               Focus
             </button>
           </Show>
-          <span class="save-hint">Ctrl+S to save</span>
+          <span class="toolbar-rule" />
+          <Show when={props.onSave}>
+            <button
+              type="button"
+              class="editor-save-button"
+              onClick={() => props.onSave?.()}
+              disabled={!props.isDirty || editorStore.saving()}
+              title="Save (Ctrl+S / ⌘+S)"
+              aria-label={saveLabel()}
+            >
+              <Show when={!editorStore.saving()} fallback={
+                <svg class="editor-save-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" aria-hidden="true">
+                  <path d="M20 12a8 8 0 1 1-3-6" />
+                </svg>
+              }>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                  <path d="M17 21v-8H7v8M7 3v5h8" />
+                </svg>
+              </Show>
+              <span>{saveLabel()}</span>
+              <kbd aria-hidden="true">Ctrl S</kbd>
+            </button>
+          </Show>
         </div>
       </div>
     </div>
