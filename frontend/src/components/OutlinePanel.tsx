@@ -9,7 +9,7 @@ interface OutlinePanelProps {
   showCloseButton?: boolean;
   outlineWidth: number;
   transition: string;
-  onStartDragging: () => void;
+  onStartDragging: (event: MouseEvent) => void;
   activeHeadingId: string | null;
   onProgrammaticScrollLock?: (id: string) => void;
 }

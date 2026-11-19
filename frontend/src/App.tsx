@@ -120,7 +120,7 @@ const App: Component = () => {
 
   const theme = createMemo(() => settingsStore.effectiveTheme);
   const markdownStyle = createMemo(() => getMarkdownStyle(settingsStore.settings()));
-  const outlineTransition = layoutHook.getOutlineTransitionStyle();
+  const outlineTransition = createMemo(() => layoutHook.getOutlineTransitionStyle());
 
   const handleSearchClick = () => {
     if (!isDocumentFile()) {
@@ -276,7 +276,7 @@ const App: Component = () => {
           gitUnavailable={!offlineStore.online()}
           pullDisabled={editorStore.isDirty()}
           outlineWidth={appStore.outlineWidth()}
-          outlineTransition={outlineTransition}
+          outlineTransition={outlineTransition()}
           onOutlineStartDragging={layoutHook.startOutlineDragging}
           onProjectClick={(project) => void projectHook.switchProject(project)}
           onProjectContextMenu={projectHook.openColorPicker}

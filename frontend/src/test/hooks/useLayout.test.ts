@@ -94,7 +94,7 @@ describe('useLayout', () => {
     cleanup();
   });
 
-  it('uses framed layout bounds for sidebar and outline drag offsets', () => {
+  it('uses framed layout bounds for sidebar drag offsets', () => {
     const activityBar = document.createElement('div');
     activityBar.className = 'activity-bar';
     vi.spyOn(activityBar, 'getBoundingClientRect').mockReturnValue({ right: 59 } as DOMRect);
@@ -111,15 +111,56 @@ describe('useLayout', () => {
     appStore.setIsDragging(true);
     document.dispatchEvent(new MouseEvent('mousemove', { clientX: 500 }));
     expect(appStore.sidebarWidth()).toBe(441);
-
     appStore.setIsDragging(false);
-    appStore.setIsOutlineDragging(true);
-    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 }));
-    expect(appStore.outlineWidth()).toBe(292);
-
     cleanup();
     activityBar.remove();
     appContainer.remove();
+  });
+
+  it('uses relative pointer movement when resizing the outline in a framed layout', () => {
+    const outline = document.createElement('div');
+    outline.className = 'outline-panel';
+    vi.spyOn(outline, 'getBoundingClientRect').mockReturnValue({ width: 280 } as DOMRect);
+    const handle = document.createElement('div');
+    outline.append(handle);
+    document.body.append(outline);
+
+    const { setupResizeHandlers, startOutlineDragging } = useLayout();
+    const cleanup = setupResizeHandlers();
+    const startEvent = new MouseEvent('mousedown', { clientX: 901 });
+    Object.defineProperty(startEvent, 'currentTarget', { value: handle });
+    startOutlineDragging(startEvent);
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 900 }));
+    expect(appStore.outlineWidth()).toBe(281);
+
+    cleanup();
+    outline.remove();
+  });
+
+  it('keeps the outline divider under the pointer beside an annotation column', () => {
+    const outline = document.createElement('div');
+    outline.className = 'outline-panel';
+    vi.spyOn(outline, 'getBoundingClientRect').mockReturnValue({ width: 280 } as DOMRect);
+    const handle = document.createElement('div');
+    outline.append(handle);
+    document.body.append(outline);
+
+    const { setupResizeHandlers, startOutlineDragging } = useLayout();
+    const cleanup = setupResizeHandlers();
+    const startEvent = new MouseEvent('mousedown', { clientX: 900 });
+    Object.defineProperty(startEvent, 'currentTarget', { value: handle });
+    startOutlineDragging(startEvent);
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 880 }));
+    expect(appStore.outlineWidth()).toBe(300);
+
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 600 }));
+    // Starting width (280) + pointer delta (900 - 600) = 580, capped at 40%.
+    expect(appStore.outlineWidth()).toBe(480);
+    expect(localStorage.getItem('outline-panel-width')).not.toBe('480');
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    expect(localStorage.getItem('outline-panel-width')).toBe('480');
+    cleanup();
+    outline.remove();
   });
 
   it('clamps sidebar width on resize', () => {

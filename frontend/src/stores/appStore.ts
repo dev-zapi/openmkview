@@ -22,6 +22,7 @@ const [sidebarOpen, setSidebarOpen] = createSignal(true);
 const [isDragging, setIsDragging] = createSignal(false);
 const [outlineWidth, setOutlineWidth] = createSignal(DEFAULT_OUTLINE_WIDTH);
 const [isOutlineDragging, setIsOutlineDragging] = createSignal(false);
+const [outlineDragOrigin, setOutlineDragOrigin] = createSignal({ pointerX: 0, width: 0 });
 const [openProjectDialogOpen, setOpenProjectDialogOpen] = createSignal(false);
 const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
 const [colorPickerProjectId, setColorPickerProjectId] = createSignal<number | null>(null);
@@ -53,6 +54,8 @@ export const appStore = {
   setOutlineWidth,
   isOutlineDragging,
   setIsOutlineDragging,
+  outlineDragOrigin,
+  setOutlineDragOrigin,
   openProjectDialogOpen,
   setOpenProjectDialogOpen,
   colorPickerOpen,

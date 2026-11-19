@@ -20,15 +20,11 @@ export const useLayout = () => {
         saveSidebarWidth(newWidth);
       }
       if (appStore.isOutlineDragging()) {
-        const appContainer = document.querySelector<HTMLElement>('.app-container');
-        const containerRect = appContainer?.getBoundingClientRect();
-        const rightBorder = appContainer
-          ? parseFloat(getComputedStyle(appContainer).borderRightWidth) || 0
-          : 0;
-        const contentRight = containerRect ? containerRect.right - rightBorder : window.innerWidth;
-        const newWidth = getValidatedOutlineWidth(contentRight - e.clientX);
+        const origin = appStore.outlineDragOrigin();
+        const newWidth = getValidatedOutlineWidth(
+          origin.width + origin.pointerX - e.clientX,
+        );
         appStore.setOutlineWidth(newWidth);
-        saveOutlineWidth(newWidth);
       }
     };
 
@@ -40,6 +36,7 @@ export const useLayout = () => {
       }
       if (appStore.isOutlineDragging()) {
         appStore.setIsOutlineDragging(false);
+        saveOutlineWidth(appStore.outlineWidth());
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
       }
@@ -81,7 +78,14 @@ export const useLayout = () => {
     document.body.style.userSelect = 'none';
   };
 
-  const startOutlineDragging = () => {
+  const startOutlineDragging = (event: MouseEvent) => {
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    const outline = handle.closest<HTMLElement>('.outline-panel');
+    const width = outline?.getBoundingClientRect().width ?? appStore.outlineWidth();
+    appStore.setOutlineDragOrigin({ pointerX: event.clientX, width });
+    // Set width and disable its transition together before the first move.
+    appStore.setOutlineWidth(width);
     appStore.setIsOutlineDragging(true);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
