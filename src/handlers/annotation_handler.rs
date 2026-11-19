@@ -88,12 +88,7 @@ pub async fn add_note(
     let conn = lock_db(&data)?;
 
     let service = AnnotationService::new(&conn);
-    let annotation = service.append_note(
-        path.into_inner(),
-        &body.body,
-        body.author.as_deref(),
-        body.is_agent,
-    )?;
+    let annotation = service.append_note(path.into_inner(), &body.body, &body.authorship)?;
 
     Ok(HttpResponse::Ok().json(annotation))
 }

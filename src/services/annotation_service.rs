@@ -1,6 +1,6 @@
 use crate::db::{AnnotationRepository, ProjectRepository};
 use crate::errors::{AppError, AppResult};
-use crate::models::{Annotation, CreateAnnotationRequest, ManagedAnnotation, Project};
+use crate::models::{Annotation, Authorship, CreateAnnotationRequest, ManagedAnnotation, Project};
 use crate::services::FileService;
 use rusqlite::Connection;
 use serde_json::Value;
@@ -198,7 +198,7 @@ impl<'a> AnnotationService<'a> {
         if body.is_empty() {
             return Err(AppError::BadRequest("Note body is required".into()));
         }
-        validate_author(req.author.as_deref())?;
+        validate_author(req.authorship.author.as_deref())?;
 
         if !req.anchor.is_object() {
             return Err(AppError::BadRequest("Anchor must be a JSON object".into()));
@@ -213,8 +213,7 @@ impl<'a> AnnotationService<'a> {
             &anchor_json,
             snapshot.as_deref(),
             body,
-            normalize_author(req.author.as_deref()),
-            req.is_agent,
+            &req.authorship.normalized(),
         )
     }
 
@@ -271,17 +270,16 @@ impl<'a> AnnotationService<'a> {
         &self,
         annotation_id: i64,
         body: &str,
-        author: Option<&str>,
-        is_agent: bool,
+        authorship: &Authorship,
     ) -> AppResult<Annotation> {
         let body = body.trim();
         if body.is_empty() {
             return Err(AppError::BadRequest("Note body is required".into()));
         }
-        validate_author(author)?;
+        validate_author(authorship.author.as_deref())?;
 
         self.annotation_repo
-            .append_note(annotation_id, body, normalize_author(author), is_agent)?
+            .append_note(annotation_id, body, &authorship.normalized())?
             .ok_or_else(|| AppError::NotFound("Annotation not found".into()))
     }
 

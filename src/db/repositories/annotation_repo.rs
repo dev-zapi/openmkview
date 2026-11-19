@@ -1,5 +1,5 @@
 use crate::errors::{AppError, AppResult};
-use crate::models::{Annotation, AnnotationNote};
+use crate::models::{Annotation, AnnotationNote, Authorship};
 use rusqlite::{params, Connection, Row};
 
 pub struct AnnotationRepository<'a> {
@@ -37,7 +37,6 @@ impl<'a> AnnotationRepository<'a> {
         Self { conn }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn create(
         &self,
         project_id: i64,
@@ -45,8 +44,7 @@ impl<'a> AnnotationRepository<'a> {
         anchor_json: &str,
         snapshot: Option<&str>,
         body: &str,
-        author: Option<&str>,
-        is_agent: bool,
+        authorship: &Authorship,
     ) -> AppResult<Annotation> {
         self.conn.execute(
             "INSERT INTO annotations (project_id, relative_path, anchor_json, snapshot)
@@ -59,7 +57,12 @@ impl<'a> AnnotationRepository<'a> {
         self.conn.execute(
             "INSERT INTO annotation_notes (annotation_id, body, author, is_agent)
              VALUES (?, ?, ?, ?)",
-            params![annotation_id, body, author, is_agent as i64],
+            params![
+                annotation_id,
+                body,
+                authorship.author.as_deref(),
+                authorship.is_agent as i64
+            ],
         )?;
 
         self.find_by_id(annotation_id)?
@@ -256,8 +259,7 @@ impl<'a> AnnotationRepository<'a> {
         &self,
         annotation_id: i64,
         body: &str,
-        author: Option<&str>,
-        is_agent: bool,
+        authorship: &Authorship,
     ) -> AppResult<Option<Annotation>> {
         if self.find_by_id(annotation_id)?.is_none() {
             return Ok(None);
@@ -266,7 +268,12 @@ impl<'a> AnnotationRepository<'a> {
         self.conn.execute(
             "INSERT INTO annotation_notes (annotation_id, body, author, is_agent)
              VALUES (?, ?, ?, ?)",
-            params![annotation_id, body, author, is_agent as i64],
+            params![
+                annotation_id,
+                body,
+                authorship.author.as_deref(),
+                authorship.is_agent as i64
+            ],
         )?;
         self.touch(annotation_id)?;
 
@@ -336,8 +343,10 @@ impl<'a> AnnotationRepository<'a> {
                 id: row.get(0)?,
                 annotation_id: row.get(1)?,
                 body: row.get(2)?,
-                author: row.get(3)?,
-                is_agent: row.get::<_, i64>(4)? != 0,
+                authorship: Authorship {
+                    author: row.get(3)?,
+                    is_agent: row.get::<_, i64>(4)? != 0,
+                },
                 created_at: row.get(5)?,
             })
         })?;
