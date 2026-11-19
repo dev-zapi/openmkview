@@ -63,10 +63,11 @@ The config lives at `~/.config/openmkview/agent.json`, mode `0600`, holding only
 instances). `login` re-runs only the credential exchange when a config already
 exists.
 
-**A `401` means the Tool Session was revoked or was never stored** (sessions
-never expire, so there are no other causes): either the config has no token
-because auth was never initialized, or the token's row was deleted. The CLI
-exits non-zero and prints
+**A `401` means the Tool Session was revoked or was never stored, or the
+`OPENMKVIEW_URL` points at a different instance** (sessions never expire, so
+there are no other causes): either the config has no token because auth was
+never initialized, the token's row was deleted, or the URL targets another
+instance that never saw this token. The CLI exits non-zero and prints
 `Tool Session revoked — run omk.mjs init`; ask the user to re-init or run
 `login` with fresh credentials. Do not retry a 401.
 
