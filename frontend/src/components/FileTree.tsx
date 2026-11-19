@@ -31,6 +31,33 @@ interface FileTreeProps {
   itemHeight?: number;
 }
 
+const FILE_TREE_GLASS_CSS = `
+  :host([data-file-tree-virtualized='true']),
+  [data-file-tree-virtualized-wrapper='true'],
+  [data-file-tree-virtualized-root='true'] {
+    overflow: visible;
+  }
+
+  [data-file-tree-virtualized-root='true'] {
+    position: relative;
+  }
+
+  [data-file-tree-virtualized-scroll='true'] {
+    position: absolute;
+    inset: calc(42px - var(--file-tree-scroll-lift, 0px)) 0 0;
+  }
+
+  [data-file-tree-search-container='true'] {
+    position: relative;
+    z-index: 6;
+    background: var(--trees-bg);
+  }
+
+  [data-file-tree-sticky-overlay='true'] {
+    top: var(--file-tree-scroll-lift, 0px);
+  }
+`;
+
 function getTreeStyles(_theme: 'light' | 'dark'): Record<string, string> {
   return {
     height: '100%',
@@ -246,9 +273,42 @@ function renderContextMenu(
   return menuRoot;
 }
 
+function setupFileTreeGlassScroll(host: HTMLDivElement): () => void {
+  const scroll = host.shadowRoot?.querySelector<HTMLElement>(
+    '[data-file-tree-virtualized-scroll="true"]',
+  );
+  const sidebar = host.closest('.sidebar');
+  if (!scroll || !sidebar) return () => {};
+
+  // Grow the scroll viewport upwards as its content scrolls. Its bottom and
+  // measured height stay synchronized, so Pierre's virtualization and maximum
+  // scroll offset continue to match the visible viewport.
+  let appliedLift = 0;
+  const updateLift = () => {
+    // Defer measurement until scrolling so a sidebar mounted while hidden can
+    // still establish its overlap after it is reopened.
+    const maxLift = Math.max(
+      0,
+      scroll.getBoundingClientRect().top + appliedLift - sidebar.getBoundingClientRect().top,
+    );
+    const lift = Math.min(Math.max(0, scroll.scrollTop), maxLift);
+    if (lift === appliedLift) return;
+    appliedLift = lift;
+    host.style.setProperty('--file-tree-scroll-lift', `${lift}px`);
+  };
+
+  scroll.addEventListener('scroll', updateLift, { passive: true });
+  updateLift();
+  return () => {
+    scroll.removeEventListener('scroll', updateLift);
+    host.style.removeProperty('--file-tree-scroll-lift');
+  };
+}
+
 const FileTree: Component<FileTreeProps> = (props) => {
   let hostRef: HTMLDivElement | undefined;
   let model: PierreTree | undefined;
+  let disposeGlassScroll = () => {};
   let placeholderPathSet = new Set<string>();
 
   const refreshPlaceholderPaths = () => {
@@ -268,6 +328,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
   };
 
   const initTree = () => {
+    disposeGlassScroll();
     if (model) {
       model.cleanUp();
     }
@@ -282,6 +343,8 @@ const FileTree: Component<FileTreeProps> = (props) => {
       initialExpansion: 'closed',
       flattenEmptyDirectories: true,
       search: true,
+      // Static, trusted CSS for the fixed search field and glass-header overlap.
+      unsafeCSS: FILE_TREE_GLASS_CSS,
       icons: getFileTreeIcons(),
       renderRowDecoration: renderPlaceholderDecoration,
       composition: {
@@ -349,6 +412,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
 
     if (hostRef) {
       model.render({ fileTreeContainer: hostRef });
+      disposeGlassScroll = setupFileTreeGlassScroll(hostRef);
     }
   };
 
@@ -365,6 +429,7 @@ const FileTree: Component<FileTreeProps> = (props) => {
   });
 
   onCleanup(() => {
+    disposeGlassScroll();
     if (model) {
       model.cleanUp();
       model = undefined;

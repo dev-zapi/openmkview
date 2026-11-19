@@ -886,7 +886,7 @@ body {
   position: absolute;
   inset: 0 0 auto;
   z-index: 20;
-  height: 46px;
+  height: var(--doc-header-height);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -896,6 +896,14 @@ body {
   letter-spacing: 0.8px;
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* Chromium does not include this Shadow DOM tree in backdrop-filter sampling.
+   Keep the header genuinely translucent without hiding the rows beneath it. */
+.sidebar-header.topbar-glass {
+  background: hsl(var(--muted) / 0.82);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .sidebar-header-content {
@@ -1177,11 +1185,22 @@ body {
 }
 
 .sidebar-content {
+  position: relative;
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 10px 0;
-  padding-top: calc(46px + 10px);
-  scroll-padding-top: calc(46px + 10px);
+  padding-top: calc(var(--doc-header-height) + 10px);
+}
+
+/* Opaque only between the glass header and the fixed tree search field. */
+.sidebar-content::before {
+  content: '';
+  position: absolute;
+  inset: var(--doc-header-height) 0 auto;
+  height: 52px;
+  background: var(--color-bg);
+  z-index: 5;
+  pointer-events: none;
 }
 
 /* File tree hover visibility override */
@@ -1666,7 +1685,8 @@ textarea {
 }
 
 .outline-panel-header {
-  height: 40px;
+  height: var(--doc-header-height);
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1745,7 +1765,7 @@ textarea {
 }
 
 .annotation-column-header {
-  height: 40px;
+  height: var(--doc-header-height);
   flex-shrink: 0;
   display: flex;
   align-items: center;

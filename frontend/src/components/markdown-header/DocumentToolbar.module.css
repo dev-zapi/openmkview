@@ -1,5 +1,5 @@
 .toolbar {
-  height: 46px;
+  height: var(--doc-header-height);
   display: flex;
   align-items: center;
   gap: 20px;
