@@ -595,7 +595,11 @@ fn validate_tool_session(db: &Arc<Mutex<Connection>>, token: &str) -> AppResult<
 
     match repo.find_by_token_hash(&token_hash)? {
         Some(session) => {
-            repo.touch_last_used(session.id)?;
+            // Last-used bookkeeping is best-effort: a failed timestamp update
+            // must not turn an otherwise valid request into a 500.
+            if let Err(err) = repo.touch_last_used(session.id) {
+                log::warn!("failed to update tool session last_used_at: {}", err);
+            }
             Ok(true)
         }
         None => Ok(false),
@@ -668,7 +672,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::init_db;
+    use crate::db::{init_db, ProjectRepository};
     use actix_web::body::BoxBody;
     use actix_web::dev::ServiceResponse;
     use actix_web::http::header;
@@ -725,6 +729,10 @@ mod tests {
                     .route(
                         "/api/auth/tool-sessions/{id}",
                         web::delete().to(auth_tool_session_delete),
+                    )
+                    .route(
+                        "/api/annotations",
+                        web::post().to(crate::handlers::create_annotation),
                     )
                     .route("/api/protected", web::get().to(protected_probe)),
             )
@@ -837,6 +845,63 @@ mod tests {
             .expect("stored hash");
         assert_ne!(stored_hash, token);
         assert_eq!(stored_hash, crate::db::hash_tool_session_token(&token));
+    }
+
+    #[actix_web::test]
+    async fn bearer_token_creates_an_annotation_with_authorship() {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let app = init_test_app!(&temp_dir);
+
+        // Seed a real project so the create route has a target.
+        let project_dir = temp_dir.path().join("project");
+        std::fs::create_dir_all(&project_dir).expect("create project dir");
+        std::fs::write(project_dir.join("doc.md"), "# Title\n\nparagraph\n").expect("write doc");
+        let project_id = {
+            let conn = init_db(&temp_dir.path().join("openmkview.db")).expect("reopen db");
+            ProjectRepository::new(&conn)
+                .create(project_dir.to_str().expect("project path"), "project")
+                .expect("create project")
+                .id
+        };
+
+        // A Tool Session exchanged from credentials is the only credential used.
+        let exchange = send(
+            &app,
+            exchange_request("alice", "correct horse", "agent").to_request(),
+        )
+        .await;
+        assert_eq!(exchange.status(), actix_web::http::StatusCode::OK);
+        let token = body_json(exchange).await["token"]
+            .as_str()
+            .expect("token")
+            .to_string();
+
+        let create_req = awtest::TestRequest::post()
+            .uri("/api/annotations")
+            .insert_header((header::AUTHORIZATION, format!("Bearer {token}")))
+            .set_json(json!({
+                "projectId": project_id,
+                "relativePath": "doc.md",
+                "anchor": {
+                    "version": 1,
+                    "segments": [{
+                        "kind": "block",
+                        "blockHash": "blk-abc123",
+                        "blockText": "paragraph",
+                        "blockType": "p",
+                        "headingPath": ["Title"]
+                    }]
+                },
+                "body": "Agent note",
+                "author": "openmkview-agent",
+                "isAgent": true
+            }))
+            .to_request();
+        let response = send(&app, create_req).await;
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+        let annotation = body_json(response).await;
+        assert_eq!(annotation["notes"][0]["author"], "openmkview-agent");
+        assert_eq!(annotation["notes"][0]["isAgent"], true);
     }
 
     #[actix_web::test]
