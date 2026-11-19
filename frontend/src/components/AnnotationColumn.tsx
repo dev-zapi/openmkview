@@ -54,7 +54,7 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
       aria-label="Annotations"
     >
       <Show when={props.isOpen}>
-        <div class="annotation-column-header">
+        <div class="annotation-column-header topbar-glass">
         <h3>
           <svg
             width="14"
