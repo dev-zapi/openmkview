@@ -461,10 +461,17 @@ fn build_tool_session_token() -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random)
 }
 
-fn lock_db(data: &AppState) -> AppResult<std::sync::MutexGuard<'_, Connection>> {
-    data.db
-        .lock()
+/// Every DB access funnels through this lock so a poisoned mutex always
+/// surfaces the same error instead of silently panicking.
+fn lock_connection(
+    db: &Arc<Mutex<Connection>>,
+) -> AppResult<std::sync::MutexGuard<'_, Connection>> {
+    db.lock()
         .map_err(|_| AppError::InternalError("数据库状态已损坏".to_string()))
+}
+
+pub(crate) fn lock_db(data: &AppState) -> AppResult<std::sync::MutexGuard<'_, Connection>> {
+    lock_connection(&data.db)
 }
 
 /// Exchanges credentials for a Tool Session token. This is the only place a
@@ -588,9 +595,7 @@ fn bearer_token(req: &ServiceRequest) -> Option<String> {
 /// so existence is the only validity condition; revocation deletes the row.
 fn validate_tool_session(db: &Arc<Mutex<Connection>>, token: &str) -> AppResult<bool> {
     let token_hash = hash_tool_session_token(token);
-    let conn = db
-        .lock()
-        .map_err(|_| AppError::InternalError("数据库状态已损坏".to_string()))?;
+    let conn = lock_connection(db)?;
     let repo = ToolSessionRepository::new(&conn);
 
     match repo.find_by_token_hash(&token_hash)? {
