@@ -61,7 +61,7 @@ interface MainPaneProps {
   showAnnotationColumn?: boolean;
   outlineWidth: number;
   outlineTransition: string;
-  onOutlineStartDragging: () => void;
+  onOutlineStartDragging: (event: MouseEvent) => void;
   onFileOpen?: (path: string) => void;
 }
 

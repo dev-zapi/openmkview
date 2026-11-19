@@ -43,7 +43,7 @@ interface DesktopLayoutProps {
   gitOperation?: RemoteGitAction;
   gitUnavailable: boolean;
   pullDisabled: boolean;
-  onOutlineStartDragging: () => void;
+  onOutlineStartDragging: (event: MouseEvent) => void;
   onProjectClick: (project: Project) => void;
   onProjectContextMenu: (event: MouseEvent, projectId: number) => void;
   onOpenProject: () => void;
