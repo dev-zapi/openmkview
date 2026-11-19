@@ -896,14 +896,6 @@ body {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Chromium does not include this Shadow DOM tree in backdrop-filter sampling.
-   Keep the header genuinely translucent without hiding the rows beneath it. */
-.sidebar-header.topbar-glass {
-  background: hsl(var(--muted) / 0.82);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
 .sidebar-header-content {
   display: flex;
   align-items: center;

@@ -29,7 +29,7 @@ test('document and sidebar top bars share the document toolbar height', async ({
     expect(rect).toEqual({ height: 46, top: 0 });
   }
 
-  for (const header of [toolbar, outline, annotations]) {
+  for (const header of [toolbar, page.locator('.sidebar-header'), outline, annotations]) {
     const material = await header.evaluate((element) => {
       const style = getComputedStyle(element);
       return { background: style.backgroundColor, backdropFilter: style.backdropFilter };
@@ -94,7 +94,7 @@ test('file tree rows scroll beneath its translucent header without moving search
   expect(scrolled.scrollTop).toBe(scrolled.sidebarTop);
   expect(scrolled.hasRowBehindHeader).toBe(true);
   expect(scrolled.headerBackground).toMatch(/0\.82\)$/);
-  expect(scrolled.headerBackdropFilter).toBe('none');
+  expect(scrolled.headerBackdropFilter).toBe('blur(16px) saturate(1.2)');
 
   await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   await expect.poll(() => host.locator('[data-item-path="/tsconfig.json"]').evaluate((element) => {
@@ -143,6 +143,8 @@ test('outline and annotation rows scroll beneath their frosted headers', async (
   const annotationContent = page.locator('.annotation-column-content');
   await outlineContent.evaluate((element) => { element.scrollTop = 70; });
   await annotationContent.evaluate((element) => { element.scrollTop = 250; });
+  await expect.poll(() => outlineContent.evaluate((element) => element.scrollTop)).toBe(70);
+  await expect.poll(() => annotationContent.evaluate((element) => element.scrollTop)).toBe(250);
 
   const geometry = await page.evaluate(() => {
     const intersectsHeader = (rowSelector: string, headerSelector: string) => {
