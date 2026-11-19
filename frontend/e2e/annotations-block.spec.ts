@@ -25,6 +25,9 @@ const SCRATCH_MARKDOWN = [
   '',
   'A second paragraph.',
   '',
+  '- A list item whose marker must stay aligned.',
+  '- Another list item for comparison.',
+  '',
   '```rust',
   'const value = 1;',
   '```',
@@ -127,6 +130,44 @@ test.describe('whole-block annotations', () => {
     await expect(reloadedViewer).not.toBeVisible();
     await reloadedParagraph.click();
     await expect(page.getByRole('dialog', { name: 'Annotation' })).not.toBeVisible();
+  });
+
+  test('annotation does not shift list content and uses a subtle background', async ({ page }) => {
+    const list = page.locator('.markdown-content > ul');
+    const item = list.getByRole('listitem').first();
+    const marker = list.getByRole('button', { name: /Annotate this block/ });
+    await expect(item).toBeVisible();
+
+    const before = await item.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const text = element.firstChild;
+      if (text) range.selectNode(text);
+      const rect = range.getBoundingClientRect();
+      return { x: rect.x, y: rect.y };
+    });
+
+    await list.hover();
+    await marker.click();
+    const composer = page.getByRole('dialog', { name: 'New annotation' });
+    await composer.getByRole('textbox').fill('List layout note');
+    await composer.getByRole('button', { name: 'Save' }).click();
+    await expect(composer).not.toBeVisible();
+    await expect(list).toHaveClass(/annotation-highlighted/);
+
+    const after = await item.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const text = element.firstChild;
+      if (text) range.selectNode(text);
+      const rect = range.getBoundingClientRect();
+      return { x: rect.x, y: rect.y };
+    });
+    expect(after.x).toBeCloseTo(before.x, 1);
+    expect(after.y).toBeCloseTo(before.y, 1);
+    await expect(list).toHaveCSS('padding-left', '43px');
+    await expect(list).toHaveCSS('margin-left', '-11px');
+    await expect(list).toHaveCSS('background-image', /\/ 0\.05\)/);
   });
 
   test('marker stays reachable across a real mouse transit into the rail', async ({ page }) => {
