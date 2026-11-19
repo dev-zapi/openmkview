@@ -4,7 +4,7 @@ import type { ThemeMode, Theme, Settings, PasskeyCredentialSummary, ToolSessionS
 import { applyTheme } from '../utils/theme';
 import { editorThemeLightPresets, editorThemeDarkPresets } from '../utils/editorThemes';
 import { CUSTOM_STYLESHEET_MAX, resolvedEditorFontSize, resolvedWritingFontSize } from '../utils/settings';
-import { formatAnnotationTimestamp } from '../utils/annotationDisplay';
+import { formatTimestamp } from '../utils/time';
 import { authStore } from '../stores/authStore';
 import { settingsStore } from '../stores/settingsStore';
 import { CssEditor } from './CssEditor';
@@ -396,14 +396,14 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
     }
   };
 
-  const formatTimestamp = (value?: string) => {
+  const formatCredentialTimestamp = (value?: string) => {
     if (!value) {
       return 'Never used';
     }
 
     // SQLite stores UTC without a zone designator; the shared helper
     // normalizes it before the browser parses it as a local time.
-    return formatAnnotationTimestamp(value);
+    return formatTimestamp(value);
   };
 
   const buildTimeLabel = () => {
@@ -796,10 +796,10 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                           <div class="tool-session-card" data-session-id={String(session.id)}>
                             <div class="passkey-card-meta">
                               <div class="passkey-card-name">{session.label}</div>
-                              <div class="passkey-card-time">Created {formatTimestamp(session.createdAt)}</div>
+                              <div class="passkey-card-time">Created {formatCredentialTimestamp(session.createdAt)}</div>
                               <div class="passkey-card-time">
                                 {session.lastUsedAt
-                                  ? `Last used ${formatTimestamp(session.lastUsedAt)}`
+                                  ? `Last used ${formatCredentialTimestamp(session.lastUsedAt)}`
                                   : 'Never used'}
                               </div>
                             </div>
@@ -863,8 +863,8 @@ const SettingsPanel: Component<SettingsPanelProps> = (props) => {
                           <div class="passkey-card">
                             <div class="passkey-card-meta">
                               <div class="passkey-card-name">{credential.name}</div>
-                              <div class="passkey-card-time">Created {formatTimestamp(credential.createdAt)}</div>
-                              <div class="passkey-card-time">Last used {formatTimestamp(credential.lastUsedAt)}</div>
+                              <div class="passkey-card-time">Created {formatCredentialTimestamp(credential.createdAt)}</div>
+                              <div class="passkey-card-time">Last used {formatCredentialTimestamp(credential.lastUsedAt)}</div>
                             </div>
 
                             <Button

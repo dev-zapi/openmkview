@@ -1,7 +1,8 @@
 import { Component, For, Show, createSignal } from 'solid-js';
 import type { Annotation } from '../types';
 import { annotationStore } from '../stores/annotationStore';
-import { annotationExcerpt, annotationTime } from '../utils/annotationDisplay';
+import { annotationExcerpt } from '../utils/annotationDisplay';
+import { formatTimestamp } from '../utils/time';
 import AnnotationThread from './AnnotationThread';
 import AnnotationManagerDialog from './AnnotationManagerDialog';
 
@@ -165,7 +166,7 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
                     >
                       {outdated() ? 'Outdated' : annotation.resolved ? 'Resolved' : 'Active'}
                     </span>
-                    <span class="annotation-column-time">{annotationTime(annotation)}</span>
+                    <span class="annotation-column-time">{formatTimestamp(annotation.updatedAt || annotation.createdAt)}</span>
                   </span>
                 </button>
 

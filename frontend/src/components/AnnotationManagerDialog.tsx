@@ -5,8 +5,8 @@ import {
   annotationExcerpt,
   annotationNotePreview,
   annotationState,
-  annotationTime,
 } from '../utils/annotationDisplay';
+import { formatTimestamp } from '../utils/time';
 import { Dialog, DialogContent } from './ui';
 
 interface AnnotationManagerDialogProps {
@@ -270,7 +270,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                             <span class="annotation-manager-badge">Outdated</span>
                           </Show>
                         </td>
-                        <td class="annotation-manager-time">{annotationTime(row)}</td>
+                        <td class="annotation-manager-time">{formatTimestamp(row.updatedAt || row.createdAt)}</td>
                         <td>
                           <Show
                             when={!row.missingFile}
