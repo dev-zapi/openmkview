@@ -81,10 +81,13 @@ code — branch on the exit code, not on prose.
 |---|---|
 | `init [--url U] [--username U] [--label L]` | Detect auth, exchange credentials once, write config |
 | `login [--url U] [--username U] [--label L]` | Re-exchange credentials for a new Tool Session |
-| `list [--file PATH] [--project ID\|NAME\|PATH] [--author A] [--resolved\|--unresolved] [--orphans]` | Read threads. With `--file`: that file. Without: the project management list, including Missing File rows |
-| `show <id> [--project P]` | Find one thread by id |
-| `create --file PATH --body TEXT [--quote TEXT] [--author NAME] [--human] [--project P]` | Create a thread, optionally anchored to a quoted span |
-| `reply <id> --body TEXT [--author NAME] [--human]` | Append a Reply |
+| `projects list [--open]` | List Registered Projects (camelCase fields, including `isOpen`); `--open` keeps open ones |
+| `projects open <dir>` | Validate the directory, then register or re-open it (idempotent); prints the project |
+| `projects detect [<dir>]` | Report whether a directory (default: cwd) is a Registered Project's root or nested inside one; includes the `matches` list, deepest first |
+| `list [--file PATH] [--project ID\|NAME\|PATH] [--author A] [--resolved\|--unresolved] [--orphans] [--new\|--since TS] [--text QUERY]` | Read threads. With `--file`: that file. Without: the project management list, including Missing File rows |
+| `show <id> [--project P] [--context N]` | Find one thread by id; `--context N` adds N neighboring blocks around the Anchor |
+| `create --file PATH (--body TEXT \| --body-file PATH) [--quote TEXT] [--author NAME] [--human] [--project P]` | Create a thread, optionally anchored to a quoted span |
+| `reply <id> (--body TEXT \| --body-file PATH) [--author NAME] [--human]` | Append a Reply |
 | `resolve <id...> [--undo] [--project P]` | Resolve (or un-resolve) one or more threads |
 | `delete <id...> [--project P]` | Delete threads |
 | `batch-resolve <id...> --project P [--undo]` | Resolve many in one call |
@@ -95,14 +98,41 @@ what marks your voice in the web UI. Pass `--author claude` to name yourself.
 Use `--human` only when writing on the human's behalf: it sets
 `isAgent: false` and defaults the author to `human`.
 
+Bodies: `create` and `reply` take `--body TEXT`, or `--body-file PATH` to read
+the body from a file (`--body-file -` reads all of stdin) when `--body` is
+absent. `--body` wins if both are passed.
+
 Project resolution: pass `--project` with an id, name, or path. Without it, an
-absolute `--file` selects its containing project; otherwise a single registered
-project is used automatically, and multiple projects produce an error listing
-the choices.
+absolute `--file` selects its Containing Project; if no registered project
+contains it, the working directory is not consulted and the command reports
+the file as outside the project. A relative or absent `--file` falls back to
+the current working directory, which selects the deepest Registered Project
+whose root is the cwd or an ancestor of it — open or **Closed** alike, since a
+Closed project stays fully addressable. A single registered project is used
+automatically when nothing else matches; with several projects the error now
+lists every choice inline (`id name (path)`), so no extra `projects list`
+round trip is needed.
 
 `list` without `--file` uses the management endpoint, so it also shows
 **Missing File** threads (`missingFile: true`). `--orphans` keeps only those.
 `list --file` returns `[]` when the file no longer exists.
+
+`list --text QUERY` is a case-insensitive substring match over the thread's
+`snapshot` and every note body — a quick way to find the thread that mentioned
+a term, not a full query language. `list --new` keeps threads created, or with
+a note appended, since the previous successful project-wide `--new` read, then
+advances a per-instance, per-project cursor (stored beside the agent config in
+`agent-cursor.json`). Adding `--file` or `--author` to `--new` still filters
+the output but deliberately does **not** advance the cursor, because those
+flags narrow the server-side read and advancing past the returned rows would
+silently skip other files' or authors' updates; the CLI prints a warning to
+stderr. Use the unfiltered project-level read (`list --project P --new`) when
+you mean "everything new since last time". `list --since TIMESTAMP` applies
+the same activity test to an ISO or SQLite (`YYYY-MM-DD HH:MM:SS`) timestamp
+with no state. The two are mutually exclusive. `show --context N` (`N >= 0`)
+adds a `context` array with N neighboring blocks around each anchored block
+(`N = 0` returns just the anchored blocks; `anchor: true` marks them); it is
+`null` when the file cannot be read, never an error.
 
 ## Workflow A — consume human feedback, act, resolve
 
@@ -114,12 +144,16 @@ you turn it into a change and close the thread.
    ```bash
    node scripts/omk.mjs list --file README.md
    node scripts/omk.mjs list --project my-docs --unresolved --author alice
+   node scripts/omk.mjs list --project my-docs --new
    ```
 
-   Read the JSON: each thread has `snapshot` (the anchored text), `resolved`,
-   `relativePath`, and a `notes` array. Each note carries `author`, `isAgent`,
-   and `body`. A human note has `isAgent: false`; treat its `author` as the
-   person's name. A legacy note has `author: null` and reads as "—".
+   `list --new` shows only feedback added since your last `--new` read: a
+   human replying inside an old thread counts as new too, not just newly
+   created threads. Read the JSON: each thread has `snapshot` (the anchored
+   text), `resolved`, `relativePath`, and a `notes` array. Each note carries
+   `author`, `isAgent`, and `body`. A human note has `isAgent: false`; treat
+   its `author` as the person's name. A legacy note has `author: null` and
+   reads as "—".
 
 2. **Inspect the exact thread** when the scope is unclear:
 
@@ -208,8 +242,9 @@ or `isAgent` as identity; the instance owner controls who can reach the API.
 | `Tool Session revoked — run omk.mjs init` (exit non-zero) | The token was revoked or never stored. Run `init`/`login` with credentials. |
 | `Quote not found in file: "..."` | The quote does not match rendered text. Read the file, use the exact rendered span, or use no `--quote` for a whole-file note. |
 | `File is binary: <path>` / `File is truncated and cannot be anchored: <path>` | `create` refuses files it cannot anchor faithfully. Annotate a Markdown/text file instead. |
-| `Multiple projects found — pass --project ...` | Two or more projects are registered. Pass id, name, or path. |
-| `No projects registered — add one in the OpenMKView UI` | Register the directory in the app first. |
+| `Multiple projects found — pass --project ...` | Two or more projects are registered and none contains the target. The error now lists every choice inline (`id name (path)`); pass id, name, or path — or run the command from inside the project. |
+| `No projects registered — run omk.mjs projects open <dir>` | Nothing is registered on this instance. Register the directory with `projects open <dir>`; the CLI validates it (Markdown/HTML must exist) before registering. |
+| `Cannot register <dir>: <reason>` | `projects open` rejected the directory. Known reasons are translated to English: directory does not exist, path is not a directory, no Markdown or HTML files found in the directory. |
 | `Cannot reach <url>` | The instance is down or the URL is wrong. Check `OPENMKVIEW_URL`. |
 | Annotation missing on reload / shows Outdated | The document changed. Reply with what changed; ask the human to re-anchor. |
 
@@ -224,8 +259,9 @@ or `isAgent` as identity; the instance owner controls who can reach the API.
 - `scripts/omk.mjs` — the CLI entry point (zero dependencies, Node ≥ 18). Run
   `--help` for the complete flag list. The implementation lives beside it in
   `scripts/lib/` (`markdown.mjs` block model + Anchor construction,
-  `client.mjs` config/HTTP/prompts, `commands.mjs` dispatch); the whole
-  `scripts/` directory travels with the skill, so only Node itself is needed.
+  `domain.mjs` pure project/thread helpers, `client.mjs` config/HTTP/prompts,
+  `commands.mjs` dispatch); the whole `scripts/` directory travels with the
+  skill, so only Node itself is needed.
 - `evals/` — the fixture project, boot script, three eval prompts, and committed
   with/without-skill results; useful as executable examples of both workflows.
 

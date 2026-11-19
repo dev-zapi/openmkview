@@ -13,6 +13,8 @@
  *     text, heading paths, 48-character quote context)
  *   - `lib/client.mjs` — config, argument parsing, HTTP, prompts, and the
  *     Tool Session exchange
+ *   - `lib/domain.mjs` — pure project/thread helpers (normalization,
+ *     containment, freshness)
  *   - `lib/commands.mjs` — command implementations and dispatch
  *
  * The whole `scripts/` directory travels with the skill; running this entry
@@ -37,6 +39,7 @@ export {
   parseMarkdownBlocks,
   buildAnchorFromMarkdown,
 } from './lib/markdown.mjs';
+export { normalizeProject, projectMatchesFor } from './lib/domain.mjs';
 export { writeIdentity } from './lib/client.mjs';
 
 /**

@@ -192,6 +192,13 @@ Authenticated only. Revokes immediately (the next request with that token gets
 
 ## Project endpoints
 
+The CLI covers these directly: `projects list [--open]` (GET /api/projects),
+`projects open <dir>` (POST /api/projects/validate, then POST
+/api/projects/open), and `projects detect [<dir>]` (GET /api/projects plus
+client-side path matching). The CLI normalizes the snake_case rows below into
+camelCase (`isOpen`, `createdAt`, `lastOpenedAt`); the raw wire format stays
+snake_case.
+
 ### GET /api/projects
 
 Returns every registered project. `?open=true` keeps only open ones. Response

@@ -533,6 +533,42 @@ function blockSegment(block) {
 }
 
 /**
+ * Diagnostic suffix for a failed quote match: up to three blocks sharing the
+ * most whitespace-split words with the quote (case-insensitive), or the first
+ * two blocks when nothing overlaps. Rendered text, capped at 80 characters,
+ * so the agent can retry against the exact block instead of guessing.
+ */
+function closestBlockExcerpt(blocks, needle) {
+  const words = new Set(
+    needle.toLocaleLowerCase().split(/\s+/).filter(Boolean)
+  );
+  const scored = blocks
+    .map((block) => ({
+      block,
+      hits: block.text
+        .toLocaleLowerCase()
+        .split(/\s+/)
+        .reduce((count, word) => (words.has(word) ? count + 1 : count), 0),
+    }))
+    .filter((entry) => entry.hits > 0)
+    .sort((left, right) => right.hits - left.hits)
+    .slice(0, 3);
+
+  const pool =
+    scored.length > 0
+      ? scored
+      : blocks.slice(0, 2).map((block) => ({ block }));
+  if (pool.length === 0) return '';
+
+  const excerpts = pool.map(({ block }, index) => {
+    const text =
+      block.text.length > 80 ? `${block.text.slice(0, 77)}...` : block.text;
+    return `[${index + 1}] "${text}"`;
+  });
+  return `; closest blocks: ${excerpts.join(' | ')}`;
+}
+
+/**
  * Builds an Anchor from raw Markdown and the text an agent wants to quote.
  *
  * - `quote` omitted -> a whole-file Anchor: one whole-block segment per block.
@@ -575,7 +611,9 @@ export function buildAnchorFromMarkdown(markdown, quote) {
   }
 
   if (!block || start < 0) {
-    throw new Error(`Quote not found in file: "${needle}"`);
+    throw new Error(
+      `Quote not found in file: "${needle}"${closestBlockExcerpt(blocks, needle)}`
+    );
   }
 
   const end = start + needle.length;

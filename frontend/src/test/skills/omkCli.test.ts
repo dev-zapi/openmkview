@@ -28,6 +28,23 @@ interface OmkModule {
     author?: string;
     human?: boolean;
   }) => { author: string; isAgent: boolean };
+  normalizeProject: (row: Record<string, unknown>) => {
+    id: number;
+    name: string;
+    path: string;
+    isOpen: boolean;
+    createdAt: string | null;
+    lastOpenedAt: string | null;
+    color: string | null;
+    icon: string | null;
+  } | null;
+  projectMatchesFor: (
+    directory: string,
+    projects: { id: number; name: string; path: string }[]
+  ) => {
+    project: { id: number; name: string; path: string };
+    relation: 'root' | 'inside';
+  }[];
 }
 
 const cli = omk as unknown as OmkModule;
@@ -375,5 +392,77 @@ describe('omk.mjs write identity', () => {
       author: 'Jonas',
       isAgent: false,
     });
+  });
+});
+
+describe('omk.mjs project helpers', () => {
+  it('normalizes a snake_case project row to camelCase', () => {
+    const normalized = cli.normalizeProject({
+      id: 1,
+      path: '/work/docs',
+      name: 'docs',
+      created_at: '2026-11-18 12:46:30',
+      last_opened_at: '2026-11-18 12:50:00',
+      is_open: 1,
+      color: null,
+      icon: null,
+    });
+
+    expect(normalized).toEqual({
+      id: 1,
+      name: 'docs',
+      path: '/work/docs',
+      isOpen: true,
+      createdAt: '2026-11-18 12:46:30',
+      lastOpenedAt: '2026-11-18 12:50:00',
+      color: null,
+      icon: null,
+    });
+  });
+
+  it('booleanizes isOpen from the snake_case wire field', () => {
+    expect(
+      cli.normalizeProject({ id: 2, name: 'closed', path: '/closed', is_open: 0 })
+        ?.isOpen
+    ).toBe(false);
+    expect(
+      cli.normalizeProject({ id: 3, name: 'open', path: '/open', is_open: 1 })
+        ?.isOpen
+    ).toBe(true);
+  });
+
+  it('finds the root, nested, and unrelated directories', () => {
+    const projects = [
+      { id: 1, name: 'repo', path: '/work/repo' },
+      { id: 2, name: 'docs', path: '/work/repo/docs' },
+      { id: 3, name: 'other', path: '/work/other' },
+    ];
+
+    expect(cli.projectMatchesFor('/work/repo', projects)).toEqual([
+      { project: projects[0], relation: 'root' },
+    ]);
+    expect(cli.projectMatchesFor('/work/repo/docs', projects)).toEqual([
+      { project: projects[1], relation: 'root' },
+      { project: projects[0], relation: 'inside' },
+    ]);
+    expect(cli.projectMatchesFor('/work/repo/docs/guide', projects)).toEqual([
+      { project: projects[1], relation: 'inside' },
+      { project: projects[0], relation: 'inside' },
+    ]);
+    expect(cli.projectMatchesFor('/work/elsewhere', projects)).toEqual([]);
+  });
+
+  it('orders nested matches deepest first', () => {
+    const projects = [
+      { id: 1, name: 'repo', path: '/work/repo' },
+      { id: 2, name: 'docs', path: '/work/repo/docs' },
+      { id: 3, name: 'site', path: '/work/repo/docs/site' },
+    ];
+
+    expect(
+      cli
+        .projectMatchesFor('/work/repo/docs/site/assets', projects)
+        .map((match) => match.project.id)
+    ).toEqual([3, 2, 1]);
   });
 });

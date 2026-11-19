@@ -395,6 +395,134 @@ run_mode() {
   mv "$docs/guide-renamed.md" "$docs/guide.md"
   pass "$mode orphan view"
 
+  # Projects commands and the new list filters. This block registers a second
+  # project, so every later list call must pass --file or --project explicitly.
+  local projects_json="$mode_root/projects-list.json"
+  cli projects list >"$projects_json"
+  [[ "$(jsonq "$projects_json" 'd.length')" == "1" ]] \
+    || fail "projects list should return one project"
+  [[ "$(jsonq "$projects_json" 'd[0].isOpen')" == "true" ]] \
+    || fail "projects list should report isOpen"
+  [[ "$(jsonq "$projects_json" 'typeof d[0].lastOpenedAt === "string" && d[0].lastOpenedAt.length > 0')" == "true" ]] \
+    || fail "projects list should report lastOpenedAt"
+  [[ "$(jsonq "$projects_json" 'd[0].created_at === undefined && d[0].last_opened_at === undefined && d[0].is_open === undefined')" == "true" ]] \
+    || fail "projects list should not leak snake_case fields"
+  pass "$mode projects list normalizes project fields"
+
+  local detect_root="$mode_root/detect-root.json"
+  cli projects detect "$docs" >"$detect_root"
+  [[ "$(jsonq "$detect_root" 'd.registered && d.relation === "root"')" == "true" ]] \
+    || fail "projects detect did not report the project root"
+  local nested="$docs/nested"
+  mkdir -p "$nested"
+  local detect_inside="$mode_root/detect-inside.json"
+  cli projects detect "$nested" >"$detect_inside"
+  [[ "$(jsonq "$detect_inside" 'd.registered && d.relation === "inside" && d.matches[0].relation === "inside"')" == "true" ]] \
+    || fail "projects detect did not report a nested directory"
+  local detect_none="$mode_root/detect-none.json"
+  cli projects detect "$mode_root" >"$detect_none"
+  [[ "$(jsonq "$detect_none" 'd.registered === false && d.project === null && d.matches.length === 0')" == "true" ]] \
+    || fail "projects detect should report an unregistered directory"
+  pass "$mode projects detect reports root/inside/unregistered"
+
+  local extra="$mode_root/extra"
+  mkdir -p "$extra"
+  printf '# Extra\n\nSecond project document.\n' >"$extra/readme.md"
+  local open_json="$mode_root/projects-open.json"
+  cli projects open "$extra" >"$open_json"
+  [[ "$(jsonq "$open_json" 'd.isOpen === true')" == "true" ]] \
+    || fail "projects open should report isOpen"
+  local projects_two="$mode_root/projects-two.json"
+  cli projects list >"$projects_two"
+  [[ "$(jsonq "$projects_two" 'd.length')" == "2" ]] \
+    || fail "projects list should show two projects after open"
+  pass "$mode projects open registers a directory"
+
+  local empty_dir="$mode_root/empty"
+  mkdir -p "$empty_dir"
+  local empty_status=0
+  set +e
+  cli projects open "$empty_dir" >"$mode_root/open-empty-out.json" 2>"$mode_root/open-empty-err.json"
+  empty_status=$?
+  set -e
+  [[ "$empty_status" -ne 0 ]] || fail "projects open accepted a directory with no documents"
+  grep -q "no Markdown or HTML files found" "$mode_root/open-empty-err.json" \
+    || fail "projects open did not print the English validation reason"
+  pass "$mode projects open rejects a directory without documents"
+
+  local text_json="$mode_root/list-text.json"
+  cli list --file "$docs/guide.md" --text "prerequisites" >"$text_json"
+  [[ "$(jsonq "$text_json" 'd.length >= 1')" == "true" ]] \
+    || fail "list --text did not match a note body"
+  local since_future="$mode_root/list-since-future.json"
+  cli list --file "$docs/guide.md" --since 2999-01-01T00:00:00Z >"$since_future"
+  [[ "$(jsonq "$since_future" 'd.length === 0')" == "true" ]] \
+    || fail "list --since future should return nothing"
+  local since_past="$mode_root/list-since-past.json"
+  cli list --file "$docs/guide.md" --since 2000-01-01T00:00:00Z >"$since_past"
+  [[ "$(jsonq "$since_past" 'd.length >= 1')" == "true" ]] \
+    || fail "list --since past should return rows"
+  pass "$mode list --text and --since filter"
+
+  # A project-wide, unfiltered read advances the cursor. Two projects are
+  # registered by now, so pass --project explicitly.
+  local new_first="$mode_root/list-new-first.json"
+  cli list --project "$PROJECT_ID" --new >"$new_first"
+  [[ "$(jsonq "$new_first" 'd.length >= 1')" == "true" ]] \
+    || fail "list --new first read should return every thread"
+  local cursor_file
+  cursor_file="$(dirname "$AGENT_CONFIG")/agent-cursor.json"
+  [[ -f "$cursor_file" ]] || fail "list --new did not write the cursor file"
+  local new_second="$mode_root/list-new-second.json"
+  cli list --project "$PROJECT_ID" --new >"$new_second"
+  [[ "$(jsonq "$new_second" 'd.length === 0')" == "true" ]] \
+    || fail "list --new second read should return nothing"
+  pass "$mode list --new filters and advances the cursor"
+
+  # A narrowed --new read still filters, but must not advance the cursor: it
+  # warns on stderr instead, so another author's/file's updates are not lost.
+  local new_narrowed="$mode_root/list-new-narrowed.json"
+  local cli_list_narrowed_status=0
+  set +e
+  cli list --file "$docs/guide.md" --new \
+    >"$new_narrowed" 2>"$mode_root/list-new-narrowed-err.txt"
+  cli_list_narrowed_status=$?
+  set -e
+  [[ "$cli_list_narrowed_status" -eq 0 ]] || fail "narrowed list --new should still succeed"
+  grep -q "cursor not advanced" "$mode_root/list-new-narrowed-err.txt" \
+    || fail "narrowed list --new did not warn about the cursor"
+  pass "$mode list --new with --file warns and keeps the cursor"
+
+  printf 'Body from file: reviewed the prerequisites.\n' >"$mode_root/body.txt"
+  local body_reply="$mode_root/reply-body-file.json"
+  cli reply "$ANNOTATION_ID" --body-file "$mode_root/body.txt" --author claude >"$body_reply"
+  [[ "$(jsonq "$body_reply" 'd.notes[d.notes.length-1].body')" == "Body from file: reviewed the prerequisites." ]] \
+    || fail "--body-file reply did not store the file body"
+  pass "$mode reply accepts --body-file"
+
+  local context_json="$mode_root/show-context.json"
+  cli show "$ANNOTATION_ID" --context 1 >"$context_json"
+  [[ "$(jsonq "$context_json" 'Array.isArray(d.context) && d.context.length >= 1')" == "true" ]] \
+    || fail "show --context did not return an array"
+  [[ "$(jsonq "$context_json" 'd.context.some(b => b.anchor === true)')" == "true" ]] \
+    || fail "show --context did not mark the anchored block"
+  local context_zero="$mode_root/show-context-zero.json"
+  cli show "$ANNOTATION_ID" --context 0 >"$context_zero"
+  [[ "$(jsonq "$context_zero" 'Array.isArray(d.context) && d.context.length >= 1 && d.context.every(b => b.anchor === true)')" == "true" ]] \
+    || fail "show --context 0 should return only the anchored blocks"
+  pass "$mode show --context includes neighboring blocks"
+
+  local quote_status=0
+  set +e
+  cli create --file "$docs/guide.md" --quote "definitely not in this file" --body x \
+    >"$mode_root/quote-missing-out.json" 2>"$mode_root/quote-missing-err.json"
+  quote_status=$?
+  set -e
+  [[ "$quote_status" -ne 0 ]] || fail "create accepted a quote that is not in the file"
+  grep -q "closest blocks" "$mode_root/quote-missing-err.json" \
+    || fail "quote error did not include closest blocks"
+  pass "$mode create reports closest blocks"
+
   if [[ "$mode" == "auth" ]]; then
     # Revoke the Tool Session and require the actionable 401 message.
     local sessions_json="$mode_root/sessions.json"

@@ -9,6 +9,13 @@ import path from 'node:path';
 import process from 'node:process';
 import { StringDecoder } from 'node:string_decoder';
 
+import {
+  isPathUnder,
+  parseTimestamp,
+  projectChoices,
+  projectMatchesFor,
+} from './domain.mjs';
+
 /**
  * Write identity defaults: agent voice unless `--human`. `--author` names the
  * voice; blank/absent falls back to "agent" / "human".
@@ -42,6 +49,8 @@ const BOOLEAN_FLAGS = new Set([
   'resolved',
   'unresolved',
   'orphans',
+  'open',
+  'new',
   'help',
 ]);
 
@@ -213,25 +222,30 @@ async function resolveProject(context, options) {
     return found;
   }
 
+  // An absolute --file is authoritative: pick the project containing it, and
+  // when none does, do not rescue the read with the working directory — the
+  // caller's relativePathFor will report the file as outside the project.
   if (options.file && path.isAbsolute(options.file)) {
-    const absolute = path.resolve(options.file);
-    const under = projects
-      .filter(
-        (project) =>
-          absolute === path.resolve(project.path) ||
-          absolute.startsWith(`${path.resolve(project.path)}${path.sep}`)
-      )
-      .sort((left, right) => right.path.length - left.path.length)[0];
-
-    if (under) return under;
+    const under = projectMatchesFor(options.file, projects)[0];
+    if (under) return under.project;
+  } else {
+    // The agent usually runs from inside the project it is working on, so the
+    // working directory selects the project the same way an absolute --file
+    // does — before the single-project fallback, never over it.
+    const byCwd = projectMatchesFor(process.cwd(), projects)[0];
+    if (byCwd) return byCwd.project;
   }
 
   if (projects.length === 1) return projects[0];
   if (projects.length === 0) {
-    throw new Error('No projects registered — add one in the OpenMKView UI');
+    throw new Error(
+      'No projects registered — run `omk.mjs projects open <dir>` to register one'
+    );
   }
 
-  throw new Error('Multiple projects found — pass --project <id|name|path>');
+  throw new Error(
+    `Multiple projects found — pass --project <id|name|path>: ${projectChoices(projects)}`
+  );
 }
 
 function relativePathFor(project, file) {
@@ -240,13 +254,55 @@ function relativePathFor(project, file) {
   if (path.isAbsolute(file)) {
     const absolute = path.resolve(file);
     const root = path.resolve(project.path);
-    if (absolute !== root && !absolute.startsWith(`${root}${path.sep}`)) {
+    if (!isPathUnder(root, absolute)) {
       throw new Error(`File is outside project "${project.name}": ${file}`);
     }
     return path.relative(root, absolute).split(path.sep).join('/');
   }
 
   return file.split(path.sep).join('/');
+}
+
+/* ------------------------------------------------------------------------- *
+ * Seen cursor (--new)
+ * ------------------------------------------------------------------------- */
+
+/* The cursor lives beside the agent config (so OPENMKVIEW_AGENT_CONFIG
+ * isolates it too) and is keyed by instance URL + project id: what has been
+ * seen on one instance says nothing about another. */
+function cursorPath() {
+  return path.join(path.dirname(CONFIG_PATH), 'agent-cursor.json');
+}
+
+function cursorKey(context, projectId) {
+  return `${context.url}|${projectId}`;
+}
+
+function loadCursors() {
+  try {
+    const raw = fs.readFileSync(cursorPath(), 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw new Error(`Cannot read ${cursorPath()}: ${error.message}`);
+  }
+}
+
+function readCursor(context, projectId) {
+  const value = loadCursors()[cursorKey(context, projectId)];
+  return typeof value === 'string' ? parseTimestamp(value) : 0;
+}
+
+function writeCursor(context, projectId, epochMs) {
+  const cursors = loadCursors();
+  cursors[cursorKey(context, projectId)] = new Date(epochMs).toISOString();
+  fs.mkdirSync(path.dirname(cursorPath()), { recursive: true, mode: 0o700 });
+  const temporary = `${cursorPath()}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(cursors, null, 2)}\n`, {
+    mode: 0o600,
+  });
+  fs.renameSync(temporary, cursorPath());
 }
 
 async function fetchFileContent(context, projectId, relativePath) {
@@ -404,6 +460,8 @@ export {
   output,
   parseArgs,
   promptValue,
+  readCursor,
   relativePathFor,
   resolveProject,
+  writeCursor,
 };

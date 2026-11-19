@@ -36,6 +36,18 @@ _Avoid_: nowrap, table overflow, horizontal scroll, table scroll
 A block of raw CSS supplied by the user that is injected to override the appearance of rendered Markdown content. Scoped to the Markdown view, so it cannot restyle the application shell.
 _Avoid_: custom CSS, user styles, theme override, user stylesheet
 
+**Registered Project**:
+A directory known to the instance: a row with a unique path in the projects table. Registration persists — Closing a project only hides it, and no operation unregisters or deletes one.
+_Avoid_: added project, project entry, 已注册项目
+
+**Closed**:
+The sidebar-hidden state of a Registered Project. A Closed project keeps its registration and stays fully addressable by id or path across the API and the annotation CLI; it is merely absent from the file browser.
+_Avoid_: unregistered, removed project, deleted project, inactive
+
+**Containing Project**:
+The deepest Registered Project whose root is a given directory or an ancestor of it. Resolves a file path or a working directory to one project; when registrations nest, path depth wins, never registration order.
+_Avoid_: parent project, owning project, closest project, enclosing project
+
 **Menu Target**:
 The project whose context menu is currently open in the activity bar. Distinct from the Active Project; a menu target may or may not be the active project. Derived from color picker state. When the color picker closes, the menu target becomes null.
 _Avoid_: context menu target, right-clicked project, selected project, focused project
@@ -81,7 +93,7 @@ An optional Writing Mode enhancement that dims every paragraph except the one ho
 _Avoid_: focus dimming, sentence focus, highlight paragraph, dim mode
 
 **Annotation**:
-A single-user note attached to rendered Markdown content — either to a selected text range or to a whole block. Scoped to a file within a project and stored in SQLite, never written into the document itself. Supports editing, deletion, a reply thread of time-ordered notes, and a Resolved state.
+A thread attached to rendered Markdown content — either to a selected text range or to a whole block. Scoped to a file within a Registered Project and stored in SQLite, never written into the document itself. The human and agent clients both write notes into it; supports editing, deletion, and a Resolved state.
 _Avoid_: comment, 评论, review note, margin note, footnote
 
 **Anchor**:
@@ -93,11 +105,11 @@ The visible state of an Annotation whose Anchor no longer matches the document a
 _Avoid_: stale, orphan, broken, 失效批注
 
 **Missing File**:
-The state of an Annotation whose stored path no longer exists in the Active Project, typically after the file was deleted or moved outside the app. The Annotation is retained in SQLite and stays reachable from the management panel; it is not Outdated because its Anchor cannot be evaluated without the file.
+The state of an Annotation whose stored path no longer exists in its Registered Project, typically after the file was deleted or moved outside the app. The Annotation is retained in SQLite and stays reachable from the management panel; it is not Outdated because its Anchor cannot be evaluated without the file.
 _Avoid_: orphan, orphaned row, path-orphaned, orphaned annotation
 
 **Reply**:
-A note appended to an Annotation's thread after its first note, ordered by time. Single-user by design: a reply extends the annotation, it is not a conversation turn.
+A note appended to an Annotation's thread after its first note, ordered by time. The thread is the human↔agent exchange surface: each Reply carries its own Authorship, so the two voices are distinguishable turn by turn.
 _Avoid_: response, follow-up comment, message
 
 **Author**:
