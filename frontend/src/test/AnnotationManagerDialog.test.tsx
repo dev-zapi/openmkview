@@ -8,7 +8,7 @@ function managedAnnotation(
   id: number,
   relativePath: string,
   authors: Array<string | null>
-): ManagedAnnotation & { orphaned: boolean } {
+): ManagedAnnotation {
   return {
     id,
     projectId: 1,
@@ -39,7 +39,6 @@ function managedAnnotation(
     })),
     // Missing File rows skip the lazy per-file Outdated resolution.
     missingFile: true,
-    orphaned: true,
   };
 }
 

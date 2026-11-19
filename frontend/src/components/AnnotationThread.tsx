@@ -1,7 +1,7 @@
 import { Component, For, Show, createSignal } from 'solid-js';
 import type { Annotation, AnnotationNote } from '../types';
 import { annotationStore } from '../stores/annotationStore';
-import { annotationNoteTime } from '../utils/annotationDisplay';
+import { formatTimestamp } from '../utils/time';
 import { renderNoteMarkdown } from '../utils/sanitizedMarkdown';
 
 interface AnnotationThreadProps {
@@ -91,7 +91,7 @@ const AnnotationThread: Component<AnnotationThreadProps> = (props) => {
           <div class="annotation-note" data-note-id={String(note.id)}>
             <div class="annotation-note-meta">
               <span class="annotation-note-meta-left">
-                <span class="annotation-note-time">{annotationNoteTime(note)}</span>
+                <span class="annotation-note-time">{formatTimestamp(note.createdAt)}</span>
                 <span class="annotation-note-author">
                   <span class="annotation-note-author-name">{note.author ?? '—'}</span>
                   <Show when={note.isAgent}>

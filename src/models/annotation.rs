@@ -1,6 +1,38 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// The advisory authorship of one note: a free-text name plus the Agent flag
+/// that tells an agent's voice from the human's. Not an identity system — any
+/// client may claim any name, and legacy notes carry none (ADR-0007).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Authorship {
+    /// Free-text author of the note (logged-in username or agent-supplied
+    /// name). `None` marks a legacy note written before authorship existed.
+    #[serde(default)]
+    pub author: Option<String>,
+    /// Whether this note came from an agent rather than the human user.
+    #[serde(default)]
+    pub is_agent: bool,
+}
+
+impl Authorship {
+    /// Trims the name and drops blank ones: the form every insert and
+    /// `?author=` filter operates on, so a whitespace-only name behaves like
+    /// a legacy note instead of a distinct author.
+    pub fn normalized(&self) -> Authorship {
+        Authorship {
+            author: self
+                .author
+                .as_deref()
+                .map(str::trim)
+                .filter(|author| !author.is_empty())
+                .map(str::to_owned),
+            is_agent: self.is_agent,
+        }
+    }
+}
+
 /// One entry in an Annotation's time-ordered note thread.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -8,11 +40,8 @@ pub struct AnnotationNote {
     pub id: i64,
     pub annotation_id: i64,
     pub body: String,
-    /// Free-text author of the note (logged-in username or agent-supplied
-    /// name). `None` marks a legacy note written before authorship existed.
-    pub author: Option<String>,
-    /// Whether this note came from an agent rather than the human user.
-    pub is_agent: bool,
+    #[serde(flatten)]
+    pub authorship: Authorship,
     pub created_at: String,
 }
 
@@ -44,7 +73,7 @@ pub struct Annotation {
 pub struct ManagedAnnotation {
     #[serde(flatten)]
     pub annotation: Annotation,
-    pub orphaned: bool,
+    pub missing_file: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -54,13 +83,10 @@ pub struct CreateAnnotationRequest {
     pub relative_path: String,
     pub anchor: Value,
     pub body: String,
-    /// Author of the first note. Omitted/`null` means legacy/unknown and is
-    /// rendered as "—" in the UI.
-    #[serde(default)]
-    pub author: Option<String>,
-    /// Agent voice marker; omitted defaults to `false` (human).
-    #[serde(default)]
-    pub is_agent: bool,
+    /// Authorship of the first note. An omitted/null author means
+    /// legacy/unknown and renders as "—" in the UI.
+    #[serde(flatten)]
+    pub authorship: Authorship,
 }
 
 /// Manual re-anchoring of an Outdated annotation: replaces the Anchor payload
@@ -76,12 +102,10 @@ pub struct ReanchorAnnotationRequest {
 #[serde(rename_all = "camelCase")]
 pub struct AddNoteRequest {
     pub body: String,
-    /// Author of the reply. Omitted/`null` marks the note as legacy/unknown.
-    #[serde(default)]
-    pub author: Option<String>,
-    /// Agent voice marker; omitted defaults to `false` (human).
-    #[serde(default)]
-    pub is_agent: bool,
+    /// Authorship of the reply. An omitted/null author marks the note as
+    /// legacy/unknown.
+    #[serde(flatten)]
+    pub authorship: Authorship,
 }
 
 #[derive(Debug, Clone, Deserialize)]

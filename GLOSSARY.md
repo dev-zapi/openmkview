@@ -104,6 +104,10 @@ _Avoid_: response, follow-up comment, message
 The free-text name attached to every note in an Annotation thread: the logged-in username for web writes, or a name supplied by an agent client. Each note also carries an Agent flag, so a thread distinguishes the human's voice from an agent's independently of the name. Authorship is advisory, not an identity system — any client may claim any name, and legacy notes with no Author display "—". List endpoints can filter by Author. See `docs/adr/0007-reply-authorship.md`.
 _Avoid_: owner, account, user identity, 作者
 
+**Authorship**:
+The advisory pairing of an Author name with the Agent flag on one note: who claimed the note and whether it was an agent's voice. The two belong together — a name alone cannot say which voice wrote the note. A blank or missing name reads as a legacy note. See `docs/adr/0007-reply-authorship.md`.
+_Avoid_: author info, author identity, note owner, 署名
+
 **Resolved**:
 The state of an Annotation thread marked as dealt with. Applies to the whole thread, never to individual Replies. Resolved annotations keep their highlights in a dimmed style and can be filtered out in the annotation column.
 _Avoid_: done, closed, finished, 已完成

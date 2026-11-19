@@ -26,7 +26,7 @@ if (rows.length === 0) {
 } else {
   for (const annotation of rows) {
     const state = annotation.resolved ? 'Resolved' : 'Unresolved';
-    const missing = annotation.orphaned ? ', Missing File' : '';
+    const missing = annotation.missingFile ? ', Missing File' : '';
     lines.push(
       `## Annotation ${annotation.id} — ${annotation.relativePath} (${state}${missing})`
     );

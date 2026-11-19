@@ -85,7 +85,7 @@ async function commandList(context, options) {
   if (options.author) query.set('author', options.author);
 
   let rows = await apiGet(context, `/api/annotations/manage?${query}`);
-  if (options.orphans) rows = rows.filter((row) => row.orphaned);
+  if (options.orphans) rows = rows.filter((row) => row.missingFile);
   output(applyResolvedFilter(rows, options));
 }
 
@@ -273,7 +273,7 @@ Behavior:
     registered project is used automatically, otherwise an error lists the
     choices.
   - list without --file uses the project management endpoint (includes
-    orphaned rows); --orphans keeps only Missing File rows. show finds the row
+    Missing File rows); --orphans keeps only those. show finds the row
     in a list because the API has no single-annotation GET.
 `;
 
