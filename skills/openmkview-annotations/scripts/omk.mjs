@@ -951,18 +951,7 @@ async function promptValue(message, { fallback = '', hidden = false } = {}) {
  * Commands
  * ------------------------------------------------------------------------- */
 
-async function commandInit(options) {
-  const config = loadConfig();
-  const url = (
-    options.url ||
-    process.env.OPENMKVIEW_URL ||
-    (await promptValue(`OpenMKView URL [${config?.url || DEFAULT_URL}]: `, {
-      fallback: config?.url || DEFAULT_URL,
-    }))
-  )
-    .trim()
-    .replace(/\/+$/, '');
-
+async function establishToolSession(url, options) {
   const context = { url, token: null, config: null };
   const status = await apiGet(context, '/api/auth/status', {
     auth: false,
@@ -1000,6 +989,21 @@ async function commandInit(options) {
   });
 }
 
+async function commandInit(options) {
+  const config = loadConfig();
+  const url = (
+    options.url ||
+    process.env.OPENMKVIEW_URL ||
+    (await promptValue(`OpenMKView URL [${config?.url || DEFAULT_URL}]: `, {
+      fallback: config?.url || DEFAULT_URL,
+    }))
+  )
+    .trim()
+    .replace(/\/+$/, '');
+
+  await establishToolSession(url, options);
+}
+
 async function commandLogin(options) {
   const config = loadConfig();
   if (!config) {
@@ -1009,41 +1013,8 @@ async function commandLogin(options) {
   const url = (options.url || process.env.OPENMKVIEW_URL || config.url)
     .trim()
     .replace(/\/+$/, '');
-  const context = { url, token: null, config: null };
-  const status = await apiGet(context, '/api/auth/status', {
-    auth: false,
-    revokeMessage: false,
-  });
 
-  if (!status.authRequired) {
-    saveConfig({ url, token: null });
-    output({ url, authRequired: false, tokenSaved: false });
-    return;
-  }
-
-  const username =
-    options.username ||
-    process.env.OPENMKVIEW_USERNAME ||
-    (await promptValue('Username: '));
-  const password =
-    process.env.OPENMKVIEW_PASSWORD ||
-    (await promptValue('Password: ', { hidden: true }));
-
-  const exchanged = await apiPost(
-    context,
-    '/api/auth/tool-sessions/exchange',
-    { username, password, label: options.label || `omk on ${os.hostname()}` },
-    { auth: false, revokeMessage: false }
-  );
-
-  saveConfig({ url, token: exchanged.token });
-  output({
-    url,
-    authRequired: true,
-    tokenSaved: true,
-    toolSessionId: exchanged.id,
-    label: exchanged.label,
-  });
+  await establishToolSession(url, options);
 }
 
 function assertResolvedFilter(options) {
