@@ -1,0 +1,37 @@
+{
+  "id": 2,
+  "projectId": 1,
+  "relativePath": "README.md",
+  "anchor": {
+    "segments": [
+      {
+        "blockHash": "blk-0736af34",
+        "blockText": "The quick brownfox jumps overthe lazy dog.",
+        "blockType": "p",
+        "headingPath": [
+          "OpenMKView Fixture",
+          "Overview"
+        ],
+        "kind": "text",
+        "prefix": "The quick brown",
+        "quote": "fox jumps",
+        "suffix": " overthe lazy dog."
+      }
+    ],
+    "version": 1
+  },
+  "snapshot": "fox jumps",
+  "resolved": false,
+  "createdAt": "2026-11-18 13:48:18",
+  "updatedAt": "2026-11-18 13:48:18",
+  "notes": [
+    {
+      "id": 2,
+      "annotationId": 2,
+      "body": "Replace this placeholder sentence with a real-world example.",
+      "author": "alice",
+      "isAgent": false,
+      "createdAt": "2026-11-18 13:48:18"
+    }
+  ]
+}

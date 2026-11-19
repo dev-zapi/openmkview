@@ -1,0 +1,37 @@
+{
+  "id": 7,
+  "projectId": 1,
+  "relativePath": "README.md",
+  "anchor": {
+    "segments": [
+      {
+        "blockHash": "blk-c8b544fa",
+        "blockText": "npm install openmkview npm run dev",
+        "blockType": "code",
+        "headingPath": [
+          "OpenMKView Fixture",
+          "Setup"
+        ],
+        "kind": "text",
+        "prefix": "npm install openmkview ",
+        "quote": "npm run dev",
+        "suffix": ""
+      }
+    ],
+    "version": 1
+  },
+  "snapshot": "npm run dev",
+  "resolved": false,
+  "createdAt": "2026-11-18 13:48:23",
+  "updatedAt": "2026-11-18 13:48:23",
+  "notes": [
+    {
+      "id": 7,
+      "annotationId": 7,
+      "body": "Agent note A.",
+      "author": "claude",
+      "isAgent": true,
+      "createdAt": "2026-11-18 13:48:23"
+    }
+  ]
+}

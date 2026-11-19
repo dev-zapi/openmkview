@@ -1,0 +1,43 @@
+[
+  {
+    "name": "baseline_stored",
+    "markdown": "# OpenMKView Fixture\n\nThis is a synthetic project used by the agent annotation evals.\nIt intentionally contains hard-wrapped prose, headings, code, and a table.\n\n## Overview\n\nThe quick brown\nfox jumps over\nthe lazy dog.\n\nThe reader sees one paragraph even though the source wraps three lines.\n\n## Setup\n\nInstall the dependencies and run the development server.\n\n```bash\nnpm install openmkview\nnpm run dev\n```\n\n## Commands\n\n| Command | Purpose |\n|---------|---------|\n| `omk list` | Read annotations |\n| `omk create` | Write an annotation |\n\n## Closing\n\nThank you for reading\nthis fixture file.\n",
+    "anchor": {
+      "segments": [
+        {
+          "blockHash": "blk-3d9a46a1",
+          "blockText": "fox jumps over",
+          "blockType": "p",
+          "headingPath": [
+            "OpenMKView Fixture",
+            "Overview"
+          ],
+          "kind": "block"
+        }
+      ],
+      "version": 1
+    }
+  },
+  {
+    "name": "good_control",
+    "markdown": "# OpenMKView Fixture\n\nThis is a synthetic project used by the agent annotation evals.\nIt intentionally contains hard-wrapped prose, headings, code, and a table.\n\n## Overview\n\nThe quick brown\nfox jumps over\nthe lazy dog.\n\nThe reader sees one paragraph even though the source wraps three lines.\n\n## Setup\n\nInstall the dependencies and run the development server.\n\n```bash\nnpm install openmkview\nnpm run dev\n```\n\n## Commands\n\n| Command | Purpose |\n|---------|---------|\n| `omk list` | Read annotations |\n| `omk create` | Write an annotation |\n\n## Closing\n\nThank you for reading\nthis fixture file.\n",
+    "anchor": {
+      "version": 1,
+      "segments": [
+        {
+          "kind": "text",
+          "blockHash": "blk-0736af34",
+          "blockText": "The quick brownfox jumps overthe lazy dog.",
+          "blockType": "p",
+          "headingPath": [
+            "OpenMKView Fixture",
+            "Overview"
+          ],
+          "quote": "fox jumps",
+          "prefix": "The quick brown",
+          "suffix": " overthe lazy dog."
+        }
+      ]
+    }
+  }
+]
