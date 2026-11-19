@@ -1530,6 +1530,28 @@
   border-color: var(--color-primary);
 }
 
+/* 悬停桥：marker 右缘到块左缘之间的批注栏空隙不属于任何元素，
+   真实鼠标穿过时块的 :hover 断链，marker 中途淡出且不可命中
+   （移过去就消失、点不到）。透明伪元素把空隙纳入 marker 的命中
+   区域：pointer-events: auto 覆盖 marker 自身的 none，悬停伪元素
+   即悬停块的后代，hover 全程保持，marker 可达可点。 */
+.annotation-marker::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 100%;
+  /* 默认空隙 16px（marker 右缘 -16px → 块左缘 0），加 1px 余量
+     跨过亚像素边界 */
+  width: 17px;
+  pointer-events: auto;
+}
+
+/* 高亮块的 marker 距块左缘仅 5px，桥同步收窄，不盖住高亮内边距 */
+.annotation-block.annotation-highlighted > .annotation-marker::after {
+  width: 6px;
+}
+
 /* 已有批注的块：实心图标块在栏内一眼可辨（“这里有批注”） */
 .annotation-marker.has-annotation {
   background: var(--color-primary);
