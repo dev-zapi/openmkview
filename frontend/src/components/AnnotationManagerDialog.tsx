@@ -48,10 +48,21 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
   const [pending, setPending] = createSignal(false);
   const [actionError, setActionError] = createSignal<string | null>(null);
   const [confirmClear, setConfirmClear] = createSignal(false);
+  const [authorFilter, setAuthorFilter] = createSignal('');
 
   const rows = () => annotationStore.managed();
   const selected = () => annotationStore.managedSelection();
   const canMutate = () => annotationStore.canMutate();
+
+  // User-story #7: narrow the loaded rows client-side. A row matches when any
+  // of its notes was written by an author containing the query.
+  const visibleRows = () => {
+    const query = authorFilter().trim().toLowerCase();
+    if (!query) return rows();
+    return rows().filter((row) =>
+      row.notes.some((note) => (note.author ?? '').toLowerCase().includes(query)),
+    );
+  };
 
   const selectedRows = () => rows().filter((row) => selected().has(row.id));
   const allSelectedResolved = () => {
@@ -69,10 +80,13 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
     annotationStore.toggleManagedSelection(id);
   };
 
-  const allSelected = () => rows().length > 0 && selected().size === rows().length;
+  const allSelected = () => {
+    const visible = visibleRows();
+    return visible.length > 0 && visible.every((row) => selected().has(row.id));
+  };
 
   const toggleAll = () => {
-    annotationStore.toggleManagedSelectionAll();
+    annotationStore.toggleManagedSelectionAll(visibleRows().map((row) => row.id));
   };
 
   const run = async (action: () => Promise<void>) => {
@@ -144,7 +158,10 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
           <div>
             <h2>Manage annotations</h2>
             <p class="annotation-manager-subtitle">
-              {rows().length} {rows().length === 1 ? 'annotation' : 'annotations'} in this project
+              {authorFilter().trim()
+                ? `${visibleRows().length} of ${rows().length}`
+                : rows().length}{' '}
+              {rows().length === 1 ? 'annotation' : 'annotations'} in this project
             </p>
           </div>
           <button
@@ -155,6 +172,17 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
           >
             ×
           </button>
+        </div>
+
+        <div class="annotation-manager-filter">
+          <label for="annotation-manager-author-filter">Author</label>
+          <input
+            id="annotation-manager-author-filter"
+            type="search"
+            placeholder="Filter by author"
+            value={authorFilter()}
+            onInput={(event) => setAuthorFilter(event.currentTarget.value)}
+          />
         </div>
 
         <Show when={annotationStore.managedLoading()}>
@@ -175,6 +203,12 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
             </Show>
           }
         >
+          <Show
+            when={visibleRows().length > 0}
+            fallback={
+              <p class="annotation-manager-empty">No annotations match this author</p>
+            }
+          >
           <div class="annotation-manager-table-wrap">
             <table class="annotation-manager-table">
               <thead>
@@ -196,7 +230,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
                 </tr>
               </thead>
               <tbody>
-                <For each={rows()}>
+                <For each={visibleRows()}>
                   {(row) => {
                     // A function: project-wide Outdated resolution fills in
                     // progressively, so the state cell must stay reactive.
@@ -271,6 +305,7 @@ const AnnotationManagerDialog: Component<AnnotationManagerDialogProps> = (props)
               </tbody>
             </table>
           </div>
+          </Show>
         </Show>
 
         <Show when={!canMutate()}>

@@ -1813,6 +1813,35 @@ textarea {
   font-size: 13px;
 }
 
+.annotation-manager-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.annotation-manager-filter label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-soft);
+}
+
+.annotation-manager-filter input {
+  flex: 0 1 240px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.annotation-manager-filter input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
 .annotation-manager-table-wrap {
   flex: 1;
   overflow: auto;

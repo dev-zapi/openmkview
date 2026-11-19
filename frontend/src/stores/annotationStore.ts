@@ -483,12 +483,19 @@ export const annotationStore = {
   },
 
   /** Selects every management row, or clears the selection when all are selected. */
-  toggleManagedSelectionAll(): void {
-    setManagedSelection((current) =>
-      current.size === managed().length
-        ? new Set<number>()
-        : new Set(managed().map((annotation) => annotation.id)),
-    );
+  toggleManagedSelectionAll(ids?: number[]): void {
+    const scope = ids ?? managed().map((annotation) => annotation.id);
+    setManagedSelection((current) => {
+      const next = new Set(current);
+      const allSelected =
+        scope.length > 0 && scope.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of scope) next.delete(id);
+      } else {
+        for (const id of scope) next.add(id);
+      }
+      return next;
+    });
   },
 
   clearManagedSelection(): void {
