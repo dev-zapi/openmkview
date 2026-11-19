@@ -17,6 +17,19 @@ fn normalize_author(author: Option<&str>) -> Option<&str> {
     author.map(str::trim).filter(|author| !author.is_empty())
 }
 
+/// Author labels are free text, but unbounded input bloats every note row and
+/// the UI. Reject over-long names instead of silently truncating them.
+const MAX_AUTHOR_CHARS: usize = 200;
+
+fn validate_author(author: Option<&str>) -> AppResult<()> {
+    match normalize_author(author) {
+        Some(author) if author.chars().count() > MAX_AUTHOR_CHARS => Err(AppError::BadRequest(
+            format!("Author must be {MAX_AUTHOR_CHARS} characters or fewer"),
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// The text an Outdated annotation shows as its snapshot: the originally
 /// anchored quote (text segments) or block text (whole-block segments),
 /// joined in document order. Derived from the Anchor payload so it is always
@@ -185,6 +198,7 @@ impl<'a> AnnotationService<'a> {
         if body.is_empty() {
             return Err(AppError::BadRequest("Note body is required".into()));
         }
+        validate_author(req.author.as_deref())?;
 
         if !req.anchor.is_object() {
             return Err(AppError::BadRequest("Anchor must be a JSON object".into()));
@@ -264,6 +278,7 @@ impl<'a> AnnotationService<'a> {
         if body.is_empty() {
             return Err(AppError::BadRequest("Note body is required".into()));
         }
+        validate_author(author)?;
 
         self.annotation_repo
             .append_note(annotation_id, body, normalize_author(author), is_agent)?

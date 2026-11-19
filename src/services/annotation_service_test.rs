@@ -461,6 +461,43 @@ fn create_rejects_empty_note_body() {
 }
 
 #[test]
+fn create_rejects_an_over_long_author() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+
+    let at_limit = "a".repeat(200);
+    service
+        .create(authored_request(
+            project_id, "doc.md", "Note", &at_limit, false,
+        ))
+        .expect("200-char author is accepted");
+
+    let over_limit = "a".repeat(201);
+    let result = service.create(authored_request(
+        project_id,
+        "doc.md",
+        "Note",
+        &over_limit,
+        false,
+    ));
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[test]
+fn replies_reject_an_over_long_author() {
+    let (_temp_dir, conn, project_id) = setup();
+    let service = AnnotationService::new(&conn);
+    let created = service
+        .create(create_request(project_id, "doc.md", "First note"))
+        .expect("create annotation");
+
+    let over_limit = "a".repeat(201);
+    let result = service.append_note(created.id, "Reply", Some(&over_limit), false);
+
+    assert!(matches!(result, Err(AppError::BadRequest(_))));
+}
+
+#[test]
 fn create_rejects_path_traversal() {
     let (_temp_dir, conn, project_id) = setup();
     let service = AnnotationService::new(&conn);
