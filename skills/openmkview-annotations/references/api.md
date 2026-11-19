@@ -280,7 +280,7 @@ If the file does not exist at `relativePath`, this endpoint returns `[]`
 ### GET /api/annotations/manage?project_id={id}[&author={name}]
 
 Project-wide management list. Every row is an Annotation plus
-`"orphaned": true|false`, where `true` means the stored relative path no longer
+`"missingFile": true|false`, where `true` means the stored relative path no longer
 exists on disk (the **Missing File** state). Ordered by `relativePath`, then
 creation. `author` filters the same way as above.
 
@@ -407,7 +407,7 @@ Deletes every annotation in the project. Success (200):
 ```
 
 `snapshot` is nullable. `notes` is time-ordered. Managed rows add
-`"orphaned": false`.
+`"missingFile": false`.
 
 ### AnnotationNote
 
@@ -813,7 +813,7 @@ in your language of choice.
 curl -s "${AUTH[@]}" "$BASE/api/annotations/manage?project_id=$PROJECT_ID"
 ```
 
-`--orphans` keeps rows with `"orphaned": true`; `--author` maps to the query
+`--orphans` keeps rows with `"missingFile": true`; `--author` maps to the query
 parameter of the same name.
 
 ### `omk.mjs show <id>` — find one annotation

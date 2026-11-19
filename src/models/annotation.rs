@@ -44,7 +44,7 @@ pub struct Annotation {
 pub struct ManagedAnnotation {
     #[serde(flatten)]
     pub annotation: Annotation,
-    pub orphaned: bool,
+    pub missing_file: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

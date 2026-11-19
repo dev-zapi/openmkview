@@ -387,11 +387,11 @@ run_mode() {
   # Orphan view: a file renamed outside the app surfaces as Missing File.
   mv "$docs/guide.md" "$docs/guide-renamed.md"
   cli list >"$mode_root/manage.json"
-  [[ "$(jsonq "$mode_root/manage.json" "d.some(a => a.orphaned && a.id === $ANNOTATION_ID)")" == "true" ]] \
-    || fail "project-wide list did not mark the renamed file orphaned"
+  [[ "$(jsonq "$mode_root/manage.json" "d.some(a => a.missingFile && a.id === $ANNOTATION_ID)")" == "true" ]] \
+    || fail "project-wide list did not mark the renamed file missing"
   cli list --orphans >"$mode_root/orphans.json"
-  [[ "$(jsonq "$mode_root/orphans.json" 'd.length >= 1 && d.every(a => a.orphaned)')" == "true" ]] \
-    || fail "--orphans did not return only orphaned rows"
+  [[ "$(jsonq "$mode_root/orphans.json" 'd.length >= 1 && d.every(a => a.missingFile)')" == "true" ]] \
+    || fail "--orphans did not return only Missing File rows"
   mv "$docs/guide-renamed.md" "$docs/guide.md"
   pass "$mode orphan view"
 
