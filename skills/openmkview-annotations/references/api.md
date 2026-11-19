@@ -4,9 +4,11 @@ The raw HTTP surface behind the `omk.mjs` CLI. Use it when Node is unavailable,
 or when you need an endpoint the CLI does not expose (edit a Note, re-anchor,
 clear a project).
 
-Everything below was exercised against a locally built `openmkview` instance at
-commit `eadf984` (version `v0.2.0-eadf984`) on 2026-11-18. Status codes, field
-names, and error strings are copied from the responses, not reconstructed.
+Everything below was exercised against a locally built `openmkview` instance
+at commit `c9b2954` on 2026-11-19, except the author-length error, which was
+verified directly against `src/services/annotation_service.rs`. Status codes,
+field names, and error strings are copied from the responses or source, not
+reconstructed.
 
 ## Contents
 
@@ -300,7 +302,8 @@ Creates a thread and its first note. Body:
 }
 ```
 
-- `author` is free text, trimmed; blank/omitted stores `NULL`.
+- `author` is free text, trimmed; blank/omitted stores `NULL`. Names longer
+  than 200 characters are rejected with a 400 (see below).
 - `isAgent` defaults to `false` (human voice) when omitted.
 - `body` is trimmed and must be non-empty.
 - `anchor` must be an Anchor object accepted by the validator below.
@@ -323,6 +326,7 @@ Validation errors are 400 with one of these bodies:
 {"error":"Text segment requires a prefix"}
 {"error":"Text segment requires a suffix"}
 {"error":"Note body is required"}
+{"error":"Author must be 200 characters or fewer"}
 ```
 
 Unknown project: 404 `{"error":"Not found: Project not found"}`.
@@ -351,6 +355,8 @@ Appends a Reply. Body:
 
 Same author/isAgent rules as create. Success (200) returns the whole thread with
 the new note appended. Empty body: 400 `{"error":"Note body is required"}`.
+Author longer than 200 characters: 400
+`{"error":"Author must be 200 characters or fewer"}`.
 Missing annotation: 404 `{"error":"Not found: Annotation not found"}`.
 
 ### PUT /api/annotations/{id}/notes/{note_id}
@@ -920,6 +926,7 @@ copied verbatim from the server.
 |---|---|---|
 | 400 | `{"error":"当前未启用登录认证"}` | Auth endpoint called on an open instance |
 | 400 | `{"error":"Note body is required"}` | Empty/whitespace note body |
+| 400 | `{"error":"Author must be 200 characters or fewer"}` | `author` longer than 200 characters on create or reply |
 | 400 | `{"error":"Anchor requires at least one segment"}` | Empty `segments` |
 | 400 | `{"error":"Anchor segment kind must be block or text"}` | Bad segment kind |
 | 400 | `{"error":"Text segment requires a quote"}` | Text segment without quote |
