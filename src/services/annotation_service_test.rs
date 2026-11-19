@@ -2,7 +2,7 @@ use super::*;
 use crate::db::init_db;
 use crate::db::ProjectRepository;
 use crate::errors::AppError;
-use crate::models::{AddNoteRequest, CreateAnnotationRequest};
+use crate::models::{AddNoteRequest, Authorship, CreateAnnotationRequest};
 use crate::paths::AppPaths;
 use crate::services::TrashService;
 use serde_json::{json, Value};
@@ -97,8 +97,7 @@ fn create_request(project_id: i64, relative_path: &str, body: &str) -> CreateAnn
         relative_path: relative_path.to_string(),
         anchor: block_anchor(),
         body: body.to_string(),
-        author: None,
-        is_agent: false,
+        authorship: Authorship::default(),
     }
 }
 
@@ -110,8 +109,8 @@ fn authored_request(
     is_agent: bool,
 ) -> CreateAnnotationRequest {
     let mut request = create_request(project_id, relative_path, body);
-    request.author = Some(author.to_string());
-    request.is_agent = is_agent;
+    request.authorship.author = Some(author.to_string());
+    request.authorship.is_agent = is_agent;
     request
 }
 
@@ -148,22 +147,25 @@ fn create_records_the_note_author_and_agent_flag() {
     let service = AnnotationService::new(&conn);
 
     let mut request = create_request(project_id, "doc.md", "Agent note");
-    request.author = Some("openmkview-agent".to_string());
-    request.is_agent = true;
+    request.authorship.author = Some("openmkview-agent".to_string());
+    request.authorship.is_agent = true;
 
     let created = service.create(request).expect("create annotation");
-    assert_eq!(created.notes[0].author.as_deref(), Some("openmkview-agent"));
-    assert!(created.notes[0].is_agent);
+    assert_eq!(
+        created.notes[0].authorship.author.as_deref(),
+        Some("openmkview-agent")
+    );
+    assert!(created.notes[0].authorship.is_agent);
 
     let listed = service
         .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
 
     assert_eq!(
-        listed[0].notes[0].author.as_deref(),
+        listed[0].notes[0].authorship.author.as_deref(),
         Some("openmkview-agent")
     );
-    assert!(listed[0].notes[0].is_agent);
+    assert!(listed[0].notes[0].authorship.is_agent);
 }
 
 #[test]
@@ -181,22 +183,17 @@ fn omitted_authorship_defaults_to_legacy_null_and_human() {
     .expect("deserialize create request without authorship");
 
     let created = service.create(request).expect("create annotation");
-    assert_eq!(created.notes[0].author, None);
-    assert!(!created.notes[0].is_agent);
+    assert_eq!(created.notes[0].authorship.author, None);
+    assert!(!created.notes[0].authorship.is_agent);
 
     let reply: AddNoteRequest = serde_json::from_value(json!({ "body": "Old client reply" }))
         .expect("deserialize reply without authorship");
     let updated = service
-        .append_note(
-            created.id,
-            &reply.body,
-            reply.author.as_deref(),
-            reply.is_agent,
-        )
+        .append_note(created.id, &reply.body, &reply.authorship)
         .expect("append reply");
 
-    assert_eq!(updated.notes[1].author, None);
-    assert!(!updated.notes[1].is_agent);
+    assert_eq!(updated.notes[1].authorship.author, None);
+    assert!(!updated.notes[1].authorship.is_agent);
 }
 
 #[test]
@@ -232,7 +229,14 @@ fn author_filter_keeps_annotations_with_a_note_by_that_author() {
         ))
         .expect("create mixed annotation");
     service
-        .append_note(mixed.id, "Agent replies", Some("openmkview-agent"), true)
+        .append_note(
+            mixed.id,
+            "Agent replies",
+            &Authorship {
+                author: Some("openmkview-agent".to_string()),
+                is_agent: true,
+            },
+        )
         .expect("append agent reply");
     service
         .create(create_request(project_id, "other.md", "Legacy note"))
@@ -297,8 +301,8 @@ fn legacy_notes_without_authorship_read_back_as_null_and_false() {
         .expect("list annotations");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].notes[0].body, "Legacy note");
-    assert_eq!(listed[0].notes[0].author, None);
-    assert!(!listed[0].notes[0].is_agent);
+    assert_eq!(listed[0].notes[0].authorship.author, None);
+    assert!(!listed[0].notes[0].authorship.is_agent);
 }
 
 #[test]
@@ -315,7 +319,7 @@ fn authorship_names_are_trimmed_and_blank_names_are_legacy() {
             false,
         ))
         .expect("create named annotation");
-    assert_eq!(trimmed.notes[0].author.as_deref(), Some("Jonas"));
+    assert_eq!(trimmed.notes[0].authorship.author.as_deref(), Some("Jonas"));
 
     let blank = service
         .create(authored_request(
@@ -326,18 +330,32 @@ fn authorship_names_are_trimmed_and_blank_names_are_legacy() {
             true,
         ))
         .expect("create blank-author annotation");
-    assert_eq!(blank.notes[0].author, None);
-    assert!(blank.notes[0].is_agent);
+    assert_eq!(blank.notes[0].authorship.author, None);
+    assert!(blank.notes[0].authorship.is_agent);
 
     let replied = service
-        .append_note(trimmed.id, "Named reply", Some("  Agent  "), true)
+        .append_note(
+            trimmed.id,
+            "Named reply",
+            &Authorship {
+                author: Some("  Agent  ".to_string()),
+                is_agent: true,
+            },
+        )
         .expect("append named reply");
-    assert_eq!(replied.notes[1].author.as_deref(), Some("Agent"));
+    assert_eq!(replied.notes[1].authorship.author.as_deref(), Some("Agent"));
 
     let blank_reply = service
-        .append_note(trimmed.id, "Blank reply", Some("   "), false)
+        .append_note(
+            trimmed.id,
+            "Blank reply",
+            &Authorship {
+                author: Some("   ".to_string()),
+                is_agent: false,
+            },
+        )
         .expect("append blank reply");
-    assert_eq!(blank_reply.notes[2].author, None);
+    assert_eq!(blank_reply.notes[2].authorship.author, None);
 }
 
 #[test]
@@ -492,7 +510,14 @@ fn replies_reject_an_over_long_author() {
         .expect("create annotation");
 
     let over_limit = "a".repeat(201);
-    let result = service.append_note(created.id, "Reply", Some(&over_limit), false);
+    let result = service.append_note(
+        created.id,
+        "Reply",
+        &Authorship {
+            author: Some(over_limit),
+            is_agent: false,
+        },
+    );
 
     assert!(matches!(result, Err(AppError::BadRequest(_))));
 }
@@ -518,7 +543,11 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
     let first_note_id = created.notes[0].id;
 
     let after_first_reply = service
-        .append_note(created.id, "Second note — **Markdown**", None, false)
+        .append_note(
+            created.id,
+            "Second note — **Markdown**",
+            &Authorship::default(),
+        )
         .expect("append first reply");
     assert_eq!(after_first_reply.notes.len(), 2);
     assert_eq!(after_first_reply.notes[0].id, first_note_id);
@@ -528,7 +557,7 @@ fn reply_appends_notes_to_the_thread_in_time_order() {
     );
 
     let after_second_reply = service
-        .append_note(created.id, "Third note", None, false)
+        .append_note(created.id, "Third note", &Authorship::default())
         .expect("append second reply");
     let bodies: Vec<&str> = after_second_reply
         .notes
@@ -559,23 +588,33 @@ fn reply_records_the_author_and_agent_flag() {
         .expect("create annotation");
 
     let replied = service
-        .append_note(created.id, "Agent reply", Some("openmkview-agent"), true)
+        .append_note(
+            created.id,
+            "Agent reply",
+            &Authorship {
+                author: Some("openmkview-agent".to_string()),
+                is_agent: true,
+            },
+        )
         .expect("append reply");
 
     assert_eq!(replied.notes.len(), 2);
-    assert_eq!(replied.notes[0].author, None);
-    assert!(!replied.notes[0].is_agent);
-    assert_eq!(replied.notes[1].author.as_deref(), Some("openmkview-agent"));
-    assert!(replied.notes[1].is_agent);
+    assert_eq!(replied.notes[0].authorship.author, None);
+    assert!(!replied.notes[0].authorship.is_agent);
+    assert_eq!(
+        replied.notes[1].authorship.author.as_deref(),
+        Some("openmkview-agent")
+    );
+    assert!(replied.notes[1].authorship.is_agent);
 
     let listed = service
         .list_for_file(project_id, "doc.md", None)
         .expect("list annotations");
     assert_eq!(
-        listed[0].notes[1].author.as_deref(),
+        listed[0].notes[1].authorship.author.as_deref(),
         Some("openmkview-agent")
     );
-    assert!(listed[0].notes[1].is_agent);
+    assert!(listed[0].notes[1].authorship.is_agent);
 }
 
 #[test]
@@ -586,10 +625,10 @@ fn reply_requires_an_existing_annotation_and_a_non_empty_body() {
         .create(create_request(project_id, "doc.md", "only note"))
         .expect("create annotation");
 
-    let unknown = service.append_note(9999, "reply", None, false);
+    let unknown = service.append_note(9999, "reply", &Authorship::default());
     assert!(matches!(unknown, Err(AppError::NotFound(_))));
 
-    let empty = service.append_note(created.id, "   ", None, false);
+    let empty = service.append_note(created.id, "   ", &Authorship::default());
     assert!(matches!(empty, Err(AppError::BadRequest(_))));
 }
 
@@ -601,7 +640,7 @@ fn editing_a_note_updates_only_that_note() {
         .create(create_request(project_id, "doc.md", "First note"))
         .expect("create annotation");
     let second = service
-        .append_note(created.id, "Second note", None, false)
+        .append_note(created.id, "Second note", &Authorship::default())
         .expect("append reply");
     let first_note_id = created.notes[0].id;
     let second_note_id = second.notes[1].id;
@@ -690,8 +729,7 @@ fn create_request_with_anchor(anchor: Value) -> CreateAnnotationRequest {
         relative_path: "doc.md".to_string(),
         anchor,
         body: "Selection note".to_string(),
-        author: None,
-        is_agent: false,
+        authorship: Authorship::default(),
     }
 }
 
