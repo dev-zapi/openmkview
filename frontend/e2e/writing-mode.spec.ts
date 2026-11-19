@@ -177,6 +177,12 @@ test.describe('writing mode on desktop', () => {
         return {
           activeTopLeft: activeStyle.borderTopLeftRadius,
           activeBottomRight: activeStyle.borderBottomRightRadius,
+          activePadding: [
+            activeStyle.paddingTop,
+            activeStyle.paddingRight,
+            activeStyle.paddingBottom,
+            activeStyle.paddingLeft,
+          ],
           activeWashPainted: activeStyle.backgroundColor !== 'rgba(0, 0, 0, 0)',
           activeCrossfades: activeStyle.transitionProperty.includes('background-color'),
           dimmedPlain: getComputedStyle(dimmed).backgroundColor === 'rgba(0, 0, 0, 0)',
@@ -185,6 +191,7 @@ test.describe('writing mode on desktop', () => {
     await expect.poll(cardPaint).toEqual({
       activeTopLeft: '8px',
       activeBottomRight: '8px',
+      activePadding: ['8px', '16px', '8px', '16px'],
       activeWashPainted: true,
       activeCrossfades: true,
       dimmedPlain: true,

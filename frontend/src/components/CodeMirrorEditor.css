@@ -302,29 +302,32 @@
   opacity: 0.35;
 }
 
-/* Writing Mode: all prose lines share inner breathing room so the focus
+/* Writing Mode: all prose lines share horizontal breathing room so the focus
    highlight can extend past the text measure without shifting it. The
    transition lives on this persistent selector so dim/highlight classes
    animate on both add and remove — the card crossfades between blocks. */
 .codemirror-editor-container.writing-mode .cm-line {
-  padding-inline: 8px;
-  margin-inline: -8px;
+  padding-inline: 16px;
+  margin-inline: -16px;
   transition:
     opacity 0.15s ease,
     background-color 0.15s ease,
     border-radius 0.15s ease;
 }
 
-/* The caret's block: an accent-wash card with the system radius. */
+/* The caret's block: an accent-wash card with the system radius. Vertical
+   padding belongs only to the outer edges, keeping lines inside seamless. */
 .codemirror-editor-container .cm-line.cm-focus-active {
   background: var(--color-hover-bg);
 }
 
 .codemirror-editor-container .cm-line.cm-focus-active-first {
+  padding-top: 8px;
   border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
 }
 
 .codemirror-editor-container .cm-line.cm-focus-active-last {
+  padding-bottom: 8px;
   border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
 }
 
