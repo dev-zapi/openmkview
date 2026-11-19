@@ -69,11 +69,11 @@ describe('authStore.checkStatus', () => {
     expect(authStore.noteAuthor()).toBe('Jonas');
   });
 
-  it('falls back to a local author on auth-disabled instances', () => {
+  it('keeps the author unknown on auth-disabled instances', () => {
     authStore.setAuthRequired(false);
     authStore.setUsername(null);
 
-    expect(authStore.noteAuthor()).toBe('You');
+    expect(authStore.noteAuthor()).toBeNull();
   });
 
   it('marks the session unauthenticated on an explicit 401', async () => {

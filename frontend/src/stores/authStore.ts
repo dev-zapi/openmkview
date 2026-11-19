@@ -62,13 +62,12 @@ export const authStore = {
   setError,
 
   /**
-   * The author stamped on web writes. With auth enabled this is the logged-in
-   * username (null when unknown, e.g. before status loads). Auth-disabled
-   * instances have no username, so writes use a local fallback instead of
-   * making every note look like a legacy row.
+   * The author stamped on web writes: the logged-in username, or null when
+   * unknown (auth-disabled instances and loads before status resolves).
+   * ADR-0007 keeps "unknown" honest rather than fabricating a name.
    */
   noteAuthor(): string | null {
-    return authRequired() ? username() : 'You';
+    return username();
   },
 
   async checkStatus(): Promise<AuthStatus | null> {

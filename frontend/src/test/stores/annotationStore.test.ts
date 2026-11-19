@@ -103,7 +103,7 @@ describe('annotationStore', () => {
     expect(request.author).toBeNull();
   });
 
-  it('stamps a local author when the instance has no auth', async () => {
+  it('stamps null authorship when the instance has no auth', async () => {
     const { authStore } = await import('../../stores/authStore');
     const { annotationStore } = await import('../../stores/annotationStore');
     authStore.setAuthRequired(false);
@@ -116,12 +116,12 @@ describe('annotationStore', () => {
 
     await annotationStore.create(1, 'a.md', created.anchor, 'note');
     const createRequest = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
-    expect(createRequest.author).toBe('You');
+    expect(createRequest.author).toBeNull();
     expect(createRequest.isAgent).toBe(false);
 
     await annotationStore.appendNote(1, 'reply');
     const replyRequest = JSON.parse((global.fetch as any).mock.calls.at(-1)[1].body);
-    expect(replyRequest.author).toBe('You');
+    expect(replyRequest.author).toBeNull();
     expect(replyRequest.isAgent).toBe(false);
   });
 
