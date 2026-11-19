@@ -1,9 +1,21 @@
 import type { Settings, ServerSettings, ThemeMode, MarkdownWidthSetting, WritingFontFamily } from '../types/app';
-import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH_RATIO } from '../types/app';
+import {
+  DEFAULT_SETTINGS,
+  DEFAULT_SIDEBAR_WIDTH,
+  MIN_SIDEBAR_WIDTH,
+  MAX_SIDEBAR_WIDTH_RATIO,
+  DEFAULT_OUTLINE_WIDTH,
+  MIN_OUTLINE_WIDTH,
+  MAX_OUTLINE_WIDTH_RATIO,
+  DEFAULT_ANNOTATION_COLUMN_WIDTH,
+  MIN_ANNOTATION_COLUMN_WIDTH,
+  MAX_ANNOTATION_COLUMN_WIDTH_RATIO,
+} from '../types/app';
 
 const SETTINGS_KEY = 'openmkview-settings';
 const SIDEBAR_WIDTH_KEY = 'filetree-sidebar-width';
 const OUTLINE_WIDTH_KEY = 'outline-panel-width';
+const ANNOTATION_COLUMN_WIDTH_KEY = 'annotation-column-width';
 const OUTLINE_OPEN_BY_FILETYPE_KEY = 'outline-open-by-filetype';
 export const SHOW_HIDDEN_KEY = 'openmkview-show-hidden';
 const ANNOTATIONS_VISIBLE_KEY = 'openmkview-annotations-visible';
@@ -218,6 +230,35 @@ export const saveOutlineWidth = (width: number): void => {
 export const getValidatedOutlineWidth = (width: number): number => {
   const maxWidth = window.innerWidth * MAX_OUTLINE_WIDTH_RATIO;
   return Math.max(MIN_OUTLINE_WIDTH, Math.min(maxWidth, width));
+};
+
+export const loadAnnotationColumnWidth = (): number => {
+  try {
+    const saved = localStorage.getItem(ANNOTATION_COLUMN_WIDTH_KEY);
+    if (saved) {
+      const width = parseInt(saved, 10);
+      const maxWidth = window.innerWidth * MAX_ANNOTATION_COLUMN_WIDTH_RATIO;
+      if (width >= MIN_ANNOTATION_COLUMN_WIDTH && width <= maxWidth) {
+        return width;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load annotation column width:', e);
+  }
+  return DEFAULT_ANNOTATION_COLUMN_WIDTH;
+};
+
+export const saveAnnotationColumnWidth = (width: number): void => {
+  try {
+    localStorage.setItem(ANNOTATION_COLUMN_WIDTH_KEY, String(width));
+  } catch (e) {
+    console.error('Failed to save annotation column width:', e);
+  }
+};
+
+export const getValidatedAnnotationColumnWidth = (width: number): number => {
+  const maxWidth = window.innerWidth * MAX_ANNOTATION_COLUMN_WIDTH_RATIO;
+  return Math.max(MIN_ANNOTATION_COLUMN_WIDTH, Math.min(maxWidth, width));
 };
 
 export const getMarkdownStyle = (settings: Settings): Record<string, string> => {

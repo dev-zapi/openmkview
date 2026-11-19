@@ -3,6 +3,7 @@ import type { Annotation } from '../types';
 import { annotationStore } from '../stores/annotationStore';
 import { annotationExcerpt } from '../utils/annotationDisplay';
 import { formatTimestamp } from '../utils/time';
+import { DEFAULT_ANNOTATION_COLUMN_WIDTH } from '../types/app';
 import AnnotationThread from './AnnotationThread';
 import AnnotationManagerDialog from './AnnotationManagerDialog';
 
@@ -14,11 +15,12 @@ interface AnnotationColumnProps {
   onOpenFile?: (path: string) => void;
   /** Open width. The mobile drawer passes 100% instead of the desktop 300px. */
   width?: number | string;
+  /** Desktop resize behavior. The mobile drawer omits the drag handle. */
+  transition?: string;
+  onStartDragging?: (event: MouseEvent) => void;
   /** Called after a jump request, e.g. to close the mobile drawer. */
   onJump?: () => void;
 }
-
-const COLUMN_WIDTH = 300;
 
 /**
  * Independent per-file annotation overview. A sibling of the outline panel,
@@ -37,14 +39,17 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
   };
 
   const openWidth = () => {
-    if (props.width === undefined) return `${COLUMN_WIDTH}px`;
+    if (props.width === undefined) return `${DEFAULT_ANNOTATION_COLUMN_WIDTH}px`;
     return typeof props.width === 'number' ? `${props.width}px` : props.width;
   };
 
   return (
     <div
       class={`annotation-column ${props.isOpen ? '' : 'annotation-column-hidden'}`}
-      style={{ width: props.isOpen ? openWidth() : '0px' }}
+      style={{
+        width: props.isOpen ? openWidth() : '0px',
+        transition: props.transition ?? 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
       role="region"
       aria-label="Annotations"
     >
@@ -208,6 +213,10 @@ const AnnotationColumn: Component<AnnotationColumnProps> = (props) => {
         onClose={() => setManagerOpen(false)}
         onOpenFile={props.onOpenFile}
       />
+
+      <Show when={props.onStartDragging}>
+        <div class="annotation-column-resize-handle" onMouseDown={props.onStartDragging} />
+      </Show>
     </div>
   );
 };

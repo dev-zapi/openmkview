@@ -8,6 +8,9 @@ import {
   loadOutlineWidth,
   saveOutlineWidth,
   getValidatedOutlineWidth,
+  loadAnnotationColumnWidth,
+  saveAnnotationColumnWidth,
+  getValidatedAnnotationColumnWidth,
   getMarkdownStyle,
   applyFontSettings,
   extractServerSettings,
@@ -20,7 +23,18 @@ import {
   loadOutlineOpenByFileType,
   saveOutlineOpenByFileType,
 } from '../../utils/settings';
-import { DEFAULT_SETTINGS, DEFAULT_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH_RATIO, DEFAULT_OUTLINE_WIDTH, MIN_OUTLINE_WIDTH, MAX_OUTLINE_WIDTH_RATIO } from '../../types/app';
+import {
+  DEFAULT_SETTINGS,
+  DEFAULT_SIDEBAR_WIDTH,
+  MIN_SIDEBAR_WIDTH,
+  MAX_SIDEBAR_WIDTH_RATIO,
+  DEFAULT_OUTLINE_WIDTH,
+  MIN_OUTLINE_WIDTH,
+  MAX_OUTLINE_WIDTH_RATIO,
+  DEFAULT_ANNOTATION_COLUMN_WIDTH,
+  MIN_ANNOTATION_COLUMN_WIDTH,
+  MAX_ANNOTATION_COLUMN_WIDTH_RATIO,
+} from '../../types/app';
 import type { Settings } from '../../types/app';
 
 describe('settings utils', () => {
@@ -175,6 +189,37 @@ describe('settings utils', () => {
     it('returns maximum width when input is too large', () => {
       const maxWidth = 1920 * MAX_OUTLINE_WIDTH_RATIO;
       expect(getValidatedOutlineWidth(1000)).toBe(maxWidth);
+    });
+  });
+
+  describe('annotation column width', () => {
+    it('returns the default width when no saved width is available', () => {
+      expect(loadAnnotationColumnWidth()).toBe(DEFAULT_ANNOTATION_COLUMN_WIDTH);
+    });
+
+    it('loads a valid saved width', () => {
+      localStorage.setItem('annotation-column-width', '360');
+      expect(loadAnnotationColumnWidth()).toBe(360);
+    });
+
+    it('rejects invalid saved widths', () => {
+      localStorage.setItem('annotation-column-width', '100');
+      expect(loadAnnotationColumnWidth()).toBe(DEFAULT_ANNOTATION_COLUMN_WIDTH);
+      localStorage.setItem('annotation-column-width', 'invalid');
+      expect(loadAnnotationColumnWidth()).toBe(DEFAULT_ANNOTATION_COLUMN_WIDTH);
+    });
+
+    it('saves the width', () => {
+      saveAnnotationColumnWidth(360);
+      expect(localStorage.getItem('annotation-column-width')).toBe('360');
+    });
+
+    it('clamps the width to its valid range', () => {
+      expect(getValidatedAnnotationColumnWidth(100)).toBe(MIN_ANNOTATION_COLUMN_WIDTH);
+      expect(getValidatedAnnotationColumnWidth(360)).toBe(360);
+      expect(getValidatedAnnotationColumnWidth(1000)).toBe(
+        1920 * MAX_ANNOTATION_COLUMN_WIDTH_RATIO,
+      );
     });
   });
 
