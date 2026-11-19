@@ -968,7 +968,7 @@ fn external_rename_keeps_annotation_rows_queryable() {
     // not silently re-associated with some other file at the new path.
     assert!(service
         .list_for_file(fixture.project_id, "doc.md", None)
-        .expect("list orphaned path")
+        .expect("list missing-file path")
         .is_empty());
     assert!(service
         .list_for_file(fixture.project_id, "moved.md", None)
@@ -985,7 +985,7 @@ fn external_rename_keeps_annotation_rows_queryable() {
 }
 
 #[test]
-fn managed_list_covers_every_project_file_and_marks_missing_paths_as_orphaned() {
+fn managed_list_covers_every_project_file_and_marks_missing_paths_as_missing_file() {
     let fixture = fixture_with_files(&[
         ("doc.md", "# Title\n"),
         ("other.md", "# Other\n"),
@@ -1017,9 +1017,9 @@ fn managed_list_covers_every_project_file_and_marks_missing_paths_as_orphaned() 
             .expect("managed row present")
     };
 
-    assert!(!by_id(doc.id).orphaned);
-    assert!(!by_id(other.id).orphaned);
-    assert!(by_id(gone.id).orphaned);
+    assert!(!by_id(doc.id).missing_file);
+    assert!(!by_id(other.id).missing_file);
+    assert!(by_id(gone.id).missing_file);
     assert_eq!(by_id(gone.id).annotation.relative_path, "gone.md");
     assert_eq!(by_id(gone.id).annotation.notes[0].body, "orphan note");
 }

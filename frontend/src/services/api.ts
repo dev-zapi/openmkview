@@ -285,18 +285,7 @@ export const api = {
   async listProjectAnnotations(projectId: number): Promise<ManagedAnnotation[]> {
     const res = await request(`/api/annotations/manage?project_id=${projectId}`);
     await checkResponse(res);
-    // The backend reports the Missing File condition as `orphaned`; the UI and
-    // domain vocabulary call it Missing File.
-    const rows = (await res.json()) as Array<
-      Omit<ManagedAnnotation, 'missingFile'> & {
-        missingFile?: boolean;
-        orphaned?: boolean;
-      }
-    >;
-    return rows.map(({ orphaned, missingFile, ...row }) => ({
-      ...row,
-      missingFile: missingFile ?? orphaned ?? false,
-    }));
+    return res.json();
   },
 
   async batchDeleteAnnotations(projectId: number, ids: number[]): Promise<void> {

@@ -19,7 +19,7 @@ Vocabulary follows the project `GLOSSARY.md`:
 - **Anchor** — the reference to document content; the CLI computes it for you.
 - **Resolved** — the whole thread is dealt with. **Outdated** — the Anchor no
   longer matches after an edit. **Missing File** — the file at the stored path
-  no longer exists (the wire field is `orphaned`).
+  no longer exists (the wire field is `missingFile`).
 - **Tool Session** — the non-expiring bearer credential agent clients use.
 
 Do not invent or hand-craft Anchor JSON. `create` fetches the file through the
@@ -101,7 +101,7 @@ project is used automatically, and multiple projects produce an error listing
 the choices.
 
 `list` without `--file` uses the management endpoint, so it also shows
-**Missing File** threads (`orphaned: true`). `--orphans` keeps only those.
+**Missing File** threads (`missingFile: true`). `--orphans` keeps only those.
 `list --file` returns `[]` when the file no longer exists.
 
 ## Workflow A — consume human feedback, act, resolve
@@ -197,7 +197,7 @@ or `isAgent` as identity; the instance owner controls who can reach the API.
 - `--resolved` / `--unresolved` are client-side filters over the thread's
   Resolved flag.
 - `list` without `--file` includes rows whose stored path no longer exists.
-  They are **Missing File** (`orphaned: true`), not **Outdated** — the Anchor
+  They are **Missing File** (`missingFile: true`), not **Outdated** — the Anchor
   cannot be evaluated without the file. Surface them to the human; do not guess
   a replacement path.
 

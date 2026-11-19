@@ -163,9 +163,9 @@ impl<'a> AnnotationService<'a> {
     }
 
     /// Every annotation in the project for the management panel, including
-    /// rows whose stored path no longer exists on disk. `orphaned` explains
-    /// why such a row cannot jump back into a document. `author` keeps only
-    /// threads with at least one note written by that author.
+    /// rows whose stored path no longer exists on disk. `missing_file`
+    /// explains why such a row cannot jump back into a document. `author`
+    /// keeps only threads with at least one note written by that author.
     pub fn list_for_project(
         &self,
         project_id: i64,
@@ -179,12 +179,12 @@ impl<'a> AnnotationService<'a> {
         Ok(annotations
             .into_iter()
             .map(|annotation| {
-                let orphaned = !Path::new(&project.path)
+                let missing_file = !Path::new(&project.path)
                     .join(&annotation.relative_path)
                     .is_file();
                 ManagedAnnotation {
                     annotation,
-                    orphaned,
+                    missing_file,
                 }
             })
             .collect())
