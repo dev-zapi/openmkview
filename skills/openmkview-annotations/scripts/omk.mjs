@@ -728,11 +728,17 @@ function saveConfig(config) {
   fs.chmodSync(CONFIG_PATH, 0o600);
 }
 
-function makeContext(options) {
-  const config = loadConfig();
-  const url = (options.url || process.env.OPENMKVIEW_URL || config?.url || '')
+function normalizeUrl(raw) {
+  return String(raw ?? '')
     .trim()
     .replace(/\/+$/, '');
+}
+
+function makeContext(options) {
+  const config = loadConfig();
+  const url = normalizeUrl(
+    options.url || process.env.OPENMKVIEW_URL || config?.url || ''
+  );
 
   if (!url) {
     throw new Error('OpenMKView URL is not configured — run omk.mjs init');
@@ -991,15 +997,13 @@ async function establishToolSession(url, options) {
 
 async function commandInit(options) {
   const config = loadConfig();
-  const url = (
+  const url = normalizeUrl(
     options.url ||
-    process.env.OPENMKVIEW_URL ||
-    (await promptValue(`OpenMKView URL [${config?.url || DEFAULT_URL}]: `, {
-      fallback: config?.url || DEFAULT_URL,
-    }))
-  )
-    .trim()
-    .replace(/\/+$/, '');
+      process.env.OPENMKVIEW_URL ||
+      (await promptValue(`OpenMKView URL [${config?.url || DEFAULT_URL}]: `, {
+        fallback: config?.url || DEFAULT_URL,
+      }))
+  );
 
   await establishToolSession(url, options);
 }
@@ -1010,9 +1014,9 @@ async function commandLogin(options) {
     throw new Error('Not configured — run omk.mjs init');
   }
 
-  const url = (options.url || process.env.OPENMKVIEW_URL || config.url)
-    .trim()
-    .replace(/\/+$/, '');
+  const url = normalizeUrl(
+    options.url || process.env.OPENMKVIEW_URL || config.url
+  );
 
   await establishToolSession(url, options);
 }
