@@ -221,8 +221,11 @@ or `isAgent` as identity; the instance owner controls who can reach the API.
   when Node is unavailable, when you need an endpoint the CLI does not expose
   (edit a note, re-anchor, clear a project, revoke a Tool Session), or when you
   must debug a raw response.
-- `scripts/omk.mjs` — the CLI (zero dependencies, Node ≥ 18). Run
-  `--help` for the complete flag list.
+- `scripts/omk.mjs` — the CLI entry point (zero dependencies, Node ≥ 18). Run
+  `--help` for the complete flag list. The implementation lives beside it in
+  `scripts/lib/` (`markdown.mjs` block model + Anchor construction,
+  `client.mjs` config/HTTP/prompts, `commands.mjs` dispatch); the whole
+  `scripts/` directory travels with the skill, so only Node itself is needed.
 - `evals/` — the fixture project, boot script, three eval prompts, and committed
   with/without-skill results; useful as executable examples of both workflows.
 
