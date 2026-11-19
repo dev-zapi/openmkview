@@ -29,6 +29,20 @@ impl<'a> ToolSessionRepository<'a> {
         })
     }
 
+    /// One-row lookup shared by the id and token-hash finders: a missing row
+    /// is `None`, not an error.
+    fn query_one(
+        &self,
+        sql: &str,
+        params: impl rusqlite::Params,
+    ) -> AppResult<Option<ToolSession>> {
+        match self.conn.query_row(sql, params, Self::hydrate) {
+            Ok(session) => Ok(Some(session)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(err) => Err(err.into()),
+        }
+    }
+
     pub fn create(&self, token_hash: &str, label: &str) -> AppResult<ToolSession> {
         self.conn.execute(
             "INSERT INTO tool_sessions (token_hash, label) VALUES (?, ?)",
@@ -53,33 +67,19 @@ impl<'a> ToolSessionRepository<'a> {
     }
 
     pub fn find_by_id(&self, id: i64) -> AppResult<Option<ToolSession>> {
-        let session = self.conn.query_row(
+        self.query_one(
             "SELECT id, label, created_at, last_used_at
              FROM tool_sessions WHERE id = ?",
             [id],
-            Self::hydrate,
-        );
-
-        match session {
-            Ok(session) => Ok(Some(session)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(err) => Err(err.into()),
-        }
+        )
     }
 
     pub fn find_by_token_hash(&self, token_hash: &str) -> AppResult<Option<ToolSession>> {
-        let session = self.conn.query_row(
+        self.query_one(
             "SELECT id, label, created_at, last_used_at
              FROM tool_sessions WHERE token_hash = ?",
             [token_hash],
-            Self::hydrate,
-        );
-
-        match session {
-            Ok(session) => Ok(Some(session)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(err) => Err(err.into()),
-        }
+        )
     }
 
     pub fn touch_last_used(&self, id: i64) -> AppResult<()> {
