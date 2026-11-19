@@ -74,8 +74,9 @@ export const buildPrintableMarkdownDocument = (fileName: string, content: string
   const safeFileName = escapeHtml(fileName);
 
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="utf-8" />
   <title>${safeFileName}</title>
   <style>
     body { font-family: Georgia, serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 20px; }
@@ -107,8 +108,11 @@ export const downloadTextFile = (content: string, filename: string, mimeType: st
 export const printHtmlDocument = (html: string): boolean => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return false;
-  // Load via a blob URL instead of document.write() to avoid XSS sinks
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  // Load via a blob URL instead of document.write() to avoid XSS sinks.
+  // charset=utf-8 is required: a top-level blob navigation without an HTTP
+  // charset header (or an in-document meta charset) falls back to the
+  // browser's legacy default (windows-1252), garbling CJK text in print.
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html; charset=utf-8' }));
   printWindow.addEventListener('load', () => {
     printWindow.print();
     URL.revokeObjectURL(url);
@@ -136,7 +140,7 @@ export const exportDocument = (
     }
     case 'html': {
       const html = docType === 'html' ? content : buildPrintableMarkdownDocument(fileName, content);
-      downloadTextFile(html, buildHtmlDownloadName(fileName), 'text/html');
+      downloadTextFile(html, buildHtmlDownloadName(fileName), 'text/html; charset=utf-8');
       break;
     }
     case 'md': {

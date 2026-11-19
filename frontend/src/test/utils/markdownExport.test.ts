@@ -54,4 +54,11 @@ describe('markdownExport utils', () => {
     expect(documentHtml).toContain('<h1>Hello</h1>');
     expect(documentHtml).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
+
+  it('declares utf-8 so non-ASCII content is not decoded as windows-1252', () => {
+    const documentHtml = buildPrintableMarkdownDocument('中文.md', '# 中文标题');
+
+    expect(documentHtml).toContain('<meta charset="utf-8" />');
+    expect(documentHtml).toContain('<h1>中文标题</h1>');
+  });
 });
